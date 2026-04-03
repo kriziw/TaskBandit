@@ -15,8 +15,9 @@
 3. Decide whether you want demo seed data. For a clean install, set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=false`.
 4. If you want to run the published container instead of a local build, leave `TASKBANDIT_IMAGE_TAG` at `latest` or pin it to a published Docker Hub tag.
 5. If you want to run the server locally, install dependencies in `apps/server`, run `npm run prisma:generate`, apply the Prisma migration, then start the NestJS API.
-6. Run the React app from `apps/web`.
-7. Open the Android project from `apps/android` in Android Studio.
+6. If needed, copy `apps/web/.env.example` to `apps/web/.env` and set `VITE_TASKBANDIT_API_BASE_URL` to the reachable API origin.
+7. Run the React app from `apps/web`.
+8. Open the Android project from `apps/android` in Android Studio.
 
 ## Notes
 
@@ -29,3 +30,4 @@
 - Authentik is the target OIDC provider for the first external identity integration.
 - Reverse proxy support is built in through trusted proxy handling and optional path-base configuration.
 - Demo seeded local accounts use the password `TaskBandit123!` for `alex@taskbandit.local`, `maya@taskbandit.local`, and `luca@taskbandit.local`.
+- The web UI now talks to the live API and stores the JWT session in browser local storage.

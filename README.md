@@ -19,7 +19,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 
 - the v1 product and technical architecture
 - an initial NestJS + Prisma backend with PostgreSQL schema, starter endpoints, bootstrap flow, and local-auth foundations
-- the first-pass web UI shell with JSON language files
+- a live React web dashboard with local login, language files, approvals, household settings, and chore views
 - the first-pass Android shell with localized string resources
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
@@ -38,6 +38,18 @@ The publishing workflow and required GitHub secrets are documented in `docs/dock
 Localization structure and language-file locations are documented in `docs/localization.md`.
 Authentication endpoints and environment variables are documented in `docs/authentication.md`.
 Chore submission and review endpoints are documented in `docs/chore-workflow.md`.
+
+## Web App Notes
+
+The web UI now connects to the live API for:
+
+- local sign-in with JWT session persistence
+- dashboard summary and leaderboard
+- chore lists and basic submission flow
+- parent/admin approval actions
+- admin household settings
+
+For local development, copy `apps/web/.env.example` to `apps/web/.env` if you want to override the API base URL used by the Vite app.
 
 ## Backend Notes
 

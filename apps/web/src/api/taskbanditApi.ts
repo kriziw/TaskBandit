@@ -1,0 +1,175 @@
+import type {
+  AuthenticatedUser,
+  AuthProviders,
+  AuthResponse,
+  ChoreInstance,
+  ChoreTemplate,
+  DashboardSummary,
+  Household,
+  HouseholdSettings
+} from "../types/taskbandit";
+import type { AppLanguage } from "../i18n/I18nProvider";
+
+type RequestOptions = {
+  method?: "GET" | "POST" | "PUT";
+  token?: string | null;
+  language: AppLanguage;
+  body?: unknown;
+};
+
+type ApiErrorShape = {
+  message?: string | string[];
+  error?: string;
+};
+
+export class TaskBanditApiError extends Error {
+  readonly status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "TaskBanditApiError";
+    this.status = status;
+  }
+}
+
+function resolveApiBaseUrl() {
+  const configured = import.meta.env.VITE_TASKBANDIT_API_BASE_URL?.trim();
+  if (configured) {
+    return configured.replace(/\/+$/, "");
+  }
+
+  const cleanedPath = window.location.pathname
+    .replace(/index\.html$/, "")
+    .replace(/\/+$/, "");
+  const inferredBasePath = cleanedPath && cleanedPath !== "/" ? cleanedPath : "";
+
+  return `${window.location.origin.replace(/\/+$/, "")}${inferredBasePath}`;
+}
+
+async function request<T>(path: string, options: RequestOptions): Promise<T> {
+  const headers = new Headers({
+    Accept: "application/json",
+    "Accept-Language": options.language
+  });
+
+  if (options.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+  }
+
+  if (options.token) {
+    headers.set("Authorization", `Bearer ${options.token}`);
+  }
+
+  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
+    method: options.method ?? "GET",
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+  });
+
+  if (!response.ok) {
+    const message = await readErrorMessage(response);
+    throw new TaskBanditApiError(message, response.status);
+  }
+
+  return (await response.json()) as T;
+}
+
+async function readErrorMessage(response: Response) {
+  try {
+    const data = (await response.json()) as ApiErrorShape;
+    if (Array.isArray(data.message)) {
+      return data.message.join(", ");
+    }
+
+    return data.message ?? data.error ?? "Request failed.";
+  } catch {
+    return "Request failed.";
+  }
+}
+
+export const taskBanditApi = {
+  getProviders(language: AppLanguage) {
+    return request<AuthProviders>("/api/auth/providers", { language });
+  },
+  login(email: string, password: string, language: AppLanguage) {
+    return request<AuthResponse>("/api/auth/login", {
+      method: "POST",
+      language,
+      body: { email, password }
+    });
+  },
+  getCurrentUser(token: string, language: AppLanguage) {
+    return request<AuthenticatedUser>("/api/auth/me", {
+      token,
+      language
+    });
+  },
+  getDashboardSummary(token: string, language: AppLanguage) {
+    return request<DashboardSummary>("/api/dashboard/summary", {
+      token,
+      language
+    });
+  },
+  getHousehold(token: string, language: AppLanguage) {
+    return request<Household>("/api/settings/household", {
+      token,
+      language
+    });
+  },
+  updateHousehold(token: string, language: AppLanguage, settings: Partial<HouseholdSettings>) {
+    return request<Household>("/api/settings/household", {
+      method: "PUT",
+      token,
+      language,
+      body: settings
+    });
+  },
+  getTemplates(token: string, language: AppLanguage) {
+    return request<ChoreTemplate[]>("/api/chores/templates", {
+      token,
+      language
+    });
+  },
+  getInstances(token: string, language: AppLanguage) {
+    return request<ChoreInstance[]>("/api/chores/instances", {
+      token,
+      language
+    });
+  },
+  submitChore(
+    token: string,
+    language: AppLanguage,
+    instanceId: string,
+    payload: {
+      completedChecklistItemIds: string[];
+      note?: string;
+    }
+  ) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/submit`, {
+      method: "POST",
+      token,
+      language,
+      body: {
+        completedChecklistItemIds: payload.completedChecklistItemIds,
+        note: payload.note,
+        attachments: []
+      }
+    });
+  },
+  approveChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/approve`, {
+      method: "POST",
+      token,
+      language,
+      body: { note }
+    });
+  },
+  rejectChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/reject`, {
+      method: "POST",
+      token,
+      language,
+      body: { note }
+    });
+  }
+};

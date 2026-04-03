@@ -1,6 +1,6 @@
 type DashboardCardProps = {
   label: string;
-  value: string;
+  value: string | number;
 };
 
 export function DashboardCard({ label, value }: DashboardCardProps) {
@@ -11,4 +11,3 @@ export function DashboardCard({ label, value }: DashboardCardProps) {
     </article>
   );
 }
-
