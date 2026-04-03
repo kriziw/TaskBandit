@@ -104,6 +104,16 @@ class TaskBanditMobileApi {
         reviewChore(baseUrl, token, instanceId, "/api/chores/instances/$instanceId/reject", note)
     }
 
+    fun markNotificationRead(baseUrl: String, token: String, notificationId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/dashboard/notifications/$notificationId/read",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
     private fun requestJson(
         baseUrl: String,
         path: String,

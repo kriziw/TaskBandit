@@ -94,6 +94,7 @@ private fun TaskBanditApp(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isBusy by remember { mutableStateOf(session.token != null) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
+    var activeNotificationAction by remember { mutableStateOf<String?>(null) }
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
@@ -161,6 +162,30 @@ private fun TaskBanditApp(
         }
     }
 
+    fun markNotificationRead(notificationId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeNotificationAction = "notification:$notificationId"
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.markNotificationRead(baseUrl, token, notificationId)
+                }
+            }.onSuccess {
+                refreshDashboard()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            activeNotificationAction = null
+        }
+    }
+
     LaunchedEffect(session.token) {
         if (session.token != null) {
             refreshDashboard()
@@ -206,11 +231,13 @@ private fun TaskBanditApp(
             serverUrl = serverUrl,
             isBusy = isBusy,
             activeReviewAction = activeReviewAction,
+            activeNotificationAction = activeNotificationAction,
             errorMessage = errorMessage,
             onRefresh = ::refreshDashboard,
             onLogout = ::logout,
             onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
-            onReject = { instanceId -> reviewPendingChore(instanceId, false) }
+            onReject = { instanceId -> reviewPendingChore(instanceId, false) },
+            onNotificationRead = ::markNotificationRead
         )
     }
 }
@@ -310,11 +337,13 @@ private fun DashboardScreen(
     serverUrl: String,
     isBusy: Boolean,
     activeReviewAction: String?,
+    activeNotificationAction: String?,
     errorMessage: String?,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
-    onReject: (String) -> Unit
+    onReject: (String) -> Unit,
+    onNotificationRead: (String) -> Unit
 ) {
     val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
     val visibleChores = dashboard?.chores.orEmpty().filter { it.state != "pending_approval" }
@@ -492,6 +521,22 @@ private fun DashboardScreen(
                             text = formatApiTimestamp(notification.createdAt),
                             style = MaterialTheme.typography.bodySmall
                         )
+                        if (!notification.isRead) {
+                            Button(
+                                onClick = { onNotificationRead(notification.id) },
+                                enabled = activeNotificationAction == null
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (activeNotificationAction == "notification:${notification.id}") {
+                                            R.string.mobile_marking_read
+                                        } else {
+                                            R.string.mobile_mark_read
+                                        }
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }

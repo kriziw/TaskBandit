@@ -43,6 +43,8 @@
     <string name="mobile_due_at">Due %1$s</string>
     <string name="mobile_state_overdue">Overdue</string>
     <string name="mobile_notifications">Notifications</string>
+    <string name="mobile_mark_read">Mark read</string>
+    <string name="mobile_marking_read">Marking…</string>
     <string name="mobile_leaderboard">Leaderboard</string>
     <string name="mobile_points_value">%1$d points</string>
     <string name="mobile_streak_value">%1$d streak</string>

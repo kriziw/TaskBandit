@@ -43,6 +43,8 @@
     <string name="mobile_due_at">Hatarido %1$s</string>
     <string name="mobile_state_overdue">Lejart</string>
     <string name="mobile_notifications">Ertesitesek</string>
+    <string name="mobile_mark_read">Olvasottnak jeloles</string>
+    <string name="mobile_marking_read">Jeloles…</string>
     <string name="mobile_leaderboard">Rangsor</string>
     <string name="mobile_points_value">%1$d pont</string>
     <string name="mobile_streak_value">%1$d szeria</string>

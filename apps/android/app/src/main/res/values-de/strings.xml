@@ -43,6 +43,8 @@
     <string name="mobile_due_at">Fallig %1$s</string>
     <string name="mobile_state_overdue">Uberfallig</string>
     <string name="mobile_notifications">Benachrichtigungen</string>
+    <string name="mobile_mark_read">Als gelesen markieren</string>
+    <string name="mobile_marking_read">Markiere…</string>
     <string name="mobile_leaderboard">Bestenliste</string>
     <string name="mobile_points_value">%1$d Punkte</string>
     <string name="mobile_streak_value">%1$d Serie</string>
