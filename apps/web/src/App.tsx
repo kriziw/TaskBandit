@@ -8,6 +8,7 @@ import type {
   BootstrapHouseholdInput,
   BootstrapStatus,
   ChoreInstance,
+  ChoreState,
   ChoreTemplate,
   CreateChoreInstanceInput,
   CreateChoreTemplateInput,
@@ -36,6 +37,19 @@ type MemberFormState = CreateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
 type InstanceFormState = CreateChoreInstanceInput;
 type BootstrapFormState = BootstrapHouseholdInput;
+type HouseholdChoreViewMode = "list" | "board";
+type HouseholdChoreStateFilter = "all" | ChoreState;
+
+const householdBoardStateOrder: ChoreState[] = [
+  "open",
+  "assigned",
+  "in_progress",
+  "pending_approval",
+  "needs_fixes",
+  "overdue",
+  "completed",
+  "cancelled"
+];
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -79,6 +93,7 @@ export function App() {
     difficulty: "easy",
     assignmentStrategy: "round_robin",
     requirePhotoProof: false,
+    dependencyTemplateIds: [],
     checklist: []
   });
   const [instanceForm, setInstanceForm] = useState<InstanceFormState>({
@@ -87,6 +102,9 @@ export function App() {
     title: "",
     dueAt: ""
   });
+  const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
+  const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
+  const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -200,8 +218,35 @@ export function App() {
 
   const visibleHouseholdChores = useMemo(() => {
     const instances = payload?.instances ?? [];
-    return [...instances].slice(0, 8);
-  }, [payload]);
+    return [...instances]
+      .filter((instance) => {
+        if (householdStateFilter !== "all" && instance.state !== householdStateFilter) {
+          return false;
+        }
+
+        if (householdAssigneeFilter === "all") {
+          return true;
+        }
+
+        if (householdAssigneeFilter === "unassigned") {
+          return !instance.assigneeId;
+        }
+
+        return instance.assigneeId === householdAssigneeFilter;
+      })
+      .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime());
+  }, [payload, householdAssigneeFilter, householdStateFilter]);
+
+  const householdBoardColumns = useMemo(
+    () =>
+      householdBoardStateOrder
+        .map((state) => ({
+          state,
+          chores: visibleHouseholdChores.filter((instance) => instance.state === state)
+        }))
+        .filter((column) => column.chores.length > 0 || householdStateFilter !== "all"),
+    [visibleHouseholdChores, householdStateFilter]
+  );
 
   const assignmentStrategyOptions: Array<{
     value: TemplateFormState["assignmentStrategy"];
@@ -245,6 +290,47 @@ export function App() {
     } finally {
       setIsLoading(false);
     }
+  }
+
+  function renderHouseholdChoreCard(instance: ChoreInstance) {
+    return (
+      <div className="task-row compact" key={instance.id}>
+        <div className="task-row-header">
+          <strong>{instance.title}</strong>
+          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+        </div>
+        <p>
+          {t("task.assignee")}:{" "}
+          {restrictHouseholdDetails
+            ? t("task.visible_limited")
+            : instance.assigneeId
+              ? memberLookup.get(instance.assigneeId)?.displayName ?? t("common.unknown")
+              : t("common.unassigned")}
+        </p>
+        <p>
+          {t("task.due")}: {formatDate(instance.dueAt)}
+        </p>
+        {!restrictHouseholdDetails ? (
+          <p>
+            {t("task.difficulty")}: {t(`difficulty.${instance.difficulty}`)}
+          </p>
+        ) : null}
+        {payload?.currentUser.role !== "child" &&
+        instance.state !== "completed" &&
+        instance.state !== "cancelled" ? (
+          <div className="button-row">
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={busyAction === `cancel:${instance.id}`}
+              onClick={() => void handleCancelInstance(instance.id)}
+            >
+              {t("instances.cancel")}
+            </button>
+          </div>
+        ) : null}
+      </div>
+    );
   }
 
   function handleLogout(message?: string) {
@@ -437,6 +523,7 @@ export function App() {
         ...templateForm,
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
+        dependencyTemplateIds: [...new Set(templateForm.dependencyTemplateIds ?? [])],
         checklist: sanitizedChecklist
       });
       setPayload((current) =>
@@ -455,6 +542,7 @@ export function App() {
         difficulty: "easy",
         assignmentStrategy: "round_robin",
         requirePhotoProof: false,
+        dependencyTemplateIds: [],
         checklist: []
       });
       setNotice(t("templates.created"));
@@ -1064,46 +1152,79 @@ export function App() {
                   </button>
                 </div>
               </div>
-              <div className="stack-list">
-                {visibleHouseholdChores.map((instance) => (
-                  <div className="task-row compact" key={instance.id}>
-                    <div className="task-row-header">
-                      <strong>{instance.title}</strong>
-                      <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
-                    </div>
-                    <p>
-                      {t("task.assignee")}:{" "}
-                      {restrictHouseholdDetails
-                        ? t("task.visible_limited")
-                        : instance.assigneeId
-                          ? memberLookup.get(instance.assigneeId)?.displayName ?? t("common.unknown")
-                          : t("common.unassigned")}
-                    </p>
-                    <p>
-                      {t("task.due")}: {formatDate(instance.dueAt)}
-                    </p>
-                    {!restrictHouseholdDetails ? (
-                      <p>
-                        {t("task.difficulty")}: {t(`difficulty.${instance.difficulty}`)}
-                      </p>
-                    ) : null}
-                    {payload.currentUser.role !== "child" &&
-                    instance.state !== "completed" &&
-                    instance.state !== "cancelled" ? (
-                      <div className="button-row">
-                        <button
-                          className="secondary-button"
-                          type="button"
-                          disabled={busyAction === `cancel:${instance.id}`}
-                          onClick={() => void handleCancelInstance(instance.id)}
-                        >
-                          {t("instances.cancel")}
-                        </button>
-                      </div>
-                    ) : null}
+              <div className="household-filter-bar">
+                <label>
+                  <span>{t("filters.view")}</span>
+                  <div className="segmented-toggle" role="tablist" aria-label={t("filters.view")}>
+                    <button
+                      className={householdViewMode === "list" ? "active" : ""}
+                      type="button"
+                      onClick={() => setHouseholdViewMode("list")}
+                    >
+                      {t("view.list")}
+                    </button>
+                    <button
+                      className={householdViewMode === "board" ? "active" : ""}
+                      type="button"
+                      onClick={() => setHouseholdViewMode("board")}
+                    >
+                      {t("view.board")}
+                    </button>
                   </div>
-                ))}
+                </label>
+                <label>
+                  <span>{t("filters.state")}</span>
+                  <select
+                    value={householdStateFilter}
+                    onChange={(event) =>
+                      setHouseholdStateFilter(event.target.value as HouseholdChoreStateFilter)
+                    }
+                  >
+                    <option value="all">{t("filters.all_states")}</option>
+                    {householdBoardStateOrder.map((state) => (
+                      <option key={state} value={state}>
+                        {t(`state.${state}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("filters.assignee")}</span>
+                  <select
+                    value={householdAssigneeFilter}
+                    onChange={(event) => setHouseholdAssigneeFilter(event.target.value)}
+                  >
+                    <option value="all">{t("filters.all_members")}</option>
+                    <option value="unassigned">{t("filters.unassigned")}</option>
+                    {payload.household.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
               </div>
+              {visibleHouseholdChores.length === 0 ? (
+                <p className="empty-state">{t("empty.filtered_chores")}</p>
+              ) : householdViewMode === "list" ? (
+                <div className="stack-list">
+                  {visibleHouseholdChores.map((instance) => renderHouseholdChoreCard(instance))}
+                </div>
+              ) : (
+                <div className="board-grid">
+                  {householdBoardColumns.map((column) => (
+                    <section className="board-column" key={column.state}>
+                      <div className="board-column-header">
+                        <strong>{t(`state.${column.state}`)}</strong>
+                        <span className={`status-pill state-${column.state}`}>{column.chores.length}</span>
+                      </div>
+                      <div className="stack-list">
+                        {column.chores.map((instance) => renderHouseholdChoreCard(instance))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              )}
             </article>
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
@@ -1276,6 +1397,20 @@ export function App() {
                             ? t("templates.photo_required")
                             : t("templates.photo_optional")}
                         </p>
+                        {template.dependencyTemplateIds.length > 0 ? (
+                          <p>
+                            {t("templates.follow_ups")}:{" "}
+                            {template.dependencyTemplateIds
+                              .map(
+                                (dependencyId) =>
+                                  payload.templates.find((candidate) => candidate.id === dependencyId)?.title ??
+                                  t("common.unknown")
+                              )
+                              .join(", ")}
+                          </p>
+                        ) : (
+                          <p className="inline-message">{t("templates.no_follow_ups")}</p>
+                        )}
                         {template.checklist.length > 0 ? (
                           <ul className="simple-list compact-list">
                             {template.checklist.map((item) => (
@@ -1359,6 +1494,40 @@ export function App() {
                         }
                       />
                     </label>
+                    <div className="stack-list">
+                      <div className="section-heading">
+                        <h3>{t("templates.follow_ups")}</h3>
+                        <span className="section-kicker">
+                          {(templateForm.dependencyTemplateIds ?? []).length}
+                        </span>
+                      </div>
+                      {payload.templates.length === 0 ? (
+                        <p className="inline-message">{t("templates.follow_up_hint")}</p>
+                      ) : (
+                        payload.templates.map((template) => {
+                          const selected = (templateForm.dependencyTemplateIds ?? []).includes(template.id);
+                          return (
+                            <label className="toggle-row" key={template.id}>
+                              <span>{template.title}</span>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={(event) =>
+                                  setTemplateForm((current) => ({
+                                    ...current,
+                                    dependencyTemplateIds: event.target.checked
+                                      ? [...new Set([...(current.dependencyTemplateIds ?? []), template.id])]
+                                      : (current.dependencyTemplateIds ?? []).filter(
+                                          (dependencyId) => dependencyId !== template.id
+                                        )
+                                  }))
+                                }
+                              />
+                            </label>
+                          );
+                        })
+                      )}
+                    </div>
                     <div className="stack-list">
                       <div className="section-heading">
                         <h3>{t("templates.checklist")}</h3>

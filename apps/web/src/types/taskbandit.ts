@@ -152,6 +152,7 @@ export type CreateChoreTemplateInput = {
   difficulty: Difficulty;
   assignmentStrategy: AssignmentStrategy;
   requirePhotoProof: boolean;
+  dependencyTemplateIds?: string[];
   checklist?: Array<{
     title: string;
     required: boolean;

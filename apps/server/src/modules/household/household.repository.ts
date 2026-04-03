@@ -22,6 +22,8 @@ import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto"
 import { CreateHouseholdMemberDto } from "../settings/dto/create-household-member.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
+type PrismaExecutor = PrismaService | Prisma.TransactionClient;
+
 @Injectable()
 export class HouseholdRepository {
   constructor(private readonly prisma: PrismaService) {}
@@ -255,6 +257,28 @@ export class HouseholdRepository {
   }
 
   async createTemplate(dto: CreateChoreTemplateDto, householdId: string) {
+    const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])];
+
+    if (dependencyTemplateIds.length > 0) {
+      const availableDependencies = await this.prisma.choreTemplate.findMany({
+        where: {
+          householdId,
+          id: {
+            in: dependencyTemplateIds
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (availableDependencies.length !== dependencyTemplateIds.length) {
+        throw new NotFoundException({
+          message: "One or more follow-up templates could not be found."
+        });
+      }
+    }
+
     const template = await this.prisma.choreTemplate.create({
       data: {
         householdId,
@@ -271,6 +295,11 @@ export class HouseholdRepository {
               required: item.required,
               sortOrder: index + 1
             })) ?? []
+        },
+        dependencies: {
+          create: dependencyTemplateIds.map((followUpTemplateId) => ({
+            followUpTemplateId
+          }))
         }
       },
       include: {
@@ -293,28 +322,22 @@ export class HouseholdRepository {
       }
     });
 
-    if (dto.assigneeId) {
-      const assignee = await this.prisma.user.findFirst({
-        where: {
-          id: dto.assigneeId,
-          householdId
-        }
-      });
-
-      if (!assignee) {
-        throw new NotFoundException({
-          message: "That assignee could not be found."
-        });
-      }
-    }
+    const resolvedAssigneeId = dto.assigneeId
+      ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
+      : await this.resolveAssigneeForTemplate(
+          this.prisma,
+          householdId,
+          template.id,
+          template.assignmentStrategy
+        );
 
     const instance = await this.prisma.choreInstance.create({
       data: {
         householdId,
         templateId: template.id,
         title: dto.title?.trim() || template.title,
-        state: dto.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
-        assigneeId: dto.assigneeId ?? null,
+        state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+        assigneeId: resolvedAssigneeId,
         dueAtUtc: dto.dueAt
       },
       include: {
@@ -465,6 +488,8 @@ export class HouseholdRepository {
           }
         }
       });
+
+      await this.createFollowUpInstances(updatedInstance);
     }
 
     return this.mapInstance(updatedInstance);
@@ -519,6 +544,8 @@ export class HouseholdRepository {
           }
         });
       }
+
+      await this.createFollowUpInstances(updatedInstance);
     }
 
     return this.mapInstance(updatedInstance);
@@ -701,6 +728,198 @@ export class HouseholdRepository {
       default:
         return 10;
     }
+  }
+
+  private async validateAssignee(
+    executor: PrismaExecutor,
+    assigneeId: string,
+    householdId: string
+  ) {
+    const assignee = await executor.user.findFirst({
+      where: {
+        id: assigneeId,
+        householdId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!assignee) {
+      throw new NotFoundException({
+        message: "That assignee could not be found."
+      });
+    }
+
+    return assignee.id;
+  }
+
+  private async resolveAssigneeForTemplate(
+    executor: PrismaExecutor,
+    householdId: string,
+    templateId: string,
+    strategy: AssignmentStrategyType
+  ) {
+    const members = await executor.user.findMany({
+      where: {
+        householdId
+      },
+      orderBy: [{ createdAtUtc: "asc" }, { displayName: "asc" }]
+    });
+
+    if (members.length === 0 || strategy === AssignmentStrategyType.MANUAL_DEFAULT_ASSIGNEE) {
+      return null;
+    }
+
+    switch (strategy) {
+      case AssignmentStrategyType.ROUND_ROBIN: {
+        const lastAssigned = await executor.choreInstance.findFirst({
+          where: {
+            householdId,
+            templateId,
+            assigneeId: {
+              not: null
+            }
+          },
+          orderBy: [{ createdAtUtc: "desc" }],
+          select: {
+            assigneeId: true
+          }
+        });
+
+        if (!lastAssigned?.assigneeId) {
+          return members[0]?.id ?? null;
+        }
+
+        const currentIndex = members.findIndex((member) => member.id === lastAssigned.assigneeId);
+        if (currentIndex < 0) {
+          return members[0]?.id ?? null;
+        }
+
+        return members[(currentIndex + 1) % members.length]?.id ?? null;
+      }
+      case AssignmentStrategyType.LEAST_COMPLETED_RECENTLY: {
+        const completions = await executor.choreInstance.findMany({
+          where: {
+            householdId,
+            templateId,
+            assigneeId: {
+              not: null
+            },
+            completedAtUtc: {
+              not: null
+            }
+          },
+          select: {
+            assigneeId: true,
+            completedAtUtc: true
+          },
+          orderBy: [{ completedAtUtc: "desc" }]
+        });
+
+        const lastCompletionByUser = new Map<string, Date>();
+        for (const completion of completions) {
+          if (completion.assigneeId && !lastCompletionByUser.has(completion.assigneeId)) {
+            lastCompletionByUser.set(completion.assigneeId, completion.completedAtUtc!);
+          }
+        }
+
+        return [...members]
+          .sort((left, right) => {
+            const leftTime = lastCompletionByUser.get(left.id)?.getTime() ?? 0;
+            const rightTime = lastCompletionByUser.get(right.id)?.getTime() ?? 0;
+            if (leftTime !== rightTime) {
+              return leftTime - rightTime;
+            }
+
+            return left.displayName.localeCompare(right.displayName);
+          })[0]
+          ?.id;
+      }
+      case AssignmentStrategyType.HIGHEST_STREAK:
+        return [...members]
+          .sort(
+            (left, right) =>
+              right.currentStreak - left.currentStreak ||
+              right.points - left.points ||
+              left.displayName.localeCompare(right.displayName)
+          )[0]
+          ?.id;
+      default:
+        return null;
+    }
+  }
+
+  private async createFollowUpInstances(
+    instance: Prisma.ChoreInstanceGetPayload<{
+      include: {
+        template: { include: { checklistItems: true } };
+        checklistCompletions: true;
+        attachments: true;
+      };
+    }>
+  ) {
+    const dependencies = await this.prisma.choreTemplateDependency.findMany({
+      where: {
+        templateId: instance.templateId
+      },
+      select: {
+        followUpTemplateId: true
+      }
+    });
+
+    if (dependencies.length === 0) {
+      return;
+    }
+
+    const dependencyTemplateIds = dependencies.map((dependency) => dependency.followUpTemplateId);
+    const followUpTemplates = await this.prisma.choreTemplate.findMany({
+      where: {
+        householdId: instance.householdId,
+        id: {
+          in: dependencyTemplateIds
+        }
+      },
+      orderBy: {
+        title: "asc"
+      }
+    });
+
+    if (followUpTemplates.length === 0) {
+      return;
+    }
+
+    const followUpDueAt = this.calculateFollowUpDueAt(instance.dueAtUtc, instance.completedAtUtc ?? new Date());
+
+    await this.prisma.$transaction(async (tx) => {
+      for (const template of followUpTemplates) {
+        const assigneeId = await this.resolveAssigneeForTemplate(
+          tx,
+          instance.householdId,
+          template.id,
+          template.assignmentStrategy
+        );
+
+        await tx.choreInstance.create({
+          data: {
+            householdId: instance.householdId,
+            templateId: template.id,
+            title: template.title,
+            state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+            assigneeId,
+            dueAtUtc: followUpDueAt
+          }
+        });
+      }
+    });
+  }
+
+  private calculateFollowUpDueAt(originalDueAtUtc: Date, completedAtUtc: Date) {
+    if (originalDueAtUtc.getTime() > completedAtUtc.getTime()) {
+      return originalDueAtUtc;
+    }
+
+    return new Date(completedAtUtc.getTime() + 60 * 60 * 1000);
   }
 
   private mapHousehold(

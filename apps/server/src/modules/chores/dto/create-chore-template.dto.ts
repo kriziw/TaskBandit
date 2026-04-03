@@ -3,12 +3,14 @@ import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
+  ArrayUnique,
   IsArray,
   IsBoolean,
   IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
+  IsUUID,
   MaxLength,
   ValidateNested
 } from "class-validator";
@@ -64,4 +66,12 @@ export class CreateChoreTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => CreateChecklistItemDto)
   checklist?: CreateChecklistItemDto[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(10)
+  @ArrayUnique()
+  @IsUUID("4", { each: true })
+  dependencyTemplateIds?: string[];
 }

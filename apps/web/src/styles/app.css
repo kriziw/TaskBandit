@@ -388,6 +388,18 @@ select {
   margin-top: 18px;
 }
 
+.household-filter-bar {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.household-filter-bar label {
+  display: grid;
+  gap: 6px;
+}
+
 .login-form label,
 .inline-field {
   display: grid;
@@ -434,6 +446,29 @@ select {
   grid-template-columns: 1fr;
 }
 
+.board-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 16px;
+}
+
+.board-column {
+  display: grid;
+  gap: 12px;
+  align-content: start;
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.board-column-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
 .task-row,
 .leader-row {
   padding: 16px;
@@ -461,6 +496,40 @@ select {
 .status-pill {
   border: 1px solid rgba(36, 48, 67, 0.08);
   color: var(--ink);
+}
+
+.segmented-toggle {
+  display: inline-grid;
+  grid-auto-flow: column;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 999px;
+  background: rgba(36, 48, 67, 0.06);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.segmented-toggle button {
+  border: 0;
+  padding: 10px 14px;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--ink);
+  font: inherit;
+  font-weight: 700;
+  cursor: pointer;
+  transition:
+    background 160ms ease,
+    color 160ms ease,
+    transform 160ms ease;
+}
+
+.segmented-toggle button:hover {
+  transform: translateY(-1px);
+}
+
+.segmented-toggle button.active {
+  background: var(--ink);
+  color: #fff7e8;
 }
 
 .state-assigned,
@@ -541,7 +610,8 @@ select {
   .toolbar,
   .toolbar-group,
   .button-row,
-  .task-row-header {
+  .task-row-header,
+  .board-column-header {
     align-items: stretch;
   }
 
@@ -549,7 +619,8 @@ select {
   .toolbar-group,
   .button-row,
   .task-row-header,
-  .hero-meta {
+  .hero-meta,
+  .board-column-header {
     flex-direction: column;
   }
 
