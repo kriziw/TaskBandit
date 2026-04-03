@@ -27,8 +27,42 @@ export class ChoresService {
     return this.repository.createTemplate(dto, user.householdId);
   }
 
+  async updateTemplate(
+    templateId: string,
+    dto: CreateChoreTemplateDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const template = await this.repository.getTemplateForHousehold(templateId, user.householdId);
+    if (!template) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
+    }
+
+    return this.repository.updateTemplate(templateId, dto, user.householdId);
+  }
+
   createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser) {
     return this.repository.createInstance(dto, user.householdId);
+  }
+
+  async updateInstance(
+    instanceId: string,
+    dto: CreateChoreInstanceDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_edit_state", language)
+      );
+    }
+
+    return this.repository.updateInstance(instanceId, dto, user.householdId);
   }
 
   async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {

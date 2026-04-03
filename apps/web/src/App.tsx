@@ -116,6 +116,8 @@ export function App() {
     title: "",
     dueAt: ""
   });
+  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
+  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
@@ -346,6 +348,15 @@ export function App() {
         instance.state !== "completed" &&
         instance.state !== "cancelled" ? (
           <div className="button-row">
+            {instance.state !== "pending_approval" ? (
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => startEditingInstance(instance)}
+              >
+                {t("common.edit")}
+              </button>
+            ) : null}
             <button
               className="secondary-button"
               type="button"
@@ -573,7 +584,7 @@ export function App() {
 
     setBusyAction("create-template");
     try {
-      const createdTemplate = await taskBanditApi.createTemplate(token, language, {
+      const templatePayload = {
         ...templateForm,
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
@@ -581,33 +592,31 @@ export function App() {
         recurrenceWeekdays: sanitizedRecurrenceWeekdays,
         recurrenceIntervalDays: sanitizedIntervalDays,
         checklist: sanitizedChecklist
-      });
+      };
+      const savedTemplate = editingTemplateId
+        ? await taskBanditApi.updateTemplate(token, language, editingTemplateId, templatePayload)
+        : await taskBanditApi.createTemplate(token, language, templatePayload);
       setPayload((current) =>
         current
           ? {
               ...current,
-              templates: [...current.templates, createdTemplate].sort((left, right) =>
-                left.title.localeCompare(right.title)
-              )
+              templates: editingTemplateId
+                ? current.templates
+                    .map((template) => (template.id === editingTemplateId ? savedTemplate : template))
+                    .sort((left, right) => left.title.localeCompare(right.title))
+                : [...current.templates, savedTemplate].sort((left, right) =>
+                    left.title.localeCompare(right.title)
+                  )
             }
           : current
       );
-      setTemplateForm({
-        title: "",
-        description: "",
-        difficulty: "easy",
-        assignmentStrategy: "round_robin",
-        recurrenceType: "none",
-        recurrenceIntervalDays: 2,
-        recurrenceWeekdays: [],
-        requirePhotoProof: false,
-        dependencyTemplateIds: [],
-        checklist: []
-      });
-      setNotice(t("templates.created"));
+      resetTemplateForm();
+      setNotice(editingTemplateId ? t("templates.updated") : t("templates.created"));
       setPageError(null);
     } catch (error) {
-      setPageError(readErrorMessage(error, t("templates.create_failed")));
+      setPageError(
+        readErrorMessage(error, editingTemplateId ? t("templates.update_failed") : t("templates.create_failed"))
+      );
     } finally {
       setBusyAction(null);
     }
@@ -621,32 +630,36 @@ export function App() {
 
     setBusyAction("create-instance");
     try {
-      const createdInstance = await taskBanditApi.createInstance(token, language, {
+      const instancePayload = {
         templateId: instanceForm.templateId,
         assigneeId: instanceForm.assigneeId || undefined,
         title: instanceForm.title?.trim() || undefined,
         dueAt: new Date(instanceForm.dueAt).toISOString()
-      });
+      };
+      const savedInstance = editingInstanceId
+        ? await taskBanditApi.updateInstance(token, language, editingInstanceId, instancePayload)
+        : await taskBanditApi.createInstance(token, language, instancePayload);
       setPayload((current) =>
         current
           ? {
               ...current,
-              instances: [...current.instances, createdInstance].sort(
-                (left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()
-              )
+              instances: editingInstanceId
+                ? current.instances
+                    .map((instance) => (instance.id === editingInstanceId ? savedInstance : instance))
+                    .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime())
+                : [...current.instances, savedInstance].sort(
+                    (left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()
+                  )
             }
           : current
       );
-      setInstanceForm((current) => ({
-        ...current,
-        assigneeId: "",
-        title: "",
-        dueAt: ""
-      }));
-      setNotice(t("instances.created"));
+      resetInstanceForm();
+      setNotice(editingInstanceId ? t("instances.updated") : t("instances.created"));
       setPageError(null);
     } catch (error) {
-      setPageError(readErrorMessage(error, t("instances.create_failed")));
+      setPageError(
+        readErrorMessage(error, editingInstanceId ? t("instances.update_failed") : t("instances.create_failed"))
+      );
     } finally {
       setBusyAction(null);
     }
@@ -753,6 +766,61 @@ export function App() {
     }));
   }
 
+  function resetTemplateForm() {
+    setEditingTemplateId(null);
+    setTemplateForm({
+      title: "",
+      description: "",
+      difficulty: "easy",
+      assignmentStrategy: "round_robin",
+      recurrenceType: "none",
+      recurrenceIntervalDays: 2,
+      recurrenceWeekdays: [],
+      requirePhotoProof: false,
+      dependencyTemplateIds: [],
+      checklist: []
+    });
+  }
+
+  function resetInstanceForm() {
+    setEditingInstanceId(null);
+    setInstanceForm((current) => ({
+      ...current,
+      assigneeId: "",
+      title: "",
+      dueAt: ""
+    }));
+  }
+
+  function startEditingTemplate(template: ChoreTemplate) {
+    setEditingTemplateId(template.id);
+    setTemplateForm({
+      title: template.title,
+      description: template.description,
+      difficulty: template.difficulty,
+      assignmentStrategy: template.assignmentStrategy,
+      recurrenceType: template.recurrence.type,
+      recurrenceIntervalDays: template.recurrence.intervalDays ?? 2,
+      recurrenceWeekdays: template.recurrence.weekdays,
+      requirePhotoProof: template.requirePhotoProof,
+      dependencyTemplateIds: template.dependencyTemplateIds,
+      checklist: template.checklist.map((item) => ({
+        title: item.title,
+        required: item.required
+      }))
+    });
+  }
+
+  function startEditingInstance(instance: ChoreInstance) {
+    setEditingInstanceId(instance.id);
+    setInstanceForm({
+      templateId: instance.templateId,
+      assigneeId: instance.assigneeId ?? "",
+      title: instance.title,
+      dueAt: formatDateTimeLocal(instance.dueAt)
+    });
+  }
+
   function formatDate(value: string | null) {
     if (!value) {
       return t("common.none");
@@ -762,6 +830,13 @@ export function App() {
       dateStyle: "medium",
       timeStyle: "short"
     }).format(new Date(value));
+  }
+
+  function formatDateTimeLocal(value: string) {
+    const date = new Date(value);
+    const pad = (part: number) => part.toString().padStart(2, "0");
+
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
   }
 
   const roadmap = [
@@ -1485,6 +1560,15 @@ export function App() {
                         ) : (
                           <p className="inline-message">{t("templates.no_checklist")}</p>
                         )}
+                        <div className="button-row">
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            onClick={() => startEditingTemplate(template)}
+                          >
+                            {t("common.edit")}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -1701,8 +1785,13 @@ export function App() {
                       )}
                     </div>
                     <button className="primary-button" type="submit" disabled={busyAction === "create-template"}>
-                      {t("templates.create")}
+                      {editingTemplateId ? t("templates.save") : t("templates.create")}
                     </button>
+                    {editingTemplateId ? (
+                      <button className="ghost-button" type="button" onClick={resetTemplateForm}>
+                        {t("common.cancel")}
+                      </button>
+                    ) : null}
                   </form>
                 </article>
 
@@ -1769,8 +1858,13 @@ export function App() {
                       type="submit"
                       disabled={busyAction === "create-instance" || payload.templates.length === 0}
                     >
-                      {t("instances.create")}
+                      {editingInstanceId ? t("instances.save") : t("instances.create")}
                     </button>
+                    {editingInstanceId ? (
+                      <button className="ghost-button" type="button" onClick={resetInstanceForm}>
+                        {t("common.cancel")}
+                      </button>
+                    ) : null}
                   </form>
                 </article>
               </>

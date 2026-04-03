@@ -5,6 +5,7 @@ import {
   Headers,
   Param,
   Post,
+  Put,
   UploadedFile,
   UseGuards,
   UseInterceptors
@@ -46,6 +47,22 @@ export class ChoresController {
     return this.choresService.createTemplate(dto, user);
   }
 
+  @Put("templates/:id")
+  @Roles("admin", "parent")
+  updateTemplate(
+    @Param("id") templateId: string,
+    @Body() dto: CreateChoreTemplateDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.updateTemplate(
+      templateId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
   @Get("instances")
   instances(@CurrentUser() user: AuthenticatedUser) {
     return this.choresService.getInstances(user);
@@ -55,6 +72,22 @@ export class ChoresController {
   @Roles("admin", "parent")
   createInstance(@Body() dto: CreateChoreInstanceDto, @CurrentUser() user: AuthenticatedUser) {
     return this.choresService.createInstance(dto, user);
+  }
+
+  @Put("instances/:id")
+  @Roles("admin", "parent")
+  updateInstance(
+    @Param("id") instanceId: string,
+    @Body() dto: CreateChoreInstanceDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.updateInstance(
+      instanceId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
   }
 
   @Post("instances/:id/cancel")

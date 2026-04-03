@@ -168,9 +168,25 @@ export const taskBanditApi = {
       body: input
     });
   },
+  updateTemplate(token: string, language: AppLanguage, templateId: string, input: CreateChoreTemplateInput) {
+    return request<ChoreTemplate>(`/api/chores/templates/${templateId}`, {
+      method: "PUT",
+      token,
+      language,
+      body: input
+    });
+  },
   createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
     return request<ChoreInstance>("/api/chores/instances", {
       method: "POST",
+      token,
+      language,
+      body: input
+    });
+  },
+  updateInstance(token: string, language: AppLanguage, instanceId: string, input: CreateChoreInstanceInput) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}`, {
+      method: "PUT",
       token,
       language,
       body: input

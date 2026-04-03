@@ -257,6 +257,21 @@ export class HouseholdRepository {
     return templates.map((template) => this.mapTemplate(template));
   }
 
+  async getTemplateForHousehold(templateId: string, householdId: string) {
+    const template = await this.prisma.choreTemplate.findFirst({
+      where: {
+        id: templateId,
+        householdId
+      },
+      include: {
+        checklistItems: true,
+        dependencies: true
+      }
+    });
+
+    return template ? this.mapTemplate(template) : null;
+  }
+
   async createTemplate(dto: CreateChoreTemplateDto, householdId: string) {
     const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])];
 
@@ -312,6 +327,84 @@ export class HouseholdRepository {
         checklistItems: true,
         dependencies: true
       }
+    });
+
+    return this.mapTemplate(template);
+  }
+
+  async updateTemplate(templateId: string, dto: CreateChoreTemplateDto, householdId: string) {
+    const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])].filter(
+      (dependencyId) => dependencyId !== templateId
+    );
+
+    if (dependencyTemplateIds.length > 0) {
+      const availableDependencies = await this.prisma.choreTemplate.findMany({
+        where: {
+          householdId,
+          id: {
+            in: dependencyTemplateIds
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (availableDependencies.length !== dependencyTemplateIds.length) {
+        throw new NotFoundException({
+          message: "One or more follow-up templates could not be found."
+        });
+      }
+    }
+
+    const template = await this.prisma.$transaction(async (tx) => {
+      await tx.choreTemplateChecklistItem.deleteMany({
+        where: {
+          templateId
+        }
+      });
+
+      await tx.choreTemplateDependency.deleteMany({
+        where: {
+          templateId
+        }
+      });
+
+      return tx.choreTemplate.update({
+        where: {
+          id: templateId
+        },
+        data: {
+          title: dto.title.trim(),
+          description: dto.description.trim(),
+          difficulty: dto.difficulty,
+          basePoints: this.getBasePoints(dto.difficulty),
+          assignmentStrategy: dto.assignmentStrategy,
+          recurrenceType: dto.recurrenceType ?? RecurrenceType.NONE,
+          recurrenceIntervalDays:
+            dto.recurrenceType === RecurrenceType.EVERY_X_DAYS ? dto.recurrenceIntervalDays ?? 1 : null,
+          recurrenceWeekdays:
+            dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
+          requirePhotoProof: dto.requirePhotoProof,
+          checklistItems: {
+            create:
+              dto.checklist?.map((item, index) => ({
+                title: item.title.trim(),
+                required: item.required,
+                sortOrder: index + 1
+              })) ?? []
+          },
+          dependencies: {
+            create: dependencyTemplateIds.map((followUpTemplateId) => ({
+              followUpTemplateId
+            }))
+          }
+        },
+        include: {
+          checklistItems: true,
+          dependencies: true
+        }
+      });
     });
 
     return this.mapTemplate(template);
@@ -380,6 +473,48 @@ export class HouseholdRepository {
     });
 
     return instances.map((instance) => this.mapInstance(instance));
+  }
+
+  async updateInstance(instanceId: string, dto: CreateChoreInstanceDto, householdId: string) {
+    const template = await this.prisma.choreTemplate.findFirstOrThrow({
+      where: {
+        id: dto.templateId,
+        householdId
+      }
+    });
+
+    const resolvedAssigneeId = dto.assigneeId
+      ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
+      : await this.resolveAssigneeForTemplate(
+          this.prisma,
+          householdId,
+          template.id,
+          template.assignmentStrategy
+        );
+
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: instanceId
+      },
+      data: {
+        templateId: template.id,
+        title: dto.title?.trim() || template.title,
+        assigneeId: resolvedAssigneeId,
+        state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+        dueAtUtc: dto.dueAt
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    return this.mapInstance(updatedInstance);
   }
 
   async getInstanceForHousehold(instanceId: string, householdId: string) {
