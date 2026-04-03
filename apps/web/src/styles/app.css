@@ -391,7 +391,8 @@ select {
 }
 
 .login-form input,
-.inline-field textarea {
+.inline-field textarea,
+.inline-field input {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 16px;
@@ -408,6 +409,10 @@ select {
 .simple-list {
   padding-left: 18px;
   margin: 0;
+}
+
+.compact-list {
+  gap: 4px;
 }
 
 .simple-list li {
@@ -488,6 +493,11 @@ select {
 .inline-message {
   background: rgba(36, 48, 67, 0.08);
   width: fit-content;
+}
+
+.attachment-list {
+  display: grid;
+  gap: 8px;
 }
 
 .error-text {

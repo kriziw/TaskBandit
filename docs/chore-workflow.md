@@ -7,6 +7,7 @@ TaskBandit now includes the first protected submission and review flow for chore
 - `GET /api/chores/templates`
 - `POST /api/chores/templates`
 - `GET /api/chores/instances`
+- `POST /api/chores/uploads/proof`
 - `POST /api/chores/instances/:id/submit`
 - `POST /api/chores/instances/:id/approve`
 - `POST /api/chores/instances/:id/reject`
@@ -20,10 +21,13 @@ TaskBandit now includes the first protected submission and review flow for chore
 - Child submissions move to `pending_approval`.
 - Approved submissions move to `completed`.
 - Rejected submissions move to `needs_fixes`.
+- Required checklist items must be completed before submit.
+- Chores marked with required photo proof must include at least one uploaded image.
+- Proof uploads accept image files and return attachment metadata for the final submit payload.
 
 ## Notes
 
 - This is the first workflow slice, not the final one.
 - Submission payloads now persist checklist completion records and attachment metadata.
-- File storage itself is still a later step; current attachment persistence is metadata-oriented.
+- Proof uploads are now stored on local disk under the configured storage root.
 - Authorization currently focuses on role and assignee checks for the new workflow endpoints.

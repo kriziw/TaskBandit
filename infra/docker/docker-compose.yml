@@ -27,11 +27,15 @@ services:
       TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA: ${TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA:-true}
       TASKBANDIT_REVERSE_PROXY_ENABLED: ${TASKBANDIT_REVERSE_PROXY_ENABLED:-false}
       TASKBANDIT_REVERSE_PROXY_PATH_BASE: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
+      TASKBANDIT_STORAGE_ROOT: ${TASKBANDIT_STORAGE_ROOT:-/var/lib/taskbandit/storage}
     ports:
       - "8080:8080"
     depends_on:
       - postgres
     pull_policy: always
+    volumes:
+      - taskbandit-storage:/var/lib/taskbandit/storage
 
 volumes:
   postgres-data:
+  taskbandit-storage:

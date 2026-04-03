@@ -1,4 +1,4 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
+import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -11,11 +11,10 @@ import {
 } from "class-validator";
 
 export class SubmitAttachmentDto {
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ApiProperty()
   @IsString()
   @MaxLength(255)
-  clientFilename?: string;
+  clientFilename!: string;
 
   @ApiPropertyOptional()
   @IsOptional()
@@ -23,11 +22,10 @@ export class SubmitAttachmentDto {
   @MaxLength(100)
   contentType?: string;
 
-  @ApiPropertyOptional()
-  @IsOptional()
+  @ApiProperty()
   @IsString()
   @MaxLength(255)
-  storageKey?: string;
+  storageKey!: string;
 }
 
 export class SubmitChoreDto {

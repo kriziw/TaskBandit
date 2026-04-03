@@ -103,6 +103,8 @@ export type ChoreInstance = {
   assigneeId: string | null;
   dueAt: string;
   difficulty: Difficulty;
+  basePoints: number;
+  requirePhotoProof: boolean;
   awardedPoints: number;
   completedChecklistItems: number;
   isOverdue: boolean;
@@ -113,8 +115,16 @@ export type ChoreInstance = {
   reviewedAt: string | null;
   reviewedById: string | null;
   reviewNote: string | null;
+  checklist: ChoreTemplateChecklistItem[];
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
+};
+
+export type UploadedProof = {
+  clientFilename: string;
+  contentType: string;
+  storageKey: string;
+  sizeBytes: number;
 };
 
 export type AuthProviders = {

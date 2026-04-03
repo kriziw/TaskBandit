@@ -31,3 +31,4 @@
 - Reverse proxy support is built in through trusted proxy handling and optional path-base configuration.
 - Demo seeded local accounts use the password `TaskBandit123!` for `alex@taskbandit.local`, `maya@taskbandit.local`, and `luca@taskbandit.local`.
 - The web UI now talks to the live API and stores the JWT session in browser local storage.
+- Proof-photo uploads are now written to local disk under `TASKBANDIT_STORAGE_ROOT` and should point at a persistent path outside disposable containers in real deployments.

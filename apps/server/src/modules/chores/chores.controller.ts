@@ -1,5 +1,16 @@
-import { Body, Controller, Get, Headers, Param, Post, UseGuards } from "@nestjs/common";
-import { ApiTags } from "@nestjs/swagger";
+import {
+  Body,
+  Controller,
+  Get,
+  Headers,
+  Param,
+  Post,
+  UploadedFile,
+  UseGuards,
+  UseInterceptors
+} from "@nestjs/common";
+import { ApiBody, ApiConsumes, ApiTags } from "@nestjs/swagger";
+import { FileInterceptor } from "@nestjs/platform-express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { Roles } from "../../common/auth/roles.decorator";
@@ -10,6 +21,9 @@ import { ChoresService } from "./chores.service";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
+import { memoryStorage } from "multer";
+
+const proofUploadMaxBytes = 10 * 1024 * 1024;
 
 @ApiTags("chores")
 @Controller("api/chores")
@@ -34,6 +48,36 @@ export class ChoresController {
   @Get("instances")
   instances(@CurrentUser() user: AuthenticatedUser) {
     return this.choresService.getInstances(user);
+  }
+
+  @Post("uploads/proof")
+  @UseInterceptors(
+    FileInterceptor("file", {
+      storage: memoryStorage(),
+      limits: {
+        fileSize: proofUploadMaxBytes
+      }
+    })
+  )
+  @ApiConsumes("multipart/form-data")
+  @ApiBody({
+    schema: {
+      type: "object",
+      properties: {
+        file: {
+          type: "string",
+          format: "binary"
+        }
+      },
+      required: ["file"]
+    }
+  })
+  uploadProof(
+    @UploadedFile() file: Express.Multer.File | undefined,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.uploadProof(file, user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Post("instances/:id/submit")

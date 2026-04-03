@@ -628,6 +628,8 @@ export class HouseholdRepository {
       assigneeId: instance.assigneeId,
       dueAt: instance.dueAtUtc,
       difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
+      basePoints: instance.template.basePoints,
+      requirePhotoProof: instance.template.requirePhotoProof,
       awardedPoints: instance.awardedPoints,
       completedChecklistItems: instance.completedChecklistItems,
       isOverdue:
@@ -641,6 +643,13 @@ export class HouseholdRepository {
       reviewedAt: instance.reviewedAtUtc,
       reviewedById: instance.reviewedById,
       reviewNote: instance.reviewNote,
+      checklist: instance.template.checklistItems
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          required: item.required
+        })),
       checklistCompletionIds: instance.checklistCompletions.map(
         (completion: ChoreChecklistCompletion) => completion.checklistItemId
       ),

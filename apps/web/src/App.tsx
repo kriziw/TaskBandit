@@ -46,6 +46,7 @@ export function App() {
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
   const [submitSelections, setSubmitSelections] = useState<Record<string, string[]>>({});
+  const [selectedProofFiles, setSelectedProofFiles] = useState<Record<string, File[]>>({});
   const [submitNotes, setSubmitNotes] = useState<Record<string, string>>({});
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -88,11 +89,6 @@ export function App() {
   const memberLookup = useMemo(() => {
     const members = payload?.household.members ?? [];
     return new Map(members.map((member) => [member.id, member]));
-  }, [payload]);
-
-  const templateLookup = useMemo(() => {
-    const templates = payload?.templates ?? [];
-    return new Map(templates.map((template) => [template.id, template]));
   }, [payload]);
 
   const pendingApprovals = useMemo(
@@ -214,19 +210,9 @@ export function App() {
       return;
     }
 
-    const template = payload.templates.find((item) => item.id === targetInstance.templateId);
-    if (!template) {
-      setPageError(t("error.missing_template"));
-      return;
-    }
-
-    if (template.requirePhotoProof) {
-      setPageError(t("submission.photo_required_web"));
-      return;
-    }
-
     const selectedChecklistIds = submitSelections[instanceId] ?? targetInstance.checklistCompletionIds;
-    const missingRequiredItems = template.checklist.filter(
+    const selectedFiles = selectedProofFiles[instanceId] ?? [];
+    const missingRequiredItems = targetInstance.checklist.filter(
       (item) => item.required && !selectedChecklistIds.includes(item.id)
     );
 
@@ -235,13 +221,29 @@ export function App() {
       return;
     }
 
+    if (targetInstance.requirePhotoProof && selectedFiles.length < 1) {
+      setPageError(t("submission.photo_required_missing"));
+      return;
+    }
+
     setBusyAction(`submit:${instanceId}`);
     try {
+      const attachments =
+        selectedFiles.length > 0
+          ? await Promise.all(
+              selectedFiles.map((file) => taskBanditApi.uploadProof(token, language, file))
+            )
+          : [];
+
       await taskBanditApi.submitChore(token, language, instanceId, {
         completedChecklistItemIds: selectedChecklistIds,
+        attachments,
         note: submitNotes[instanceId]
       });
       setNotice(t("submission.success"));
+      setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
+      setSubmitSelections((current) => ({ ...current, [instanceId]: [] }));
+      setSelectedProofFiles((current) => ({ ...current, [instanceId]: [] }));
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t("submission.failed")));
@@ -311,6 +313,13 @@ export function App() {
     return submitSelections[instance.id] ?? instance.checklistCompletionIds;
   }
 
+  function handleProofFilesSelected(instanceId: string, files: FileList | null) {
+    setSelectedProofFiles((current) => ({
+      ...current,
+      [instanceId]: files ? Array.from(files) : []
+    }));
+  }
+
   function formatDate(value: string | null) {
     if (!value) {
       return t("common.none");
@@ -337,7 +346,7 @@ export function App() {
             <div className="user-badge">
               <strong>{payload.currentUser.displayName}</strong>
               <span>
-                {t(`role.${payload.currentUser.role}`)} · {formatNumber(payload.currentUser.points)} {t("user.points")}
+                {t(`role.${payload.currentUser.role}`)} - {formatNumber(payload.currentUser.points)} {t("user.points")}
               </span>
             </div>
           ) : (
@@ -439,9 +448,9 @@ export function App() {
               <span className="section-kicker">{t("panel.demo_password")}</span>
             </div>
             <ul className="simple-list">
-              <li>Alex · alex@taskbandit.local · {t("role.admin")}</li>
-              <li>Maya · maya@taskbandit.local · {t("role.parent")}</li>
-              <li>Luca · luca@taskbandit.local · {t("role.child")}</li>
+              <li>Alex - alex@taskbandit.local - {t("role.admin")}</li>
+              <li>Maya - maya@taskbandit.local - {t("role.parent")}</li>
+              <li>Luca - luca@taskbandit.local - {t("role.child")}</li>
             </ul>
           </article>
 
@@ -514,6 +523,16 @@ export function App() {
                             {t("task.note")}: {instance.submissionNote}
                           </p>
                         ) : null}
+                        {instance.attachments.length > 0 ? (
+                          <div className="attachment-list">
+                            <strong>{t("task.attachments")}:</strong>
+                            <ul className="simple-list compact-list">
+                              {instance.attachments.map((attachment) => (
+                                <li key={attachment.id}>{attachment.clientFilename}</li>
+                              ))}
+                            </ul>
+                          </div>
+                        ) : null}
                         <label className="inline-field">
                           <span>{t("approval.review_note")}</span>
                           <textarea
@@ -562,8 +581,8 @@ export function App() {
               ) : (
                 <div className="stack-list">
                   {myChores.map((instance) => {
-                    const template = templateLookup.get(instance.templateId);
                     const selectedChecklistIds = getSelectedChecklistIds(instance);
+                    const selectedFiles = selectedProofFiles[instance.id] ?? [];
                     return (
                       <div className="task-row" key={instance.id}>
                         <div className="task-row-header">
@@ -574,14 +593,26 @@ export function App() {
                           {t("task.due")}: {formatDate(instance.dueAt)}
                         </p>
                         <p>
-                          {t("task.points")}: {instance.awardedPoints > 0 ? instance.awardedPoints : template?.basePoints ?? 0}
+                          {t("task.points")}: {instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints}
                         </p>
-                        {template?.requirePhotoProof ? (
-                          <p className="inline-message">{t("submission.photo_required_web")}</p>
+                        {instance.requirePhotoProof ? (
+                          <p className="inline-message">{t("submission.photo_hint_required")}</p>
+                        ) : (
+                          <p className="inline-message">{t("submission.photo_hint_optional")}</p>
+                        )}
+                        {instance.attachments.length > 0 ? (
+                          <div className="attachment-list">
+                            <strong>{t("submission.previous_uploads")}:</strong>
+                            <ul className="simple-list compact-list">
+                              {instance.attachments.map((attachment) => (
+                                <li key={attachment.id}>{attachment.clientFilename}</li>
+                              ))}
+                            </ul>
+                          </div>
                         ) : null}
-                        {template?.checklist.length ? (
+                        {instance.checklist.length ? (
                           <div className="checklist">
-                            {template.checklist.map((item) => (
+                            {instance.checklist.map((item) => (
                               <label key={item.id} className="checklist-item">
                                 <input
                                   type="checkbox"
@@ -592,7 +623,7 @@ export function App() {
                                 />
                                 <span>
                                   {item.title}
-                                  {item.required ? ` · ${t("task.required")}` : ""}
+                                  {item.required ? ` - ${t("task.required")}` : ""}
                                 </span>
                               </label>
                             ))}
@@ -600,6 +631,20 @@ export function App() {
                         ) : (
                           <p className="inline-message">{t("submission.one_tap")}</p>
                         )}
+                        <label className="inline-field">
+                          <span>{t("task.attachments")}</span>
+                          <input
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(event) => handleProofFilesSelected(instance.id, event.target.files)}
+                          />
+                        </label>
+                        {selectedFiles.length > 0 ? (
+                          <p className="inline-message">
+                            {t("submission.selected_files")}: {selectedFiles.length}
+                          </p>
+                        ) : null}
                         <label className="inline-field">
                           <span>{t("task.note")}</span>
                           <textarea
@@ -616,7 +661,7 @@ export function App() {
                         <button
                           className="primary-button"
                           type="button"
-                          disabled={busyAction === `submit:${instance.id}` || Boolean(template?.requirePhotoProof)}
+                          disabled={busyAction === `submit:${instance.id}`}
                           onClick={() => void handleSubmitChore(instance.id)}
                         >
                           {t("submission.submit")}
@@ -641,7 +686,7 @@ export function App() {
                         {index + 1}. {member.displayName}
                       </strong>
                       <p>
-                        {t(`role.${member.role}`)} · {member.currentStreak} {t("user.streak")}
+                        {t(`role.${member.role}`)} - {member.currentStreak} {t("user.streak")}
                       </p>
                     </div>
                     <strong>

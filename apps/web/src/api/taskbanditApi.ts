@@ -6,7 +6,8 @@ import type {
   ChoreTemplate,
   DashboardSummary,
   Household,
-  HouseholdSettings
+  HouseholdSettings,
+  UploadedProof
 } from "../types/taskbandit";
 import type { AppLanguage } from "../i18n/I18nProvider";
 
@@ -32,6 +33,19 @@ export class TaskBanditApiError extends Error {
   }
 }
 
+function buildHeaders(token: string | null | undefined, language: AppLanguage) {
+  const headers = new Headers({
+    Accept: "application/json",
+    "Accept-Language": language
+  });
+
+  if (token) {
+    headers.set("Authorization", `Bearer ${token}`);
+  }
+
+  return headers;
+}
+
 function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_TASKBANDIT_API_BASE_URL?.trim();
   if (configured) {
@@ -47,17 +61,10 @@ function resolveApiBaseUrl() {
 }
 
 async function request<T>(path: string, options: RequestOptions): Promise<T> {
-  const headers = new Headers({
-    Accept: "application/json",
-    "Accept-Language": options.language
-  });
+  const headers = buildHeaders(options.token, options.language);
 
   if (options.body !== undefined) {
     headers.set("Content-Type", "application/json");
-  }
-
-  if (options.token) {
-    headers.set("Authorization", `Bearer ${options.token}`);
   }
 
   const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
@@ -142,6 +149,11 @@ export const taskBanditApi = {
     instanceId: string,
     payload: {
       completedChecklistItemIds: string[];
+      attachments: Array<{
+        clientFilename: string;
+        contentType?: string;
+        storageKey: string;
+      }>;
       note?: string;
     }
   ) {
@@ -152,9 +164,26 @@ export const taskBanditApi = {
       body: {
         completedChecklistItemIds: payload.completedChecklistItemIds,
         note: payload.note,
-        attachments: []
+        attachments: payload.attachments
       }
     });
+  },
+  async uploadProof(token: string, language: AppLanguage, file: File) {
+    const formData = new FormData();
+    formData.append("file", file);
+
+    const response = await fetch(`${resolveApiBaseUrl()}/api/chores/uploads/proof`, {
+      method: "POST",
+      headers: buildHeaders(token, language),
+      body: formData
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new TaskBanditApiError(message, response.status);
+    }
+
+    return (await response.json()) as UploadedProof;
   },
   approveChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/approve`, {

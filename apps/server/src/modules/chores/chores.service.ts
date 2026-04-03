@@ -1,4 +1,4 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
@@ -7,13 +7,15 @@ import { HouseholdRepository } from "../household/household.repository";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
+import { ProofStorageService } from "./proof-storage.service";
 
 @Injectable()
 export class ChoresService {
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly pointsService: PointsService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
+    private readonly proofStorageService: ProofStorageService
   ) {}
 
   getTemplates(user: AuthenticatedUser) {
@@ -26,6 +28,14 @@ export class ChoresService {
 
   getInstances(user: AuthenticatedUser) {
     return this.repository.getInstances(user.householdId);
+  }
+
+  uploadProof(
+    file: Express.Multer.File | undefined,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    return this.proofStorageService.storeProofUpload(file, user, language);
   }
 
   async submitInstance(
@@ -67,12 +77,32 @@ export class ChoresService {
       );
     }
 
+    const completedChecklistItemIds = dto.completedChecklistItemIds ?? [];
+    const requiredChecklistItemIds = instance.checklist
+      .filter((item) => item.required)
+      .map((item) => item.id);
+    const hasAllRequiredChecklistItems = requiredChecklistItemIds.every((requiredId) =>
+      completedChecklistItemIds.includes(requiredId)
+    );
+
+    if (!hasAllRequiredChecklistItems) {
+      throw new BadRequestException({
+        message: this.i18nService.translate("chores.required_checklist_missing", language)
+      });
+    }
+
+    if (instance.requirePhotoProof && (dto.attachments?.length ?? 0) < 1) {
+      throw new BadRequestException({
+        message: this.i18nService.translate("chores.photo_proof_required", language)
+      });
+    }
+
     const shouldRequireApproval = user.role === "child";
     const awardedPoints = shouldRequireApproval
       ? 0
       : this.pointsService.calculateForApprovedCompletion(
           instance.difficulty,
-          dto.completedChecklistItemIds?.length ?? 0,
+          completedChecklistItemIds.length,
           instance.isOverdue
         ).finalAwardedPoints;
 
@@ -80,7 +110,7 @@ export class ChoresService {
       instanceId,
       actingUserId: user.id,
       householdId: user.householdId,
-      completedChecklistItemIds: dto.completedChecklistItemIds ?? [],
+      completedChecklistItemIds,
       attachments: dto.attachments ?? [],
       note: dto.note,
       awardedPoints,

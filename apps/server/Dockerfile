@@ -21,9 +21,10 @@ COPY prisma ./prisma
 RUN npx prisma generate
 
 COPY --from=build /app/dist ./dist
+RUN mkdir -p /var/lib/taskbandit/storage
 
 ENV NODE_ENV=production
 ENV PORT=8080
+ENV TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage
 
 CMD ["node", "dist/main.js"]
-

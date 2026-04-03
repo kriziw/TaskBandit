@@ -5,6 +5,10 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 - a server component that exposes the API and hosts the web UI
 - a native Android application for daily use, offline actions, photo proof, and widgets
 
+## AI Disclaimer
+
+This repository is being developed with AI assistance. Code, documentation, copy, and configuration generated or edited by AI should be reviewed by a human before production use, especially for security, privacy, and deployment-sensitive changes.
+
 ## Repository Layout
 
 - `apps/server` - NestJS + Prisma backend API
@@ -45,7 +49,7 @@ The web UI now connects to the live API for:
 
 - local sign-in with JWT session persistence
 - dashboard summary and leaderboard
-- chore lists and basic submission flow
+- chore lists and submission flow, including proof-photo uploads
 - parent/admin approval actions
 - admin household settings
 
@@ -57,3 +61,4 @@ The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap pa
 
 For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
 The repository also now includes an initial Prisma migration snapshot for the current backend model.
+Proof-photo uploads are stored on local disk under `TASKBANDIT_STORAGE_ROOT`, and the Docker Compose stack now mounts persistent storage for that directory.

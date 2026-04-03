@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import path from "node:path";
 import { OidcConfig } from "./oidc-config.type";
 
 @Injectable()
@@ -34,6 +35,17 @@ export class AppConfigService {
 
   get seedDemoData(): boolean {
     return this.configService.get<string>("TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA", "true") === "true";
+  }
+
+  get storageRootPath(): string {
+    const configuredPath = this.configService.get<string>("TASKBANDIT_STORAGE_ROOT", "").trim();
+    if (!configuredPath) {
+      return path.resolve(process.cwd(), "storage");
+    }
+
+    return path.isAbsolute(configuredPath)
+      ? configuredPath
+      : path.resolve(process.cwd(), configuredPath);
   }
 
   get jwtSecret(): string {
