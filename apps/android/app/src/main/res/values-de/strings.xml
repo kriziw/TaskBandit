@@ -1,15 +1,30 @@
 <resources>
     <string name="app_name">TaskBandit</string>
     <string name="app_subtitle">Spielerische Haushaltsorganisation mit Freigaben, Streaks und Foto-Nachweis.</string>
+    <string name="app_home_hint">Bandit halt heutige Aufgaben, Freigaben und Streak-Energie an einem Ort zusammen.</string>
+    <string name="brand_mark_description">TaskBandit Waschbar-Markenzeichen</string>
+    <string name="brand_tagline">Gemutlicher Crew-Modus</string>
+    <string name="dashboard_section_title">Heutiger Puls</string>
     <string name="dashboard_pending_approvals">Offene Freigaben</string>
     <string name="dashboard_todays_chores">Heutige Aufgaben</string>
     <string name="dashboard_current_streak">Aktuelle Serie</string>
+    <string name="approvals_watch_title">Freigabe-Check</string>
+    <string name="approvals_watch_detail">Eltern konnen Fixes, Foto-Nachweise und Einreichungen im Blick behalten, die nur noch ein kurzes Okay brauchen.</string>
+    <string name="approvals_chip_ready">Bereit zur Prufung</string>
+    <string name="approvals_chip_fix">Braucht Nachbesserung</string>
     <string name="chore_preview_title">Aufgabenvorschau</string>
     <string name="chore_washing_machine">Waschmaschine starten</string>
     <string name="chore_washing_machine_detail">Luca zugewiesen</string>
-    <string name="chore_hang_clothes">Kleidung zum Trocknen aufhängen</string>
+    <string name="chore_hang_clothes">Kleidung zum Trocknen aufhangen</string>
     <string name="chore_hang_clothes_detail">Foto-Nachweis erforderlich</string>
-    <string name="chore_wipe_table">Küchentisch abwischen</string>
+    <string name="chore_wipe_table">Kuchentisch abwischen</string>
     <string name="chore_wipe_table_detail">Round-Robin-Zuweisung</string>
+    <string name="status_pending_parent">Eltern-Freigabe</string>
+    <string name="status_photo_required">Foto-Nachweis</string>
+    <string name="status_round_robin">Round Robin</string>
+    <string name="leaderboard_pulse_title">Bestenlisten-Puls</string>
+    <string name="leaderboard_pulse_detail">Die Waschbar-Crew sieht, wer diese Woche die starkste Serie tragt.</string>
+    <string name="leaderboard_name_alex">Alex</string>
+    <string name="leaderboard_name_maya">Maya</string>
+    <string name="leaderboard_name_luca">Luca</string>
 </resources>
-

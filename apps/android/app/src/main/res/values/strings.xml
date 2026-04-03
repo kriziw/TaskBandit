@@ -1,9 +1,17 @@
 <resources>
     <string name="app_name">TaskBandit</string>
     <string name="app_subtitle">Playful household teamwork with approvals, streaks, and photo-proof chores.</string>
+    <string name="app_home_hint">Bandit keeps today\'s chores, approvals, and streak energy in one place.</string>
+    <string name="brand_mark_description">TaskBandit raccoon mark</string>
+    <string name="brand_tagline">Cozy crew mode</string>
+    <string name="dashboard_section_title">Today\'s pulse</string>
     <string name="dashboard_pending_approvals">Pending approvals</string>
     <string name="dashboard_todays_chores">Today\'s chores</string>
     <string name="dashboard_current_streak">Current streak</string>
+    <string name="approvals_watch_title">Approval watch</string>
+    <string name="approvals_watch_detail">Parents can keep an eye on fixes, proof photos, and submissions that need a quick thumbs-up.</string>
+    <string name="approvals_chip_ready">Ready to review</string>
+    <string name="approvals_chip_fix">Needs a fix</string>
     <string name="chore_preview_title">Chore preview</string>
     <string name="chore_washing_machine">Run the washing machine</string>
     <string name="chore_washing_machine_detail">Assigned to Luca</string>
@@ -11,5 +19,12 @@
     <string name="chore_hang_clothes_detail">Requires photo proof</string>
     <string name="chore_wipe_table">Wipe the kitchen table</string>
     <string name="chore_wipe_table_detail">Round robin assignment</string>
+    <string name="status_pending_parent">Parent review</string>
+    <string name="status_photo_required">Photo proof</string>
+    <string name="status_round_robin">Round robin</string>
+    <string name="leaderboard_pulse_title">Leaderboard pulse</string>
+    <string name="leaderboard_pulse_detail">The raccoon crew can see who is carrying the strongest streak this week.</string>
+    <string name="leaderboard_name_alex">Alex</string>
+    <string name="leaderboard_name_maya">Maya</string>
+    <string name="leaderboard_name_luca">Luca</string>
 </resources>
-
