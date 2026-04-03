@@ -529,6 +529,33 @@ export function App() {
     }
   }
 
+  async function handleCancelInstance(instanceId: string) {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`cancel:${instanceId}`);
+    try {
+      const cancelledInstance = await taskBanditApi.cancelInstance(token, language, instanceId);
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              instances: current.instances.map((instance) =>
+                instance.id === instanceId ? cancelledInstance : instance
+              )
+            }
+          : current
+      );
+      setNotice(t("instances.cancelled"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.cancel_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   function toggleChecklistItem(instanceId: string, checklistItemId: string, fallbackIds: string[]) {
     setSubmitSelections((current) => {
       const selected = new Set(current[instanceId] ?? fallbackIds);
@@ -1059,6 +1086,20 @@ export function App() {
                       <p>
                         {t("task.difficulty")}: {t(`difficulty.${instance.difficulty}`)}
                       </p>
+                    ) : null}
+                    {payload.currentUser.role !== "child" &&
+                    instance.state !== "completed" &&
+                    instance.state !== "cancelled" ? (
+                      <div className="button-row">
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          disabled={busyAction === `cancel:${instance.id}`}
+                          onClick={() => void handleCancelInstance(instance.id)}
+                        >
+                          {t("instances.cancel")}
+                        </button>
+                      </div>
                     ) : null}
                   </div>
                 ))}

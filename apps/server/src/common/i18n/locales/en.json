@@ -10,6 +10,7 @@
   "bootstrap.created": "Household created successfully.",
   "chores.already_completed": "This chore is already completed.",
   "chores.assignee_only_submit": "Only the assigned user or a parent/admin can submit this chore.",
+  "chores.invalid_cancel_state": "Only active chores can be cancelled.",
   "chores.invalid_review_state": "Only chores waiting for approval can be reviewed.",
   "chores.not_found": "That chore could not be found.",
   "chores.photo_proof_required": "This chore needs at least one photo proof before it can be submitted.",

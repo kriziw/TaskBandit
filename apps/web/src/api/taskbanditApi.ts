@@ -176,6 +176,13 @@ export const taskBanditApi = {
       body: input
     });
   },
+  cancelInstance(token: string, language: AppLanguage, instanceId: string) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/cancel`, {
+      method: "POST",
+      token,
+      language
+    });
+  },
   async downloadChoresCsv(token: string, language: AppLanguage) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/exports/chores.csv`, {
       method: "GET",

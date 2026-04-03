@@ -10,6 +10,7 @@
   "bootstrap.created": "Haushalt erfolgreich erstellt.",
   "chores.already_completed": "Diese Aufgabe ist bereits abgeschlossen.",
   "chores.assignee_only_submit": "Nur die zugewiesene Person oder ein Elternteil/Admin kann diese Aufgabe einreichen.",
+  "chores.invalid_cancel_state": "Nur aktive Aufgaben konnen storniert werden.",
   "chores.invalid_review_state": "Nur Aufgaben, die auf Freigabe warten, koennen ueberprueft werden.",
   "chores.not_found": "Diese Aufgabe konnte nicht gefunden werden.",
   "chores.photo_proof_required": "Diese Aufgabe braucht mindestens einen Fotobeleg, bevor sie eingereicht werden kann.",

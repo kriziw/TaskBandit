@@ -31,6 +31,21 @@ export class ChoresService {
     return this.repository.createInstance(dto, user.householdId);
   }
 
+  async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (instance.state === "completed" || instance.state === "cancelled") {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_cancel_state", language)
+      );
+    }
+
+    return this.repository.cancelInstance(instanceId);
+  }
+
   getInstances(user: AuthenticatedUser) {
     return this.repository.getInstances(user.householdId);
   }

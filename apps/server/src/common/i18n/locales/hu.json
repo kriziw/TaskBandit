@@ -10,6 +10,7 @@
   "bootstrap.created": "A haztartas sikeresen letrejott.",
   "chores.already_completed": "Ez a feladat mar teljesitve van.",
   "chores.assignee_only_submit": "Ezt a feladatot csak a kijelolt felhasznalo vagy egy szulo/admin kuldheti be.",
+  "chores.invalid_cancel_state": "Csak aktiv feladatokat lehet torolni.",
   "chores.invalid_review_state": "Csak jovahagyasra varo feladatokat lehet felulvizsgalni.",
   "chores.not_found": "Ez a feladat nem talalhato.",
   "chores.photo_proof_required": "Ehhez a feladathoz legalabb egy fotobizonyitek kell a bekuldeshez.",

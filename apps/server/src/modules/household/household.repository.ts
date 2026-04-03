@@ -524,6 +524,28 @@ export class HouseholdRepository {
     return this.mapInstance(updatedInstance);
   }
 
+  async cancelInstance(instanceId: string) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: instanceId
+      },
+      data: {
+        state: ChoreState.CANCELLED
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    return this.mapInstance(updatedInstance);
+  }
+
   throwNotFound(message: string): never {
     throw new NotFoundException({ message });
   }
