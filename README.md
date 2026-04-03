@@ -49,12 +49,26 @@ Chore submission and review endpoints are documented in `docs/chore-workflow.md`
 
 ## Quick Start
 
+Fastest self-hosted setup:
+
+```bash
+mkdir -p taskbandit && cd taskbandit && wget -O docker-compose.yml https://raw.githubusercontent.com/kriziw/TaskBandit/main/infra/docker/docker-compose.yml && wget -O .env https://raw.githubusercontent.com/kriziw/TaskBandit/main/.env.example
+```
+
+Then start it with:
+
+```bash
+docker compose up -d
+```
+
+Manual setup:
+
 1. Copy `.env.example` to `.env`.
 2. Review these values in `.env`:
    `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
-3. Start TaskBandit from `infra/docker/docker-compose.yml`:
-   `docker compose --env-file .env -f infra/docker/docker-compose.yml up -d`
+3. Start TaskBandit:
+   `docker compose up -d`
 4. Open `http://localhost:8080`.
 5. If demo seeding is enabled, sign in with:
    `alex@taskbandit.local` / `TaskBandit123!`
