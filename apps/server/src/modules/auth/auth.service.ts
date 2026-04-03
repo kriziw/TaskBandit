@@ -8,6 +8,7 @@ import { AuthProvider, HouseholdRole } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import { Secret, sign, SignOptions, verify } from "jsonwebtoken";
 import { AppConfigService } from "../../common/config/app-config.service";
+import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PrismaService } from "../../common/prisma/prisma.service";
@@ -112,7 +113,10 @@ export class AuthService {
     return this.buildAuthResponse(user.id, user.householdId, user.role, normalizedEmail);
   }
 
-  async getCurrentUser(authorizationHeader: string | undefined, language: SupportedLanguage) {
+  async getCurrentUser(
+    authorizationHeader: string | undefined,
+    language: SupportedLanguage
+  ): Promise<AuthenticatedUser> {
     const token = this.extractBearerToken(authorizationHeader);
     if (!token) {
       throw new UnauthorizedException({
@@ -140,7 +144,7 @@ export class AuthService {
         id: user.id,
         householdId: user.householdId,
         displayName: user.displayName,
-        role: user.role.toLowerCase(),
+        role: this.mapRole(user.role),
         email: user.identities[0]?.email ?? null,
         points: user.points,
         currentStreak: user.currentStreak
@@ -203,5 +207,16 @@ export class AuthService {
 
   private normalizeEmail(email: string) {
     return email.trim().toLowerCase();
+  }
+
+  private mapRole(role: HouseholdRole): AuthenticatedUser["role"] {
+    switch (role) {
+      case HouseholdRole.ADMIN:
+        return "admin";
+      case HouseholdRole.PARENT:
+        return "parent";
+      case HouseholdRole.CHILD:
+        return "child";
+    }
   }
 }

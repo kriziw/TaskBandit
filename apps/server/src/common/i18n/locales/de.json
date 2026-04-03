@@ -2,10 +2,15 @@
   "app.title": "TaskBandit API",
   "auth.bootstrap_required": "Erstelle zuerst den ersten Haushalt, bevor du die Konto-Registrierung verwendest.",
   "auth.email_in_use": "Diese E-Mail-Adresse wird bereits verwendet.",
+  "auth.forbidden": "Du hast keine Berechtigung, diese Aktion auszuführen.",
   "auth.invalid_credentials": "Ungültige E-Mail oder ungültiges Passwort.",
   "auth.self_signup_disabled": "Die Selbstregistrierung ist derzeit deaktiviert.",
   "auth.unauthorized": "Du musst dich anmelden, um auf diese Ressource zuzugreifen.",
   "bootstrap.already_initialized": "TaskBandit hat bereits einen eingerichteten Haushalt.",
   "bootstrap.created": "Haushalt erfolgreich erstellt.",
+  "chores.already_completed": "Diese Aufgabe ist bereits abgeschlossen.",
+  "chores.assignee_only_submit": "Nur die zugewiesene Person oder ein Elternteil/Admin kann diese Aufgabe einreichen.",
+  "chores.invalid_review_state": "Nur Aufgaben, die auf Freigabe warten, können überprüft werden.",
+  "chores.not_found": "Diese Aufgabe konnte nicht gefunden werden.",
   "i18n.language_name": "Deutsch"
 }

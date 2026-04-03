@@ -2,10 +2,15 @@
   "app.title": "TaskBandit API",
   "auth.bootstrap_required": "Create the first household before using account signup.",
   "auth.email_in_use": "That email address is already in use.",
+  "auth.forbidden": "You do not have permission to perform this action.",
   "auth.invalid_credentials": "Invalid email or password.",
   "auth.self_signup_disabled": "Self-signup is currently disabled.",
   "auth.unauthorized": "You need to sign in to access this resource.",
   "bootstrap.already_initialized": "TaskBandit already has an initialized household.",
   "bootstrap.created": "Household created successfully.",
+  "chores.already_completed": "This chore is already completed.",
+  "chores.assignee_only_submit": "Only the assigned user or a parent/admin can submit this chore.",
+  "chores.invalid_review_state": "Only chores waiting for approval can be reviewed.",
+  "chores.not_found": "That chore could not be found.",
   "i18n.language_name": "English"
 }

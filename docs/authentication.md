@@ -9,6 +9,7 @@ TaskBandit now includes a first-pass authentication foundation in the NestJS bac
 - Self-signup can create `parent` accounts when household settings allow it.
 - Auth provider discovery exposes local auth plus current OIDC configuration status.
 - `GET /api/auth/me` resolves the current user from a bearer token.
+- Protected business endpoints can now rely on bearer-token auth and role-aware guards.
 
 ## Current Endpoints
 
@@ -32,4 +33,3 @@ TaskBandit now includes a first-pass authentication foundation in the NestJS bac
 - OIDC is currently configuration-ready and targeted at Authentik, but the interactive authorization-code flow is not implemented yet.
 - Current local auth is intended as the project foundation; role-aware authorization guards and password reset flows still need to be added.
 - For demo-seeded environments, the seeded users share the password `TaskBandit123!`.
-

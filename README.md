@@ -37,6 +37,7 @@ Docker Compose is configured to pull the server image from Docker Hub via `krizi
 The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
 Localization structure and language-file locations are documented in `docs/localization.md`.
 Authentication endpoints and environment variables are documented in `docs/authentication.md`.
+Chore submission and review endpoints are documented in `docs/chore-workflow.md`.
 
 ## Backend Notes
 

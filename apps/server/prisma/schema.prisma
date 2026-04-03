@@ -130,8 +130,16 @@ model ChoreInstance {
   dueAtUtc        DateTime
   awardedPoints   Int           @default(0)
   attachmentCount Int           @default(0)
+  completedChecklistItems Int   @default(0)
   createdAtUtc    DateTime      @default(now())
+  submittedAtUtc  DateTime?
+  submittedById   String?       @db.Uuid
+  submissionNote  String?
   completedAtUtc  DateTime?
+  completedById   String?       @db.Uuid
+  reviewedAtUtc   DateTime?
+  reviewedById    String?       @db.Uuid
+  reviewNote      String?
   household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   template        ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
 }

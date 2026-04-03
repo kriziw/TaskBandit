@@ -1,4 +1,9 @@
-import { Injectable } from "@nestjs/common";
+import {
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException
+} from "@nestjs/common";
 import {
   AuthProvider,
   AssignmentStrategyType,
@@ -190,12 +195,140 @@ export class HouseholdRepository {
 
   async getInstances() {
     const instances = await this.prisma.choreInstance.findMany({
+      include: {
+        template: true
+      },
       orderBy: {
         dueAtUtc: "asc"
       }
     });
 
     return instances.map((instance) => this.mapInstance(instance));
+  }
+
+  async getInstanceForHousehold(instanceId: string, householdId: string) {
+    const instance = await this.prisma.choreInstance.findFirst({
+      where: {
+        id: instanceId,
+        householdId
+      },
+      include: {
+        template: true
+      }
+    });
+
+    return instance ? this.mapInstance(instance) : null;
+  }
+
+  async submitInstance(input: {
+    instanceId: string;
+    actingUserId: string;
+    actingUserRole: "admin" | "parent" | "child";
+    householdId: string;
+    completedChecklistItems: number;
+    attachmentCount: number;
+    note?: string;
+    awardedPoints: number;
+    nextState: "pending_approval" | "completed";
+  }) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: input.instanceId
+      },
+      data: {
+        state: input.nextState === "pending_approval" ? ChoreState.PENDING_APPROVAL : ChoreState.COMPLETED,
+        submittedAtUtc: new Date(),
+        submittedById: input.actingUserId,
+        submissionNote: input.note?.trim() || null,
+        attachmentCount: input.attachmentCount,
+        completedChecklistItems: input.completedChecklistItems,
+        awardedPoints: input.awardedPoints,
+        completedAtUtc: input.nextState === "completed" ? new Date() : null,
+        completedById: input.nextState === "completed" ? input.actingUserId : null
+      },
+      include: {
+        template: true
+      }
+    });
+
+    if (input.nextState === "completed") {
+      const beneficiaryUserId = updatedInstance.assigneeId ?? input.actingUserId;
+      await this.prisma.user.update({
+        where: {
+          id: beneficiaryUserId
+        },
+        data: {
+          points: {
+            increment: input.awardedPoints
+          },
+          currentStreak: {
+            increment: 1
+          }
+        }
+      });
+    }
+
+    return this.mapInstance(updatedInstance);
+  }
+
+  async reviewInstance(input: {
+    instanceId: string;
+    actingUserId: string;
+    householdId: string;
+    approved: boolean;
+    note?: string;
+    awardedPoints: number;
+  }) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: input.instanceId
+      },
+      data: {
+        state: input.approved ? ChoreState.COMPLETED : ChoreState.NEEDS_FIXES,
+        reviewedAtUtc: new Date(),
+        reviewedById: input.actingUserId,
+        reviewNote: input.note?.trim() || null,
+        awardedPoints: input.approved ? input.awardedPoints : 0,
+        completedAtUtc: input.approved ? new Date() : null,
+        ...(input.approved ? {} : { completedById: null })
+      },
+      include: {
+        template: true
+      }
+    });
+
+    if (input.approved) {
+      const beneficiaryUserId = updatedInstance.assigneeId ?? updatedInstance.submittedById;
+      if (beneficiaryUserId) {
+        await this.prisma.user.update({
+          where: {
+            id: beneficiaryUserId
+          },
+          data: {
+            points: {
+              increment: input.awardedPoints
+            },
+            currentStreak: {
+              increment: 1
+            }
+          }
+        });
+      }
+    }
+
+    return this.mapInstance(updatedInstance);
+  }
+
+  throwNotFound(message: string): never {
+    throw new NotFoundException({ message });
+  }
+
+  throwForbidden(message: string): never {
+    throw new ForbiddenException({ message });
+  }
+
+  throwConflict(message: string): never {
+    throw new ConflictException({ message });
   }
 
   async seedDemoDataIfNeeded(enabled: boolean) {
@@ -398,7 +531,11 @@ export class HouseholdRepository {
     };
   }
 
-  private mapInstance(instance: Prisma.ChoreInstanceGetPayload<Record<string, never>>) {
+  private mapInstance(
+    instance: Prisma.ChoreInstanceGetPayload<{
+      include: { template: true };
+    }>
+  ) {
     return {
       id: instance.id,
       templateId: instance.templateId,
@@ -406,12 +543,20 @@ export class HouseholdRepository {
       state: instance.state.toLowerCase(),
       assigneeId: instance.assigneeId,
       dueAt: instance.dueAtUtc,
+      difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
       awardedPoints: instance.awardedPoints,
+      completedChecklistItems: instance.completedChecklistItems,
       isOverdue:
         instance.state === ChoreState.OVERDUE ||
         ((instance.state !== ChoreState.COMPLETED && instance.state !== ChoreState.CANCELLED) &&
           instance.dueAtUtc.getTime() < Date.now()),
-      attachmentCount: instance.attachmentCount
+      attachmentCount: instance.attachmentCount,
+      submittedAt: instance.submittedAtUtc,
+      submittedById: instance.submittedById,
+      submissionNote: instance.submissionNote,
+      reviewedAt: instance.reviewedAtUtc,
+      reviewedById: instance.reviewedById,
+      reviewNote: instance.reviewNote
     };
   }
 
