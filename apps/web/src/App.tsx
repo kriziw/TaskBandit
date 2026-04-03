@@ -7,6 +7,7 @@ import type {
   AuthenticatedUser,
   ChoreInstance,
   ChoreTemplate,
+  CreateChoreInstanceInput,
   CreateChoreTemplateInput,
   CreateHouseholdMemberInput,
   DashboardSummary,
@@ -31,6 +32,7 @@ type LoginFormState = {
 
 type MemberFormState = CreateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
+type InstanceFormState = CreateChoreInstanceInput;
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -68,6 +70,12 @@ export function App() {
     requirePhotoProof: false,
     checklist: []
   });
+  const [instanceForm, setInstanceForm] = useState<InstanceFormState>({
+    templateId: "",
+    assigneeId: "",
+    title: "",
+    dueAt: ""
+  });
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -103,6 +111,21 @@ export function App() {
     if (payload) {
       setSettingsDraft(payload.household.settings);
     }
+  }, [payload]);
+
+  useEffect(() => {
+    if (!payload || payload.templates.length === 0) {
+      return;
+    }
+
+    setInstanceForm((current) =>
+      current.templateId
+        ? current
+        : {
+            ...current,
+            templateId: payload.templates[0].id
+          }
+    );
   }, [payload]);
 
   const memberLookup = useMemo(() => {
@@ -390,6 +413,45 @@ export function App() {
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("templates.create_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleCreateInstance(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token || !payload) {
+      return;
+    }
+
+    setBusyAction("create-instance");
+    try {
+      const createdInstance = await taskBanditApi.createInstance(token, language, {
+        templateId: instanceForm.templateId,
+        assigneeId: instanceForm.assigneeId || undefined,
+        title: instanceForm.title?.trim() || undefined,
+        dueAt: new Date(instanceForm.dueAt).toISOString()
+      });
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              instances: [...current.instances, createdInstance].sort(
+                (left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()
+              )
+            }
+          : current
+      );
+      setInstanceForm((current) => ({
+        ...current,
+        assigneeId: "",
+        title: "",
+        dueAt: ""
+      }));
+      setNotice(t("instances.created"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.create_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -1153,6 +1215,74 @@ export function App() {
                     </div>
                     <button className="primary-button" type="submit" disabled={busyAction === "create-template"}>
                       {t("templates.create")}
+                    </button>
+                  </form>
+                </article>
+
+                <article className="panel">
+                  <div className="section-heading">
+                    <h2>{t("panel.schedule_chore")}</h2>
+                    <span className="section-kicker">{visibleHouseholdChores.length}</span>
+                  </div>
+                  <form className="login-form member-form" onSubmit={handleCreateInstance}>
+                    <label>
+                      <span>{t("instances.template")}</span>
+                      <select
+                        value={instanceForm.templateId}
+                        onChange={(event) =>
+                          setInstanceForm((current) => ({ ...current, templateId: event.target.value }))
+                        }
+                      >
+                        {payload.templates.map((template) => (
+                          <option key={template.id} value={template.id}>
+                            {template.title}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("instances.assignee")}</span>
+                      <select
+                        value={instanceForm.assigneeId ?? ""}
+                        onChange={(event) =>
+                          setInstanceForm((current) => ({ ...current, assigneeId: event.target.value }))
+                        }
+                      >
+                        <option value="">{t("instances.unassigned")}</option>
+                        {payload.household.members.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("instances.title_override")}</span>
+                      <input
+                        type="text"
+                        value={instanceForm.title ?? ""}
+                        onChange={(event) =>
+                          setInstanceForm((current) => ({ ...current, title: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("instances.due_at")}</span>
+                      <input
+                        type="datetime-local"
+                        value={instanceForm.dueAt}
+                        onChange={(event) =>
+                          setInstanceForm((current) => ({ ...current, dueAt: event.target.value }))
+                        }
+                        required
+                      />
+                    </label>
+                    <button
+                      className="primary-button"
+                      type="submit"
+                      disabled={busyAction === "create-instance" || payload.templates.length === 0}
+                    >
+                      {t("instances.create")}
                     </button>
                   </form>
                 </article>

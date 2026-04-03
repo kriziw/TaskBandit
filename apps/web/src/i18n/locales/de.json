@@ -29,6 +29,7 @@
   "panel.household_settings": "Haushaltseinstellungen",
   "panel.household_members": "Haushaltsmitglieder",
   "panel.chore_templates": "Aufgabenvorlagen",
+  "panel.schedule_chore": "Aufgabe planen",
   "panel.providers": "Anmeldeanbieter",
   "panel.providers_hint": "Lokale Anmeldung funktioniert jetzt, OIDC ist serverseitig vorbereitet.",
   "panel.demo_accounts": "Demo-Konten",
@@ -133,6 +134,14 @@
   "templates.strategy": "Strategie",
   "templates.photo_required": "Fotobeleg erforderlich",
   "templates.photo_optional": "Fotobeleg optional",
+  "instances.template": "Vorlage",
+  "instances.assignee": "Zustandig",
+  "instances.unassigned": "Nicht zuweisen",
+  "instances.title_override": "Titel uberschreiben",
+  "instances.due_at": "Fallig am",
+  "instances.create": "Aufgabe anlegen",
+  "instances.created": "Aufgabe geplant.",
+  "instances.create_failed": "TaskBandit konnte die Aufgabeninstanz nicht erstellen.",
   "error.load_dashboard": "TaskBandit konnte das Live-Dashboard nicht laden.",
   "error.missing_template": "Die Aufgabenvorlage fur diese Instanz wurde nicht gefunden."
 }

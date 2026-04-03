@@ -29,6 +29,7 @@
   "panel.household_settings": "Haztartasi beallitasok",
   "panel.household_members": "Haztartasi tagok",
   "panel.chore_templates": "Feladatsablonok",
+  "panel.schedule_chore": "Feladat utemezese",
   "panel.providers": "Bejelentkezesi modok",
   "panel.providers_hint": "A helyi bejelentkezes mar mukodik, az OIDC szerveroldalon elo van keszitve.",
   "panel.demo_accounts": "Demo fiokok",
@@ -133,6 +134,14 @@
   "templates.strategy": "Strategia",
   "templates.photo_required": "Fotobizonyitek kotelezo",
   "templates.photo_optional": "Fotobizonyitek optionalis",
+  "instances.template": "Sablon",
+  "instances.assignee": "Felelos",
+  "instances.unassigned": "Maradjon kiosztas nelkul",
+  "instances.title_override": "Cim felulirasa",
+  "instances.due_at": "Hatarido",
+  "instances.create": "Feladat letrehozasa",
+  "instances.created": "A feladat utemezve lett.",
+  "instances.create_failed": "A TaskBandit nem tudta letrehozni a feladatpeldanyt.",
   "error.load_dashboard": "A TaskBandit nem tudta betolteni az elo iranyitopultot.",
   "error.missing_template": "Ehhez a peldanyhoz nem talalhato feladatsablon."
 }

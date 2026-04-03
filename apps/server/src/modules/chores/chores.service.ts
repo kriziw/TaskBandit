@@ -4,6 +4,7 @@ import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PointsService } from "../gamification/points.service";
 import { HouseholdRepository } from "../household/household.repository";
+import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
@@ -24,6 +25,10 @@ export class ChoresService {
 
   createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser) {
     return this.repository.createTemplate(dto, user.householdId);
+  }
+
+  createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser) {
+    return this.repository.createInstance(dto, user.householdId);
   }
 
   getInstances(user: AuthenticatedUser) {

@@ -16,6 +16,7 @@ import {
 } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto";
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
 import { CreateHouseholdMemberDto } from "../settings/dto/create-household-member.dto";
@@ -279,6 +280,55 @@ export class HouseholdRepository {
     });
 
     return this.mapTemplate(template);
+  }
+
+  async createInstance(dto: CreateChoreInstanceDto, householdId: string) {
+    const template = await this.prisma.choreTemplate.findFirstOrThrow({
+      where: {
+        id: dto.templateId,
+        householdId
+      },
+      include: {
+        checklistItems: true
+      }
+    });
+
+    if (dto.assigneeId) {
+      const assignee = await this.prisma.user.findFirst({
+        where: {
+          id: dto.assigneeId,
+          householdId
+        }
+      });
+
+      if (!assignee) {
+        throw new NotFoundException({
+          message: "That assignee could not be found."
+        });
+      }
+    }
+
+    const instance = await this.prisma.choreInstance.create({
+      data: {
+        householdId,
+        templateId: template.id,
+        title: dto.title?.trim() || template.title,
+        state: dto.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+        assigneeId: dto.assigneeId ?? null,
+        dueAtUtc: dto.dueAt
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    return this.mapInstance(instance);
   }
 
   async getInstances(householdId: string) {

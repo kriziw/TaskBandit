@@ -157,3 +157,10 @@ export type CreateChoreTemplateInput = {
     required: boolean;
   }>;
 };
+
+export type CreateChoreInstanceInput = {
+  templateId: string;
+  assigneeId?: string;
+  title?: string;
+  dueAt: string;
+};

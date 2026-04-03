@@ -29,6 +29,7 @@
   "panel.household_settings": "Household Settings",
   "panel.household_members": "Household Members",
   "panel.chore_templates": "Chore Templates",
+  "panel.schedule_chore": "Schedule Chore",
   "panel.providers": "Sign-In Providers",
   "panel.providers_hint": "Local auth works now, OIDC is prepared on the server.",
   "panel.demo_accounts": "Demo Accounts",
@@ -133,6 +134,14 @@
   "templates.strategy": "Strategy",
   "templates.photo_required": "Photo proof required",
   "templates.photo_optional": "Photo proof optional",
+  "instances.template": "Template",
+  "instances.assignee": "Assignee",
+  "instances.unassigned": "Leave unassigned",
+  "instances.title_override": "Title override",
+  "instances.due_at": "Due at",
+  "instances.create": "Create chore",
+  "instances.created": "Chore scheduled.",
+  "instances.create_failed": "TaskBandit could not create the chore instance.",
   "error.load_dashboard": "TaskBandit could not load the live dashboard.",
   "error.missing_template": "The chore template could not be found for this instance."
 }

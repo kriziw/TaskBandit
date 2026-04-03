@@ -18,6 +18,7 @@ import { RolesGuard } from "../../common/auth/roles.guard";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { ChoresService } from "./chores.service";
+import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
@@ -48,6 +49,12 @@ export class ChoresController {
   @Get("instances")
   instances(@CurrentUser() user: AuthenticatedUser) {
     return this.choresService.getInstances(user);
+  }
+
+  @Post("instances")
+  @Roles("admin", "parent")
+  createInstance(@Body() dto: CreateChoreInstanceDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.choresService.createInstance(dto, user);
   }
 
   @Post("uploads/proof")

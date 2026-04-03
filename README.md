@@ -9,6 +9,10 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 
 This repository is being developed with AI assistance. Code, documentation, copy, and configuration generated or edited by AI should be reviewed by a human before production use, especially for security, privacy, and deployment-sensitive changes.
 
+## License
+
+TaskBandit is currently licensed under [PolyForm Noncommercial 1.0.0](C:/Users/krist/Documents/GitHub/Chore%20Manager/LICENSE.md). This matches the goal of allowing source visibility while disallowing commercial use, but it is source-available rather than FOSS/open-source in the strict OSI sense.
+
 ## Repository Layout
 
 - `apps/server` - NestJS + Prisma backend API
