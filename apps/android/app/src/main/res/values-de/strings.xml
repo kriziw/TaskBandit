@@ -45,6 +45,9 @@
     <string name="mobile_notifications">Benachrichtigungen</string>
     <string name="mobile_mark_read">Als gelesen markieren</string>
     <string name="mobile_marking_read">Markiere…</string>
+    <string name="mobile_submit">Aufgabe senden</string>
+    <string name="mobile_submitting">Wird gesendet…</string>
+    <string name="mobile_photo_required_hint">Diese Aufgabe braucht einen Foto-Nachweis. Android-Fotoabgabe ist der nachste Schritt.</string>
     <string name="mobile_leaderboard">Bestenliste</string>
     <string name="mobile_points_value">%1$d Punkte</string>
     <string name="mobile_streak_value">%1$d Serie</string>

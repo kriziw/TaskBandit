@@ -24,7 +24,16 @@ data class MobileChore(
     val title: String,
     val state: String,
     val dueAt: String,
-    val isOverdue: Boolean
+    val isOverdue: Boolean,
+    val requirePhotoProof: Boolean,
+    val checklist: List<MobileChecklistItem>,
+    val completedChecklistIds: List<String>
+)
+
+data class MobileChecklistItem(
+    val id: String,
+    val title: String,
+    val required: Boolean
 )
 
 data class MobileNotification(

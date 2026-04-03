@@ -20,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
@@ -95,6 +96,8 @@ private fun TaskBanditApp(
     var isBusy by remember { mutableStateOf(session.token != null) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
     var activeNotificationAction by remember { mutableStateOf<String?>(null) }
+    var activeSubmitAction by remember { mutableStateOf<String?>(null) }
+    var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
@@ -186,6 +189,54 @@ private fun TaskBanditApp(
         }
     }
 
+    fun toggleChecklistItem(choreId: String, checklistItemId: String, defaultIds: List<String>) {
+        val currentSelection = submitSelections[choreId] ?: defaultIds.toSet()
+        val nextSelection = currentSelection.toMutableSet()
+        if (!nextSelection.add(checklistItemId)) {
+            nextSelection.remove(checklistItemId)
+        }
+
+        submitSelections = submitSelections + (choreId to nextSelection)
+    }
+
+    fun submitChore(choreId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        val chore = dashboard?.chores?.firstOrNull { it.id == choreId } ?: return
+
+        if (chore.requirePhotoProof) {
+            errorMessage = "Photo-proof chores are not yet supported in the Android app."
+            return
+        }
+
+        val selectedChecklistIds = (submitSelections[choreId] ?: chore.completedChecklistIds.toSet()).toList()
+        val missingRequiredItems = chore.checklist.filter { it.required && !selectedChecklistIds.contains(it.id) }
+        if (missingRequiredItems.isNotEmpty()) {
+            errorMessage = "Complete all required checklist items before submitting."
+            return
+        }
+
+        activeSubmitAction = "submit:$choreId"
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.submitChore(baseUrl, token, choreId, selectedChecklistIds)
+                }
+            }.onSuccess {
+                refreshDashboard()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            activeSubmitAction = null
+        }
+    }
+
     LaunchedEffect(session.token) {
         if (session.token != null) {
             refreshDashboard()
@@ -232,12 +283,16 @@ private fun TaskBanditApp(
             isBusy = isBusy,
             activeReviewAction = activeReviewAction,
             activeNotificationAction = activeNotificationAction,
+            activeSubmitAction = activeSubmitAction,
             errorMessage = errorMessage,
             onRefresh = ::refreshDashboard,
             onLogout = ::logout,
             onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
             onReject = { instanceId -> reviewPendingChore(instanceId, false) },
-            onNotificationRead = ::markNotificationRead
+            onNotificationRead = ::markNotificationRead,
+            onToggleChecklistItem = ::toggleChecklistItem,
+            submitSelections = submitSelections,
+            onSubmitChore = ::submitChore
         )
     }
 }
@@ -338,12 +393,16 @@ private fun DashboardScreen(
     isBusy: Boolean,
     activeReviewAction: String?,
     activeNotificationAction: String?,
+    activeSubmitAction: String?,
     errorMessage: String?,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
-    onNotificationRead: (String) -> Unit
+    onNotificationRead: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit,
+    submitSelections: Map<String, Set<String>>,
+    onSubmitChore: (String) -> Unit
 ) {
     val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
     val visibleChores = dashboard?.chores.orEmpty().filter { it.state != "pending_approval" }
@@ -476,6 +535,8 @@ private fun DashboardScreen(
             }
 
             items(visibleChores) { chore ->
+                val selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet()
+                val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
                 Card {
                     Column(
                         modifier = Modifier.padding(16.dp),
@@ -497,6 +558,53 @@ private fun DashboardScreen(
                             },
                             style = MaterialTheme.typography.labelLarge
                         )
+                        if (chore.checklist.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                chore.checklist.forEach { item ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                    ) {
+                                        Checkbox(
+                                            checked = selectedChecklistIds.contains(item.id),
+                                            onCheckedChange = {
+                                                onToggleChecklistItem(
+                                                    chore.id,
+                                                    item.id,
+                                                    chore.completedChecklistIds
+                                                )
+                                            },
+                                            enabled = isSubmittableState && !chore.requirePhotoProof
+                                        )
+                                        Text(
+                                            text = item.title,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (chore.requirePhotoProof) {
+                            Text(
+                                text = stringResource(R.string.mobile_photo_required_hint),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else if (isSubmittableState) {
+                            Button(
+                                onClick = { onSubmitChore(chore.id) },
+                                enabled = activeSubmitAction == null
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (activeSubmitAction == "submit:${chore.id}") {
+                                            R.string.mobile_submitting
+                                        } else {
+                                            R.string.mobile_submit
+                                        }
+                                    )
+                                )
+                            }
+                        }
                     }
                 }
             }

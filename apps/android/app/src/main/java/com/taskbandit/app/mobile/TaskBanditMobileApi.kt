@@ -64,7 +64,10 @@ class TaskBanditMobileApi {
                         title = entry.optString("title"),
                         state = entry.optString("state"),
                         dueAt = entry.optString("dueAt"),
-                        isOverdue = entry.optBoolean("isOverdue")
+                        isOverdue = entry.optBoolean("isOverdue"),
+                        requirePhotoProof = entry.optBoolean("requirePhotoProof"),
+                        checklist = parseChecklist(entry.optJSONArray("checklist")),
+                        completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds"))
                     )
                 )
             }
@@ -97,11 +100,11 @@ class TaskBanditMobileApi {
     }
 
     fun approveChore(baseUrl: String, token: String, instanceId: String, note: String? = null) {
-        reviewChore(baseUrl, token, instanceId, "/api/chores/instances/$instanceId/approve", note)
+        reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/approve", note)
     }
 
     fun rejectChore(baseUrl: String, token: String, instanceId: String, note: String? = null) {
-        reviewChore(baseUrl, token, instanceId, "/api/chores/instances/$instanceId/reject", note)
+        reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/reject", note)
     }
 
     fun markNotificationRead(baseUrl: String, token: String, notificationId: String) {
@@ -111,6 +114,27 @@ class TaskBanditMobileApi {
             token = token,
             method = "POST",
             body = JSONObject()
+        )
+    }
+
+    fun submitChore(
+        baseUrl: String,
+        token: String,
+        instanceId: String,
+        completedChecklistItemIds: List<String>,
+        note: String? = null
+    ) {
+        val payload = JSONObject()
+            .put("completedChecklistItemIds", JSONArray(completedChecklistItemIds))
+            .put("attachments", JSONArray())
+            .put("note", note ?: "")
+
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/submit",
+            token = token,
+            method = "POST",
+            body = payload
         )
     }
 
@@ -186,7 +210,6 @@ class TaskBanditMobileApi {
     private fun reviewChore(
         baseUrl: String,
         token: String,
-        instanceId: String,
         path: String,
         note: String?
     ) {
@@ -200,5 +223,39 @@ class TaskBanditMobileApi {
             method = "POST",
             body = payload
         )
+    }
+
+    private fun parseChecklist(entries: JSONArray?): List<MobileChecklistItem> {
+        if (entries == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until entries.length()) {
+                val item = entries.optJSONObject(index) ?: continue
+                add(
+                    MobileChecklistItem(
+                        id = item.optString("id"),
+                        title = item.optString("title"),
+                        required = item.optBoolean("required")
+                    )
+                )
+            }
+        }
+    }
+
+    private fun parseStringList(entries: JSONArray?): List<String> {
+        if (entries == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until entries.length()) {
+                val value = entries.optString(index)
+                if (value.isNotBlank()) {
+                    add(value)
+                }
+            }
+        }
     }
 }
