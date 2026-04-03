@@ -22,6 +22,10 @@ export class DashboardService {
     return this.repository.markNotificationRead(notificationId, user.householdId, user.id);
   }
 
+  markAllNotificationsRead(user: AuthenticatedUser) {
+    return this.repository.markAllNotificationsRead(user.householdId, user.id);
+  }
+
   processOverduePenalties(user: AuthenticatedUser) {
     return this.repository.processOverduePenalties(user.householdId, user.id);
   }

@@ -135,6 +135,7 @@
   "notifications.read": "Read",
   "notifications.unread": "Unread",
   "notifications.mark_read": "Mark read",
+  "notifications.mark_all_read": "Mark all read",
   "notifications.mark_failed": "TaskBandit could not update the notification.",
   "notifications.recorded": "Received",
   "submission.empty": "No currently actionable chores are assigned to you.",

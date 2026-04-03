@@ -618,6 +618,25 @@ export function App() {
     }
   }
 
+  async function handleMarkAllNotificationsRead() {
+    if (!token || !payload || unreadNotifications.length === 0) {
+      return;
+    }
+
+    setBusyAction("notification-read-all");
+    try {
+      const notifications = await taskBanditApi.markAllNotificationsRead(token, language);
+      setPayload({
+        ...payload,
+        notifications
+      });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("notifications.mark_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleCreateHouseholdMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) {
@@ -1365,7 +1384,19 @@ export function App() {
             <article className="panel">
               <div className="section-heading">
                 <h2>{t("panel.notifications")}</h2>
-                <span className="section-kicker">{unreadNotifications.length}</span>
+                <div className="toolbar-group">
+                  <span className="section-kicker">{unreadNotifications.length}</span>
+                  {unreadNotifications.length > 0 ? (
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "notification-read-all"}
+                      onClick={() => void handleMarkAllNotificationsRead()}
+                    >
+                      {t("notifications.mark_all_read")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className="stack-list">
                 {payload.notifications.length === 0 ? (

@@ -268,6 +268,22 @@ export class HouseholdRepository {
     return this.getNotifications(householdId, recipientUserId);
   }
 
+  async markAllNotificationsRead(householdId: string, recipientUserId: string) {
+    await this.prisma.notification.updateMany({
+      where: {
+        householdId,
+        recipientUserId,
+        isRead: false
+      },
+      data: {
+        isRead: true,
+        readAtUtc: new Date()
+      }
+    });
+
+    return this.getNotifications(householdId, recipientUserId);
+  }
+
   async processOverduePenalties(householdId: string, actorUserId?: string) {
     const householdSettings = await this.prisma.householdSettings.findUnique({
       where: {

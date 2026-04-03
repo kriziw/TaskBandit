@@ -34,6 +34,11 @@ export class DashboardController {
     return this.dashboardService.markNotificationRead(user, notificationId);
   }
 
+  @Post("notifications/read-all")
+  markAllNotificationsRead(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.markAllNotificationsRead(user);
+  }
+
   @Post("maintenance/process-overdue")
   @Roles("admin")
   processOverduePenalties(@CurrentUser() user: AuthenticatedUser) {

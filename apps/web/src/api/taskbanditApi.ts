@@ -154,6 +154,13 @@ export const taskBanditApi = {
       language
     });
   },
+  markAllNotificationsRead(token: string, language: AppLanguage) {
+    return request<NotificationEntry[]>("/api/dashboard/notifications/read-all", {
+      method: "POST",
+      token,
+      language
+    });
+  },
   processOverduePenalties(token: string, language: AppLanguage) {
     return request<{ processedCount: number; totalPenaltyPoints: number }>(
       "/api/dashboard/maintenance/process-overdue",

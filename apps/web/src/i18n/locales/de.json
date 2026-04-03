@@ -135,6 +135,7 @@
   "notifications.read": "Gelesen",
   "notifications.unread": "Ungelesen",
   "notifications.mark_read": "Als gelesen markieren",
+  "notifications.mark_all_read": "Alle als gelesen markieren",
   "notifications.mark_failed": "TaskBandit konnte die Benachrichtigung nicht aktualisieren.",
   "notifications.recorded": "Eingegangen",
   "submission.empty": "Dir sind aktuell keine bearbeitbaren Aufgaben zugewiesen.",
