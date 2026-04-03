@@ -2,6 +2,8 @@ import type {
   AuthenticatedUser,
   AuthProviders,
   AuthResponse,
+  BootstrapHouseholdInput,
+  BootstrapStatus,
   ChoreInstance,
   ChoreTemplate,
   CreateChoreInstanceInput,
@@ -98,6 +100,16 @@ async function readErrorMessage(response: Response) {
 }
 
 export const taskBanditApi = {
+  getBootstrapStatus(language: AppLanguage) {
+    return request<BootstrapStatus>("/api/bootstrap/status", { language });
+  },
+  bootstrapHousehold(language: AppLanguage, input: BootstrapHouseholdInput) {
+    return request("/api/bootstrap/household", {
+      method: "POST",
+      language,
+      body: input
+    });
+  },
   getProviders(language: AppLanguage) {
     return request<AuthProviders>("/api/auth/providers", { language });
   },

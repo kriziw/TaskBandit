@@ -164,3 +164,16 @@ export type CreateChoreInstanceInput = {
   title?: string;
   dueAt: string;
 };
+
+export type BootstrapStatus = {
+  isBootstrapped: boolean;
+  householdCount: number;
+};
+
+export type BootstrapHouseholdInput = {
+  householdName: string;
+  ownerDisplayName: string;
+  ownerEmail: string;
+  ownerPassword: string;
+  selfSignupEnabled: boolean;
+};

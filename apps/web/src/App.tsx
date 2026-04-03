@@ -5,6 +5,8 @@ import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import type {
   AuthProviders,
   AuthenticatedUser,
+  BootstrapHouseholdInput,
+  BootstrapStatus,
   ChoreInstance,
   ChoreTemplate,
   CreateChoreInstanceInput,
@@ -33,6 +35,7 @@ type LoginFormState = {
 type MemberFormState = CreateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
 type InstanceFormState = CreateChoreInstanceInput;
+type BootstrapFormState = BootstrapHouseholdInput;
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -46,9 +49,17 @@ export function App() {
   const { language, setLanguage, t } = useI18n();
   const [token, setToken] = useState<string | null>(() => readStoredToken());
   const [providers, setProviders] = useState<AuthProviders | null>(null);
+  const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
     email: "alex@taskbandit.local",
     password: "TaskBandit123!"
+  });
+  const [bootstrapForm, setBootstrapForm] = useState<BootstrapFormState>({
+    householdName: "",
+    ownerDisplayName: "",
+    ownerEmail: "",
+    ownerPassword: "",
+    selfSignupEnabled: false
   });
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
@@ -95,6 +106,17 @@ export function App() {
       .then((response) => setProviders(response))
       .catch(() => setProviders(null));
   }, [language]);
+
+  useEffect(() => {
+    if (token) {
+      return;
+    }
+
+    void taskBanditApi
+      .getBootstrapStatus(language)
+      .then((response) => setBootstrapStatus(response))
+      .catch(() => setBootstrapStatus(null));
+  }, [token, language]);
 
   useEffect(() => {
     if (!token) {
@@ -248,6 +270,32 @@ export function App() {
       setLoginError(readErrorMessage(error, t("auth.login_failed")));
     } finally {
       setIsAuthenticating(false);
+    }
+  }
+
+  async function handleBootstrapSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setBusyAction("bootstrap");
+    setPageError(null);
+
+    try {
+      await taskBanditApi.bootstrapHousehold(language, bootstrapForm);
+      const authResponse = await taskBanditApi.login(
+        bootstrapForm.ownerEmail,
+        bootstrapForm.ownerPassword,
+        language
+      );
+      window.localStorage.setItem(tokenStorageKey, authResponse.accessToken);
+      setToken(authResponse.accessToken);
+      setBootstrapStatus({
+        isBootstrapped: true,
+        householdCount: 1
+      });
+      setNotice(t("bootstrap.created"));
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("bootstrap.create_failed")));
+    } finally {
+      setBusyAction(null);
     }
   }
 
@@ -594,40 +642,106 @@ export function App() {
 
       {!payload ? (
         <section className="content-grid login-grid">
-          <article className="panel login-panel">
-            <div className="section-heading">
-              <h2>{t("auth.sign_in")}</h2>
-              <span className="section-kicker">{t("auth.demo_ready")}</span>
-            </div>
-            <form className="login-form" onSubmit={handleLoginSubmit}>
-              <label>
-                <span>{t("auth.email")}</span>
-                <input
-                  type="email"
-                  value={loginForm.email}
-                  onChange={(event) =>
-                    setLoginForm((current) => ({ ...current, email: event.target.value }))
-                  }
-                  autoComplete="email"
-                />
-              </label>
-              <label>
-                <span>{t("auth.password")}</span>
-                <input
-                  type="password"
-                  value={loginForm.password}
-                  onChange={(event) =>
-                    setLoginForm((current) => ({ ...current, password: event.target.value }))
-                  }
-                  autoComplete="current-password"
-                />
-              </label>
-              {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
-              <button className="primary-button" type="submit" disabled={isAuthenticating}>
-                {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
-              </button>
-            </form>
-          </article>
+          {bootstrapStatus?.isBootstrapped === false ? (
+            <article className="panel login-panel">
+              <div className="section-heading">
+                <h2>{t("bootstrap.title")}</h2>
+                <span className="section-kicker">{t("bootstrap.kicker")}</span>
+              </div>
+              <form className="login-form" onSubmit={handleBootstrapSubmit}>
+                <label>
+                  <span>{t("bootstrap.household_name")}</span>
+                  <input
+                    type="text"
+                    value={bootstrapForm.householdName}
+                    onChange={(event) =>
+                      setBootstrapForm((current) => ({ ...current, householdName: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{t("bootstrap.owner_display_name")}</span>
+                  <input
+                    type="text"
+                    value={bootstrapForm.ownerDisplayName}
+                    onChange={(event) =>
+                      setBootstrapForm((current) => ({ ...current, ownerDisplayName: event.target.value }))
+                    }
+                  />
+                </label>
+                <label>
+                  <span>{t("bootstrap.owner_email")}</span>
+                  <input
+                    type="email"
+                    value={bootstrapForm.ownerEmail}
+                    onChange={(event) =>
+                      setBootstrapForm((current) => ({ ...current, ownerEmail: event.target.value }))
+                    }
+                    autoComplete="email"
+                  />
+                </label>
+                <label>
+                  <span>{t("bootstrap.owner_password")}</span>
+                  <input
+                    type="password"
+                    value={bootstrapForm.ownerPassword}
+                    onChange={(event) =>
+                      setBootstrapForm((current) => ({ ...current, ownerPassword: event.target.value }))
+                    }
+                    autoComplete="new-password"
+                  />
+                </label>
+                <label className="toggle-row">
+                  <span>{t("bootstrap.self_signup")}</span>
+                  <input
+                    type="checkbox"
+                    checked={bootstrapForm.selfSignupEnabled}
+                    onChange={(event) =>
+                      setBootstrapForm((current) => ({ ...current, selfSignupEnabled: event.target.checked }))
+                    }
+                  />
+                </label>
+                <button className="primary-button" type="submit" disabled={busyAction === "bootstrap"}>
+                  {t("bootstrap.create")}
+                </button>
+              </form>
+            </article>
+          ) : (
+            <article className="panel login-panel">
+              <div className="section-heading">
+                <h2>{t("auth.sign_in")}</h2>
+                <span className="section-kicker">{t("auth.demo_ready")}</span>
+              </div>
+              <form className="login-form" onSubmit={handleLoginSubmit}>
+                <label>
+                  <span>{t("auth.email")}</span>
+                  <input
+                    type="email"
+                    value={loginForm.email}
+                    onChange={(event) =>
+                      setLoginForm((current) => ({ ...current, email: event.target.value }))
+                    }
+                    autoComplete="email"
+                  />
+                </label>
+                <label>
+                  <span>{t("auth.password")}</span>
+                  <input
+                    type="password"
+                    value={loginForm.password}
+                    onChange={(event) =>
+                      setLoginForm((current) => ({ ...current, password: event.target.value }))
+                    }
+                    autoComplete="current-password"
+                  />
+                </label>
+                {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
+                <button className="primary-button" type="submit" disabled={isAuthenticating}>
+                  {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
+                </button>
+              </form>
+            </article>
+          )}
 
           <article className="panel">
             <div className="section-heading">

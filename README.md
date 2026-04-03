@@ -60,6 +60,7 @@ Chore submission and review endpoints are documented in `docs/chore-workflow.md`
    `maya@taskbandit.local` / `TaskBandit123!`
    `luca@taskbandit.local` / `TaskBandit123!`
 6. If demo seeding is disabled, initialize the first household through the bootstrap API and then sign in with the owner account you created.
+   The web app now also shows a first-run bootstrap form automatically when no household exists yet.
 
 ## .env Notes
 
