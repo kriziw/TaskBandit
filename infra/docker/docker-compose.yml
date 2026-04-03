@@ -14,9 +14,7 @@ services:
       - postgres-data:/var/lib/postgresql/data
 
   server:
-    build:
-      context: ../../apps/server/src/TaskBandit.Api
-      dockerfile: Dockerfile
+    image: kriziw/taskbandit:${TASKBANDIT_IMAGE_TAG:-latest}
     container_name: taskbandit-server
     environment:
       ASPNETCORE_URLS: http://+:8080
@@ -31,6 +29,7 @@ services:
       - "8080:8080"
     depends_on:
       - postgres
+    pull_policy: always
 
 volumes:
   postgres-data:

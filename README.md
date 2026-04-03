@@ -33,6 +33,9 @@ This workspace currently has Node.js available, but does not have a .NET SDK or 
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.
 
+Docker Compose is configured to pull the server image from Docker Hub via `kriziw/taskbandit`. Use `TASKBANDIT_IMAGE_TAG` to pin a specific published tag if you do not want `latest`.
+The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
+
 ## Backend Notes
 
 The backend now uses EF Core with PostgreSQL-oriented configuration and a seed/bootstrap path for the initial single-household dataset. The next backend milestone is expanding from the current seed-backed read/write slice into full authenticated household management and real workflow state transitions.
