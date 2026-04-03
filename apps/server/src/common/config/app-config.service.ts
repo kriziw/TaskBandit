@@ -57,11 +57,12 @@ export class AppConfigService {
   }
 
   get oidcConfig(): OidcConfig {
+    const enabled = this.configService.get<string>("TASKBANDIT_OIDC_ENABLED", "false") === "true";
     const authority = this.configService.get<string>("TASKBANDIT_OIDC_AUTHORITY", "").trim();
     const clientId = this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_ID", "").trim();
 
     return {
-      enabled: Boolean(authority && clientId),
+      enabled: enabled && Boolean(authority && clientId),
       authority,
       clientId
     };

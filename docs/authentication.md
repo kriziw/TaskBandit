@@ -24,12 +24,15 @@ TaskBandit now includes a first-pass authentication foundation in the NestJS bac
 
 - `TASKBANDIT_JWT_SECRET`
 - `TASKBANDIT_JWT_EXPIRES_IN`
+- `TASKBANDIT_OIDC_ENABLED`
 - `TASKBANDIT_OIDC_AUTHORITY`
 - `TASKBANDIT_OIDC_CLIENT_ID`
 - `TASKBANDIT_OIDC_CLIENT_SECRET`
 
 ## Notes
 
+- OIDC is optional and disabled by default. Local auth works without any OIDC settings.
+- Set `TASKBANDIT_OIDC_ENABLED=true` only when you also provide valid authority and client ID values.
 - OIDC is currently configuration-ready and targeted at Authentik, but the interactive authorization-code flow is not implemented yet.
 - Current local auth is intended as the project foundation; role-aware authorization guards and password reset flows still need to be added.
 - For demo-seeded environments, the seeded users share the password `TaskBandit123!`.

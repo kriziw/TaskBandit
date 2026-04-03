@@ -52,6 +52,7 @@ Chore submission and review endpoints are documented in `docs/chore-workflow.md`
 1. Copy `.env.example` to `.env`.
 2. Review these values in `.env`:
    `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`.
+   OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
 3. Start TaskBandit from `infra/docker/docker-compose.yml`:
    `docker compose --env-file .env -f infra/docker/docker-compose.yml up -d`
 4. Open `http://localhost:8080`.
@@ -68,7 +69,8 @@ Chore submission and review endpoints are documented in `docs/chore-workflow.md`
 - `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` creates the demo household automatically for local evaluation.
 - `TASKBANDIT_STORAGE_ROOT` is the server-side path used for uploaded proof photos. In Docker Compose this is mounted to a persistent volume.
 - `TASKBANDIT_REVERSE_PROXY_ENABLED` and `TASKBANDIT_REVERSE_PROXY_PATH_BASE` should be set when TaskBandit is deployed behind Nginx or Traefik.
-- `TASKBANDIT_OIDC_*` values are only needed when you wire Authentik or another OIDC provider.
+- `TASKBANDIT_OIDC_ENABLED=false` keeps OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.
+- `TASKBANDIT_OIDC_*` values are optional and only needed when you wire Authentik or another OIDC provider.
 
 ## Web App Notes
 
@@ -85,7 +87,7 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 
 ## Backend Notes
 
-The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login foundations are in place, and Authentik-focused OIDC configuration is exposed for the next auth iteration.
+The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login foundations are in place, and Authentik-focused OIDC configuration is available as an optional feature for the next auth iteration.
 
 For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
 The repository also now includes an initial Prisma migration snapshot for the current backend model.
