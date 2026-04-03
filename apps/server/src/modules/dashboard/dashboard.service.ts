@@ -10,6 +10,10 @@ export class DashboardService {
     return this.repository.getDashboardSummary(user.householdId);
   }
 
+  getPointsLedger(user: AuthenticatedUser) {
+    return this.repository.getPointsLedger(user.householdId);
+  }
+
   async exportChoresCsv(user: AuthenticatedUser) {
     const [household, instances] = await Promise.all([
       this.repository.getHousehold(user.householdId),

@@ -179,6 +179,23 @@ export class HouseholdRepository {
     return auditLog.map((entry) => this.mapAuditLog(entry));
   }
 
+  async getPointsLedger(householdId: string, take = 25) {
+    const pointsLedger = await this.prisma.pointsLedgerEntry.findMany({
+      where: {
+        householdId
+      },
+      include: {
+        user: true
+      },
+      orderBy: {
+        createdAtUtc: "desc"
+      },
+      take
+    });
+
+    return pointsLedger.map((entry) => this.mapPointsLedgerEntry(entry));
+  }
+
   async createHouseholdMember(
     dto: CreateHouseholdMemberDto,
     householdId: string,
@@ -716,6 +733,14 @@ export class HouseholdRepository {
         }
       });
 
+      await this.recordPointsLedgerEntry(this.prisma, {
+        householdId: input.householdId,
+        userId: beneficiaryUserId,
+        choreInstanceId: updatedInstance.id,
+        amount: input.awardedPoints,
+        reason: `Completed chore "${updatedInstance.title}".`
+      });
+
       await this.createFollowUpInstances(updatedInstance);
       await this.createRecurringInstance(updatedInstance);
     }
@@ -782,6 +807,14 @@ export class HouseholdRepository {
               increment: 1
             }
           }
+        });
+
+        await this.recordPointsLedgerEntry(this.prisma, {
+          householdId: input.householdId,
+          userId: beneficiaryUserId,
+          choreInstanceId: updatedInstance.id,
+          amount: input.awardedPoints,
+          reason: `Approved chore "${updatedInstance.title}".`
         });
       }
 
@@ -1447,6 +1480,28 @@ export class HouseholdRepository {
     };
   }
 
+  private mapPointsLedgerEntry(
+    entry: Prisma.PointsLedgerEntryGetPayload<{
+      include: {
+        user: true;
+      };
+    }>
+  ) {
+    return {
+      id: entry.id,
+      userId: entry.userId,
+      amount: entry.amount,
+      reason: entry.reason,
+      createdAt: entry.createdAtUtc,
+      choreInstanceId: entry.choreInstanceId,
+      user: {
+        id: entry.user.id,
+        displayName: entry.user.displayName,
+        role: entry.user.role.toLowerCase()
+      }
+    };
+  }
+
   private async recordAuditLog(
     executor: PrismaExecutor,
     input: {
@@ -1466,6 +1521,27 @@ export class HouseholdRepository {
         entityType: input.entityType,
         entityId: input.entityId ?? null,
         summary: input.summary
+      }
+    });
+  }
+
+  private async recordPointsLedgerEntry(
+    executor: PrismaExecutor,
+    input: {
+      householdId: string;
+      userId: string;
+      choreInstanceId?: string | null;
+      amount: number;
+      reason: string;
+    }
+  ) {
+    await executor.pointsLedgerEntry.create({
+      data: {
+        householdId: input.householdId,
+        userId: input.userId,
+        choreInstanceId: input.choreInstanceId ?? null,
+        amount: input.amount,
+        reason: input.reason
       }
     });
   }

@@ -18,6 +18,11 @@ export class DashboardController {
     return this.dashboardService.getSummary(user);
   }
 
+  @Get("points-ledger")
+  getPointsLedger(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getPointsLedger(user);
+  }
+
   @Get("exports/chores.csv")
   async exportChores(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) response: Response) {
     response.setHeader("Content-Type", "text/csv; charset=utf-8");

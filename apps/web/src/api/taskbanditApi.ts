@@ -13,6 +13,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  PointsLedgerEntry,
   UploadedProof
 } from "../types/taskbandit";
 import type { AppLanguage } from "../i18n/I18nProvider";
@@ -129,6 +130,12 @@ export const taskBanditApi = {
   },
   getDashboardSummary(token: string, language: AppLanguage) {
     return request<DashboardSummary>("/api/dashboard/summary", {
+      token,
+      language
+    });
+  },
+  getPointsLedger(token: string, language: AppLanguage) {
+    return request<PointsLedgerEntry[]>("/api/dashboard/points-ledger", {
       token,
       language
     });

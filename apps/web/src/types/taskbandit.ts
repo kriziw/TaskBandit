@@ -62,6 +62,20 @@ export type AuditLogEntry = {
   } | null;
 };
 
+export type PointsLedgerEntry = {
+  id: string;
+  userId: string;
+  amount: number;
+  reason: string;
+  createdAt: string;
+  choreInstanceId: string | null;
+  user: {
+    id: string;
+    displayName: string;
+    role: HouseholdRole;
+  };
+};
+
 export type HouseholdMember = {
   id: string;
   displayName: string;

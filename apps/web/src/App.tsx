@@ -17,6 +17,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  PointsLedgerEntry,
   RecurrenceType
 } from "./types/taskbandit";
 
@@ -27,6 +28,7 @@ type DashboardPayload = {
   dashboard: DashboardSummary;
   household: Household;
   auditLog: AuditLogEntry[];
+  pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
 };
@@ -295,11 +297,12 @@ export function App() {
     }
 
     try {
-      const [currentUser, dashboard, household, auditLog, templates, instances] = await Promise.all([
+      const [currentUser, dashboard, household, auditLog, pointsLedger, templates, instances] = await Promise.all([
         taskBanditApi.getCurrentUser(accessToken, language),
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
         taskBanditApi.getAuditLog(accessToken, language),
+        taskBanditApi.getPointsLedger(accessToken, language),
         taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language)
       ]);
@@ -309,6 +312,7 @@ export function App() {
         dashboard,
         household,
         auditLog,
+        pointsLedger,
         templates,
         instances
       });
@@ -1272,6 +1276,33 @@ export function App() {
                     </strong>
                   </div>
                 ))}
+              </div>
+            </article>
+
+            <article className="panel">
+              <div className="section-heading">
+                <h2>{t("panel.points_feed")}</h2>
+                <span className="section-kicker">{payload.pointsLedger.length}</span>
+              </div>
+              <div className="stack-list">
+                {payload.pointsLedger.length === 0 ? (
+                  <p className="inline-message">{t("points.empty")}</p>
+                ) : (
+                  payload.pointsLedger.map((entry) => (
+                    <div className="task-row compact" key={entry.id}>
+                      <div className="task-row-header">
+                        <strong>{entry.user.displayName}</strong>
+                        <span className="status-pill">
+                          {entry.amount > 0 ? `+${entry.amount}` : entry.amount} {t("user.points")}
+                        </span>
+                      </div>
+                      <p>{entry.reason}</p>
+                      <p>
+                        {t("points.recorded")}: {formatDate(entry.createdAt)}
+                      </p>
+                    </div>
+                  ))
+                )}
               </div>
             </article>
 

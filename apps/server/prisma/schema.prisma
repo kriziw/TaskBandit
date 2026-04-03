@@ -59,6 +59,7 @@ model Household {
   choreTemplates ChoreTemplate[]
   choreInstances ChoreInstance[]
   auditLogs      AuditLog[]
+  pointsLedgerEntries PointsLedgerEntry[]
 }
 
 model HouseholdSettings {
@@ -81,6 +82,7 @@ model User {
   household     Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   identities    AuthIdentity[]
   auditLogs     AuditLog[]    @relation("AuditActor")
+  pointsLedgerEntries PointsLedgerEntry[] @relation("PointsLedgerUser")
 }
 
 model AuthIdentity {
@@ -196,4 +198,19 @@ model AuditLog {
   actor           User?     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
   @@index([householdId, createdAtUtc])
+}
+
+model PointsLedgerEntry {
+  id             String    @id @default(uuid()) @db.Uuid
+  householdId     String   @db.Uuid
+  userId          String   @db.Uuid
+  choreInstanceId String?  @db.Uuid
+  amount          Int
+  reason          String
+  createdAtUtc    DateTime @default(now())
+  household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user            User      @relation("PointsLedgerUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, createdAtUtc])
+  @@index([userId, createdAtUtc])
 }
