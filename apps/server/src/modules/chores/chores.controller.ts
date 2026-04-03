@@ -37,6 +37,7 @@ export class ChoresController {
   ) {}
 
   @Get("templates")
+  @Roles("admin", "parent")
   templates(@CurrentUser() user: AuthenticatedUser) {
     return this.choresService.getTemplates(user);
   }

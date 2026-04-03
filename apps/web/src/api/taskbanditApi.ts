@@ -13,6 +13,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  NotificationEntry,
   PointsLedgerEntry,
   UploadedProof
 } from "../types/taskbandit";
@@ -136,6 +137,19 @@ export const taskBanditApi = {
   },
   getPointsLedger(token: string, language: AppLanguage) {
     return request<PointsLedgerEntry[]>("/api/dashboard/points-ledger", {
+      token,
+      language
+    });
+  },
+  getNotifications(token: string, language: AppLanguage) {
+    return request<NotificationEntry[]>("/api/dashboard/notifications", {
+      token,
+      language
+    });
+  },
+  markNotificationRead(token: string, language: AppLanguage, notificationId: string) {
+    return request<NotificationEntry[]>(`/api/dashboard/notifications/${notificationId}/read`, {
+      method: "POST",
       token,
       language
     });

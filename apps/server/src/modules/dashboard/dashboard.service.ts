@@ -14,6 +14,14 @@ export class DashboardService {
     return this.repository.getPointsLedger(user.householdId);
   }
 
+  getNotifications(user: AuthenticatedUser) {
+    return this.repository.getNotifications(user.householdId, user.id);
+  }
+
+  markNotificationRead(user: AuthenticatedUser, notificationId: string) {
+    return this.repository.markNotificationRead(notificationId, user.householdId, user.id);
+  }
+
   processOverduePenalties(user: AuthenticatedUser) {
     return this.repository.processOverduePenalties(user.householdId, user.id);
   }

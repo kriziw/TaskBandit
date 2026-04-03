@@ -81,7 +81,7 @@ export class ChoresService {
   }
 
   getInstances(user: AuthenticatedUser) {
-    return this.repository.getInstances(user.householdId);
+    return this.repository.getInstancesForViewer(user);
   }
 
   uploadProof(

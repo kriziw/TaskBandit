@@ -16,7 +16,7 @@ export class SettingsService {
   ) {}
 
   getHousehold(user: AuthenticatedUser) {
-    return this.repository.getHousehold(user.householdId);
+    return this.repository.getHouseholdForViewer(user.householdId, user.role);
   }
 
   getAuditLog(user: AuthenticatedUser) {

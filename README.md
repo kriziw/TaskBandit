@@ -37,6 +37,19 @@ This repository is in the initial implementation phase. The current scaffold inc
 
 This workspace currently has Node.js available, but does not have Gradle installed. The NestJS server can be developed with Node.js, while Android build verification will require a full Android/Gradle toolchain.
 
+## Android Releases
+
+The repository now includes a GitHub Actions workflow that builds a release APK for Android phones when a GitHub release is published. Because the current app does not bundle native NDK libraries, the generated APK is a standard universal Android package and is suitable for ARM smartphones.
+
+If Android signing secrets are not configured yet, the workflow still builds and uploads a release APK artifact, but it does not attach that unsigned package to the GitHub release. Once you are ready for signed installs, add these GitHub repository secrets:
+
+- `ANDROID_KEYSTORE_BASE64`
+- `ANDROID_KEYSTORE_PASSWORD`
+- `ANDROID_KEY_ALIAS`
+- `ANDROID_KEY_PASSWORD`
+
+You can also trigger the workflow manually from GitHub Actions to validate the Android release pipeline before creating a public release.
+
 ## Deployment Notes
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.

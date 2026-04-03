@@ -17,6 +17,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  NotificationEntry,
   PointsLedgerEntry,
   RecurrenceType
 } from "./types/taskbandit";
@@ -28,6 +29,7 @@ type DashboardPayload = {
   dashboard: DashboardSummary;
   household: Household;
   auditLog: AuditLogEntry[];
+  notifications: NotificationEntry[];
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
@@ -198,6 +200,11 @@ export function App() {
     [payload]
   );
 
+  const unreadNotifications = useMemo(
+    () => payload?.notifications.filter((notification) => !notification.isRead) ?? [],
+    [payload]
+  );
+
   const restrictHouseholdDetails = Boolean(
     payload &&
       !payload.household.settings.membersCanSeeFullHouseholdChoreDetails &&
@@ -315,21 +322,28 @@ export function App() {
     }
 
     try {
-      const [currentUser, dashboard, household, auditLog, pointsLedger, templates, instances] = await Promise.all([
-        taskBanditApi.getCurrentUser(accessToken, language),
+      const currentUser = await taskBanditApi.getCurrentUser(accessToken, language);
+      const [dashboard, household, auditLog, notifications, pointsLedger, templates, instances] =
+        await Promise.all([
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
-        taskBanditApi.getAuditLog(accessToken, language),
+        currentUser.role === "child"
+          ? Promise.resolve([])
+          : taskBanditApi.getAuditLog(accessToken, language),
+        taskBanditApi.getNotifications(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
-        taskBanditApi.getTemplates(accessToken, language),
+        currentUser.role === "child"
+          ? Promise.resolve([])
+          : taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language)
-      ]);
+        ]);
 
       setPayload({
         currentUser,
         dashboard,
         household,
         auditLog,
+        notifications,
         pointsLedger,
         templates,
         instances
@@ -580,6 +594,25 @@ export function App() {
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("settings.overdue_process_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleMarkNotificationRead(notificationId: string) {
+    if (!token || !payload) {
+      return;
+    }
+
+    setBusyAction(`notification-read:${notificationId}`);
+    try {
+      const notifications = await taskBanditApi.markNotificationRead(token, language, notificationId);
+      setPayload({
+        ...payload,
+        notifications
+      });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("notifications.mark_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -1326,6 +1359,45 @@ export function App() {
                     </strong>
                   </div>
                 ))}
+              </div>
+            </article>
+
+            <article className="panel">
+              <div className="section-heading">
+                <h2>{t("panel.notifications")}</h2>
+                <span className="section-kicker">{unreadNotifications.length}</span>
+              </div>
+              <div className="stack-list">
+                {payload.notifications.length === 0 ? (
+                  <p className="inline-message">{t("notifications.empty")}</p>
+                ) : (
+                  payload.notifications.map((notification) => (
+                    <div className="task-row compact" key={notification.id}>
+                      <div className="task-row-header">
+                        <strong>{notification.title}</strong>
+                        <span className="status-pill">
+                          {notification.isRead ? t("notifications.read") : t("notifications.unread")}
+                        </span>
+                      </div>
+                      <p>{notification.message}</p>
+                      <div className="button-row">
+                        <p>
+                          {t("notifications.recorded")}: {formatDate(notification.createdAt)}
+                        </p>
+                        {!notification.isRead ? (
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            disabled={busyAction === `notification-read:${notification.id}`}
+                            onClick={() => void handleMarkNotificationRead(notification.id)}
+                          >
+                            {t("notifications.mark_read")}
+                          </button>
+                        ) : null}
+                      </div>
+                    </div>
+                  ))
+                )}
               </div>
             </article>
 

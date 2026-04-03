@@ -12,6 +12,7 @@ import {
   ChoreState,
   Difficulty,
   HouseholdRole,
+  NotificationType,
   RecurrenceType,
   Prisma
 } from "@prisma/client";
@@ -114,6 +115,34 @@ export class HouseholdRepository {
     return this.mapHousehold(household);
   }
 
+  async getHouseholdForViewer(
+    householdId: string,
+    viewerRole: "admin" | "parent" | "child"
+  ) {
+    const household = await this.prisma.household.findFirstOrThrow({
+      where: {
+        id: householdId
+      },
+      include: {
+        settings: true,
+        members: {
+          include: {
+            identities: {
+              where: {
+                provider: AuthProvider.LOCAL
+              },
+              take: 1
+            }
+          }
+        }
+      }
+    });
+
+    return this.mapHousehold(household, {
+      redactMemberEmails: viewerRole === "child"
+    });
+  }
+
   async updateSettings(dto: UpdateSettingsDto, householdId: string, actorUserId?: string) {
     const household = await this.prisma.household.findFirstOrThrow({
       where: {
@@ -194,6 +223,49 @@ export class HouseholdRepository {
     });
 
     return pointsLedger.map((entry) => this.mapPointsLedgerEntry(entry));
+  }
+
+  async getNotifications(householdId: string, recipientUserId: string, take = 25) {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        householdId,
+        recipientUserId
+      },
+      orderBy: {
+        createdAtUtc: "desc"
+      },
+      take
+    });
+
+    return notifications.map((entry) => this.mapNotification(entry));
+  }
+
+  async markNotificationRead(notificationId: string, householdId: string, recipientUserId: string) {
+    const existingNotification = await this.prisma.notification.findFirst({
+      where: {
+        id: notificationId,
+        householdId,
+        recipientUserId
+      }
+    });
+
+    if (!existingNotification) {
+      throw new NotFoundException({
+        message: "That notification could not be found."
+      });
+    }
+
+    await this.prisma.notification.update({
+      where: {
+        id: notificationId
+      },
+      data: {
+        isRead: true,
+        readAtUtc: new Date()
+      }
+    });
+
+    return this.getNotifications(householdId, recipientUserId);
   }
 
   async processOverduePenalties(householdId: string, actorUserId?: string) {
@@ -285,6 +357,21 @@ export class HouseholdRepository {
           entityId: instance.id,
           summary: `Applied overdue penalty to "${instance.title}".`
         });
+
+        if (beneficiaryUserId) {
+          await this.recordNotification(tx, {
+            householdId,
+            recipientUserId: beneficiaryUserId,
+            type: NotificationType.OVERDUE_PENALTY,
+            title: "Overdue penalty applied",
+            message:
+              appliedPenaltyPoints > 0
+                ? `"${instance.title}" is overdue. ${appliedPenaltyPoints} points were deducted from your balance.`
+                : `"${instance.title}" is overdue. Your balance was already at zero, so no additional points were deducted.`,
+            entityType: "chore_instance",
+            entityId: instance.id
+          });
+        }
 
         processedCount += 1;
         totalPenaltyPoints += appliedPenaltyPoints;
@@ -638,6 +725,18 @@ export class HouseholdRepository {
         summary: `Scheduled chore "${createdInstance.title}".`
       });
 
+      if (resolvedAssigneeId && resolvedAssigneeId !== actorUserId) {
+        await this.recordNotification(tx, {
+          householdId,
+          recipientUserId: resolvedAssigneeId,
+          type: NotificationType.CHORE_ASSIGNED,
+          title: "New chore assigned",
+          message: `"${createdInstance.title}" was assigned to you.`,
+          entityType: "chore_instance",
+          entityId: createdInstance.id
+        });
+      }
+
       return createdInstance;
     });
 
@@ -666,7 +765,57 @@ export class HouseholdRepository {
     return instances.map((instance) => this.mapInstance(instance));
   }
 
+  async getInstancesForViewer(user: {
+    id: string;
+    householdId: string;
+    role: "admin" | "parent" | "child";
+  }) {
+    const [settings, instances] = await Promise.all([
+      this.prisma.householdSettings.findUnique({
+        where: {
+          householdId: user.householdId
+        }
+      }),
+      this.prisma.choreInstance.findMany({
+        where: {
+          householdId: user.householdId
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          checklistCompletions: true,
+          attachments: true
+        },
+        orderBy: {
+          dueAtUtc: "asc"
+        }
+      })
+    ]);
+
+    const shouldRestrictOtherChores =
+      user.role === "child" && !(settings?.membersCanSeeFullHouseholdChoreDetails ?? true);
+
+    return instances.map((instance) =>
+      this.mapInstance(instance, {
+        redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id
+      })
+    );
+  }
+
   async updateInstance(instanceId: string, dto: CreateChoreInstanceDto, householdId: string, actorUserId?: string) {
+    const existingInstance = await this.prisma.choreInstance.findFirstOrThrow({
+      where: {
+        id: instanceId,
+        householdId
+      },
+      select: {
+        assigneeId: true
+      }
+    });
+
     const template = await this.prisma.choreTemplate.findFirstOrThrow({
       where: {
         id: dto.templateId,
@@ -714,6 +863,18 @@ export class HouseholdRepository {
         entityId: savedInstance.id,
         summary: `Updated chore "${savedInstance.title}".`
       });
+
+      if (resolvedAssigneeId && resolvedAssigneeId !== existingInstance.assigneeId && resolvedAssigneeId !== actorUserId) {
+        await this.recordNotification(tx, {
+          householdId,
+          recipientUserId: resolvedAssigneeId,
+          type: NotificationType.CHORE_ASSIGNED,
+          title: "Chore assignment updated",
+          message: `"${savedInstance.title}" is now assigned to you.`,
+          entityType: "chore_instance",
+          entityId: savedInstance.id
+        });
+      }
 
       return savedInstance;
     });
@@ -846,6 +1007,35 @@ export class HouseholdRepository {
       await this.createRecurringInstance(updatedInstance);
     }
 
+    if (input.nextState === "pending_approval") {
+      const approvers = await this.prisma.user.findMany({
+        where: {
+          householdId: input.householdId,
+          role: {
+            in: [HouseholdRole.ADMIN, HouseholdRole.PARENT]
+          },
+          id: {
+            not: input.actingUserId
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      for (const approver of approvers) {
+        await this.recordNotification(this.prisma, {
+          householdId: input.householdId,
+          recipientUserId: approver.id,
+          type: NotificationType.CHORE_SUBMITTED,
+          title: "Chore waiting for approval",
+          message: `"${updatedInstance.title}" was submitted and is ready for review.`,
+          entityType: "chore_instance",
+          entityId: updatedInstance.id
+        });
+      }
+    }
+
     await this.recordAuditLog(this.prisma, {
       householdId: input.householdId,
       actorUserId: input.actingUserId,
@@ -923,6 +1113,21 @@ export class HouseholdRepository {
       await this.createRecurringInstance(updatedInstance);
     }
 
+    const reviewRecipientUserId = updatedInstance.submittedById ?? updatedInstance.assigneeId;
+    if (reviewRecipientUserId && reviewRecipientUserId !== input.actingUserId) {
+      await this.recordNotification(this.prisma, {
+        householdId: input.householdId,
+        recipientUserId: reviewRecipientUserId,
+        type: input.approved ? NotificationType.CHORE_APPROVED : NotificationType.CHORE_REJECTED,
+        title: input.approved ? "Chore approved" : "Chore needs fixes",
+        message: input.approved
+          ? `"${updatedInstance.title}" was approved.`
+          : `"${updatedInstance.title}" was reviewed and sent back for fixes.`,
+        entityType: "chore_instance",
+        entityId: updatedInstance.id
+      });
+    }
+
     await this.recordAuditLog(this.prisma, {
       householdId: input.householdId,
       actorUserId: input.actingUserId,
@@ -964,6 +1169,18 @@ export class HouseholdRepository {
       entityId: updatedInstance.id,
       summary: `Cancelled chore "${updatedInstance.title}".`
     });
+
+    if (updatedInstance.assigneeId && updatedInstance.assigneeId !== actorUserId) {
+      await this.recordNotification(this.prisma, {
+        householdId,
+        recipientUserId: updatedInstance.assigneeId,
+        type: NotificationType.CHORE_CANCELLED,
+        title: "Chore cancelled",
+        message: `"${updatedInstance.title}" was cancelled and removed from your active chores.`,
+        entityType: "chore_instance",
+        entityId: updatedInstance.id
+      });
+    }
 
     return this.mapInstance(updatedInstance);
   }
@@ -1305,6 +1522,18 @@ export class HouseholdRepository {
             dueAtUtc: followUpDueAt
           }
         });
+
+        if (assigneeId) {
+          await this.recordNotification(tx, {
+            householdId: instance.householdId,
+            recipientUserId: assigneeId,
+            type: NotificationType.CHORE_ASSIGNED,
+            title: "Follow-up chore assigned",
+            message: `"${template.title}" was created as a follow-up chore for you.`,
+            entityType: "chore_template",
+            entityId: template.id
+          });
+        }
       }
     });
   }
@@ -1358,6 +1587,18 @@ export class HouseholdRepository {
           dueAtUtc: nextDueAt
         }
       });
+
+      if (assigneeId) {
+        await this.recordNotification(tx, {
+          householdId: instance.householdId,
+          recipientUserId: assigneeId,
+          type: NotificationType.CHORE_ASSIGNED,
+          title: "Recurring chore assigned",
+          message: `"${template.title}" was scheduled again and assigned to you.`,
+          entityType: "chore_template",
+          entityId: template.id
+        });
+      }
     });
   }
 
@@ -1441,7 +1682,10 @@ export class HouseholdRepository {
           };
         };
       };
-    }>
+    }>,
+    options?: {
+      redactMemberEmails?: boolean;
+    }
   ) {
     return {
       householdId: household.id,
@@ -1454,7 +1698,7 @@ export class HouseholdRepository {
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true
       },
       members: household.members
-        .map((member) => this.mapMember(member))
+        .map((member) => this.mapMember(member, options?.redactMemberEmails ?? false))
         .sort((left, right) => left.displayName.localeCompare(right.displayName))
     };
   }
@@ -1464,13 +1708,14 @@ export class HouseholdRepository {
       include: {
         identities: true;
       };
-    }>
+    }>,
+    redactEmail = false
   ) {
     return {
       id: member.id,
       displayName: member.displayName,
       role: member.role.toLowerCase(),
-      email: member.identities[0]?.email ?? null,
+      email: redactEmail ? null : member.identities[0]?.email ?? null,
       points: member.points,
       currentStreak: member.currentStreak
     };
@@ -1512,8 +1757,42 @@ export class HouseholdRepository {
         checklistCompletions: true;
         attachments: true;
       };
-    }>
+    }>,
+    options?: {
+      redactDetails?: boolean;
+    }
   ) {
+    if (options?.redactDetails) {
+      return {
+        id: instance.id,
+        templateId: instance.templateId,
+        title: instance.title,
+        state: instance.state.toLowerCase(),
+        assigneeId: null,
+        dueAt: instance.dueAtUtc,
+        difficulty: "easy" as const,
+        basePoints: 0,
+        requirePhotoProof: false,
+        awardedPoints: 0,
+        completedChecklistItems: 0,
+        isOverdue:
+          instance.state === ChoreState.OVERDUE ||
+          ((instance.state !== ChoreState.COMPLETED && instance.state !== ChoreState.CANCELLED) &&
+            instance.dueAtUtc.getTime() < Date.now()),
+        attachmentCount: 0,
+        overduePenaltyPoints: 0,
+        submittedAt: null,
+        submittedById: null,
+        submissionNote: null,
+        reviewedAt: null,
+        reviewedById: null,
+        reviewNote: null,
+        checklist: [],
+        checklistCompletionIds: [],
+        attachments: []
+      };
+    }
+
     return {
       id: instance.id,
       templateId: instance.templateId,
@@ -1604,6 +1883,20 @@ export class HouseholdRepository {
     };
   }
 
+  private mapNotification(entry: Prisma.NotificationGetPayload<object>) {
+    return {
+      id: entry.id,
+      type: entry.type.toLowerCase(),
+      title: entry.title,
+      message: entry.message,
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      isRead: entry.isRead,
+      createdAt: entry.createdAtUtc,
+      readAt: entry.readAtUtc
+    };
+  }
+
   private async recordAuditLog(
     executor: PrismaExecutor,
     input: {
@@ -1644,6 +1937,31 @@ export class HouseholdRepository {
         choreInstanceId: input.choreInstanceId ?? null,
         amount: input.amount,
         reason: input.reason
+      }
+    });
+  }
+
+  private async recordNotification(
+    executor: PrismaExecutor,
+    input: {
+      householdId: string;
+      recipientUserId: string;
+      type: NotificationType;
+      title: string;
+      message: string;
+      entityType?: string | null;
+      entityId?: string | null;
+    }
+  ) {
+    await executor.notification.create({
+      data: {
+        householdId: input.householdId,
+        recipientUserId: input.recipientUserId,
+        type: input.type,
+        title: input.title,
+        message: input.message,
+        entityType: input.entityType ?? null,
+        entityId: input.entityId ?? null
       }
     });
   }

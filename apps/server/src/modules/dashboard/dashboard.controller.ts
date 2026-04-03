@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Post, Res, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
@@ -22,6 +22,16 @@ export class DashboardController {
   @Get("points-ledger")
   getPointsLedger(@CurrentUser() user: AuthenticatedUser) {
     return this.dashboardService.getPointsLedger(user);
+  }
+
+  @Get("notifications")
+  getNotifications(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getNotifications(user);
+  }
+
+  @Post("notifications/:id/read")
+  markNotificationRead(@CurrentUser() user: AuthenticatedUser, @Param("id") notificationId: string) {
+    return this.dashboardService.markNotificationRead(user, notificationId);
   }
 
   @Post("maintenance/process-overdue")

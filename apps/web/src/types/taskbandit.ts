@@ -76,6 +76,18 @@ export type PointsLedgerEntry = {
   };
 };
 
+export type NotificationEntry = {
+  id: string;
+  type: string;
+  title: string;
+  message: string;
+  entityType: string | null;
+  entityId: string | null;
+  isRead: boolean;
+  createdAt: string;
+  readAt: string | null;
+};
+
 export type HouseholdMember = {
   id: string;
   displayName: string;
