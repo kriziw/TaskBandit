@@ -4,6 +4,7 @@ import type {
   AuthResponse,
   ChoreInstance,
   ChoreTemplate,
+  CreateChoreTemplateInput,
   CreateHouseholdMemberInput,
   DashboardSummary,
   Household,
@@ -144,6 +145,14 @@ export const taskBanditApi = {
     return request<ChoreTemplate[]>("/api/chores/templates", {
       token,
       language
+    });
+  },
+  createTemplate(token: string, language: AppLanguage, input: CreateChoreTemplateInput) {
+    return request<ChoreTemplate>("/api/chores/templates", {
+      method: "POST",
+      token,
+      language,
+      body: input
     });
   },
   getInstances(token: string, language: AppLanguage) {

@@ -395,6 +395,7 @@ select {
 }
 
 .login-form input,
+.login-form textarea,
 .inline-field textarea,
 .inline-field input,
 .login-form select {
@@ -408,6 +409,11 @@ select {
 
 .inline-field textarea {
   min-height: 88px;
+  resize: vertical;
+}
+
+.login-form textarea {
+  min-height: 110px;
   resize: vertical;
 }
 

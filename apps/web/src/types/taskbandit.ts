@@ -145,3 +145,15 @@ export type CreateHouseholdMemberInput = {
   email: string;
   password: string;
 };
+
+export type CreateChoreTemplateInput = {
+  title: string;
+  description: string;
+  difficulty: Difficulty;
+  assignmentStrategy: AssignmentStrategy;
+  requirePhotoProof: boolean;
+  checklist?: Array<{
+    title: string;
+    required: boolean;
+  }>;
+};

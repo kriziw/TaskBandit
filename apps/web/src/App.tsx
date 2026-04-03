@@ -7,6 +7,7 @@ import type {
   AuthenticatedUser,
   ChoreInstance,
   ChoreTemplate,
+  CreateChoreTemplateInput,
   CreateHouseholdMemberInput,
   DashboardSummary,
   Household,
@@ -29,6 +30,7 @@ type LoginFormState = {
 };
 
 type MemberFormState = CreateHouseholdMemberInput;
+type TemplateFormState = CreateChoreTemplateInput;
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -57,6 +59,14 @@ export function App() {
     role: "child",
     email: "",
     password: ""
+  });
+  const [templateForm, setTemplateForm] = useState<TemplateFormState>({
+    title: "",
+    description: "",
+    difficulty: "easy",
+    assignmentStrategy: "round_robin",
+    requirePhotoProof: false,
+    checklist: []
   });
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -147,6 +157,16 @@ export function App() {
     const instances = payload?.instances ?? [];
     return [...instances].slice(0, 8);
   }, [payload]);
+
+  const assignmentStrategyOptions: Array<{
+    value: TemplateFormState["assignmentStrategy"];
+    label: string;
+  }> = [
+    { value: "round_robin", label: t("assignment.round_robin") },
+    { value: "least_completed_recently", label: t("assignment.least_completed_recently") },
+    { value: "highest_streak", label: t("assignment.highest_streak") },
+    { value: "manual_default_assignee", label: t("assignment.manual_default") }
+  ];
 
   async function refreshDashboard(accessToken: string, options: { silent: boolean }) {
     if (!options.silent) {
@@ -327,6 +347,54 @@ export function App() {
     }
   }
 
+  async function handleCreateTemplate(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token || !payload) {
+      return;
+    }
+
+    const sanitizedChecklist = (templateForm.checklist ?? [])
+      .map((item) => ({
+        title: item.title.trim(),
+        required: item.required
+      }))
+      .filter((item) => item.title.length > 0);
+
+    setBusyAction("create-template");
+    try {
+      const createdTemplate = await taskBanditApi.createTemplate(token, language, {
+        ...templateForm,
+        title: templateForm.title.trim(),
+        description: templateForm.description.trim(),
+        checklist: sanitizedChecklist
+      });
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              templates: [...current.templates, createdTemplate].sort((left, right) =>
+                left.title.localeCompare(right.title)
+              )
+            }
+          : current
+      );
+      setTemplateForm({
+        title: "",
+        description: "",
+        difficulty: "easy",
+        assignmentStrategy: "round_robin",
+        requirePhotoProof: false,
+        checklist: []
+      });
+      setNotice(t("templates.created"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("templates.create_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   function toggleChecklistItem(instanceId: string, checklistItemId: string, fallbackIds: string[]) {
     setSubmitSelections((current) => {
       const selected = new Set(current[instanceId] ?? fallbackIds);
@@ -351,6 +419,29 @@ export function App() {
     setSelectedProofFiles((current) => ({
       ...current,
       [instanceId]: files ? Array.from(files) : []
+    }));
+  }
+
+  function addChecklistDraftItem() {
+    setTemplateForm((current) => ({
+      ...current,
+      checklist: [...(current.checklist ?? []), { title: "", required: true }]
+    }));
+  }
+
+  function updateChecklistDraftItem(index: number, nextValue: { title?: string; required?: boolean }) {
+    setTemplateForm((current) => ({
+      ...current,
+      checklist: (current.checklist ?? []).map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...nextValue } : item
+      )
+    }));
+  }
+
+  function removeChecklistDraftItem(index: number) {
+    setTemplateForm((current) => ({
+      ...current,
+      checklist: (current.checklist ?? []).filter((_, itemIndex) => itemIndex !== index)
     }));
   }
 
@@ -906,6 +997,162 @@ export function App() {
                     </label>
                     <button className="primary-button" type="submit" disabled={busyAction === "create-member"}>
                       {t("members.create")}
+                    </button>
+                  </form>
+                </article>
+
+                <article className="panel panel-wide">
+                  <div className="section-heading">
+                    <h2>{t("panel.chore_templates")}</h2>
+                    <span className="section-kicker">{payload.templates.length}</span>
+                  </div>
+                  <div className="stack-list">
+                    {payload.templates.map((template) => (
+                      <div className="task-row compact" key={template.id}>
+                        <div className="task-row-header">
+                          <strong>{template.title}</strong>
+                          <span className="status-pill">{t(`difficulty.${template.difficulty}`)}</span>
+                        </div>
+                        <p>{template.description}</p>
+                        <p>
+                          {t("templates.strategy")}: {t(`assignment.${template.assignmentStrategy}`)}
+                        </p>
+                        <p>
+                          {t("templates.base_points")}: {template.basePoints}
+                        </p>
+                        <p>
+                          {template.requirePhotoProof
+                            ? t("templates.photo_required")
+                            : t("templates.photo_optional")}
+                        </p>
+                        {template.checklist.length > 0 ? (
+                          <ul className="simple-list compact-list">
+                            {template.checklist.map((item) => (
+                              <li key={item.id}>
+                                {item.title}
+                                {item.required ? ` - ${t("task.required")}` : ""}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : (
+                          <p className="inline-message">{t("templates.no_checklist")}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  <form className="login-form member-form" onSubmit={handleCreateTemplate}>
+                    <label>
+                      <span>{t("templates.title")}</span>
+                      <input
+                        type="text"
+                        value={templateForm.title}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({ ...current, title: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("templates.description")}</span>
+                      <textarea
+                        value={templateForm.description}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({ ...current, description: event.target.value }))
+                        }
+                        rows={4}
+                      />
+                    </label>
+                    <label>
+                      <span>{t("templates.difficulty")}</span>
+                      <select
+                        value={templateForm.difficulty}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            difficulty: event.target.value as TemplateFormState["difficulty"]
+                          }))
+                        }
+                      >
+                        <option value="easy">{t("difficulty.easy")}</option>
+                        <option value="medium">{t("difficulty.medium")}</option>
+                        <option value="hard">{t("difficulty.hard")}</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("templates.assignment_strategy")}</span>
+                      <select
+                        value={templateForm.assignmentStrategy}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            assignmentStrategy: event.target.value as TemplateFormState["assignmentStrategy"]
+                          }))
+                        }
+                      >
+                        {assignmentStrategyOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label className="toggle-row">
+                      <span>{t("templates.require_photo")}</span>
+                      <input
+                        type="checkbox"
+                        checked={templateForm.requirePhotoProof}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            requirePhotoProof: event.target.checked
+                          }))
+                        }
+                      />
+                    </label>
+                    <div className="stack-list">
+                      <div className="section-heading">
+                        <h3>{t("templates.checklist")}</h3>
+                        <button className="ghost-button" type="button" onClick={addChecklistDraftItem}>
+                          {t("templates.add_checklist_item")}
+                        </button>
+                      </div>
+                      {(templateForm.checklist ?? []).length === 0 ? (
+                        <p className="inline-message">{t("templates.no_checklist_draft")}</p>
+                      ) : (
+                        (templateForm.checklist ?? []).map((item, index) => (
+                          <div className="task-row compact" key={`${item.title}-${index}`}>
+                            <label>
+                              <span>{t("templates.checklist_item_title")}</span>
+                              <input
+                                type="text"
+                                value={item.title}
+                                onChange={(event) =>
+                                  updateChecklistDraftItem(index, { title: event.target.value })
+                                }
+                              />
+                            </label>
+                            <label className="toggle-row">
+                              <span>{t("templates.checklist_required")}</span>
+                              <input
+                                type="checkbox"
+                                checked={item.required}
+                                onChange={(event) =>
+                                  updateChecklistDraftItem(index, { required: event.target.checked })
+                                }
+                              />
+                            </label>
+                            <button
+                              className="secondary-button"
+                              type="button"
+                              onClick={() => removeChecklistDraftItem(index)}
+                            >
+                              {t("templates.remove_checklist_item")}
+                            </button>
+                          </div>
+                        ))
+                      )}
+                    </div>
+                    <button className="primary-button" type="submit" disabled={busyAction === "create-template"}>
+                      {t("templates.create")}
                     </button>
                   </form>
                 </article>
