@@ -24,6 +24,8 @@ services:
       TaskBandit__Auth__Oidc__Authority: ${TASKBANDIT_OIDC_AUTHORITY:-http://authentik.example.local/application/o/taskbandit/}
       TaskBandit__Auth__Oidc__ClientId: ${TASKBANDIT_OIDC_CLIENT_ID:-change-me}
       TaskBandit__Auth__Oidc__ClientSecret: ${TASKBANDIT_OIDC_CLIENT_SECRET:-change-me}
+      TaskBandit__ReverseProxy__Enabled: ${TASKBANDIT_REVERSE_PROXY_ENABLED:-false}
+      TaskBandit__ReverseProxy__PathBase: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
     ports:
       - "8080:8080"
     depends_on:

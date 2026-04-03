@@ -21,4 +21,4 @@
 - The current backend still uses in-memory domain state; PostgreSQL persistence is the next implementation milestone.
 - The Android project currently includes Gradle files but not a checked-in wrapper yet.
 - Authentik is the target OIDC provider for the first external identity integration.
-
+- Reverse proxy support is built in through forwarded-header handling and optional path-base configuration.
