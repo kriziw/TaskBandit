@@ -39,4 +39,3 @@ export class AuthController {
     return this.authService.getCurrentUser(authorizationHeader, language);
   }
 }
-

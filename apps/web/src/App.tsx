@@ -19,7 +19,8 @@ import type {
   HouseholdSettings,
   NotificationEntry,
   PointsLedgerEntry,
-  RecurrenceType
+  RecurrenceType,
+  SignupInput
 } from "./types/taskbandit";
 
 const tokenStorageKey = "taskbandit-access-token";
@@ -39,6 +40,7 @@ type LoginFormState = {
   email: string;
   password: string;
 };
+type SignupFormState = SignupInput;
 
 type MemberFormState = CreateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
@@ -84,6 +86,11 @@ export function App() {
   const [loginForm, setLoginForm] = useState<LoginFormState>({
     email: "alex@taskbandit.local",
     password: "TaskBandit123!"
+  });
+  const [signupForm, setSignupForm] = useState<SignupFormState>({
+    displayName: "",
+    email: "",
+    password: ""
   });
   const [bootstrapForm, setBootstrapForm] = useState<BootstrapFormState>({
     householdName: "",
@@ -450,6 +457,28 @@ export function App() {
       setNotice(t("auth.login_success"));
     } catch (error) {
       setLoginError(readErrorMessage(error, t("auth.login_failed")));
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
+  async function handleSignupSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsAuthenticating(true);
+    setLoginError(null);
+
+    try {
+      const response = await taskBanditApi.signup(signupForm, language);
+      window.localStorage.setItem(tokenStorageKey, response.accessToken);
+      setToken(response.accessToken);
+      setSignupForm({
+        displayName: "",
+        email: "",
+        password: ""
+      });
+      setNotice(t("auth.signup_success"));
+    } catch (error) {
+      setLoginError(readErrorMessage(error, t("auth.signup_failed")));
     } finally {
       setIsAuthenticating(false);
     }
@@ -1125,6 +1154,53 @@ export function App() {
               </form>
             </article>
           )}
+
+          {bootstrapStatus?.isBootstrapped !== false && providers?.local.selfSignupEnabled ? (
+            <article className="panel login-panel">
+              <div className="section-heading">
+                <h2>{t("auth.sign_up")}</h2>
+                <span className="section-kicker">{t("auth.sign_up_kicker")}</span>
+              </div>
+              <form className="login-form" onSubmit={handleSignupSubmit}>
+                <label>
+                  <span>{t("auth.display_name")}</span>
+                  <input
+                    type="text"
+                    value={signupForm.displayName}
+                    onChange={(event) =>
+                      setSignupForm((current) => ({ ...current, displayName: event.target.value }))
+                    }
+                    autoComplete="name"
+                  />
+                </label>
+                <label>
+                  <span>{t("auth.email")}</span>
+                  <input
+                    type="email"
+                    value={signupForm.email}
+                    onChange={(event) =>
+                      setSignupForm((current) => ({ ...current, email: event.target.value }))
+                    }
+                    autoComplete="email"
+                  />
+                </label>
+                <label>
+                  <span>{t("auth.password")}</span>
+                  <input
+                    type="password"
+                    value={signupForm.password}
+                    onChange={(event) =>
+                      setSignupForm((current) => ({ ...current, password: event.target.value }))
+                    }
+                    autoComplete="new-password"
+                  />
+                </label>
+                <button className="primary-button" type="submit" disabled={isAuthenticating}>
+                  {isAuthenticating ? t("auth.signing_up") : t("auth.sign_up")}
+                </button>
+              </form>
+            </article>
+          ) : null}
 
           <article className="panel">
             <div className="section-heading">

@@ -183,12 +183,19 @@ export type UploadedProof = {
 export type AuthProviders = {
   local: {
     enabled: boolean;
+    selfSignupEnabled: boolean;
   };
   oidc: {
     enabled: boolean;
     authority: string;
     clientId: string;
   };
+};
+
+export type SignupInput = {
+  displayName: string;
+  email: string;
+  password: string;
 };
 
 export type CreateHouseholdMemberInput = {

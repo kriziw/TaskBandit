@@ -15,6 +15,7 @@ import type {
   HouseholdSettings,
   NotificationEntry,
   PointsLedgerEntry,
+  SignupInput,
   UploadedProof
 } from "../types/taskbandit";
 import type { AppLanguage } from "../i18n/I18nProvider";
@@ -121,6 +122,13 @@ export const taskBanditApi = {
       method: "POST",
       language,
       body: { email, password }
+    });
+  },
+  signup(input: SignupInput, language: AppLanguage) {
+    return request<AuthResponse>("/api/auth/signup", {
+      method: "POST",
+      language,
+      body: input
     });
   },
   getCurrentUser(token: string, language: AppLanguage) {

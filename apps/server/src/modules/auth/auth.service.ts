@@ -156,10 +156,17 @@ export class AuthService {
     }
   }
 
-  getProviders() {
+  async getProviders() {
+    const household = await this.prisma.household.findFirst({
+      include: {
+        settings: true
+      }
+    });
+
     return {
       local: {
-        enabled: true
+        enabled: true,
+        selfSignupEnabled: household?.settings?.selfSignupEnabled ?? false
       },
       oidc: this.appConfigService.oidcConfig
     };
