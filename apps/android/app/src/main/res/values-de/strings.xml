@@ -39,10 +39,15 @@
     <string name="mobile_refreshing">Aktualisiert…</string>
     <string name="mobile_logout">Abmelden</string>
     <string name="mobile_my_chores">Meine Aufgaben</string>
+    <string name="mobile_pending_approvals">Offene Freigaben</string>
     <string name="mobile_due_at">Fallig %1$s</string>
     <string name="mobile_state_overdue">Uberfallig</string>
     <string name="mobile_notifications">Benachrichtigungen</string>
     <string name="mobile_leaderboard">Bestenliste</string>
     <string name="mobile_points_value">%1$d Punkte</string>
     <string name="mobile_streak_value">%1$d Serie</string>
+    <string name="mobile_approve">Freigeben</string>
+    <string name="mobile_approving">Freigabe…</string>
+    <string name="mobile_reject">Zuruckweisen</string>
+    <string name="mobile_rejecting">Zuruckweisung…</string>
 </resources>

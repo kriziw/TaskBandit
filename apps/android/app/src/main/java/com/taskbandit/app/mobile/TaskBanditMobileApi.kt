@@ -96,6 +96,14 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun approveChore(baseUrl: String, token: String, instanceId: String, note: String? = null) {
+        reviewChore(baseUrl, token, instanceId, "/api/chores/instances/$instanceId/approve", note)
+    }
+
+    fun rejectChore(baseUrl: String, token: String, instanceId: String, note: String? = null) {
+        reviewChore(baseUrl, token, instanceId, "/api/chores/instances/$instanceId/reject", note)
+    }
+
     private fun requestJson(
         baseUrl: String,
         path: String,
@@ -163,5 +171,24 @@ class TaskBanditMobileApi {
                 else -> responseText
             }
         }.getOrDefault(responseText.ifBlank { "Request failed." })
+    }
+
+    private fun reviewChore(
+        baseUrl: String,
+        token: String,
+        instanceId: String,
+        path: String,
+        note: String?
+    ) {
+        val payload = JSONObject()
+            .put("note", note ?: "")
+
+        requestJson(
+            baseUrl = baseUrl,
+            path = path,
+            token = token,
+            method = "POST",
+            body = payload
+        )
     }
 }

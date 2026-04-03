@@ -39,10 +39,15 @@
     <string name="mobile_refreshing">Frissites…</string>
     <string name="mobile_logout">Kijelentkezes</string>
     <string name="mobile_my_chores">Feladataim</string>
+    <string name="mobile_pending_approvals">Varakozo jovahagyasok</string>
     <string name="mobile_due_at">Hatarido %1$s</string>
     <string name="mobile_state_overdue">Lejart</string>
     <string name="mobile_notifications">Ertesitesek</string>
     <string name="mobile_leaderboard">Rangsor</string>
     <string name="mobile_points_value">%1$d pont</string>
     <string name="mobile_streak_value">%1$d szeria</string>
+    <string name="mobile_approve">Jovahagyas</string>
+    <string name="mobile_approving">Jovahagyas…</string>
+    <string name="mobile_reject">Elutasitas</string>
+    <string name="mobile_rejecting">Elutasitas…</string>
 </resources>

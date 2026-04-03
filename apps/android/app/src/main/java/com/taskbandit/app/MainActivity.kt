@@ -93,6 +93,7 @@ private fun TaskBanditApp(
     var dashboard by remember { mutableStateOf<MobileDashboard?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var isBusy by remember { mutableStateOf(session.token != null) }
+    var activeReviewAction by remember { mutableStateOf<String?>(null) }
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
@@ -129,6 +130,34 @@ private fun TaskBanditApp(
                 }
             }
             isBusy = false
+        }
+    }
+
+    fun reviewPendingChore(instanceId: String, approve: Boolean) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeReviewAction = "${if (approve) "approve" else "reject"}:$instanceId"
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    if (approve) {
+                        api.approveChore(baseUrl, token, instanceId)
+                    } else {
+                        api.rejectChore(baseUrl, token, instanceId)
+                    }
+                }
+            }.onSuccess {
+                refreshDashboard()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            activeReviewAction = null
         }
     }
 
@@ -176,9 +205,12 @@ private fun TaskBanditApp(
             dashboard = dashboard,
             serverUrl = serverUrl,
             isBusy = isBusy,
+            activeReviewAction = activeReviewAction,
             errorMessage = errorMessage,
             onRefresh = ::refreshDashboard,
-            onLogout = ::logout
+            onLogout = ::logout,
+            onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
+            onReject = { instanceId -> reviewPendingChore(instanceId, false) }
         )
     }
 }
@@ -277,10 +309,16 @@ private fun DashboardScreen(
     dashboard: MobileDashboard?,
     serverUrl: String,
     isBusy: Boolean,
+    activeReviewAction: String?,
     errorMessage: String?,
     onRefresh: () -> Unit,
-    onLogout: () -> Unit
+    onLogout: () -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit
 ) {
+    val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
+    val visibleChores = dashboard?.chores.orEmpty().filter { it.state != "pending_approval" }
+
     Scaffold { padding ->
         LazyColumn(
             modifier = Modifier
@@ -350,7 +388,65 @@ private fun DashboardScreen(
                 )
             }
 
-            items(dashboard?.chores.orEmpty()) { chore ->
+            if (pendingApprovals.isNotEmpty()) {
+                item {
+                    Text(
+                        text = stringResource(R.string.mobile_pending_approvals),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                items(pendingApprovals) { chore ->
+                    Card {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
+                            Text(
+                                text = stringResource(
+                                    R.string.mobile_due_at,
+                                    formatApiTimestamp(chore.dueAt)
+                                ),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Button(
+                                    onClick = { onApprove(chore.id) },
+                                    enabled = activeReviewAction == null
+                                ) {
+                                    Text(
+                                        stringResource(
+                                            if (activeReviewAction == "approve:${chore.id}") {
+                                                R.string.mobile_approving
+                                            } else {
+                                                R.string.mobile_approve
+                                            }
+                                        )
+                                    )
+                                }
+                                Button(
+                                    onClick = { onReject(chore.id) },
+                                    enabled = activeReviewAction == null
+                                ) {
+                                    Text(
+                                        stringResource(
+                                            if (activeReviewAction == "reject:${chore.id}") {
+                                                R.string.mobile_rejecting
+                                            } else {
+                                                R.string.mobile_reject
+                                            }
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            items(visibleChores) { chore ->
                 Card {
                     Column(
                         modifier = Modifier.padding(16.dp),
