@@ -58,6 +58,7 @@ model Household {
   members        User[]
   choreTemplates ChoreTemplate[]
   choreInstances ChoreInstance[]
+  auditLogs      AuditLog[]
 }
 
 model HouseholdSettings {
@@ -79,6 +80,7 @@ model User {
   createdAtUtc  DateTime      @default(now())
   household     Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   identities    AuthIdentity[]
+  auditLogs     AuditLog[]    @relation("AuditActor")
 }
 
 model AuthIdentity {
@@ -179,4 +181,19 @@ model ChoreAttachment {
   storageKey    String?
   createdAtUtc  DateTime      @default(now())
   choreInstance ChoreInstance @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)
+}
+
+model AuditLog {
+  id             String    @id @default(uuid()) @db.Uuid
+  householdId     String   @db.Uuid
+  actorUserId     String?  @db.Uuid
+  action          String
+  entityType      String
+  entityId        String?
+  summary         String
+  createdAtUtc    DateTime @default(now())
+  household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  actor           User?     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
+
+  @@index([householdId, createdAtUtc])
 }

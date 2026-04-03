@@ -24,6 +24,12 @@ export class SettingsController {
     return this.settingsService.getHousehold(user);
   }
 
+  @Get("audit-log")
+  @Roles("admin", "parent")
+  getAuditLog(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.getAuditLog(user);
+  }
+
   @Put("household")
   @Roles("admin")
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {

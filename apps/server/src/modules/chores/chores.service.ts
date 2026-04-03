@@ -24,7 +24,7 @@ export class ChoresService {
   }
 
   createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser) {
-    return this.repository.createTemplate(dto, user.householdId);
+    return this.repository.createTemplate(dto, user.householdId, user.id);
   }
 
   async updateTemplate(
@@ -38,11 +38,11 @@ export class ChoresService {
       return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
     }
 
-    return this.repository.updateTemplate(templateId, dto, user.householdId);
+    return this.repository.updateTemplate(templateId, dto, user.householdId, user.id);
   }
 
   createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser) {
-    return this.repository.createInstance(dto, user.householdId);
+    return this.repository.createInstance(dto, user.householdId, user.id);
   }
 
   async updateInstance(
@@ -62,7 +62,7 @@ export class ChoresService {
       );
     }
 
-    return this.repository.updateInstance(instanceId, dto, user.householdId);
+    return this.repository.updateInstance(instanceId, dto, user.householdId, user.id);
   }
 
   async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
@@ -77,7 +77,7 @@ export class ChoresService {
       );
     }
 
-    return this.repository.cancelInstance(instanceId);
+    return this.repository.cancelInstance(instanceId, user.householdId, user.id);
   }
 
   getInstances(user: AuthenticatedUser) {

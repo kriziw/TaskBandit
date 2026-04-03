@@ -1,4 +1,5 @@
 import type {
+  AuditLogEntry,
   AuthenticatedUser,
   AuthProviders,
   AuthResponse,
@@ -134,6 +135,12 @@ export const taskBanditApi = {
   },
   getHousehold(token: string, language: AppLanguage) {
     return request<Household>("/api/settings/household", {
+      token,
+      language
+    });
+  },
+  getAuditLog(token: string, language: AppLanguage) {
+    return request<AuditLogEntry[]>("/api/settings/audit-log", {
       token,
       language
     });

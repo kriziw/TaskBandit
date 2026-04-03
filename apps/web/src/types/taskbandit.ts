@@ -48,6 +48,20 @@ export type DashboardSummary = {
   leaderboard: HouseholdMember[];
 };
 
+export type AuditLogEntry = {
+  id: string;
+  action: string;
+  entityType: string;
+  entityId: string | null;
+  summary: string;
+  createdAt: string;
+  actor: {
+    id: string;
+    displayName: string;
+    role: HouseholdRole;
+  } | null;
+};
+
 export type HouseholdMember = {
   id: string;
   displayName: string;

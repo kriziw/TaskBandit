@@ -114,7 +114,7 @@ export class HouseholdRepository {
     return this.mapHousehold(household);
   }
 
-  async updateSettings(dto: UpdateSettingsDto, householdId: string) {
+  async updateSettings(dto: UpdateSettingsDto, householdId: string, actorUserId?: string) {
     const household = await this.prisma.household.findFirstOrThrow({
       where: {
         id: householdId
@@ -150,14 +150,41 @@ export class HouseholdRepository {
       }
     });
 
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "household.settings.updated",
+      entityType: "household_settings",
+      entityId: household.id,
+      summary: "Updated household settings."
+    });
+
     return this.getHousehold(householdId);
+  }
+
+  async getAuditLog(householdId: string, take = 25) {
+    const auditLog = await this.prisma.auditLog.findMany({
+      where: {
+        householdId
+      },
+      include: {
+        actor: true
+      },
+      orderBy: {
+        createdAtUtc: "desc"
+      },
+      take
+    });
+
+    return auditLog.map((entry) => this.mapAuditLog(entry));
   }
 
   async createHouseholdMember(
     dto: CreateHouseholdMemberDto,
     householdId: string,
     passwordHash: string,
-    emailInUseMessage: string
+    emailInUseMessage: string,
+    actorUserId?: string
   ) {
     const normalizedEmail = dto.email.trim().toLowerCase();
     const existingIdentity = await this.prisma.authIdentity.findUnique({
@@ -172,20 +199,31 @@ export class HouseholdRepository {
       });
     }
 
-    await this.prisma.user.create({
-      data: {
-        householdId,
-        displayName: dto.displayName.trim(),
-        role: dto.role === "child" ? HouseholdRole.CHILD : HouseholdRole.PARENT,
-        identities: {
-          create: {
-            provider: AuthProvider.LOCAL,
-            providerSubject: normalizedEmail,
-            email: normalizedEmail,
-            passwordHash
+    await this.prisma.$transaction(async (tx) => {
+      const createdUser = await tx.user.create({
+        data: {
+          householdId,
+          displayName: dto.displayName.trim(),
+          role: dto.role === "child" ? HouseholdRole.CHILD : HouseholdRole.PARENT,
+          identities: {
+            create: {
+              provider: AuthProvider.LOCAL,
+              providerSubject: normalizedEmail,
+              email: normalizedEmail,
+              passwordHash
+            }
           }
         }
-      }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "member.created",
+        entityType: "household_member",
+        entityId: createdUser.id,
+        summary: `Created ${dto.role} account for ${dto.displayName.trim()}.`
+      });
     });
 
     return this.getHousehold(householdId);
@@ -272,7 +310,7 @@ export class HouseholdRepository {
     return template ? this.mapTemplate(template) : null;
   }
 
-  async createTemplate(dto: CreateChoreTemplateDto, householdId: string) {
+  async createTemplate(dto: CreateChoreTemplateDto, householdId: string, actorUserId?: string) {
     const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])];
 
     if (dependencyTemplateIds.length > 0) {
@@ -295,44 +333,57 @@ export class HouseholdRepository {
       }
     }
 
-    const template = await this.prisma.choreTemplate.create({
-      data: {
-        householdId,
-        title: dto.title.trim(),
-        description: dto.description.trim(),
-        difficulty: dto.difficulty,
-        basePoints: this.getBasePoints(dto.difficulty),
-        assignmentStrategy: dto.assignmentStrategy,
-        recurrenceType: dto.recurrenceType ?? RecurrenceType.NONE,
-        recurrenceIntervalDays:
-          dto.recurrenceType === RecurrenceType.EVERY_X_DAYS ? dto.recurrenceIntervalDays ?? 1 : null,
-        recurrenceWeekdays:
-          dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
-        requirePhotoProof: dto.requirePhotoProof,
-        checklistItems: {
-          create:
-            dto.checklist?.map((item, index) => ({
-              title: item.title.trim(),
-              required: item.required,
-              sortOrder: index + 1
-            })) ?? []
+    const template = await this.prisma.$transaction(async (tx) => {
+      const createdTemplate = await tx.choreTemplate.create({
+        data: {
+          householdId,
+          title: dto.title.trim(),
+          description: dto.description.trim(),
+          difficulty: dto.difficulty,
+          basePoints: this.getBasePoints(dto.difficulty),
+          assignmentStrategy: dto.assignmentStrategy,
+          recurrenceType: dto.recurrenceType ?? RecurrenceType.NONE,
+          recurrenceIntervalDays:
+            dto.recurrenceType === RecurrenceType.EVERY_X_DAYS ? dto.recurrenceIntervalDays ?? 1 : null,
+          recurrenceWeekdays:
+            dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
+          requirePhotoProof: dto.requirePhotoProof,
+          checklistItems: {
+            create:
+              dto.checklist?.map((item, index) => ({
+                title: item.title.trim(),
+                required: item.required,
+                sortOrder: index + 1
+              })) ?? []
+          },
+          dependencies: {
+            create: dependencyTemplateIds.map((followUpTemplateId) => ({
+              followUpTemplateId
+            }))
+          }
         },
-        dependencies: {
-          create: dependencyTemplateIds.map((followUpTemplateId) => ({
-            followUpTemplateId
-          }))
+        include: {
+          checklistItems: true,
+          dependencies: true
         }
-      },
-      include: {
-        checklistItems: true,
-        dependencies: true
-      }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "template.created",
+        entityType: "chore_template",
+        entityId: createdTemplate.id,
+        summary: `Created chore template "${createdTemplate.title}".`
+      });
+
+      return createdTemplate;
     });
 
     return this.mapTemplate(template);
   }
 
-  async updateTemplate(templateId: string, dto: CreateChoreTemplateDto, householdId: string) {
+  async updateTemplate(templateId: string, dto: CreateChoreTemplateDto, householdId: string, actorUserId?: string) {
     const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])].filter(
       (dependencyId) => dependencyId !== templateId
     );
@@ -407,10 +458,19 @@ export class HouseholdRepository {
       });
     });
 
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "template.updated",
+      entityType: "chore_template",
+      entityId: template.id,
+      summary: `Updated chore template "${template.title}".`
+    });
+
     return this.mapTemplate(template);
   }
 
-  async createInstance(dto: CreateChoreInstanceDto, householdId: string) {
+  async createInstance(dto: CreateChoreInstanceDto, householdId: string, actorUserId?: string) {
     const template = await this.prisma.choreTemplate.findFirstOrThrow({
       where: {
         id: dto.templateId,
@@ -430,24 +490,37 @@ export class HouseholdRepository {
           template.assignmentStrategy
         );
 
-    const instance = await this.prisma.choreInstance.create({
-      data: {
-        householdId,
-        templateId: template.id,
-        title: dto.title?.trim() || template.title,
-        state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
-        assigneeId: resolvedAssigneeId,
-        dueAtUtc: dto.dueAt
-      },
-      include: {
-        template: {
-          include: {
-            checklistItems: true
-          }
+    const instance = await this.prisma.$transaction(async (tx) => {
+      const createdInstance = await tx.choreInstance.create({
+        data: {
+          householdId,
+          templateId: template.id,
+          title: dto.title?.trim() || template.title,
+          state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          assigneeId: resolvedAssigneeId,
+          dueAtUtc: dto.dueAt
         },
-        checklistCompletions: true,
-        attachments: true
-      }
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          checklistCompletions: true,
+          attachments: true
+        }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "instance.created",
+        entityType: "chore_instance",
+        entityId: createdInstance.id,
+        summary: `Scheduled chore "${createdInstance.title}".`
+      });
+
+      return createdInstance;
     });
 
     return this.mapInstance(instance);
@@ -475,7 +548,7 @@ export class HouseholdRepository {
     return instances.map((instance) => this.mapInstance(instance));
   }
 
-  async updateInstance(instanceId: string, dto: CreateChoreInstanceDto, householdId: string) {
+  async updateInstance(instanceId: string, dto: CreateChoreInstanceDto, householdId: string, actorUserId?: string) {
     const template = await this.prisma.choreTemplate.findFirstOrThrow({
       where: {
         id: dto.templateId,
@@ -492,26 +565,39 @@ export class HouseholdRepository {
           template.assignmentStrategy
         );
 
-    const updatedInstance = await this.prisma.choreInstance.update({
-      where: {
-        id: instanceId
-      },
-      data: {
-        templateId: template.id,
-        title: dto.title?.trim() || template.title,
-        assigneeId: resolvedAssigneeId,
-        state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
-        dueAtUtc: dto.dueAt
-      },
-      include: {
-        template: {
-          include: {
-            checklistItems: true
-          }
+    const updatedInstance = await this.prisma.$transaction(async (tx) => {
+      const savedInstance = await tx.choreInstance.update({
+        where: {
+          id: instanceId
         },
-        checklistCompletions: true,
-        attachments: true
-      }
+        data: {
+          templateId: template.id,
+          title: dto.title?.trim() || template.title,
+          assigneeId: resolvedAssigneeId,
+          state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          dueAtUtc: dto.dueAt
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          checklistCompletions: true,
+          attachments: true
+        }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "instance.updated",
+        entityType: "chore_instance",
+        entityId: savedInstance.id,
+        summary: `Updated chore "${savedInstance.title}".`
+      });
+
+      return savedInstance;
     });
 
     return this.mapInstance(updatedInstance);
@@ -634,6 +720,18 @@ export class HouseholdRepository {
       await this.createRecurringInstance(updatedInstance);
     }
 
+    await this.recordAuditLog(this.prisma, {
+      householdId: input.householdId,
+      actorUserId: input.actingUserId,
+      action: input.nextState === "pending_approval" ? "instance.submitted" : "instance.completed",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary:
+        input.nextState === "pending_approval"
+          ? `Submitted chore "${updatedInstance.title}" for approval.`
+          : `Completed chore "${updatedInstance.title}".`
+    });
+
     return this.mapInstance(updatedInstance);
   }
 
@@ -691,10 +789,21 @@ export class HouseholdRepository {
       await this.createRecurringInstance(updatedInstance);
     }
 
+    await this.recordAuditLog(this.prisma, {
+      householdId: input.householdId,
+      actorUserId: input.actingUserId,
+      action: input.approved ? "instance.approved" : "instance.rejected",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: input.approved
+        ? `Approved chore "${updatedInstance.title}".`
+        : `Rejected chore "${updatedInstance.title}" and sent it back for fixes.`
+    });
+
     return this.mapInstance(updatedInstance);
   }
 
-  async cancelInstance(instanceId: string) {
+  async cancelInstance(instanceId: string, householdId: string, actorUserId?: string) {
     const updatedInstance = await this.prisma.choreInstance.update({
       where: {
         id: instanceId
@@ -711,6 +820,15 @@ export class HouseholdRepository {
         checklistCompletions: true,
         attachments: true
       }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "instance.cancelled",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: `Cancelled chore "${updatedInstance.title}".`
     });
 
     return this.mapInstance(updatedInstance);
@@ -1303,6 +1421,53 @@ export class HouseholdRepository {
         createdAt: attachment.createdAtUtc
       }))
     };
+  }
+
+  private mapAuditLog(
+    entry: Prisma.AuditLogGetPayload<{
+      include: {
+        actor: true;
+      };
+    }>
+  ) {
+    return {
+      id: entry.id,
+      action: entry.action,
+      entityType: entry.entityType,
+      entityId: entry.entityId,
+      summary: entry.summary,
+      createdAt: entry.createdAtUtc,
+      actor: entry.actor
+        ? {
+            id: entry.actor.id,
+            displayName: entry.actor.displayName,
+            role: entry.actor.role.toLowerCase()
+          }
+        : null
+    };
+  }
+
+  private async recordAuditLog(
+    executor: PrismaExecutor,
+    input: {
+      householdId: string;
+      actorUserId?: string;
+      action: string;
+      entityType: string;
+      entityId?: string | null;
+      summary: string;
+    }
+  ) {
+    await executor.auditLog.create({
+      data: {
+        householdId: input.householdId,
+        actorUserId: input.actorUserId ?? null,
+        action: input.action,
+        entityType: input.entityType,
+        entityId: input.entityId ?? null,
+        summary: input.summary
+      }
+    });
   }
 
   private mapAssignmentStrategy(strategy: AssignmentStrategyType) {

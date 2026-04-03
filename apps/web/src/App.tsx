@@ -3,6 +3,7 @@ import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import type {
+  AuditLogEntry,
   AuthProviders,
   AuthenticatedUser,
   BootstrapHouseholdInput,
@@ -25,6 +26,7 @@ type DashboardPayload = {
   currentUser: AuthenticatedUser;
   dashboard: DashboardSummary;
   household: Household;
+  auditLog: AuditLogEntry[];
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
 };
@@ -293,10 +295,11 @@ export function App() {
     }
 
     try {
-      const [currentUser, dashboard, household, templates, instances] = await Promise.all([
+      const [currentUser, dashboard, household, auditLog, templates, instances] = await Promise.all([
         taskBanditApi.getCurrentUser(accessToken, language),
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
+        taskBanditApi.getAuditLog(accessToken, language),
         taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language)
       ]);
@@ -305,6 +308,7 @@ export function App() {
         currentUser,
         dashboard,
         household,
+        auditLog,
         templates,
         instances
       });
@@ -1270,6 +1274,38 @@ export function App() {
                 ))}
               </div>
             </article>
+
+            {payload.currentUser.role !== "child" ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.audit_log")}</h2>
+                  <span className="section-kicker">{payload.auditLog.length}</span>
+                </div>
+                <div className="stack-list">
+                  {payload.auditLog.length === 0 ? (
+                    <p className="inline-message">{t("audit.empty")}</p>
+                  ) : (
+                    payload.auditLog.map((entry) => (
+                      <div className="task-row compact" key={entry.id}>
+                        <div className="task-row-header">
+                          <strong>{entry.summary}</strong>
+                          <span className="status-pill">{formatDate(entry.createdAt)}</span>
+                        </div>
+                        <p>
+                          {t("audit.actor")}:{" "}
+                          {entry.actor
+                            ? `${entry.actor.displayName} (${t(`role.${entry.actor.role}`)})`
+                            : t("audit.system")}
+                        </p>
+                        <p>
+                          {t("audit.entity")}: {entry.entityType}
+                        </p>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </article>
+            ) : null}
 
             <article className="panel panel-wide">
               <div className="section-heading">

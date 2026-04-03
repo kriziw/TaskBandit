@@ -19,8 +19,12 @@ export class SettingsService {
     return this.repository.getHousehold(user.householdId);
   }
 
+  getAuditLog(user: AuthenticatedUser) {
+    return this.repository.getAuditLog(user.householdId);
+  }
+
   updateSettings(dto: UpdateSettingsDto, user: AuthenticatedUser) {
-    return this.repository.updateSettings(dto, user.householdId);
+    return this.repository.updateSettings(dto, user.householdId, user.id);
   }
 
   async createHouseholdMember(
@@ -33,7 +37,8 @@ export class SettingsService {
       dto,
       user.householdId,
       passwordHash,
-      this.i18nService.translate("auth.email_in_use", language)
+      this.i18nService.translate("auth.email_in_use", language),
+      user.id
     );
   }
 }
