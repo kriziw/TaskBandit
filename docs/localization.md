@@ -28,4 +28,3 @@ TaskBandit now includes a first-pass localization foundation with language files
 - Expand translation coverage as more screens and API messages are added.
 - Align server and client translation keys more tightly as the product grows.
 - Persist the user or household language preference once authentication is in place.
-

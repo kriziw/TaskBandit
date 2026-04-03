@@ -1,7 +1,11 @@
 {
   "app.title": "TaskBandit API",
+  "auth.bootstrap_required": "A fiókos regisztráció használata előtt hozd létre az első háztartást.",
+  "auth.email_in_use": "Ez az e-mail cím már használatban van.",
+  "auth.invalid_credentials": "Érvénytelen e-mail cím vagy jelszó.",
+  "auth.self_signup_disabled": "Az önálló regisztráció jelenleg ki van kapcsolva.",
+  "auth.unauthorized": "A hozzáféréshez be kell jelentkezned.",
   "bootstrap.already_initialized": "A TaskBandit már rendelkezik inicializált háztartással.",
   "bootstrap.created": "A háztartás sikeresen létrejött.",
   "i18n.language_name": "Magyar"
 }
-

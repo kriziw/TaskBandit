@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import { OidcConfig } from "./oidc-config.type";
 
 @Injectable()
 export class AppConfigService {
@@ -35,6 +36,25 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA", "true") === "true";
   }
 
+  get jwtSecret(): string {
+    return this.configService.get<string>("TASKBANDIT_JWT_SECRET", "taskbandit-dev-secret-change-me");
+  }
+
+  get jwtExpiresIn(): string {
+    return this.configService.get<string>("TASKBANDIT_JWT_EXPIRES_IN", "7d");
+  }
+
+  get oidcConfig(): OidcConfig {
+    const authority = this.configService.get<string>("TASKBANDIT_OIDC_AUTHORITY", "").trim();
+    const clientId = this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_ID", "").trim();
+
+    return {
+      enabled: Boolean(authority && clientId),
+      authority,
+      clientId
+    };
+  }
+
   withBasePath(path: string): string {
     if (!this.reverseProxyPathBase) {
       return path;
@@ -43,4 +63,3 @@ export class AppConfigService {
     return `${this.reverseProxyPathBase}/${path.replace(/^\/+/, "")}`;
   }
 }
-

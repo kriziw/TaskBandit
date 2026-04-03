@@ -1,7 +1,11 @@
 {
   "app.title": "TaskBandit API",
+  "auth.bootstrap_required": "Create the first household before using account signup.",
+  "auth.email_in_use": "That email address is already in use.",
+  "auth.invalid_credentials": "Invalid email or password.",
+  "auth.self_signup_disabled": "Self-signup is currently disabled.",
+  "auth.unauthorized": "You need to sign in to access this resource.",
   "bootstrap.already_initialized": "TaskBandit already has an initialized household.",
   "bootstrap.created": "Household created successfully.",
   "i18n.language_name": "English"
 }
-

@@ -1,5 +1,5 @@
 import { ApiProperty } from "@nestjs/swagger";
-import { IsBoolean, IsNotEmpty, IsString, MaxLength } from "class-validator";
+import { IsBoolean, IsEmail, IsNotEmpty, IsString, MaxLength, MinLength } from "class-validator";
 
 export class BootstrapHouseholdDto {
   @ApiProperty()
@@ -15,7 +15,16 @@ export class BootstrapHouseholdDto {
   ownerDisplayName!: string;
 
   @ApiProperty()
+  @IsEmail()
+  ownerEmail!: string;
+
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MinLength(8)
+  ownerPassword!: string;
+
+  @ApiProperty()
   @IsBoolean()
   selfSignupEnabled!: boolean;
 }
-

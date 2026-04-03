@@ -2,6 +2,7 @@ import { ConflictException, Injectable, OnModuleInit } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { BootstrapHouseholdDto } from "./dto/bootstrap-household.dto";
 
@@ -10,7 +11,8 @@ export class BootstrapService implements OnModuleInit {
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly appConfigService: AppConfigService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
+    private readonly authService: AuthService
   ) {}
 
   async onModuleInit() {
@@ -29,11 +31,14 @@ export class BootstrapService implements OnModuleInit {
       });
     }
 
+    const passwordHash = await this.authService.hashPassword(dto.ownerPassword);
+
     return this.repository.bootstrapHousehold(
       dto.householdName,
       dto.ownerDisplayName,
+      dto.ownerEmail,
+      passwordHash,
       dto.selfSignupEnabled
     );
   }
 }
-

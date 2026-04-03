@@ -22,8 +22,10 @@
 
 - The backend now targets PostgreSQL through Prisma and seeds an initial household on startup.
 - The backend also exposes bootstrap endpoints for checking initialization state and creating the first household when demo seeding is disabled.
+- Local authentication foundations are in place with JWT-based login endpoints and Authentik-oriented OIDC configuration settings.
 - The current database setup includes a Prisma schema but not committed migrations yet.
 - Docker Compose now pulls the server image from `kriziw/taskbandit`.
 - The Android project currently includes Gradle files but not a checked-in wrapper yet.
 - Authentik is the target OIDC provider for the first external identity integration.
 - Reverse proxy support is built in through trusted proxy handling and optional path-base configuration.
+- Demo seeded local accounts use the password `TaskBandit123!` for `alex@taskbandit.local`, `maya@taskbandit.local`, and `luca@taskbandit.local`.

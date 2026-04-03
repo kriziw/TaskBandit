@@ -1,11 +1,13 @@
 import { Injectable } from "@nestjs/common";
 import {
+  AuthProvider,
   AssignmentStrategyType,
   ChoreState,
   Difficulty,
   HouseholdRole,
   Prisma
 } from "@prisma/client";
+import { hash } from "bcryptjs";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
@@ -22,7 +24,14 @@ export class HouseholdRepository {
     };
   }
 
-  async bootstrapHousehold(householdName: string, ownerDisplayName: string, selfSignupEnabled: boolean) {
+  async bootstrapHousehold(
+    householdName: string,
+    ownerDisplayName: string,
+    ownerEmail: string,
+    ownerPasswordHash: string,
+    selfSignupEnabled: boolean
+  ) {
+    const normalizedEmail = ownerEmail.trim().toLowerCase();
     const household = await this.prisma.household.create({
       data: {
         name: householdName.trim(),
@@ -39,7 +48,15 @@ export class HouseholdRepository {
             displayName: ownerDisplayName.trim(),
             role: HouseholdRole.ADMIN,
             points: 0,
-            currentStreak: 0
+            currentStreak: 0,
+            identities: {
+              create: {
+                provider: AuthProvider.LOCAL,
+                providerSubject: normalizedEmail,
+                email: normalizedEmail,
+                passwordHash: ownerPasswordHash
+              }
+            }
           }
         }
       },
@@ -192,9 +209,12 @@ export class HouseholdRepository {
     }
 
     const householdId = "b5a1f703-c90a-4227-8345-4dfe1ce2fd75";
+    const adminId = "e4ff7c6d-d986-4fdc-9b97-9b525cab4f29";
+    const parentId = "b3d2f3c6-b1ea-43d5-9f1b-4f6bc6c2b6c4";
     const childId = "07b7df84-a4b4-4d46-8688-5ca8b0d31f8c";
     const laundryTemplateId = "3ab30e4c-06b0-4c89-90df-b1c4094a49d2";
     const dryingTemplateId = "8931210f-1c7e-4890-87da-ebda235fd6f1";
+    const demoPasswordHash = await hash("TaskBandit123!", 12);
 
     await this.prisma.household.create({
       data: {
@@ -211,25 +231,49 @@ export class HouseholdRepository {
         members: {
           create: [
             {
-              id: "e4ff7c6d-d986-4fdc-9b97-9b525cab4f29",
+              id: adminId,
               displayName: "Alex",
               role: HouseholdRole.ADMIN,
               points: 120,
-              currentStreak: 4
+              currentStreak: 4,
+              identities: {
+                create: {
+                  provider: AuthProvider.LOCAL,
+                  providerSubject: "alex@taskbandit.local",
+                  email: "alex@taskbandit.local",
+                  passwordHash: demoPasswordHash
+                }
+              }
             },
             {
-              id: "b3d2f3c6-b1ea-43d5-9f1b-4f6bc6c2b6c4",
+              id: parentId,
               displayName: "Maya",
               role: HouseholdRole.PARENT,
               points: 95,
-              currentStreak: 3
+              currentStreak: 3,
+              identities: {
+                create: {
+                  provider: AuthProvider.LOCAL,
+                  providerSubject: "maya@taskbandit.local",
+                  email: "maya@taskbandit.local",
+                  passwordHash: demoPasswordHash
+                }
+              }
             },
             {
               id: childId,
               displayName: "Luca",
               role: HouseholdRole.CHILD,
               points: 40,
-              currentStreak: 2
+              currentStreak: 2,
+              identities: {
+                create: {
+                  provider: AuthProvider.LOCAL,
+                  providerSubject: "luca@taskbandit.local",
+                  email: "luca@taskbandit.local",
+                  passwordHash: demoPasswordHash
+                }
+              }
             }
           ]
         },
