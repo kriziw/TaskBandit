@@ -1,0 +1,59 @@
+name: ci
+
+on:
+  push:
+    branches: ["main"]
+  pull_request:
+
+jobs:
+  web:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/web/package.json
+      - name: Install dependencies
+        run: npm install
+      - name: Build web app
+        run: npm run build
+
+  server:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore
+        run: dotnet restore src/TaskBandit.Api/TaskBandit.Api.csproj
+      - name: Build
+        run: dotnet build src/TaskBandit.Api/TaskBandit.Api.csproj --configuration Release --no-restore
+      - name: Test
+        run: dotnet test tests/TaskBandit.Api.Tests/TaskBandit.Api.Tests.csproj --configuration Release --no-build
+
+  android:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Generate Gradle wrapper
+        run: gradle wrapper
+      - name: Assemble debug APK
+        run: ./gradlew assembleDebug
+

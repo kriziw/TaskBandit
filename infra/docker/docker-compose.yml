@@ -1,0 +1,33 @@
+version: "3.9"
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: taskbandit-postgres
+    environment:
+      POSTGRES_DB: ${TASKBANDIT_DB_NAME:-taskbandit}
+      POSTGRES_USER: ${TASKBANDIT_DB_USER:-taskbandit}
+      POSTGRES_PASSWORD: ${TASKBANDIT_DB_PASSWORD:-taskbandit}
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+  server:
+    build:
+      context: ../../apps/server/src/TaskBandit.Api
+      dockerfile: Dockerfile
+    container_name: taskbandit-server
+    environment:
+      ASPNETCORE_URLS: http://+:8080
+      ConnectionStrings__TaskBandit: Host=postgres;Port=5432;Database=${TASKBANDIT_DB_NAME:-taskbandit};Username=${TASKBANDIT_DB_USER:-taskbandit};Password=${TASKBANDIT_DB_PASSWORD:-taskbandit}
+      TaskBandit__Auth__Oidc__Authority: ${TASKBANDIT_OIDC_AUTHORITY:-http://authentik.example.local/application/o/taskbandit/}
+      TaskBandit__Auth__Oidc__ClientId: ${TASKBANDIT_OIDC_CLIENT_ID:-change-me}
+      TaskBandit__Auth__Oidc__ClientSecret: ${TASKBANDIT_OIDC_CLIENT_SECRET:-change-me}
+    ports:
+      - "8080:8080"
+    depends_on:
+      - postgres
+
+volumes:
+  postgres-data:
