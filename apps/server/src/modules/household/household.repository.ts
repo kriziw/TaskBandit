@@ -7,6 +7,8 @@ import {
 import {
   AuthProvider,
   AssignmentStrategyType,
+  ChoreAttachment,
+  ChoreChecklistCompletion,
   ChoreState,
   Difficulty,
   HouseholdRole,
@@ -14,6 +16,7 @@ import {
 } from "@prisma/client";
 import { hash } from "bcryptjs";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
@@ -74,8 +77,11 @@ export class HouseholdRepository {
     return this.mapHousehold(household);
   }
 
-  async getHousehold() {
+  async getHousehold(householdId: string) {
     const household = await this.prisma.household.findFirstOrThrow({
+      where: {
+        id: householdId
+      },
       include: {
         settings: true,
         members: true
@@ -85,8 +91,11 @@ export class HouseholdRepository {
     return this.mapHousehold(household);
   }
 
-  async updateSettings(dto: UpdateSettingsDto) {
+  async updateSettings(dto: UpdateSettingsDto, householdId: string) {
     const household = await this.prisma.household.findFirstOrThrow({
+      where: {
+        id: householdId
+      },
       include: {
         settings: true,
         members: true
@@ -109,17 +118,24 @@ export class HouseholdRepository {
       }
     });
 
-    return this.getHousehold();
+    return this.getHousehold(householdId);
   }
 
-  async getDashboardSummary() {
+  async getDashboardSummary(householdId: string) {
     const [household, instances] = await Promise.all([
       this.prisma.household.findFirstOrThrow({
+        where: {
+          id: householdId
+        },
         include: {
           members: true
         }
       }),
-      this.prisma.choreInstance.findMany()
+      this.prisma.choreInstance.findMany({
+        where: {
+          householdId
+        }
+      })
     ]);
 
     const pendingApprovals = instances.filter((instance) => instance.state === ChoreState.PENDING_APPROVAL).length;
@@ -145,8 +161,11 @@ export class HouseholdRepository {
     };
   }
 
-  async getTemplates() {
+  async getTemplates(householdId: string) {
     const templates = await this.prisma.choreTemplate.findMany({
+      where: {
+        householdId
+      },
       include: {
         checklistItems: true,
         dependencies: true
@@ -159,16 +178,10 @@ export class HouseholdRepository {
     return templates.map((template) => this.mapTemplate(template));
   }
 
-  async createTemplate(dto: CreateChoreTemplateDto) {
-    const household = await this.prisma.household.findFirstOrThrow({
-      select: {
-        id: true
-      }
-    });
-
+  async createTemplate(dto: CreateChoreTemplateDto, householdId: string) {
     const template = await this.prisma.choreTemplate.create({
       data: {
-        householdId: household.id,
+        householdId,
         title: dto.title.trim(),
         description: dto.description.trim(),
         difficulty: dto.difficulty,
@@ -193,10 +206,19 @@ export class HouseholdRepository {
     return this.mapTemplate(template);
   }
 
-  async getInstances() {
+  async getInstances(householdId: string) {
     const instances = await this.prisma.choreInstance.findMany({
+      where: {
+        householdId
+      },
       include: {
-        template: true
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
       },
       orderBy: {
         dueAtUtc: "asc"
@@ -213,7 +235,13 @@ export class HouseholdRepository {
         householdId
       },
       include: {
-        template: true
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
       }
     });
 
@@ -223,32 +251,78 @@ export class HouseholdRepository {
   async submitInstance(input: {
     instanceId: string;
     actingUserId: string;
-    actingUserRole: "admin" | "parent" | "child";
     householdId: string;
-    completedChecklistItems: number;
-    attachmentCount: number;
+    completedChecklistItemIds: string[];
+    attachments: SubmitAttachmentDto[];
     note?: string;
     awardedPoints: number;
     nextState: "pending_approval" | "completed";
   }) {
-    const updatedInstance = await this.prisma.choreInstance.update({
-      where: {
-        id: input.instanceId
-      },
-      data: {
-        state: input.nextState === "pending_approval" ? ChoreState.PENDING_APPROVAL : ChoreState.COMPLETED,
-        submittedAtUtc: new Date(),
-        submittedById: input.actingUserId,
-        submissionNote: input.note?.trim() || null,
-        attachmentCount: input.attachmentCount,
-        completedChecklistItems: input.completedChecklistItems,
-        awardedPoints: input.awardedPoints,
-        completedAtUtc: input.nextState === "completed" ? new Date() : null,
-        completedById: input.nextState === "completed" ? input.actingUserId : null
-      },
-      include: {
-        template: true
+    const updatedInstance = await this.prisma.$transaction(async (tx) => {
+      await tx.choreChecklistCompletion.deleteMany({
+        where: {
+          choreInstanceId: input.instanceId
+        }
+      });
+
+      await tx.choreAttachment.deleteMany({
+        where: {
+          choreInstanceId: input.instanceId
+        }
+      });
+
+      if (input.completedChecklistItemIds.length > 0) {
+        await tx.choreChecklistCompletion.createMany({
+          data: input.completedChecklistItemIds.map((checklistItemId) => ({
+            choreInstanceId: input.instanceId,
+            checklistItemId,
+            completedById: input.actingUserId
+          })),
+          skipDuplicates: true
+        });
       }
+
+      if (input.attachments.length > 0) {
+        await tx.choreAttachment.createMany({
+          data: input.attachments.map((attachment) => ({
+            choreInstanceId: input.instanceId,
+            submittedById: input.actingUserId,
+            clientFilename: attachment.clientFilename?.trim() || "proof-image",
+            contentType: attachment.contentType?.trim() || null,
+            storageKey: attachment.storageKey?.trim() || null
+          }))
+        });
+      }
+
+      const attachmentCount = input.attachments.length;
+      const completedChecklistItems = input.completedChecklistItemIds.length;
+
+      return tx.choreInstance.update({
+        where: {
+          id: input.instanceId
+        },
+        data: {
+          state:
+            input.nextState === "pending_approval" ? ChoreState.PENDING_APPROVAL : ChoreState.COMPLETED,
+          submittedAtUtc: new Date(),
+          submittedById: input.actingUserId,
+          submissionNote: input.note?.trim() || null,
+          attachmentCount,
+          completedChecklistItems,
+          awardedPoints: input.awardedPoints,
+          completedAtUtc: input.nextState === "completed" ? new Date() : null,
+          completedById: input.nextState === "completed" ? input.actingUserId : null
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          checklistCompletions: true,
+          attachments: true
+        }
+      });
     });
 
     if (input.nextState === "completed") {
@@ -293,7 +367,13 @@ export class HouseholdRepository {
         ...(input.approved ? {} : { completedById: null })
       },
       include: {
-        template: true
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
       }
     });
 
@@ -533,7 +613,11 @@ export class HouseholdRepository {
 
   private mapInstance(
     instance: Prisma.ChoreInstanceGetPayload<{
-      include: { template: true };
+      include: {
+        template: { include: { checklistItems: true } };
+        checklistCompletions: true;
+        attachments: true;
+      };
     }>
   ) {
     return {
@@ -556,7 +640,17 @@ export class HouseholdRepository {
       submissionNote: instance.submissionNote,
       reviewedAt: instance.reviewedAtUtc,
       reviewedById: instance.reviewedById,
-      reviewNote: instance.reviewNote
+      reviewNote: instance.reviewNote,
+      checklistCompletionIds: instance.checklistCompletions.map(
+        (completion: ChoreChecklistCompletion) => completion.checklistItemId
+      ),
+      attachments: instance.attachments.map((attachment: ChoreAttachment) => ({
+        id: attachment.id,
+        clientFilename: attachment.clientFilename,
+        contentType: attachment.contentType,
+        storageKey: attachment.storageKey,
+        createdAt: attachment.createdAtUtc
+      }))
     };
   }
 

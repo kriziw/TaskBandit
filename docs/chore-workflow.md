@@ -24,6 +24,6 @@ TaskBandit now includes the first protected submission and review flow for chore
 ## Notes
 
 - This is the first workflow slice, not the final one.
-- Checklist progress and attachment counts are accepted in the submission payload, but full checklist persistence and upload handling still need to be expanded.
+- Submission payloads now persist checklist completion records and attachment metadata.
+- File storage itself is still a later step; current attachment persistence is metadata-oriented.
 - Authorization currently focuses on role and assignee checks for the new workflow endpoints.
-

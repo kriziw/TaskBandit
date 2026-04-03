@@ -44,3 +44,4 @@ Chore submission and review endpoints are documented in `docs/chore-workflow.md`
 The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login foundations are in place, and Authentik-focused OIDC configuration is exposed for the next auth iteration.
 
 For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
+The repository also now includes an initial Prisma migration snapshot for the current backend model.

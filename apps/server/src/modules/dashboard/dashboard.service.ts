@@ -1,3 +1,4 @@
+import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { Injectable } from "@nestjs/common";
 import { HouseholdRepository } from "../household/household.repository";
 
@@ -5,8 +6,7 @@ import { HouseholdRepository } from "../household/household.repository";
 export class DashboardService {
   constructor(private readonly repository: HouseholdRepository) {}
 
-  getSummary() {
-    return this.repository.getDashboardSummary();
+  getSummary(user: AuthenticatedUser) {
+    return this.repository.getDashboardSummary(user.householdId);
   }
 }
-

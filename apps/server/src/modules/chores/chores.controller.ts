@@ -21,19 +21,19 @@ export class ChoresController {
   ) {}
 
   @Get("templates")
-  templates() {
-    return this.choresService.getTemplates();
+  templates(@CurrentUser() user: AuthenticatedUser) {
+    return this.choresService.getTemplates(user);
   }
 
   @Post("templates")
   @Roles("admin", "parent")
-  createTemplate(@Body() dto: CreateChoreTemplateDto) {
-    return this.choresService.createTemplate(dto);
+  createTemplate(@Body() dto: CreateChoreTemplateDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.choresService.createTemplate(dto, user);
   }
 
   @Get("instances")
-  instances() {
-    return this.choresService.getInstances();
+  instances(@CurrentUser() user: AuthenticatedUser) {
+    return this.choresService.getInstances(user);
   }
 
   @Post("instances/:id/submit")

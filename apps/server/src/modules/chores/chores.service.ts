@@ -16,16 +16,16 @@ export class ChoresService {
     private readonly i18nService: I18nService
   ) {}
 
-  getTemplates() {
-    return this.repository.getTemplates();
+  getTemplates(user: AuthenticatedUser) {
+    return this.repository.getTemplates(user.householdId);
   }
 
-  createTemplate(dto: CreateChoreTemplateDto) {
-    return this.repository.createTemplate(dto);
+  createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser) {
+    return this.repository.createTemplate(dto, user.householdId);
   }
 
-  getInstances() {
-    return this.repository.getInstances();
+  getInstances(user: AuthenticatedUser) {
+    return this.repository.getInstances(user.householdId);
   }
 
   async submitInstance(
@@ -72,17 +72,16 @@ export class ChoresService {
       ? 0
       : this.pointsService.calculateForApprovedCompletion(
           instance.difficulty,
-          dto.completedChecklistItems ?? 0,
+          dto.completedChecklistItemIds?.length ?? 0,
           instance.isOverdue
         ).finalAwardedPoints;
 
     return this.repository.submitInstance({
       instanceId,
       actingUserId: user.id,
-      actingUserRole: user.role,
       householdId: user.householdId,
-      completedChecklistItems: dto.completedChecklistItems ?? 0,
-      attachmentCount: dto.attachmentCount ?? 0,
+      completedChecklistItemIds: dto.completedChecklistItemIds ?? [],
+      attachments: dto.attachments ?? [],
       note: dto.note,
       awardedPoints,
       nextState: shouldRequireApproval ? "pending_approval" : "completed"

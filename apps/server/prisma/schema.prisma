@@ -111,6 +111,7 @@ model ChoreTemplateChecklistItem {
   required   Boolean       @default(true)
   sortOrder  Int
   template   ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  completions ChoreChecklistCompletion[]
 }
 
 model ChoreTemplateDependency {
@@ -142,4 +143,29 @@ model ChoreInstance {
   reviewNote      String?
   household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   template        ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+  checklistCompletions ChoreChecklistCompletion[]
+  attachments     ChoreAttachment[]
+}
+
+model ChoreChecklistCompletion {
+  id            String                  @id @default(uuid()) @db.Uuid
+  choreInstanceId String                @db.Uuid
+  checklistItemId String                @db.Uuid
+  completedById String                  @db.Uuid
+  createdAtUtc  DateTime                @default(now())
+  choreInstance ChoreInstance           @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)
+  checklistItem ChoreTemplateChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
+
+  @@unique([choreInstanceId, checklistItemId], map: "chore_checklist_completion_unique")
+}
+
+model ChoreAttachment {
+  id            String        @id @default(uuid()) @db.Uuid
+  choreInstanceId String      @db.Uuid
+  submittedById String        @db.Uuid
+  clientFilename String
+  contentType   String?
+  storageKey    String?
+  createdAtUtc  DateTime      @default(now())
+  choreInstance ChoreInstance @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)
 }
