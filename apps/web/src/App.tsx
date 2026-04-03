@@ -42,7 +42,7 @@ type MemberFormState = CreateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
 type InstanceFormState = CreateChoreInstanceInput;
 type BootstrapFormState = BootstrapHouseholdInput;
-type HouseholdChoreViewMode = "list" | "board";
+type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 
 const householdBoardStateOrder: ChoreState[] = [
@@ -267,6 +267,24 @@ export function App() {
         .filter((column) => column.chores.length > 0 || householdStateFilter !== "all"),
     [visibleHouseholdChores, householdStateFilter]
   );
+
+  const householdCalendarGroups = useMemo(() => {
+    const groups = new Map<string, ChoreInstance[]>();
+
+    for (const instance of visibleHouseholdChores) {
+      const dateKey = instance.dueAt.slice(0, 10);
+      const currentGroup = groups.get(dateKey) ?? [];
+      currentGroup.push(instance);
+      groups.set(dateKey, currentGroup);
+    }
+
+    return [...groups.entries()]
+      .sort(([left], [right]) => left.localeCompare(right))
+      .map(([dateKey, chores]) => ({
+        dateKey,
+        chores
+      }));
+  }, [visibleHouseholdChores]);
 
   const assignmentStrategyOptions: Array<{
     value: TemplateFormState["assignmentStrategy"];
@@ -840,6 +858,14 @@ export function App() {
     }).format(new Date(value));
   }
 
+  function formatCalendarDate(value: string) {
+    return new Intl.DateTimeFormat(language, {
+      weekday: "short",
+      month: "short",
+      day: "numeric"
+    }).format(new Date(`${value}T00:00:00`));
+  }
+
   function formatDateTimeLocal(value: string) {
     const date = new Date(value);
     const pad = (part: number) => part.toString().padStart(2, "0");
@@ -1371,6 +1397,13 @@ export function App() {
                     >
                       {t("view.board")}
                     </button>
+                    <button
+                      className={householdViewMode === "calendar" ? "active" : ""}
+                      type="button"
+                      onClick={() => setHouseholdViewMode("calendar")}
+                    >
+                      {t("view.calendar")}
+                    </button>
                   </div>
                 </label>
                 <label>
@@ -1411,7 +1444,7 @@ export function App() {
                 <div className="stack-list">
                   {visibleHouseholdChores.map((instance) => renderHouseholdChoreCard(instance))}
                 </div>
-              ) : (
+              ) : householdViewMode === "board" ? (
                 <div className="board-grid">
                   {householdBoardColumns.map((column) => (
                     <section className="board-column" key={column.state}>
@@ -1421,6 +1454,20 @@ export function App() {
                       </div>
                       <div className="stack-list">
                         {column.chores.map((instance) => renderHouseholdChoreCard(instance))}
+                      </div>
+                    </section>
+                  ))}
+                </div>
+              ) : (
+                <div className="calendar-grid">
+                  {householdCalendarGroups.map((group) => (
+                    <section className="calendar-day" key={group.dateKey}>
+                      <div className="calendar-day-header">
+                        <strong>{formatCalendarDate(group.dateKey)}</strong>
+                        <span className="status-pill">{group.chores.length}</span>
+                      </div>
+                      <div className="stack-list">
+                        {group.chores.map((instance) => renderHouseholdChoreCard(instance))}
                       </div>
                     </section>
                   ))}

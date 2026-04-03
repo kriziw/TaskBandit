@@ -116,6 +116,7 @@
   "filters.unassigned": "Unassigned only",
   "view.list": "List",
   "view.board": "Board",
+  "view.calendar": "Calendar",
   "approval.approve": "Approve",
   "approval.reject": "Reject",
   "approval.review_note": "Review note",

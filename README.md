@@ -5,28 +5,6 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 - a server component that exposes the API and hosts the web UI
 - a native Android application for daily use, offline actions, photo proof, and widgets
 
-## Branding
-
-TaskBandit is built around a playful raccoon mascot with a friendly little bandit vibe: helpful, energetic, and encouraging rather than chaotic. The product tone is colorful and upbeat, but the interface stays clean enough for real household management.
-
-Core brand direction:
-
-- mascot-led identity with a cute raccoon character
-- playful and encouraging voice
-- colorful but minimalist UI
-- gamification that feels rewarding instead of noisy
-
-Core palette:
-
-- Ink: `#243043`
-- Cream: `#FFF7E8`
-- Sky: `#73C7F4`
-- Mint: `#73D9B3`
-- Gold: `#FFC94A`
-- Coral: `#FF7A6B`
-
-See [docs/brand-guidelines.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/docs/brand-guidelines.md) for the current brand notes.
-
 ## AI Disclaimer
 
 This repository is being developed with AI assistance. Code, documentation, copy, and configuration generated or edited by AI should be reviewed by a human before production use, especially for security, privacy, and deployment-sensitive changes.
