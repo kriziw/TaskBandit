@@ -27,4 +27,22 @@
     <string name="leaderboard_name_alex">Alex</string>
     <string name="leaderboard_name_maya">Maya</string>
     <string name="leaderboard_name_luca">Luca</string>
+    <string name="mobile_login_title">Sign in to TaskBandit</string>
+    <string name="mobile_login_hint">Connect your Android app to the self-hosted server and pull your live chores.</string>
+    <string name="mobile_server_url">Server URL</string>
+    <string name="mobile_email">Email</string>
+    <string name="mobile_password">Password</string>
+    <string name="mobile_login_action">Sign in</string>
+    <string name="common_loading_short">Loading…</string>
+    <string name="mobile_dashboard_summary">%1$d approvals waiting, %2$d active chores, %3$d streak</string>
+    <string name="mobile_refresh">Refresh</string>
+    <string name="mobile_refreshing">Refreshing…</string>
+    <string name="mobile_logout">Log out</string>
+    <string name="mobile_my_chores">My chores</string>
+    <string name="mobile_due_at">Due %1$s</string>
+    <string name="mobile_state_overdue">Overdue</string>
+    <string name="mobile_notifications">Notifications</string>
+    <string name="mobile_leaderboard">Leaderboard</string>
+    <string name="mobile_points_value">%1$d points</string>
+    <string name="mobile_streak_value">%1$d streak</string>
 </resources>

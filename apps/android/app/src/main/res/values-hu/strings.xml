@@ -27,4 +27,22 @@
     <string name="leaderboard_name_alex">Alex</string>
     <string name="leaderboard_name_maya">Maya</string>
     <string name="leaderboard_name_luca">Luca</string>
+    <string name="mobile_login_title">Bejelentkezes a TaskBanditba</string>
+    <string name="mobile_login_hint">Kapcsold az androidos alkalmazast az onhostolt szerverhez, es toltsd be az elo feladataidat.</string>
+    <string name="mobile_server_url">Szerver URL</string>
+    <string name="mobile_email">Email</string>
+    <string name="mobile_password">Jelszo</string>
+    <string name="mobile_login_action">Bejelentkezes</string>
+    <string name="common_loading_short">Betoltes…</string>
+    <string name="mobile_dashboard_summary">%1$d jovahagyas var, %2$d aktiv feladat, %3$d szeria</string>
+    <string name="mobile_refresh">Frissites</string>
+    <string name="mobile_refreshing">Frissites…</string>
+    <string name="mobile_logout">Kijelentkezes</string>
+    <string name="mobile_my_chores">Feladataim</string>
+    <string name="mobile_due_at">Hatarido %1$s</string>
+    <string name="mobile_state_overdue">Lejart</string>
+    <string name="mobile_notifications">Ertesitesek</string>
+    <string name="mobile_leaderboard">Rangsor</string>
+    <string name="mobile_points_value">%1$d pont</string>
+    <string name="mobile_streak_value">%1$d szeria</string>
 </resources>

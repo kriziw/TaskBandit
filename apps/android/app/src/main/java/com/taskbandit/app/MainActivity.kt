@@ -3,7 +3,6 @@ package com.taskbandit.app
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.annotation.StringRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -12,85 +11,282 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.weight
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
+import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.TaskBanditMobileApi
+import com.taskbandit.app.mobile.TaskBanditSession
+import com.taskbandit.app.mobile.TaskBanditSessionStore
+import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
 import com.taskbandit.app.ui.theme.TaskBanditTheme
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+
+private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        val sessionStore = TaskBanditSessionStore(
+            getSharedPreferences("taskbandit-session", MODE_PRIVATE)
+        )
+
         setContent {
             TaskBanditTheme {
                 Surface(
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    TaskBanditHome()
+                    TaskBanditApp(
+                        api = TaskBanditMobileApi(),
+                        sessionStore = sessionStore
+                    )
                 }
             }
         }
     }
 }
 
-private data class DashboardTile(@StringRes val labelRes: Int, val value: String)
+@Composable
+private fun TaskBanditApp(
+    api: TaskBanditMobileApi,
+    sessionStore: TaskBanditSessionStore
+) {
+    val coroutineScope = rememberCoroutineScope()
+    var session by remember { mutableStateOf(sessionStore.readSession()) }
+    var serverUrl by remember { mutableStateOf(session.baseUrl) }
+    var email by remember { mutableStateOf("alex@taskbandit.local") }
+    var password by remember { mutableStateOf("TaskBandit123!") }
+    var dashboard by remember { mutableStateOf<MobileDashboard?>(null) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+    var isBusy by remember { mutableStateOf(session.token != null) }
 
-private data class ChorePreview(
-    @StringRes val titleRes: Int,
-    @StringRes val detailRes: Int,
-    @StringRes val statusRes: Int
-)
+    fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
+
+    fun logout() {
+        val baseUrl = normalizedServerUrl()
+        sessionStore.clearToken(baseUrl)
+        session = TaskBanditSession(baseUrl = baseUrl, token = null)
+        serverUrl = baseUrl
+        dashboard = null
+        isBusy = false
+        errorMessage = null
+    }
+
+    fun refreshDashboard() {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        isBusy = true
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.loadDashboard(baseUrl, token)
+                }
+            }.onSuccess { loadedDashboard ->
+                dashboard = loadedDashboard
+                serverUrl = baseUrl
+                sessionStore.saveSession(baseUrl, token)
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            isBusy = false
+        }
+    }
+
+    LaunchedEffect(session.token) {
+        if (session.token != null) {
+            refreshDashboard()
+        }
+    }
+
+    if (session.token == null) {
+        LoginScreen(
+            serverUrl = serverUrl,
+            email = email,
+            password = password,
+            isBusy = isBusy,
+            errorMessage = errorMessage,
+            onServerUrlChange = {
+                serverUrl = it
+                sessionStore.saveBaseUrl(it)
+            },
+            onEmailChange = { email = it },
+            onPasswordChange = { password = it },
+            onLogin = {
+                isBusy = true
+                errorMessage = null
+                coroutineScope.launch {
+                    val baseUrl = normalizedServerUrl()
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            api.login(baseUrl, email, password)
+                        }
+                    }.onSuccess { token ->
+                        serverUrl = baseUrl
+                        sessionStore.saveSession(baseUrl, token)
+                        session = TaskBanditSession(baseUrl = baseUrl, token = token)
+                    }.onFailure { throwable ->
+                        errorMessage = throwable.message ?: "Login failed."
+                    }
+                    isBusy = false
+                }
+            }
+        )
+    } else {
+        DashboardScreen(
+            dashboard = dashboard,
+            serverUrl = serverUrl,
+            isBusy = isBusy,
+            errorMessage = errorMessage,
+            onRefresh = ::refreshDashboard,
+            onLogout = ::logout
+        )
+    }
+}
 
 @Composable
-private fun TaskBanditHome() {
-    val tiles = listOf(
-        DashboardTile(R.string.dashboard_pending_approvals, "3"),
-        DashboardTile(R.string.dashboard_todays_chores, "5"),
-        DashboardTile(R.string.dashboard_current_streak, "4")
-    )
-    val chores = listOf(
-        ChorePreview(
-            R.string.chore_washing_machine,
-            R.string.chore_washing_machine_detail,
-            R.string.status_pending_parent
-        ),
-        ChorePreview(
-            R.string.chore_hang_clothes,
-            R.string.chore_hang_clothes_detail,
-            R.string.status_photo_required
-        ),
-        ChorePreview(
-            R.string.chore_wipe_table,
-            R.string.chore_wipe_table_detail,
-            R.string.status_round_robin
-        )
-    )
+private fun LoginScreen(
+    serverUrl: String,
+    email: String,
+    password: String,
+    isBusy: Boolean,
+    errorMessage: String?,
+    onServerUrlChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onLogin: () -> Unit
+) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(
+                Brush.verticalGradient(
+                    listOf(
+                        MaterialTheme.colorScheme.primaryContainer,
+                        MaterialTheme.colorScheme.background
+                    )
+                )
+            )
+            .padding(20.dp),
+        contentAlignment = Alignment.Center
+    ) {
+        Card(modifier = Modifier.fillMaxWidth()) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.ic_taskbandit_mark),
+                    contentDescription = stringResource(R.string.brand_mark_description),
+                    modifier = Modifier.size(84.dp)
+                )
+                Text(
+                    text = stringResource(R.string.mobile_login_title),
+                    style = MaterialTheme.typography.headlineMedium
+                )
+                Text(
+                    text = stringResource(R.string.mobile_login_hint),
+                    style = MaterialTheme.typography.bodyMedium
+                )
+                OutlinedTextField(
+                    value = serverUrl,
+                    onValueChange = onServerUrlChange,
+                    label = { Text(stringResource(R.string.mobile_server_url)) },
+                    singleLine = true,
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = email,
+                    onValueChange = onEmailChange,
+                    label = { Text(stringResource(R.string.mobile_email)) },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                OutlinedTextField(
+                    value = password,
+                    onValueChange = onPasswordChange,
+                    label = { Text(stringResource(R.string.mobile_password)) },
+                    singleLine = true,
+                    visualTransformation = PasswordVisualTransformation(),
+                    modifier = Modifier.fillMaxWidth()
+                )
+                if (!errorMessage.isNullOrBlank()) {
+                    Text(
+                        text = errorMessage,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Button(
+                    onClick = onLogin,
+                    enabled = !isBusy,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    if (isBusy) {
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    } else {
+                        Text(stringResource(R.string.mobile_login_action))
+                    }
+                }
+            }
+        }
+    }
+}
 
+@Composable
+private fun DashboardScreen(
+    dashboard: MobileDashboard?,
+    serverUrl: String,
+    isBusy: Boolean,
+    errorMessage: String?,
+    onRefresh: () -> Unit,
+    onLogout: () -> Unit
+) {
     Scaffold { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
                 .background(
-                    brush = Brush.verticalGradient(
+                    Brush.verticalGradient(
                         listOf(
                             MaterialTheme.colorScheme.primaryContainer,
                             MaterialTheme.colorScheme.background
@@ -103,93 +299,43 @@ private fun TaskBanditHome() {
         ) {
             item {
                 Card {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(20.dp),
-                        horizontalArrangement = Arrangement.spacedBy(16.dp)
-                    ) {
-                        Image(
-                            painter = painterResource(R.drawable.ic_taskbandit_mark),
-                            contentDescription = stringResource(R.string.brand_mark_description),
-                            modifier = Modifier.size(84.dp)
-                        )
-                        Column(
-                            modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            BrandPill(stringResource(R.string.brand_tagline))
-                            Text(
-                                text = stringResource(R.string.app_name),
-                                style = MaterialTheme.typography.headlineLarge
-                            )
-                            Text(
-                                text = stringResource(R.string.app_subtitle),
-                                style = MaterialTheme.typography.bodyLarge
-                            )
-                            Text(
-                                text = stringResource(R.string.app_home_hint),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                    }
-                }
-            }
-
-            item {
-                Text(
-                    text = stringResource(R.string.dashboard_section_title),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            item {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp)
-                ) {
-                    tiles.forEach { tile ->
-                        Card(modifier = Modifier.weight(1f)) {
-                            Column(modifier = Modifier.padding(16.dp)) {
-                                Text(
-                                    text = stringResource(tile.labelRes),
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                                Text(
-                                    text = tile.value,
-                                    style = MaterialTheme.typography.headlineSmall
-                                )
-                            }
-                        }
-                    }
-                }
-            }
-
-            item {
-                Card {
                     Column(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(18.dp),
+                        modifier = Modifier.padding(20.dp),
                         verticalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Text(
-                            text = stringResource(R.string.approvals_watch_title),
-                            style = MaterialTheme.typography.titleMedium
+                            text = dashboard?.user?.displayName ?: stringResource(R.string.common_loading_short),
+                            style = MaterialTheme.typography.headlineMedium
                         )
                         Text(
-                            text = stringResource(R.string.approvals_watch_detail),
+                            text = serverUrl,
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        Text(
+                            text = stringResource(
+                                R.string.mobile_dashboard_summary,
+                                dashboard?.pendingApprovals ?: 0,
+                                dashboard?.activeChores ?: 0,
+                                dashboard?.user?.currentStreak ?: 0
+                            ),
                             style = MaterialTheme.typography.bodyMedium
                         )
-                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                            BrandPill(
-                                text = stringResource(R.string.approvals_chip_ready),
-                                background = MaterialTheme.colorScheme.tertiaryContainer
-                            )
-                            BrandPill(
-                                text = stringResource(R.string.approvals_chip_fix),
-                                background = MaterialTheme.colorScheme.secondaryContainer
+                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Button(onClick = onRefresh, enabled = !isBusy) {
+                                Text(
+                                    stringResource(
+                                        if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh
+                                    )
+                                )
+                            }
+                            Button(onClick = onLogout) {
+                                Text(stringResource(R.string.mobile_logout))
+                            }
+                        }
+                        if (!errorMessage.isNullOrBlank()) {
+                            Text(
+                                text = errorMessage,
+                                color = MaterialTheme.colorScheme.error
                             )
                         }
                     }
@@ -198,66 +344,90 @@ private fun TaskBanditHome() {
 
             item {
                 Text(
-                    text = stringResource(R.string.chore_preview_title),
+                    text = stringResource(R.string.mobile_my_chores),
                     style = MaterialTheme.typography.titleLarge,
                     fontWeight = FontWeight.SemiBold
                 )
             }
 
-            items(chores) { chore ->
+            items(dashboard?.chores.orEmpty()) { chore ->
                 Card {
                     Column(
                         modifier = Modifier.padding(16.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Text(
-                                text = stringResource(chore.titleRes),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            BrandPill(text = stringResource(chore.statusRes))
-                        }
+                        Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
                         Text(
-                            text = stringResource(chore.detailRes),
+                            text = stringResource(
+                                R.string.mobile_due_at,
+                                formatApiTimestamp(chore.dueAt)
+                            ),
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = if (chore.isOverdue) {
+                                stringResource(R.string.mobile_state_overdue)
+                            } else {
+                                chore.state.replace('_', ' ')
+                            },
+                            style = MaterialTheme.typography.labelLarge
                         )
                     }
                 }
             }
 
             item {
+                Text(
+                    text = stringResource(R.string.mobile_notifications),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            items(dashboard?.notifications.orEmpty().take(5)) { notification ->
+                Card {
+                    Column(
+                        modifier = Modifier.padding(16.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Text(text = notification.title, style = MaterialTheme.typography.titleMedium)
+                        Text(text = notification.message, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            text = formatApiTimestamp(notification.createdAt),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                }
+            }
+
+            item {
+                Text(
+                    text = stringResource(R.string.mobile_leaderboard),
+                    style = MaterialTheme.typography.titleLarge,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            items(dashboard?.leaderboard.orEmpty().take(5)) { entry ->
                 Card {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(18.dp),
+                            .padding(16.dp),
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Column {
+                            Text(text = entry.displayName, style = MaterialTheme.typography.titleMedium)
+                            Text(text = entry.role, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Column(horizontalAlignment = Alignment.End) {
                             Text(
-                                text = stringResource(R.string.leaderboard_pulse_title),
+                                text = stringResource(R.string.mobile_points_value, entry.points),
                                 style = MaterialTheme.typography.titleMedium
                             )
                             Text(
-                                text = stringResource(R.string.leaderboard_pulse_detail),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                        }
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            LeaderboardMeter(
-                                label = stringResource(R.string.leaderboard_name_alex),
-                                width = 88.dp
-                            )
-                            LeaderboardMeter(
-                                label = stringResource(R.string.leaderboard_name_maya),
-                                width = 72.dp
-                            )
-                            LeaderboardMeter(
-                                label = stringResource(R.string.leaderboard_name_luca),
-                                width = 54.dp
+                                text = stringResource(R.string.mobile_streak_value, entry.currentStreak),
+                                style = MaterialTheme.typography.bodySmall
                             )
                         }
                     }
@@ -267,34 +437,10 @@ private fun TaskBanditHome() {
     }
 }
 
-@Composable
-private fun BrandPill(text: String, background: Color = MaterialTheme.colorScheme.primaryContainer) {
-    Box(
-        modifier = Modifier
-            .background(background, RoundedCornerShape(999.dp))
-            .padding(horizontal = 12.dp, vertical = 6.dp)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onPrimaryContainer
-        )
-    }
-}
-
-@Composable
-private fun LeaderboardMeter(label: String, width: Dp) {
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-            text = label,
-            style = MaterialTheme.typography.labelLarge,
-            modifier = Modifier.width(52.dp)
-        )
-        Box(
-            modifier = Modifier
-                .height(14.dp)
-                .width(width)
-                .background(MaterialTheme.colorScheme.secondary, RoundedCornerShape(999.dp))
-        )
-    }
+private fun formatApiTimestamp(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(value)
 }

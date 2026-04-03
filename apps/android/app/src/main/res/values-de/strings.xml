@@ -27,4 +27,22 @@
     <string name="leaderboard_name_alex">Alex</string>
     <string name="leaderboard_name_maya">Maya</string>
     <string name="leaderboard_name_luca">Luca</string>
+    <string name="mobile_login_title">Bei TaskBandit anmelden</string>
+    <string name="mobile_login_hint">Verbinde die Android-App mit deinem selbst gehosteten Server und lade deine Live-Aufgaben.</string>
+    <string name="mobile_server_url">Server-URL</string>
+    <string name="mobile_email">E-Mail</string>
+    <string name="mobile_password">Passwort</string>
+    <string name="mobile_login_action">Anmelden</string>
+    <string name="common_loading_short">Ladt…</string>
+    <string name="mobile_dashboard_summary">%1$d Freigaben offen, %2$d aktive Aufgaben, %3$d Serie</string>
+    <string name="mobile_refresh">Aktualisieren</string>
+    <string name="mobile_refreshing">Aktualisiert…</string>
+    <string name="mobile_logout">Abmelden</string>
+    <string name="mobile_my_chores">Meine Aufgaben</string>
+    <string name="mobile_due_at">Fallig %1$s</string>
+    <string name="mobile_state_overdue">Uberfallig</string>
+    <string name="mobile_notifications">Benachrichtigungen</string>
+    <string name="mobile_leaderboard">Bestenliste</string>
+    <string name="mobile_points_value">%1$d Punkte</string>
+    <string name="mobile_streak_value">%1$d Serie</string>
 </resources>
