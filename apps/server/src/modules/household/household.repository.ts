@@ -12,6 +12,7 @@ import {
   ChoreState,
   Difficulty,
   HouseholdRole,
+  RecurrenceType,
   Prisma
 } from "@prisma/client";
 import { hash } from "bcryptjs";
@@ -287,6 +288,11 @@ export class HouseholdRepository {
         difficulty: dto.difficulty,
         basePoints: this.getBasePoints(dto.difficulty),
         assignmentStrategy: dto.assignmentStrategy,
+        recurrenceType: dto.recurrenceType ?? RecurrenceType.NONE,
+        recurrenceIntervalDays:
+          dto.recurrenceType === RecurrenceType.EVERY_X_DAYS ? dto.recurrenceIntervalDays ?? 1 : null,
+        recurrenceWeekdays:
+          dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
         requirePhotoProof: dto.requirePhotoProof,
         checklistItems: {
           create:
@@ -490,6 +496,7 @@ export class HouseholdRepository {
       });
 
       await this.createFollowUpInstances(updatedInstance);
+      await this.createRecurringInstance(updatedInstance);
     }
 
     return this.mapInstance(updatedInstance);
@@ -546,6 +553,7 @@ export class HouseholdRepository {
       }
 
       await this.createFollowUpInstances(updatedInstance);
+      await this.createRecurringInstance(updatedInstance);
     }
 
     return this.mapInstance(updatedInstance);
@@ -914,12 +922,126 @@ export class HouseholdRepository {
     });
   }
 
+  private async createRecurringInstance(
+    instance: Prisma.ChoreInstanceGetPayload<{
+      include: {
+        template: { include: { checklistItems: true } };
+        checklistCompletions: true;
+        attachments: true;
+      };
+    }>
+  ) {
+    const template = await this.prisma.choreTemplate.findFirst({
+      where: {
+        id: instance.templateId,
+        householdId: instance.householdId
+      }
+    });
+
+    if (!template) {
+      return;
+    }
+
+    const nextDueAt = this.calculateRecurringDueAt(
+      instance.dueAtUtc,
+      template.recurrenceType,
+      template.recurrenceIntervalDays,
+      template.recurrenceWeekdays
+    );
+
+    if (!nextDueAt) {
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const assigneeId = await this.resolveAssigneeForTemplate(
+        tx,
+        instance.householdId,
+        template.id,
+        template.assignmentStrategy
+      );
+
+      await tx.choreInstance.create({
+        data: {
+          householdId: instance.householdId,
+          templateId: template.id,
+          title: template.title,
+          state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          assigneeId,
+          dueAtUtc: nextDueAt
+        }
+      });
+    });
+  }
+
   private calculateFollowUpDueAt(originalDueAtUtc: Date, completedAtUtc: Date) {
     if (originalDueAtUtc.getTime() > completedAtUtc.getTime()) {
       return originalDueAtUtc;
     }
 
     return new Date(completedAtUtc.getTime() + 60 * 60 * 1000);
+  }
+
+  private calculateRecurringDueAt(
+    currentDueAtUtc: Date,
+    recurrenceType: RecurrenceType,
+    recurrenceIntervalDays: number | null,
+    recurrenceWeekdays: string[]
+  ) {
+    switch (recurrenceType) {
+      case RecurrenceType.DAILY:
+        return new Date(currentDueAtUtc.getTime() + 24 * 60 * 60 * 1000);
+      case RecurrenceType.WEEKLY:
+        return new Date(currentDueAtUtc.getTime() + 7 * 24 * 60 * 60 * 1000);
+      case RecurrenceType.EVERY_X_DAYS:
+        return new Date(currentDueAtUtc.getTime() + (recurrenceIntervalDays ?? 1) * 24 * 60 * 60 * 1000);
+      case RecurrenceType.CUSTOM_WEEKLY: {
+        const targetWeekdays = new Set<number>();
+        for (const weekday of recurrenceWeekdays) {
+          const index = this.getWeekdayIndex(weekday);
+          if (index !== null) {
+            targetWeekdays.add(index);
+          }
+        }
+
+        if (targetWeekdays.size === 0) {
+          return null;
+        }
+
+        for (let offsetDays = 1; offsetDays <= 7; offsetDays += 1) {
+          const candidate = new Date(currentDueAtUtc.getTime() + offsetDays * 24 * 60 * 60 * 1000);
+          if (targetWeekdays.has(candidate.getUTCDay())) {
+            return candidate;
+          }
+        }
+
+        return null;
+      }
+      case RecurrenceType.NONE:
+      default:
+        return null;
+    }
+  }
+
+  private getWeekdayIndex(weekday: string) {
+    switch (weekday) {
+      case "SUNDAY":
+        return 0;
+      case "MONDAY":
+        return 1;
+      case "TUESDAY":
+        return 2;
+      case "WEDNESDAY":
+        return 3;
+      case "THURSDAY":
+        return 4;
+      case "FRIDAY":
+        return 5;
+      case "SATURDAY":
+        return 6;
+      default:
+        return null;
+    }
   }
 
   private mapHousehold(
@@ -979,6 +1101,11 @@ export class HouseholdRepository {
       difficulty: template.difficulty.toLowerCase(),
       basePoints: template.basePoints,
       assignmentStrategy: this.mapAssignmentStrategy(template.assignmentStrategy),
+      recurrence: {
+        type: this.mapRecurrenceType(template.recurrenceType),
+        intervalDays: template.recurrenceIntervalDays,
+        weekdays: template.recurrenceWeekdays
+      },
       requirePhotoProof: template.requirePhotoProof,
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
@@ -1055,6 +1182,22 @@ export class HouseholdRepository {
         return "manual_default_assignee";
       default:
         return "round_robin";
+    }
+  }
+
+  private mapRecurrenceType(recurrenceType: RecurrenceType) {
+    switch (recurrenceType) {
+      case RecurrenceType.DAILY:
+        return "daily";
+      case RecurrenceType.WEEKLY:
+        return "weekly";
+      case RecurrenceType.EVERY_X_DAYS:
+        return "every_x_days";
+      case RecurrenceType.CUSTOM_WEEKLY:
+        return "custom_weekly";
+      case RecurrenceType.NONE:
+      default:
+        return "none";
     }
   }
 }

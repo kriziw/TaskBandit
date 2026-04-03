@@ -1,17 +1,21 @@
-import { AssignmentStrategyType, Difficulty } from "@prisma/client";
+import { AssignmentStrategyType, Difficulty, RecurrenceType } from "@prisma/client";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
   ArrayMaxSize,
   ArrayUnique,
+  IsIn,
   IsArray,
   IsBoolean,
   IsEnum,
+  IsInt,
   IsNotEmpty,
   IsOptional,
   IsString,
   IsUUID,
+  Max,
   MaxLength,
+  Min,
   ValidateNested
 } from "class-validator";
 
@@ -54,6 +58,34 @@ export class CreateChoreTemplateDto {
   )
   @IsEnum(AssignmentStrategyType)
   assignmentStrategy!: AssignmentStrategyType;
+
+  @ApiPropertyOptional({ enum: RecurrenceType, enumName: "RecurrenceType" })
+  @Transform(({ value }) =>
+    typeof value === "string"
+      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
+      : value
+  )
+  @IsOptional()
+  @IsEnum(RecurrenceType)
+  recurrenceType?: RecurrenceType;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  recurrenceIntervalDays?: number;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(7)
+  @ArrayUnique()
+  @IsIn(["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"], {
+    each: true
+  })
+  recurrenceWeekdays?: string[];
 
   @ApiProperty()
   @IsBoolean()

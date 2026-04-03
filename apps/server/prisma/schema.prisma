@@ -42,6 +42,14 @@ enum AssignmentStrategyType {
   MANUAL_DEFAULT_ASSIGNEE
 }
 
+enum RecurrenceType {
+  NONE
+  DAILY
+  WEEKLY
+  EVERY_X_DAYS
+  CUSTOM_WEEKLY
+}
+
 model Household {
   id             String              @id @default(uuid()) @db.Uuid
   name           String
@@ -96,6 +104,9 @@ model ChoreTemplate {
   difficulty         Difficulty
   basePoints         Int
   assignmentStrategy AssignmentStrategyType
+  recurrenceType     RecurrenceType               @default(NONE)
+  recurrenceIntervalDays Int?
+  recurrenceWeekdays String[]                     @default([])
   requirePhotoProof  Boolean                      @default(false)
   createdAtUtc       DateTime                     @default(now())
   household          Household                    @relation(fields: [householdId], references: [id], onDelete: Cascade)

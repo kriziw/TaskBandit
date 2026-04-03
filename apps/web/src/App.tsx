@@ -15,7 +15,8 @@ import type {
   CreateHouseholdMemberInput,
   DashboardSummary,
   Household,
-  HouseholdSettings
+  HouseholdSettings,
+  RecurrenceType
 } from "./types/taskbandit";
 
 const tokenStorageKey = "taskbandit-access-token";
@@ -50,6 +51,16 @@ const householdBoardStateOrder: ChoreState[] = [
   "completed",
   "cancelled"
 ];
+
+const recurrenceWeekdayOrder = [
+  "SUNDAY",
+  "MONDAY",
+  "TUESDAY",
+  "WEDNESDAY",
+  "THURSDAY",
+  "FRIDAY",
+  "SATURDAY"
+] as const;
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -92,6 +103,9 @@ export function App() {
     description: "",
     difficulty: "easy",
     assignmentStrategy: "round_robin",
+    recurrenceType: "none",
+    recurrenceIntervalDays: 2,
+    recurrenceWeekdays: [],
     requirePhotoProof: false,
     dependencyTemplateIds: [],
     checklist: []
@@ -258,6 +272,19 @@ export function App() {
     { value: "manual_default_assignee", label: t("assignment.manual_default") }
   ];
 
+  const recurrenceOptions: Array<{ value: RecurrenceType; label: string }> = [
+    { value: "none", label: t("recurrence.none") },
+    { value: "daily", label: t("recurrence.daily") },
+    { value: "weekly", label: t("recurrence.weekly") },
+    { value: "every_x_days", label: t("recurrence.every_x_days") },
+    { value: "custom_weekly", label: t("recurrence.custom_weekly") }
+  ];
+
+  const recurrenceWeekdayOptions = recurrenceWeekdayOrder.map((weekday) => ({
+    value: weekday,
+    label: t(`weekday.${weekday.toLowerCase()}`)
+  }));
+
   async function refreshDashboard(accessToken: string, options: { silent: boolean }) {
     if (!options.silent) {
       setIsLoading(true);
@@ -331,6 +358,24 @@ export function App() {
         ) : null}
       </div>
     );
+  }
+
+  function formatTemplateRecurrence(template: ChoreTemplate) {
+    switch (template.recurrence.type) {
+      case "daily":
+        return t("recurrence.daily");
+      case "weekly":
+        return t("recurrence.weekly");
+      case "every_x_days":
+        return `${t("recurrence.every_x_days")} (${template.recurrence.intervalDays ?? 1})`;
+      case "custom_weekly":
+        return `${t("recurrence.custom_weekly")}: ${template.recurrence.weekdays
+          .map((weekday) => t(`weekday.${weekday.toLowerCase()}`))
+          .join(", ")}`;
+      case "none":
+      default:
+        return t("recurrence.none");
+    }
   }
 
   function handleLogout(message?: string) {
@@ -516,6 +561,15 @@ export function App() {
         required: item.required
       }))
       .filter((item) => item.title.length > 0);
+    const sanitizedDependencyIds = [...new Set(templateForm.dependencyTemplateIds ?? [])];
+    const sanitizedRecurrenceWeekdays =
+      templateForm.recurrenceType === "custom_weekly"
+        ? [...new Set(templateForm.recurrenceWeekdays ?? [])]
+        : [];
+    const sanitizedIntervalDays =
+      templateForm.recurrenceType === "every_x_days"
+        ? Math.max(1, Number(templateForm.recurrenceIntervalDays ?? 1))
+        : undefined;
 
     setBusyAction("create-template");
     try {
@@ -523,7 +577,9 @@ export function App() {
         ...templateForm,
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
-        dependencyTemplateIds: [...new Set(templateForm.dependencyTemplateIds ?? [])],
+        dependencyTemplateIds: sanitizedDependencyIds,
+        recurrenceWeekdays: sanitizedRecurrenceWeekdays,
+        recurrenceIntervalDays: sanitizedIntervalDays,
         checklist: sanitizedChecklist
       });
       setPayload((current) =>
@@ -541,6 +597,9 @@ export function App() {
         description: "",
         difficulty: "easy",
         assignmentStrategy: "round_robin",
+        recurrenceType: "none",
+        recurrenceIntervalDays: 2,
+        recurrenceWeekdays: [],
         requirePhotoProof: false,
         dependencyTemplateIds: [],
         checklist: []
@@ -1390,6 +1449,9 @@ export function App() {
                           {t("templates.strategy")}: {t(`assignment.${template.assignmentStrategy}`)}
                         </p>
                         <p>
+                          {t("templates.recurrence")}: {formatTemplateRecurrence(template)}
+                        </p>
+                        <p>
                           {t("templates.base_points")}: {template.basePoints}
                         </p>
                         <p>
@@ -1481,6 +1543,73 @@ export function App() {
                         ))}
                       </select>
                     </label>
+                    <label>
+                      <span>{t("templates.recurrence")}</span>
+                      <select
+                        value={templateForm.recurrenceType ?? "none"}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            recurrenceType: event.target.value as TemplateFormState["recurrenceType"]
+                          }))
+                        }
+                      >
+                        {recurrenceOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    {templateForm.recurrenceType === "every_x_days" ? (
+                      <label>
+                        <span>{t("templates.interval_days")}</span>
+                        <input
+                          type="number"
+                          min={1}
+                          max={365}
+                          value={templateForm.recurrenceIntervalDays ?? 1}
+                          onChange={(event) =>
+                            setTemplateForm((current) => ({
+                              ...current,
+                              recurrenceIntervalDays: Number(event.target.value || 1)
+                            }))
+                          }
+                        />
+                      </label>
+                    ) : null}
+                    {templateForm.recurrenceType === "custom_weekly" ? (
+                      <div className="stack-list">
+                        <div className="section-heading">
+                          <h3>{t("templates.weekdays")}</h3>
+                          <span className="section-kicker">
+                            {(templateForm.recurrenceWeekdays ?? []).length}
+                          </span>
+                        </div>
+                        {recurrenceWeekdayOptions.map((weekday) => {
+                          const selected = (templateForm.recurrenceWeekdays ?? []).includes(weekday.value);
+                          return (
+                            <label className="toggle-row" key={weekday.value}>
+                              <span>{weekday.label}</span>
+                              <input
+                                type="checkbox"
+                                checked={selected}
+                                onChange={(event) =>
+                                  setTemplateForm((current) => ({
+                                    ...current,
+                                    recurrenceWeekdays: event.target.checked
+                                      ? [...new Set([...(current.recurrenceWeekdays ?? []), weekday.value])]
+                                      : (current.recurrenceWeekdays ?? []).filter(
+                                          (value) => value !== weekday.value
+                                        )
+                                  }))
+                                }
+                              />
+                            </label>
+                          );
+                        })}
+                      </div>
+                    ) : null}
                     <label className="toggle-row">
                       <span>{t("templates.require_photo")}</span>
                       <input

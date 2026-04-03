@@ -2,6 +2,13 @@ export type HouseholdRole = "admin" | "parent" | "child";
 
 export type Difficulty = "easy" | "medium" | "hard";
 
+export type RecurrenceType =
+  | "none"
+  | "daily"
+  | "weekly"
+  | "every_x_days"
+  | "custom_weekly";
+
 export type ChoreState =
   | "open"
   | "assigned"
@@ -83,6 +90,11 @@ export type ChoreTemplate = {
   difficulty: Difficulty;
   basePoints: number;
   assignmentStrategy: AssignmentStrategy;
+  recurrence: {
+    type: RecurrenceType;
+    intervalDays?: number | null;
+    weekdays: string[];
+  };
   requirePhotoProof: boolean;
   checklist: ChoreTemplateChecklistItem[];
   dependencyTemplateIds: string[];
@@ -151,6 +163,9 @@ export type CreateChoreTemplateInput = {
   description: string;
   difficulty: Difficulty;
   assignmentStrategy: AssignmentStrategy;
+  recurrenceType?: RecurrenceType;
+  recurrenceIntervalDays?: number;
+  recurrenceWeekdays?: string[];
   requirePhotoProof: boolean;
   dependencyTemplateIds?: string[];
   checklist?: Array<{
