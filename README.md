@@ -7,7 +7,7 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 
 ## Repository Layout
 
-- `apps/server` - ASP.NET Core API and server-side hosting entrypoint
+- `apps/server` - NestJS + Prisma backend API
 - `apps/web` - React + TypeScript web UI
 - `apps/android` - Android app built with Kotlin and Jetpack Compose
 - `infra/docker` - local development and deployment stack
@@ -18,16 +18,16 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 This repository is in the initial implementation phase. The current scaffold includes:
 
 - the v1 product and technical architecture
-- initial backend domain models, EF Core persistence structure, and starter endpoints
-- the first-pass web UI shell
-- the first-pass Android shell
+- an initial NestJS + Prisma backend with PostgreSQL schema, starter endpoints, and bootstrap flow
+- the first-pass web UI shell with JSON language files
+- the first-pass Android shell with localized string resources
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
 - reverse-proxy aware server configuration for Nginx or Traefik deployments
 
 ## Local Tooling Note
 
-This workspace currently has Node.js available, but does not have a .NET SDK or Gradle installed. The ASP.NET and Android projects are scaffolded for implementation, but local build verification will require those toolchains.
+This workspace currently has Node.js available, but does not have Gradle installed. The NestJS server can be developed with Node.js, while Android build verification will require a full Android/Gradle toolchain.
 
 ## Deployment Notes
 
@@ -35,9 +35,10 @@ TaskBandit is intended to support self-hosting behind reverse proxies such as Ng
 
 Docker Compose is configured to pull the server image from Docker Hub via `kriziw/taskbandit`. Use `TASKBANDIT_IMAGE_TAG` to pin a specific published tag if you do not want `latest`.
 The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
+Localization structure and language-file locations are documented in `docs/localization.md`.
 
 ## Backend Notes
 
-The backend now uses EF Core with PostgreSQL-oriented configuration and a seed/bootstrap path for the initial single-household dataset. The next backend milestone is expanding from the current seed-backed read/write slice into full authenticated household management and real workflow state transitions.
+The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. The next backend milestone is expanding from the current seed-backed read/write slice into full authenticated household management and real workflow state transitions.
 
-For local/demo environments, sample household seeding can be toggled with `TaskBandit__Bootstrap__SeedDemoData`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
+For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.

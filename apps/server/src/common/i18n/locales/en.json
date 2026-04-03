@@ -1,0 +1,7 @@
+{
+  "app.title": "TaskBandit API",
+  "bootstrap.already_initialized": "TaskBandit already has an initialized household.",
+  "bootstrap.created": "Household created successfully.",
+  "i18n.language_name": "English"
+}
+

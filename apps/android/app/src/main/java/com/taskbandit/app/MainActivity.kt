@@ -1,6 +1,7 @@
 package com.taskbandit.app
 
 import android.os.Bundle
+import androidx.annotation.StringRes
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -20,6 +21,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 
@@ -39,20 +41,20 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-private data class DashboardTile(val label: String, val value: String)
-private data class ChorePreview(val title: String, val detail: String)
+private data class DashboardTile(@StringRes val labelRes: Int, val value: String)
+private data class ChorePreview(@StringRes val titleRes: Int, @StringRes val detailRes: Int)
 
 @Composable
 private fun TaskBanditHome() {
     val tiles = listOf(
-        DashboardTile("Pending approvals", "3"),
-        DashboardTile("Today's chores", "5"),
-        DashboardTile("Current streak", "4")
+        DashboardTile(R.string.dashboard_pending_approvals, "3"),
+        DashboardTile(R.string.dashboard_todays_chores, "5"),
+        DashboardTile(R.string.dashboard_current_streak, "4")
     )
     val chores = listOf(
-        ChorePreview("Run the washing machine", "Assigned to Luca"),
-        ChorePreview("Hang clothes to dry", "Requires photo proof"),
-        ChorePreview("Wipe the kitchen table", "Round robin assignment")
+        ChorePreview(R.string.chore_washing_machine, R.string.chore_washing_machine_detail),
+        ChorePreview(R.string.chore_hang_clothes, R.string.chore_hang_clothes_detail),
+        ChorePreview(R.string.chore_wipe_table, R.string.chore_wipe_table_detail)
     )
 
     Scaffold { padding ->
@@ -74,11 +76,11 @@ private fun TaskBanditHome() {
             item {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     Text(
-                        text = "TaskBandit",
+                        text = stringResource(R.string.app_name),
                         style = MaterialTheme.typography.headlineLarge
                     )
                     Text(
-                        text = "Playful household teamwork with approvals, streaks, and photo-proof chores.",
+                        text = stringResource(R.string.app_subtitle),
                         style = MaterialTheme.typography.bodyLarge
                     )
                 }
@@ -92,7 +94,10 @@ private fun TaskBanditHome() {
                     tiles.forEach { tile ->
                         Card(modifier = Modifier.weight(1f)) {
                             Column(modifier = Modifier.padding(16.dp)) {
-                                Text(tile.label, style = MaterialTheme.typography.labelLarge)
+                                Text(
+                                    stringResource(tile.labelRes),
+                                    style = MaterialTheme.typography.labelLarge
+                                )
                                 Text(tile.value, style = MaterialTheme.typography.headlineSmall)
                             }
                         }
@@ -102,7 +107,7 @@ private fun TaskBanditHome() {
 
             item {
                 Text(
-                    text = "Chore preview",
+                    text = stringResource(R.string.chore_preview_title),
                     style = MaterialTheme.typography.titleLarge
                 )
             }
@@ -110,12 +115,17 @@ private fun TaskBanditHome() {
             items(chores) { chore ->
                 Card {
                     Column(modifier = Modifier.padding(16.dp)) {
-                        Text(chore.title, style = MaterialTheme.typography.titleMedium)
-                        Text(chore.detail, style = MaterialTheme.typography.bodyMedium)
+                        Text(
+                            stringResource(chore.titleRes),
+                            style = MaterialTheme.typography.titleMedium
+                        )
+                        Text(
+                            stringResource(chore.detailRes),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
                     }
                 }
             }
         }
     }
 }
-

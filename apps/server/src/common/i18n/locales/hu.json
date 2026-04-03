@@ -1,0 +1,7 @@
+{
+  "app.title": "TaskBandit API",
+  "bootstrap.already_initialized": "A TaskBandit már rendelkezik inicializált háztartással.",
+  "bootstrap.created": "A háztartás sikeresen létrejött.",
+  "i18n.language_name": "Magyar"
+}
+

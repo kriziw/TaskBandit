@@ -31,7 +31,7 @@
 
 ## Immediate Next Steps
 
-- expand the new EF Core/PostgreSQL foundation beyond seeded household data
+- expand the new NestJS/Prisma/PostgreSQL foundation beyond seeded household data
 - add authentication and connect it to the bootstrap flow
 - connect the web dashboard to live backend data
 - add Android data models, API client, and sync queue

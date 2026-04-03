@@ -35,9 +35,8 @@ jobs:
       - name: Build and push image
         uses: docker/build-push-action@v6
         with:
-          context: ./apps/server/src/TaskBandit.Api
-          file: ./apps/server/src/TaskBandit.Api/Dockerfile
+          context: ./apps/server
+          file: ./apps/server/Dockerfile
           push: true
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-

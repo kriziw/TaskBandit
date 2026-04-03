@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">TaskBandit</string>
+    <string name="app_subtitle">Játékos háztartási csapatmunka jóváhagyásokkal, streak-ekkel és fotós bizonyítékkal.</string>
+    <string name="dashboard_pending_approvals">Várakozó jóváhagyások</string>
+    <string name="dashboard_todays_chores">Mai feladatok</string>
+    <string name="dashboard_current_streak">Jelenlegi streak</string>
+    <string name="chore_preview_title">Feladat-előnézet</string>
+    <string name="chore_washing_machine">Mosógép elindítása</string>
+    <string name="chore_washing_machine_detail">Luca kapta</string>
+    <string name="chore_hang_clothes">Ruhák kiteregetése</string>
+    <string name="chore_hang_clothes_detail">Fotós bizonyíték szükséges</string>
+    <string name="chore_wipe_table">Konyhaasztal letörlése</string>
+    <string name="chore_wipe_table_detail">Körkörös kiosztás</string>
+</resources>

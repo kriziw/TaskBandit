@@ -1,0 +1,15 @@
+<resources>
+    <string name="app_name">TaskBandit</string>
+    <string name="app_subtitle">Spielerische Haushaltsorganisation mit Freigaben, Streaks und Foto-Nachweis.</string>
+    <string name="dashboard_pending_approvals">Offene Freigaben</string>
+    <string name="dashboard_todays_chores">Heutige Aufgaben</string>
+    <string name="dashboard_current_streak">Aktuelle Serie</string>
+    <string name="chore_preview_title">Aufgabenvorschau</string>
+    <string name="chore_washing_machine">Waschmaschine starten</string>
+    <string name="chore_washing_machine_detail">Luca zugewiesen</string>
+    <string name="chore_hang_clothes">Kleidung zum Trocknen aufhängen</string>
+    <string name="chore_hang_clothes_detail">Foto-Nachweis erforderlich</string>
+    <string name="chore_wipe_table">Küchentisch abwischen</string>
+    <string name="chore_wipe_table_detail">Round-Robin-Zuweisung</string>
+</resources>
+

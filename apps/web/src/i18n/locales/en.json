@@ -1,0 +1,28 @@
+{
+  "language.english": "English",
+  "language.german": "German",
+  "language.hungarian": "Hungarian",
+  "hero.eyebrow": "TaskBandit Admin",
+  "hero.title": "Run the household like a cheerful little mastermind.",
+  "hero.lede": "The first iteration of the web experience focuses on chore management, approvals, visibility settings, analytics, and household controls.",
+  "hero.mascot": "Bandit is on chore duty.",
+  "metric.approvals_waiting": "Approvals waiting",
+  "metric.active_chores": "Active chores",
+  "metric.streak_leader": "Streak leader",
+  "panel.v1_focus": "V1 Focus",
+  "panel.assignment_logic": "Built-In Assignment Logic",
+  "panel.approval_flow": "Approval Flow",
+  "roadmap.bootstrap": "Household bootstrap and local auth",
+  "roadmap.templates": "Chore template builder with recurrence",
+  "roadmap.approvals": "Approval queue for child submissions",
+  "roadmap.leaderboard": "Leaderboard, streaks, and exports",
+  "assignment.round_robin": "Round robin",
+  "assignment.least_completed_recently": "Least completed recently",
+  "assignment.highest_streak": "Highest streak",
+  "assignment.manual_default": "Manual default assignee",
+  "approval.description": "Child submissions move to approval, rejected chores return to",
+  "approval.needs_fixes": "needs fixes",
+  "approval.description_suffix": "and overdue approvals still count toward streaks.",
+  "locale.label": "Language"
+}
+

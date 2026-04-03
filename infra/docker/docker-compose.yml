@@ -17,14 +17,14 @@ services:
     image: kriziw/taskbandit:${TASKBANDIT_IMAGE_TAG:-latest}
     container_name: taskbandit-server
     environment:
-      ASPNETCORE_URLS: http://+:8080
-      ConnectionStrings__TaskBandit: Host=postgres;Port=5432;Database=${TASKBANDIT_DB_NAME:-taskbandit};Username=${TASKBANDIT_DB_USER:-taskbandit};Password=${TASKBANDIT_DB_PASSWORD:-taskbandit}
+      PORT: 8080
+      DATABASE_URL: postgresql://${TASKBANDIT_DB_USER:-taskbandit}:${TASKBANDIT_DB_PASSWORD:-taskbandit}@postgres:5432/${TASKBANDIT_DB_NAME:-taskbandit}?schema=public
       TaskBandit__Auth__Oidc__Authority: ${TASKBANDIT_OIDC_AUTHORITY:-http://authentik.example.local/application/o/taskbandit/}
       TaskBandit__Auth__Oidc__ClientId: ${TASKBANDIT_OIDC_CLIENT_ID:-change-me}
       TaskBandit__Auth__Oidc__ClientSecret: ${TASKBANDIT_OIDC_CLIENT_SECRET:-change-me}
-      TaskBandit__Bootstrap__SeedDemoData: ${TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA:-true}
-      TaskBandit__ReverseProxy__Enabled: ${TASKBANDIT_REVERSE_PROXY_ENABLED:-false}
-      TaskBandit__ReverseProxy__PathBase: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
+      TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA: ${TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA:-true}
+      TASKBANDIT_REVERSE_PROXY_ENABLED: ${TASKBANDIT_REVERSE_PROXY_ENABLED:-false}
+      TASKBANDIT_REVERSE_PROXY_PATH_BASE: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
     ports:
       - "8080:8080"
     depends_on:

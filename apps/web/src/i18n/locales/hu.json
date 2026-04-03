@@ -1,0 +1,28 @@
+{
+  "language.english": "Angol",
+  "language.german": "Német",
+  "language.hungarian": "Magyar",
+  "hero.eyebrow": "TaskBandit Admin",
+  "hero.title": "Irányítsd a háztartást, mint egy vidám kis mestertolvaj.",
+  "hero.lede": "A webes élmény első verziója a feladatkezelésre, jóváhagyásokra, láthatósági beállításokra, elemzésekre és háztartási vezérlésre fókuszál.",
+  "hero.mascot": "Bandit szolgálatban van.",
+  "metric.approvals_waiting": "Várakozó jóváhagyások",
+  "metric.active_chores": "Aktív feladatok",
+  "metric.streak_leader": "Streak éllovas",
+  "panel.v1_focus": "V1 fókusz",
+  "panel.assignment_logic": "Beépített kiosztási logika",
+  "panel.approval_flow": "Jóváhagyási folyamat",
+  "roadmap.bootstrap": "Háztartás indítása és helyi bejelentkezés",
+  "roadmap.templates": "Feladatsablon ismétlődéssel",
+  "roadmap.approvals": "Gyerek beküldések jóváhagyási sora",
+  "roadmap.leaderboard": "Rangsor, streak-ek és exportok",
+  "assignment.round_robin": "Körkörös kiosztás",
+  "assignment.least_completed_recently": "Legutóbb legritkábban teljesítette",
+  "assignment.highest_streak": "Legmagasabb streak",
+  "assignment.manual_default": "Kézi alapértelmezett felelős",
+  "approval.description": "A gyerek beküldések jóváhagyásra kerülnek, az elutasított feladatok ide kerülnek:",
+  "approval.needs_fixes": "javítás szükséges",
+  "approval.description_suffix": "és a későn jóváhagyott feladatok továbbra is beleszámítanak a streak-be.",
+  "locale.label": "Nyelv"
+}
+

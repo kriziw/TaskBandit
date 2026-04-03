@@ -1,0 +1,117 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum HouseholdRole {
+  ADMIN
+  PARENT
+  CHILD
+}
+
+enum Difficulty {
+  EASY
+  MEDIUM
+  HARD
+}
+
+enum ChoreState {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  PENDING_APPROVAL
+  NEEDS_FIXES
+  COMPLETED
+  OVERDUE
+  CANCELLED
+}
+
+enum AssignmentStrategyType {
+  ROUND_ROBIN
+  LEAST_COMPLETED_RECENTLY
+  HIGHEST_STREAK
+  MANUAL_DEFAULT_ASSIGNEE
+}
+
+model Household {
+  id             String              @id @default(uuid()) @db.Uuid
+  name           String
+  createdAtUtc   DateTime            @default(now())
+  settings       HouseholdSettings?
+  members        User[]
+  choreTemplates ChoreTemplate[]
+  choreInstances ChoreInstance[]
+}
+
+model HouseholdSettings {
+  householdId                            String    @id @db.Uuid
+  selfSignupEnabled                      Boolean   @default(false)
+  membersCanSeeFullHouseholdChoreDetails Boolean   @default(true)
+  enablePushNotifications                Boolean   @default(true)
+  enableOverduePenalties                 Boolean   @default(true)
+  household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
+}
+
+model User {
+  id            String        @id @default(uuid()) @db.Uuid
+  householdId   String        @db.Uuid
+  displayName   String
+  role          HouseholdRole
+  points        Int           @default(0)
+  currentStreak Int           @default(0)
+  createdAtUtc  DateTime      @default(now())
+  household     Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+}
+
+model ChoreTemplate {
+  id                 String                       @id @default(uuid()) @db.Uuid
+  householdId        String                       @db.Uuid
+  title              String
+  description        String
+  difficulty         Difficulty
+  basePoints         Int
+  assignmentStrategy AssignmentStrategyType
+  requirePhotoProof  Boolean                      @default(false)
+  createdAtUtc       DateTime                     @default(now())
+  household          Household                    @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  checklistItems     ChoreTemplateChecklistItem[]
+  dependencies       ChoreTemplateDependency[]
+  choreInstances     ChoreInstance[]
+}
+
+model ChoreTemplateChecklistItem {
+  id         String        @id @default(uuid()) @db.Uuid
+  templateId String        @db.Uuid
+  title      String
+  required   Boolean       @default(true)
+  sortOrder  Int
+  template   ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model ChoreTemplateDependency {
+  id                 String        @id @default(uuid()) @db.Uuid
+  templateId         String        @db.Uuid
+  followUpTemplateId String        @db.Uuid
+  template           ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+}
+
+model ChoreInstance {
+  id              String        @id @default(uuid()) @db.Uuid
+  householdId     String        @db.Uuid
+  templateId      String        @db.Uuid
+  title           String
+  state           ChoreState
+  assigneeId      String?       @db.Uuid
+  dueAtUtc        DateTime
+  awardedPoints   Int           @default(0)
+  attachmentCount Int           @default(0)
+  createdAtUtc    DateTime      @default(now())
+  completedAtUtc  DateTime?
+  household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  template        ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
+}
+

@@ -30,13 +30,19 @@ jobs:
         working-directory: apps/server
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-dotnet@v4
+      - uses: actions/setup-node@v4
         with:
-          dotnet-version: 8.0.x
-      - name: Restore
-        run: dotnet restore tests/TaskBandit.Api.Tests/TaskBandit.Api.Tests.csproj
+          node-version: 24
+          cache: npm
+          cache-dependency-path: apps/server/package.json
+      - name: Install dependencies
+        run: npm install
+      - name: Generate Prisma client
+        run: npm run prisma:generate
+      - name: Build server
+        run: npm run build
       - name: Test
-        run: dotnet test tests/TaskBandit.Api.Tests/TaskBandit.Api.Tests.csproj --configuration Release --no-restore
+        run: npm run test
 
   android:
     runs-on: ubuntu-latest

@@ -1,4 +1,15 @@
 <resources>
     <string name="app_name">TaskBandit</string>
+    <string name="app_subtitle">Playful household teamwork with approvals, streaks, and photo-proof chores.</string>
+    <string name="dashboard_pending_approvals">Pending approvals</string>
+    <string name="dashboard_todays_chores">Today\'s chores</string>
+    <string name="dashboard_current_streak">Current streak</string>
+    <string name="chore_preview_title">Chore preview</string>
+    <string name="chore_washing_machine">Run the washing machine</string>
+    <string name="chore_washing_machine_detail">Assigned to Luca</string>
+    <string name="chore_hang_clothes">Hang clothes to dry</string>
+    <string name="chore_hang_clothes_detail">Requires photo proof</string>
+    <string name="chore_wipe_table">Wipe the kitchen table</string>
+    <string name="chore_wipe_table_detail">Round robin assignment</string>
 </resources>
 

@@ -1,0 +1,388 @@
+import { Injectable } from "@nestjs/common";
+import {
+  AssignmentStrategyType,
+  ChoreState,
+  Difficulty,
+  HouseholdRole,
+  Prisma
+} from "@prisma/client";
+import { PrismaService } from "../../common/prisma/prisma.service";
+import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
+import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
+
+@Injectable()
+export class HouseholdRepository {
+  constructor(private readonly prisma: PrismaService) {}
+
+  async getBootstrapStatus() {
+    const householdCount = await this.prisma.household.count();
+    return {
+      isBootstrapped: householdCount > 0,
+      householdCount
+    };
+  }
+
+  async bootstrapHousehold(householdName: string, ownerDisplayName: string, selfSignupEnabled: boolean) {
+    const household = await this.prisma.household.create({
+      data: {
+        name: householdName.trim(),
+        settings: {
+          create: {
+            selfSignupEnabled,
+            membersCanSeeFullHouseholdChoreDetails: true,
+            enablePushNotifications: true,
+            enableOverduePenalties: true
+          }
+        },
+        members: {
+          create: {
+            displayName: ownerDisplayName.trim(),
+            role: HouseholdRole.ADMIN,
+            points: 0,
+            currentStreak: 0
+          }
+        }
+      },
+      include: {
+        settings: true,
+        members: true
+      }
+    });
+
+    return this.mapHousehold(household);
+  }
+
+  async getHousehold() {
+    const household = await this.prisma.household.findFirstOrThrow({
+      include: {
+        settings: true,
+        members: true
+      }
+    });
+
+    return this.mapHousehold(household);
+  }
+
+  async updateSettings(dto: UpdateSettingsDto) {
+    const household = await this.prisma.household.findFirstOrThrow({
+      include: {
+        settings: true,
+        members: true
+      }
+    });
+
+    await this.prisma.householdSettings.update({
+      where: {
+        householdId: household.id
+      },
+      data: {
+        selfSignupEnabled: dto.selfSignupEnabled ?? household.settings?.selfSignupEnabled,
+        membersCanSeeFullHouseholdChoreDetails:
+          dto.membersCanSeeFullHouseholdChoreDetails ??
+          household.settings?.membersCanSeeFullHouseholdChoreDetails,
+        enablePushNotifications:
+          dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
+        enableOverduePenalties:
+          dto.enableOverduePenalties ?? household.settings?.enableOverduePenalties
+      }
+    });
+
+    return this.getHousehold();
+  }
+
+  async getDashboardSummary() {
+    const [household, instances] = await Promise.all([
+      this.prisma.household.findFirstOrThrow({
+        include: {
+          members: true
+        }
+      }),
+      this.prisma.choreInstance.findMany()
+    ]);
+
+    const pendingApprovals = instances.filter((instance) => instance.state === ChoreState.PENDING_APPROVAL).length;
+    const activeChores = instances.filter(
+      (instance) =>
+        instance.state === ChoreState.OPEN ||
+        instance.state === ChoreState.ASSIGNED ||
+        instance.state === ChoreState.IN_PROGRESS
+    ).length;
+    const leaderboard = household.members
+      .map((member) => this.mapMember(member))
+      .sort((left, right) => right.points - left.points || right.currentStreak - left.currentStreak);
+    const streakLeader =
+      [...leaderboard].sort(
+        (left, right) => right.currentStreak - left.currentStreak || right.points - left.points
+      )[0]?.displayName ?? "Nobody";
+
+    return {
+      pendingApprovals,
+      activeChores,
+      streakLeader,
+      leaderboard
+    };
+  }
+
+  async getTemplates() {
+    const templates = await this.prisma.choreTemplate.findMany({
+      include: {
+        checklistItems: true,
+        dependencies: true
+      },
+      orderBy: {
+        title: "asc"
+      }
+    });
+
+    return templates.map((template) => this.mapTemplate(template));
+  }
+
+  async createTemplate(dto: CreateChoreTemplateDto) {
+    const household = await this.prisma.household.findFirstOrThrow({
+      select: {
+        id: true
+      }
+    });
+
+    const template = await this.prisma.choreTemplate.create({
+      data: {
+        householdId: household.id,
+        title: dto.title.trim(),
+        description: dto.description.trim(),
+        difficulty: dto.difficulty,
+        basePoints: this.getBasePoints(dto.difficulty),
+        assignmentStrategy: dto.assignmentStrategy,
+        requirePhotoProof: dto.requirePhotoProof,
+        checklistItems: {
+          create:
+            dto.checklist?.map((item, index) => ({
+              title: item.title.trim(),
+              required: item.required,
+              sortOrder: index + 1
+            })) ?? []
+        }
+      },
+      include: {
+        checklistItems: true,
+        dependencies: true
+      }
+    });
+
+    return this.mapTemplate(template);
+  }
+
+  async getInstances() {
+    const instances = await this.prisma.choreInstance.findMany({
+      orderBy: {
+        dueAtUtc: "asc"
+      }
+    });
+
+    return instances.map((instance) => this.mapInstance(instance));
+  }
+
+  async seedDemoDataIfNeeded(enabled: boolean) {
+    if (!enabled) {
+      return;
+    }
+
+    const existingCount = await this.prisma.household.count();
+    if (existingCount > 0) {
+      return;
+    }
+
+    const householdId = "b5a1f703-c90a-4227-8345-4dfe1ce2fd75";
+    const childId = "07b7df84-a4b4-4d46-8688-5ca8b0d31f8c";
+    const laundryTemplateId = "3ab30e4c-06b0-4c89-90df-b1c4094a49d2";
+    const dryingTemplateId = "8931210f-1c7e-4890-87da-ebda235fd6f1";
+
+    await this.prisma.household.create({
+      data: {
+        id: householdId,
+        name: "TaskBandit Home",
+        settings: {
+          create: {
+            selfSignupEnabled: false,
+            membersCanSeeFullHouseholdChoreDetails: true,
+            enablePushNotifications: true,
+            enableOverduePenalties: true
+          }
+        },
+        members: {
+          create: [
+            {
+              id: "e4ff7c6d-d986-4fdc-9b97-9b525cab4f29",
+              displayName: "Alex",
+              role: HouseholdRole.ADMIN,
+              points: 120,
+              currentStreak: 4
+            },
+            {
+              id: "b3d2f3c6-b1ea-43d5-9f1b-4f6bc6c2b6c4",
+              displayName: "Maya",
+              role: HouseholdRole.PARENT,
+              points: 95,
+              currentStreak: 3
+            },
+            {
+              id: childId,
+              displayName: "Luca",
+              role: HouseholdRole.CHILD,
+              points: 40,
+              currentStreak: 2
+            }
+          ]
+        },
+        choreTemplates: {
+          create: [
+            {
+              id: laundryTemplateId,
+              title: "Run the washing machine",
+              description: "Load, start, and confirm the wash cycle.",
+              difficulty: Difficulty.MEDIUM,
+              basePoints: 20,
+              assignmentStrategy: AssignmentStrategyType.ROUND_ROBIN,
+              requirePhotoProof: false,
+              checklistItems: {
+                create: [
+                  { title: "Add detergent", required: true, sortOrder: 1 },
+                  { title: "Start cycle", required: true, sortOrder: 2 }
+                ]
+              },
+              dependencies: {
+                create: [
+                  {
+                    followUpTemplateId: dryingTemplateId
+                  }
+                ]
+              }
+            },
+            {
+              id: dryingTemplateId,
+              title: "Hang clothes to dry",
+              description: "Move the washed laundry to the drying rack.",
+              difficulty: Difficulty.EASY,
+              basePoints: 10,
+              assignmentStrategy: AssignmentStrategyType.LEAST_COMPLETED_RECENTLY,
+              requirePhotoProof: true,
+              checklistItems: {
+                create: [{ title: "Hang all clothes", required: true, sortOrder: 1 }]
+              }
+            }
+          ]
+        },
+        choreInstances: {
+          create: [
+            {
+              title: "Run the washing machine",
+              state: ChoreState.ASSIGNED,
+              templateId: laundryTemplateId,
+              assigneeId: childId,
+              dueAtUtc: new Date(Date.now() + 4 * 60 * 60 * 1000)
+            }
+          ]
+        }
+      }
+    });
+  }
+
+  private getBasePoints(difficulty: Difficulty) {
+    switch (difficulty) {
+      case Difficulty.EASY:
+        return 10;
+      case Difficulty.MEDIUM:
+        return 20;
+      case Difficulty.HARD:
+        return 40;
+      default:
+        return 10;
+    }
+  }
+
+  private mapHousehold(
+    household: Prisma.HouseholdGetPayload<{
+      include: { settings: true; members: true };
+    }>
+  ) {
+    return {
+      householdId: household.id,
+      name: household.name,
+      settings: {
+        selfSignupEnabled: household.settings?.selfSignupEnabled ?? false,
+        membersCanSeeFullHouseholdChoreDetails:
+          household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
+        enablePushNotifications: household.settings?.enablePushNotifications ?? true,
+        enableOverduePenalties: household.settings?.enableOverduePenalties ?? true
+      },
+      members: household.members
+        .map((member) => this.mapMember(member))
+        .sort((left, right) => left.displayName.localeCompare(right.displayName))
+    };
+  }
+
+  private mapMember(member: Prisma.UserGetPayload<Record<string, never>>) {
+    return {
+      id: member.id,
+      displayName: member.displayName,
+      role: member.role.toLowerCase(),
+      points: member.points,
+      currentStreak: member.currentStreak
+    };
+  }
+
+  private mapTemplate(
+    template: Prisma.ChoreTemplateGetPayload<{
+      include: { checklistItems: true; dependencies: true };
+    }>
+  ) {
+    return {
+      id: template.id,
+      title: template.title,
+      description: template.description,
+      difficulty: template.difficulty.toLowerCase(),
+      basePoints: template.basePoints,
+      assignmentStrategy: this.mapAssignmentStrategy(template.assignmentStrategy),
+      requirePhotoProof: template.requirePhotoProof,
+      checklist: template.checklistItems
+        .sort((left, right) => left.sortOrder - right.sortOrder)
+        .map((item) => ({
+          id: item.id,
+          title: item.title,
+          required: item.required
+        })),
+      dependencyTemplateIds: template.dependencies.map((dependency) => dependency.followUpTemplateId)
+    };
+  }
+
+  private mapInstance(instance: Prisma.ChoreInstanceGetPayload<Record<string, never>>) {
+    return {
+      id: instance.id,
+      templateId: instance.templateId,
+      title: instance.title,
+      state: instance.state.toLowerCase(),
+      assigneeId: instance.assigneeId,
+      dueAt: instance.dueAtUtc,
+      awardedPoints: instance.awardedPoints,
+      isOverdue:
+        instance.state === ChoreState.OVERDUE ||
+        ((instance.state !== ChoreState.COMPLETED && instance.state !== ChoreState.CANCELLED) &&
+          instance.dueAtUtc.getTime() < Date.now()),
+      attachmentCount: instance.attachmentCount
+    };
+  }
+
+  private mapAssignmentStrategy(strategy: AssignmentStrategyType) {
+    switch (strategy) {
+      case AssignmentStrategyType.ROUND_ROBIN:
+        return "round_robin";
+      case AssignmentStrategyType.LEAST_COMPLETED_RECENTLY:
+        return "least_completed_recently";
+      case AssignmentStrategyType.HIGHEST_STREAK:
+        return "highest_streak";
+      case AssignmentStrategyType.MANUAL_DEFAULT_ASSIGNEE:
+        return "manual_default_assignee";
+      default:
+        return "round_robin";
+    }
+  }
+}

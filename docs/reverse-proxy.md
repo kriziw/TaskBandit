@@ -4,30 +4,16 @@ TaskBandit is designed to run behind a reverse proxy such as Nginx or Traefik.
 
 ## Backend Behavior
 
-When `TaskBandit:ReverseProxy:Enabled=true`, the ASP.NET server will:
+When `TASKBANDIT_REVERSE_PROXY_ENABLED=true`, the NestJS server will:
 
-- trust `X-Forwarded-For`
-- trust `X-Forwarded-Proto`
-- trust `X-Forwarded-Host`
-- optionally apply a configured `PathBase`
-
-Relevant config:
-
-```json
-{
-  "TaskBandit": {
-    "ReverseProxy": {
-      "Enabled": true,
-      "PathBase": ""
-    }
-  }
-}
-```
+- trust forwarded proxy information at the Express layer
+- honor HTTPS and host information supplied by the reverse proxy
+- optionally apply a configured path base for subpath hosting
 
 Environment variable equivalents:
 
-- `TaskBandit__ReverseProxy__Enabled=true`
-- `TaskBandit__ReverseProxy__PathBase=/taskbandit`
+- `TASKBANDIT_REVERSE_PROXY_ENABLED=true`
+- `TASKBANDIT_REVERSE_PROXY_PATH_BASE=/taskbandit`
 
 Use `PathBase` only if the app is mounted under a subpath instead of a dedicated domain.
 
@@ -64,8 +50,8 @@ location /taskbandit/ {
 
 For subpath hosting, also set:
 
-- `TaskBandit__ReverseProxy__Enabled=true`
-- `TaskBandit__ReverseProxy__PathBase=/taskbandit`
+- `TASKBANDIT_REVERSE_PROXY_ENABLED=true`
+- `TASKBANDIT_REVERSE_PROXY_PATH_BASE=/taskbandit`
 
 ## Traefik Example
 
@@ -83,6 +69,5 @@ services:
 ## Notes
 
 - Keep TLS termination at the proxy layer unless you have a specific reason not to.
-- If you later host the React web app from the ASP.NET server, the same proxy setup will still apply.
-- In production, tighten trusted proxy configuration if you know the exact proxy network ranges.
-
+- If you later serve the web UI from the same server image, the same proxy setup will still apply.
+- If you deploy under a subpath, the API and Swagger endpoints will be exposed under that same base path.

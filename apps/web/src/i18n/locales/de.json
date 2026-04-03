@@ -1,0 +1,28 @@
+{
+  "language.english": "Englisch",
+  "language.german": "Deutsch",
+  "language.hungarian": "Ungarisch",
+  "hero.eyebrow": "TaskBandit Admin",
+  "hero.title": "Führe den Haushalt wie ein fröhlicher kleiner Mastermind.",
+  "hero.lede": "Die erste Version der Weboberfläche konzentriert sich auf Aufgabenverwaltung, Freigaben, Sichtbarkeitseinstellungen, Analysen und Haushaltssteuerung.",
+  "hero.mascot": "Bandit ist im Aufgabenmodus.",
+  "metric.approvals_waiting": "Freigaben offen",
+  "metric.active_chores": "Aktive Aufgaben",
+  "metric.streak_leader": "Streak-Spitze",
+  "panel.v1_focus": "V1-Fokus",
+  "panel.assignment_logic": "Eingebaute Zuweisungslogik",
+  "panel.approval_flow": "Freigabeablauf",
+  "roadmap.bootstrap": "Haushalts-Setup und lokale Anmeldung",
+  "roadmap.templates": "Aufgabenvorlagen mit Wiederholung",
+  "roadmap.approvals": "Freigabe-Warteschlange für Kinder",
+  "roadmap.leaderboard": "Bestenliste, Streaks und Exporte",
+  "assignment.round_robin": "Round Robin",
+  "assignment.least_completed_recently": "Zuletzt am wenigsten erledigt",
+  "assignment.highest_streak": "Höchste Serie",
+  "assignment.manual_default": "Manueller Standard-Zuständiger",
+  "approval.description": "Kind-Abgaben gehen in die Freigabe, abgelehnte Aufgaben wechseln zu",
+  "approval.needs_fixes": "muss nachgebessert werden",
+  "approval.description_suffix": "und verspätete Freigaben zählen weiterhin für Streaks.",
+  "locale.label": "Sprache"
+}
+

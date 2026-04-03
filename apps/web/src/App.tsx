@@ -1,30 +1,48 @@
 import { DashboardCard } from "./components/DashboardCard";
-
-const featuredMetrics = [
-  { label: "Approvals waiting", value: "3" },
-  { label: "Active chores", value: "12" },
-  { label: "Streak leader", value: "Luca" }
-];
-
-const roadmap = [
-  "Household bootstrap and local auth",
-  "Chore template builder with recurrence",
-  "Approval queue for child submissions",
-  "Leaderboard, streaks, and exports"
-];
+import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 
 export function App() {
+  const { language, setLanguage, t } = useI18n();
+
+  const featuredMetrics = [
+    { label: t("metric.approvals_waiting"), value: "3" },
+    { label: t("metric.active_chores"), value: "12" },
+    { label: t("metric.streak_leader"), value: "Luca" }
+  ];
+
+  const roadmap = [
+    t("roadmap.bootstrap"),
+    t("roadmap.templates"),
+    t("roadmap.approvals"),
+    t("roadmap.leaderboard")
+  ];
+
+  const languageOptions: Array<{ code: AppLanguage; label: string }> = [
+    { code: "en", label: t("language.english") },
+    { code: "de", label: t("language.german") },
+    { code: "hu", label: t("language.hungarian") }
+  ];
+
   return (
     <main className="app-shell">
+      <section className="toolbar">
+        <label className="language-picker">
+          <span>{t("locale.label")}</span>
+          <select value={language} onChange={(event) => setLanguage(event.target.value as AppLanguage)}>
+            {languageOptions.map((option) => (
+              <option key={option.code} value={option.code}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      </section>
+
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">TaskBandit Admin</p>
-          <h1>Run the household like a cheerful little mastermind.</h1>
-          <p className="lede">
-            The first iteration of the web experience focuses on chore
-            management, approvals, visibility settings, analytics, and household
-            controls.
-          </p>
+          <p className="eyebrow">{t("hero.eyebrow")}</p>
+          <h1>{t("hero.title")}</h1>
+          <p className="lede">{t("hero.lede")}</p>
         </div>
         <div className="mascot-card" aria-label="TaskBandit mascot placeholder">
           <div className="mascot-face">
@@ -35,7 +53,7 @@ export function App() {
             <span className="mask" />
             <span className="nose" />
           </div>
-          <p>Bandit is on chore duty.</p>
+          <p>{t("hero.mascot")}</p>
         </div>
       </section>
 
@@ -47,7 +65,7 @@ export function App() {
 
       <section className="content-grid">
         <article className="panel">
-          <h2>V1 Focus</h2>
+          <h2>{t("panel.v1_focus")}</h2>
           <ul>
             {roadmap.map((item) => (
               <li key={item}>{item}</li>
@@ -55,24 +73,22 @@ export function App() {
           </ul>
         </article>
         <article className="panel">
-          <h2>Built-In Assignment Logic</h2>
+          <h2>{t("panel.assignment_logic")}</h2>
           <ul>
-            <li>Round robin</li>
-            <li>Least completed recently</li>
-            <li>Highest streak</li>
-            <li>Manual default assignee</li>
+            <li>{t("assignment.round_robin")}</li>
+            <li>{t("assignment.least_completed_recently")}</li>
+            <li>{t("assignment.highest_streak")}</li>
+            <li>{t("assignment.manual_default")}</li>
           </ul>
         </article>
         <article className="panel">
-          <h2>Approval Flow</h2>
+          <h2>{t("panel.approval_flow")}</h2>
           <p>
-            Child submissions move to approval, rejected chores return to
-            <strong> needs fixes</strong>, and overdue approvals still count
-            toward streaks.
+            {t("approval.description")} <strong>{t("approval.needs_fixes")}</strong>,{" "}
+            {t("approval.description_suffix")}
           </p>
         </article>
       </section>
     </main>
   );
 }
-
