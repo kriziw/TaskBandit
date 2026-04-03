@@ -5,6 +5,7 @@
   "scripts": {
     "build": "nest build",
     "start": "node dist/main.js",
+    "start:docker": "prisma migrate deploy && node dist/main.js",
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
@@ -22,6 +23,7 @@
     "class-validator": "^0.14.1",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.0.0",
+    "prisma": "^5.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "swagger-ui-express": "^5.0.1"
@@ -32,7 +34,6 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^1.4.12",
     "@types/node": "^22.10.1",
-    "prisma": "^5.22.0",
     "typescript": "^5.7.2",
     "vitest": "^2.1.8"
   }

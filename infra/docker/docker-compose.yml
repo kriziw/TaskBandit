@@ -6,6 +6,16 @@ services:
       POSTGRES_DB: ${TASKBANDIT_DB_NAME:-taskbandit}
       POSTGRES_USER: ${TASKBANDIT_DB_USER:-taskbandit}
       POSTGRES_PASSWORD: ${TASKBANDIT_DB_PASSWORD:-taskbandit}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${TASKBANDIT_DB_USER:-taskbandit} -d ${TASKBANDIT_DB_NAME:-taskbandit}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
     ports:
       - "${TASKBANDIT_DB_HOST_PORT:-5432}:5432"
     volumes:
@@ -30,7 +40,8 @@ services:
     ports:
       - "${TASKBANDIT_PORT:-8080}:${TASKBANDIT_PORT:-8080}"
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
     pull_policy: always
     volumes:
       - taskbandit-storage:/var/lib/taskbandit/storage

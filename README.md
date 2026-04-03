@@ -59,6 +59,7 @@ The publishing workflow and required GitHub secrets are documented in `docs/dock
 Localization structure and language-file locations are documented in `docs/localization.md`.
 Authentication endpoints and environment variables are documented in `docs/authentication.md`.
 Chore submission and review endpoints are documented in `docs/chore-workflow.md`.
+The container startup now applies Prisma migrations automatically and waits for PostgreSQL health before the app boots.
 
 ## Quick Start
 
