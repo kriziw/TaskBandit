@@ -14,6 +14,10 @@ export class DashboardService {
     return this.repository.getPointsLedger(user.householdId);
   }
 
+  processOverduePenalties(user: AuthenticatedUser) {
+    return this.repository.processOverduePenalties(user.householdId, user.id);
+  }
+
   async exportChoresCsv(user: AuthenticatedUser) {
     const [household, instances] = await Promise.all([
       this.repository.getHousehold(user.householdId),

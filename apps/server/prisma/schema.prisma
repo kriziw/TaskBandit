@@ -145,9 +145,11 @@ model ChoreInstance {
   assigneeId      String?       @db.Uuid
   dueAtUtc        DateTime
   awardedPoints   Int           @default(0)
+  overduePenaltyPoints Int      @default(0)
   attachmentCount Int           @default(0)
   completedChecklistItems Int   @default(0)
   createdAtUtc    DateTime      @default(now())
+  overduePenaltyAppliedAtUtc DateTime?
   submittedAtUtc  DateTime?
   submittedById   String?       @db.Uuid
   submissionNote  String?

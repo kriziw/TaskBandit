@@ -140,6 +140,16 @@ export const taskBanditApi = {
       language
     });
   },
+  processOverduePenalties(token: string, language: AppLanguage) {
+    return request<{ processedCount: number; totalPenaltyPoints: number }>(
+      "/api/dashboard/maintenance/process-overdue",
+      {
+        method: "POST",
+        token,
+        language
+      }
+    );
+  },
   getHousehold(token: string, language: AppLanguage) {
     return request<Household>("/api/settings/household", {
       token,

@@ -561,6 +561,30 @@ export function App() {
     }
   }
 
+  async function handleProcessOverduePenalties() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("process-overdue-penalties");
+    try {
+      const result = await taskBanditApi.processOverduePenalties(token, language);
+      await refreshDashboard(token, { silent: true });
+      setNotice(
+        result.processedCount > 0
+          ? t("settings.overdue_processed")
+              .replace("{count}", String(result.processedCount))
+              .replace("{points}", String(result.totalPenaltyPoints))
+          : t("settings.overdue_none")
+      );
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("settings.overdue_process_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleCreateHouseholdMember(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token) {
@@ -1544,6 +1568,14 @@ export function App() {
                     onClick={() => void handleSaveSettings()}
                   >
                     {t("settings.save")}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={busyAction === "process-overdue-penalties"}
+                    onClick={() => void handleProcessOverduePenalties()}
+                  >
+                    {t("settings.process_overdue")}
                   </button>
                 </article>
 

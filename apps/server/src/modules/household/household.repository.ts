@@ -196,6 +196,107 @@ export class HouseholdRepository {
     return pointsLedger.map((entry) => this.mapPointsLedgerEntry(entry));
   }
 
+  async processOverduePenalties(householdId: string, actorUserId?: string) {
+    const householdSettings = await this.prisma.householdSettings.findUnique({
+      where: {
+        householdId
+      }
+    });
+
+    if (!householdSettings?.enableOverduePenalties) {
+      return {
+        processedCount: 0,
+        totalPenaltyPoints: 0
+      };
+    }
+
+    const overdueInstances = await this.prisma.choreInstance.findMany({
+      where: {
+        householdId,
+        overduePenaltyAppliedAtUtc: null,
+        dueAtUtc: {
+          lt: new Date()
+        },
+        state: {
+          in: [ChoreState.OPEN, ChoreState.ASSIGNED, ChoreState.IN_PROGRESS, ChoreState.NEEDS_FIXES]
+        }
+      },
+      include: {
+        template: true
+      }
+    });
+
+    let processedCount = 0;
+    let totalPenaltyPoints = 0;
+
+    for (const instance of overdueInstances) {
+      const beneficiaryUserId = instance.assigneeId;
+      const basePenaltyPoints = this.getBasePoints(instance.template.difficulty);
+      const penaltyPoints = Math.ceil(basePenaltyPoints * 0.3);
+
+      await this.prisma.$transaction(async (tx) => {
+        let appliedPenaltyPoints = penaltyPoints;
+
+        if (beneficiaryUserId) {
+          const user = await tx.user.findUniqueOrThrow({
+            where: {
+              id: beneficiaryUserId
+            }
+          });
+
+          appliedPenaltyPoints = Math.min(user.points, penaltyPoints);
+
+          await tx.user.update({
+            where: {
+              id: beneficiaryUserId
+            },
+            data: {
+              points: {
+                decrement: appliedPenaltyPoints
+              }
+            }
+          });
+
+          await this.recordPointsLedgerEntry(tx, {
+            householdId,
+            userId: beneficiaryUserId,
+            choreInstanceId: instance.id,
+            amount: -appliedPenaltyPoints,
+            reason: `Overdue penalty for "${instance.title}".`
+          });
+        }
+
+        await tx.choreInstance.update({
+          where: {
+            id: instance.id
+          },
+          data: {
+            state: ChoreState.OVERDUE,
+            overduePenaltyPoints: appliedPenaltyPoints,
+            overduePenaltyAppliedAtUtc: new Date()
+          }
+        });
+
+        await this.recordAuditLog(tx, {
+          householdId,
+          actorUserId,
+          action: "instance.overdue_penalty_applied",
+          entityType: "chore_instance",
+          entityId: instance.id,
+          summary: `Applied overdue penalty to "${instance.title}".`
+        });
+
+        processedCount += 1;
+        totalPenaltyPoints += appliedPenaltyPoints;
+      });
+    }
+
+    return {
+      processedCount,
+      totalPenaltyPoints
+    };
+  }
+
   async createHouseholdMember(
     dto: CreateHouseholdMemberDto,
     householdId: string,
@@ -1430,6 +1531,7 @@ export class HouseholdRepository {
         ((instance.state !== ChoreState.COMPLETED && instance.state !== ChoreState.CANCELLED) &&
           instance.dueAtUtc.getTime() < Date.now()),
       attachmentCount: instance.attachmentCount,
+      overduePenaltyPoints: instance.overduePenaltyPoints,
       submittedAt: instance.submittedAtUtc,
       submittedById: instance.submittedById,
       submissionNote: instance.submissionNote,

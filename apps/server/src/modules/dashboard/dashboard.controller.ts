@@ -1,9 +1,10 @@
-import { Controller, Get, Res, UseGuards } from "@nestjs/common";
+import { Controller, Get, Post, Res, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
+import { Roles } from "../../common/auth/roles.decorator";
 import { RolesGuard } from "../../common/auth/roles.guard";
 import { DashboardService } from "./dashboard.service";
 
@@ -21,6 +22,12 @@ export class DashboardController {
   @Get("points-ledger")
   getPointsLedger(@CurrentUser() user: AuthenticatedUser) {
     return this.dashboardService.getPointsLedger(user);
+  }
+
+  @Post("maintenance/process-overdue")
+  @Roles("admin")
+  processOverduePenalties(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.processOverduePenalties(user);
   }
 
   @Get("exports/chores.csv")
