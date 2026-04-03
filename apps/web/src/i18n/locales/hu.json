@@ -152,6 +152,9 @@
   "instances.create": "Feladat letrehozasa",
   "instances.created": "A feladat utemezve lett.",
   "instances.create_failed": "A TaskBandit nem tudta letrehozni a feladatpeldanyt.",
+  "exports.download_chores": "CSV letoltese",
+  "exports.chores_downloaded": "A feladatexport letoltve.",
+  "exports.chores_failed": "A TaskBandit nem tudta letolteni a feladatexportot.",
   "error.load_dashboard": "A TaskBandit nem tudta betolteni az elo iranyitopultot.",
   "error.missing_template": "Ehhez a peldanyhoz nem talalhato feladatsablon."
 }

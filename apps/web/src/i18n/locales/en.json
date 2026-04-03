@@ -152,6 +152,9 @@
   "instances.create": "Create chore",
   "instances.created": "Chore scheduled.",
   "instances.create_failed": "TaskBandit could not create the chore instance.",
+  "exports.download_chores": "Download CSV",
+  "exports.chores_downloaded": "Chore export downloaded.",
+  "exports.chores_failed": "TaskBandit could not download the chore export.",
   "error.load_dashboard": "TaskBandit could not load the live dashboard.",
   "error.missing_template": "The chore template could not be found for this instance."
 }

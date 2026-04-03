@@ -505,6 +505,30 @@ export function App() {
     }
   }
 
+  async function handleDownloadChoresExport() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("download-chores-export");
+    try {
+      const blob = await taskBanditApi.downloadChoresCsv(token, language);
+      const objectUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = objectUrl;
+      link.download = "taskbandit-chores.csv";
+      document.body.append(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(objectUrl);
+      setNotice(t("exports.chores_downloaded"));
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("exports.chores_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   function toggleChecklistItem(instanceId: string, checklistItemId: string, fallbackIds: string[]) {
     setSubmitSelections((current) => {
       const selected = new Set(current[instanceId] ?? fallbackIds);
@@ -1001,7 +1025,17 @@ export function App() {
             <article className="panel panel-wide">
               <div className="section-heading">
                 <h2>{t("panel.household_chores")}</h2>
-                <span className="section-kicker">{visibleHouseholdChores.length}</span>
+                <div className="toolbar-group">
+                  <span className="section-kicker">{visibleHouseholdChores.length}</span>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={busyAction === "download-chores-export"}
+                    onClick={() => void handleDownloadChoresExport()}
+                  >
+                    {t("exports.download_chores")}
+                  </button>
+                </div>
               </div>
               <div className="stack-list">
                 {visibleHouseholdChores.map((instance) => (

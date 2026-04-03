@@ -176,6 +176,19 @@ export const taskBanditApi = {
       body: input
     });
   },
+  async downloadChoresCsv(token: string, language: AppLanguage) {
+    const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/exports/chores.csv`, {
+      method: "GET",
+      headers: buildHeaders(token, language)
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new TaskBanditApiError(message, response.status);
+    }
+
+    return response.blob();
+  },
   getInstances(token: string, language: AppLanguage) {
     return request<ChoreInstance[]>("/api/chores/instances", {
       token,
