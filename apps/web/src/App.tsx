@@ -7,6 +7,7 @@ import type {
   AuthenticatedUser,
   ChoreInstance,
   ChoreTemplate,
+  CreateHouseholdMemberInput,
   DashboardSummary,
   Household,
   HouseholdSettings
@@ -26,6 +27,8 @@ type LoginFormState = {
   email: string;
   password: string;
 };
+
+type MemberFormState = CreateHouseholdMemberInput;
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -49,6 +52,12 @@ export function App() {
   const [selectedProofFiles, setSelectedProofFiles] = useState<Record<string, File[]>>({});
   const [submitNotes, setSubmitNotes] = useState<Record<string, string>>({});
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const [memberForm, setMemberForm] = useState<MemberFormState>({
+    displayName: "",
+    role: "child",
+    email: "",
+    password: ""
+  });
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -288,6 +297,31 @@ export function App() {
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("settings.save_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleCreateHouseholdMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("create-member");
+    try {
+      const household = await taskBanditApi.createHouseholdMember(token, language, memberForm);
+      setPayload((current) => (current ? { ...current, household } : current));
+      setMemberForm({
+        displayName: "",
+        role: "child",
+        email: "",
+        password: ""
+      });
+      setNotice(t("members.created"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("members.create_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -731,75 +765,151 @@ export function App() {
             </article>
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
-              <article className="panel">
-                <div className="section-heading">
-                  <h2>{t("panel.household_settings")}</h2>
-                  <span className="section-kicker">{t("settings.admin_only")}</span>
-                </div>
-                <div className="settings-list">
-                  <label className="toggle-row">
-                    <span>{t("settings.self_signup")}</span>
-                    <input
-                      type="checkbox"
-                      checked={settingsDraft.selfSignupEnabled}
-                      onChange={(event) =>
-                        setSettingsDraft((current) =>
-                          current ? { ...current, selfSignupEnabled: event.target.checked } : current
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="toggle-row">
-                    <span>{t("settings.full_visibility")}</span>
-                    <input
-                      type="checkbox"
-                      checked={settingsDraft.membersCanSeeFullHouseholdChoreDetails}
-                      onChange={(event) =>
-                        setSettingsDraft((current) =>
-                          current
-                            ? {
-                                ...current,
-                                membersCanSeeFullHouseholdChoreDetails: event.target.checked
-                              }
-                            : current
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="toggle-row">
-                    <span>{t("settings.push_notifications")}</span>
-                    <input
-                      type="checkbox"
-                      checked={settingsDraft.enablePushNotifications}
-                      onChange={(event) =>
-                        setSettingsDraft((current) =>
-                          current ? { ...current, enablePushNotifications: event.target.checked } : current
-                        )
-                      }
-                    />
-                  </label>
-                  <label className="toggle-row">
-                    <span>{t("settings.overdue_penalties")}</span>
-                    <input
-                      type="checkbox"
-                      checked={settingsDraft.enableOverduePenalties}
-                      onChange={(event) =>
-                        setSettingsDraft((current) =>
-                          current ? { ...current, enableOverduePenalties: event.target.checked } : current
-                        )
-                      }
-                    />
-                  </label>
-                </div>
-                <button
-                  className="primary-button"
-                  type="button"
-                  disabled={busyAction === "save-settings"}
-                  onClick={() => void handleSaveSettings()}
-                >
-                  {t("settings.save")}
-                </button>
-              </article>
+              <>
+                <article className="panel">
+                  <div className="section-heading">
+                    <h2>{t("panel.household_settings")}</h2>
+                    <span className="section-kicker">{t("settings.admin_only")}</span>
+                  </div>
+                  <div className="settings-list">
+                    <label className="toggle-row">
+                      <span>{t("settings.self_signup")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.selfSignupEnabled}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, selfSignupEnabled: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="toggle-row">
+                      <span>{t("settings.full_visibility")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.membersCanSeeFullHouseholdChoreDetails}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current
+                              ? {
+                                  ...current,
+                                  membersCanSeeFullHouseholdChoreDetails: event.target.checked
+                                }
+                              : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="toggle-row">
+                      <span>{t("settings.push_notifications")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.enablePushNotifications}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, enablePushNotifications: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="toggle-row">
+                      <span>{t("settings.overdue_penalties")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.enableOverduePenalties}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, enableOverduePenalties: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                  </div>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    disabled={busyAction === "save-settings"}
+                    onClick={() => void handleSaveSettings()}
+                  >
+                    {t("settings.save")}
+                  </button>
+                </article>
+
+                <article className="panel">
+                  <div className="section-heading">
+                    <h2>{t("panel.household_members")}</h2>
+                    <span className="section-kicker">{payload.household.members.length}</span>
+                  </div>
+                  <div className="stack-list">
+                    {payload.household.members.map((member) => (
+                      <div className="leader-row" key={member.id}>
+                        <div>
+                          <strong>{member.displayName}</strong>
+                          <p>
+                            {t(`role.${member.role}`)} - {member.email ?? t("common.none")}
+                          </p>
+                        </div>
+                        <strong>
+                          {formatNumber(member.points)} {t("user.points")}
+                        </strong>
+                      </div>
+                    ))}
+                  </div>
+                  <form className="login-form member-form" onSubmit={handleCreateHouseholdMember}>
+                    <label>
+                      <span>{t("members.display_name")}</span>
+                      <input
+                        type="text"
+                        value={memberForm.displayName}
+                        onChange={(event) =>
+                          setMemberForm((current) => ({ ...current, displayName: event.target.value }))
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("members.role")}</span>
+                      <select
+                        value={memberForm.role}
+                        onChange={(event) =>
+                          setMemberForm((current) => ({
+                            ...current,
+                            role: event.target.value as "parent" | "child"
+                          }))
+                        }
+                      >
+                        <option value="child">{t("role.child")}</option>
+                        <option value="parent">{t("role.parent")}</option>
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("members.email")}</span>
+                      <input
+                        type="email"
+                        value={memberForm.email}
+                        onChange={(event) =>
+                          setMemberForm((current) => ({ ...current, email: event.target.value }))
+                        }
+                        autoComplete="email"
+                      />
+                    </label>
+                    <label>
+                      <span>{t("members.password")}</span>
+                      <input
+                        type="password"
+                        value={memberForm.password}
+                        onChange={(event) =>
+                          setMemberForm((current) => ({ ...current, password: event.target.value }))
+                        }
+                        autoComplete="new-password"
+                      />
+                    </label>
+                    <button className="primary-button" type="submit" disabled={busyAction === "create-member"}>
+                      {t("members.create")}
+                    </button>
+                  </form>
+                </article>
+              </>
             ) : null}
 
             <article className="panel">

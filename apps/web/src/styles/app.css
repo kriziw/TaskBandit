@@ -384,6 +384,10 @@ select {
   gap: 12px;
 }
 
+.member-form {
+  margin-top: 18px;
+}
+
 .login-form label,
 .inline-field {
   display: grid;
@@ -392,7 +396,8 @@ select {
 
 .login-form input,
 .inline-field textarea,
-.inline-field input {
+.inline-field input,
+.login-form select {
   width: 100%;
   border: 1px solid var(--line);
   border-radius: 16px;

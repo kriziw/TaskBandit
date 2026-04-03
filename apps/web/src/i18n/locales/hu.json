@@ -27,6 +27,7 @@
   "panel.leaderboard": "Rangsor",
   "panel.household_chores": "Haztartasi feladatok",
   "panel.household_settings": "Haztartasi beallitasok",
+  "panel.household_members": "Haztartasi tagok",
   "panel.providers": "Bejelentkezesi modok",
   "panel.providers_hint": "A helyi bejelentkezes mar mukodik, az OIDC szerveroldalon elo van keszitve.",
   "panel.demo_accounts": "Demo fiokok",
@@ -104,6 +105,13 @@
   "settings.save": "Beallitasok mentese",
   "settings.saved": "A haztartasi beallitasok elmentve.",
   "settings.save_failed": "A TaskBandit nem tudta elmenteni a haztartasi beallitasokat.",
+  "members.display_name": "Megjeleno nev",
+  "members.role": "Szerepkor",
+  "members.email": "Email",
+  "members.password": "Ideiglenes jelszo",
+  "members.create": "Tag letrehozasa",
+  "members.created": "A haztartasi tag letrejott.",
+  "members.create_failed": "A TaskBandit nem tudta letrehozni a haztartasi tagot.",
   "error.load_dashboard": "A TaskBandit nem tudta betolteni az elo iranyitopultot.",
   "error.missing_template": "Ehhez a peldanyhoz nem talalhato feladatsablon."
 }

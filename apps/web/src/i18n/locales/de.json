@@ -27,6 +27,7 @@
   "panel.leaderboard": "Bestenliste",
   "panel.household_chores": "Haushaltsaufgaben",
   "panel.household_settings": "Haushaltseinstellungen",
+  "panel.household_members": "Haushaltsmitglieder",
   "panel.providers": "Anmeldeanbieter",
   "panel.providers_hint": "Lokale Anmeldung funktioniert jetzt, OIDC ist serverseitig vorbereitet.",
   "panel.demo_accounts": "Demo-Konten",
@@ -104,6 +105,13 @@
   "settings.save": "Einstellungen speichern",
   "settings.saved": "Haushaltseinstellungen gespeichert.",
   "settings.save_failed": "TaskBandit konnte die Haushaltseinstellungen nicht speichern.",
+  "members.display_name": "Anzeigename",
+  "members.role": "Rolle",
+  "members.email": "E-Mail",
+  "members.password": "Temporaeres Passwort",
+  "members.create": "Mitglied anlegen",
+  "members.created": "Haushaltsmitglied erstellt.",
+  "members.create_failed": "TaskBandit konnte das Haushaltsmitglied nicht erstellen.",
   "error.load_dashboard": "TaskBandit konnte das Live-Dashboard nicht laden.",
   "error.missing_template": "Die Aufgabenvorlage fur diese Instanz wurde nicht gefunden."
 }

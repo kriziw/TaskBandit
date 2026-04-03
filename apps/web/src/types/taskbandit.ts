@@ -45,6 +45,7 @@ export type HouseholdMember = {
   id: string;
   displayName: string;
   role: HouseholdRole;
+  email?: string | null;
   points: number;
   currentStreak: number;
 };
@@ -136,4 +137,11 @@ export type AuthProviders = {
     authority: string;
     clientId: string;
   };
+};
+
+export type CreateHouseholdMemberInput = {
+  displayName: string;
+  role: "parent" | "child";
+  email: string;
+  password: string;
 };

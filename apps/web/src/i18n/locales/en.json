@@ -27,6 +27,7 @@
   "panel.leaderboard": "Leaderboard",
   "panel.household_chores": "Household Chores",
   "panel.household_settings": "Household Settings",
+  "panel.household_members": "Household Members",
   "panel.providers": "Sign-In Providers",
   "panel.providers_hint": "Local auth works now, OIDC is prepared on the server.",
   "panel.demo_accounts": "Demo Accounts",
@@ -104,6 +105,13 @@
   "settings.save": "Save settings",
   "settings.saved": "Household settings saved.",
   "settings.save_failed": "TaskBandit could not save the household settings.",
+  "members.display_name": "Display name",
+  "members.role": "Role",
+  "members.email": "Email",
+  "members.password": "Temporary password",
+  "members.create": "Create member",
+  "members.created": "Household member created.",
+  "members.create_failed": "TaskBandit could not create the household member.",
   "error.load_dashboard": "TaskBandit could not load the live dashboard.",
   "error.missing_template": "The chore template could not be found for this instance."
 }

@@ -18,6 +18,7 @@ import { hash } from "bcryptjs";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
+import { CreateHouseholdMemberDto } from "../settings/dto/create-household-member.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
 @Injectable()
@@ -70,7 +71,16 @@ export class HouseholdRepository {
       },
       include: {
         settings: true,
-        members: true
+        members: {
+          include: {
+            identities: {
+              where: {
+                provider: AuthProvider.LOCAL
+              },
+              take: 1
+            }
+          }
+        }
       }
     });
 
@@ -84,7 +94,16 @@ export class HouseholdRepository {
       },
       include: {
         settings: true,
-        members: true
+        members: {
+          include: {
+            identities: {
+              where: {
+                provider: AuthProvider.LOCAL
+              },
+              take: 1
+            }
+          }
+        }
       }
     });
 
@@ -98,7 +117,16 @@ export class HouseholdRepository {
       },
       include: {
         settings: true,
-        members: true
+        members: {
+          include: {
+            identities: {
+              where: {
+                provider: AuthProvider.LOCAL
+              },
+              take: 1
+            }
+          }
+        }
       }
     });
 
@@ -121,6 +149,44 @@ export class HouseholdRepository {
     return this.getHousehold(householdId);
   }
 
+  async createHouseholdMember(
+    dto: CreateHouseholdMemberDto,
+    householdId: string,
+    passwordHash: string,
+    emailInUseMessage: string
+  ) {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existingIdentity = await this.prisma.authIdentity.findUnique({
+      where: {
+        email: normalizedEmail
+      }
+    });
+
+    if (existingIdentity) {
+      throw new ConflictException({
+        message: emailInUseMessage
+      });
+    }
+
+    await this.prisma.user.create({
+      data: {
+        householdId,
+        displayName: dto.displayName.trim(),
+        role: dto.role === "child" ? HouseholdRole.CHILD : HouseholdRole.PARENT,
+        identities: {
+          create: {
+            provider: AuthProvider.LOCAL,
+            providerSubject: normalizedEmail,
+            email: normalizedEmail,
+            passwordHash
+          }
+        }
+      }
+    });
+
+    return this.getHousehold(householdId);
+  }
+
   async getDashboardSummary(householdId: string) {
     const [household, instances] = await Promise.all([
       this.prisma.household.findFirstOrThrow({
@@ -128,7 +194,16 @@ export class HouseholdRepository {
           id: householdId
         },
         include: {
-          members: true
+          members: {
+            include: {
+              identities: {
+                where: {
+                  provider: AuthProvider.LOCAL
+                },
+                take: 1
+              }
+            }
+          }
         }
       }),
       this.prisma.choreInstance.findMany({
@@ -558,7 +633,14 @@ export class HouseholdRepository {
 
   private mapHousehold(
     household: Prisma.HouseholdGetPayload<{
-      include: { settings: true; members: true };
+      include: {
+        settings: true;
+        members: {
+          include: {
+            identities: true;
+          };
+        };
+      };
     }>
   ) {
     return {
@@ -577,11 +659,18 @@ export class HouseholdRepository {
     };
   }
 
-  private mapMember(member: Prisma.UserGetPayload<Record<string, never>>) {
+  private mapMember(
+    member: Prisma.UserGetPayload<{
+      include: {
+        identities: true;
+      };
+    }>
+  ) {
     return {
       id: member.id,
       displayName: member.displayName,
       role: member.role.toLowerCase(),
+      email: member.identities[0]?.email ?? null,
       points: member.points,
       currentStreak: member.currentStreak
     };
