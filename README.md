@@ -18,10 +18,11 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 This repository is in the initial implementation phase. The current scaffold includes:
 
 - the v1 product and technical architecture
-- initial backend domain models and placeholder endpoints
+- initial backend domain models, EF Core persistence structure, and starter endpoints
 - the first-pass web UI shell
 - the first-pass Android shell
 - Docker-based local infrastructure for PostgreSQL
+- a bootstrap path for initializing the first household
 - reverse-proxy aware server configuration for Nginx or Traefik deployments
 
 ## Local Tooling Note
@@ -31,3 +32,9 @@ This workspace currently has Node.js available, but does not have a .NET SDK or 
 ## Deployment Notes
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.
+
+## Backend Notes
+
+The backend now uses EF Core with PostgreSQL-oriented configuration and a seed/bootstrap path for the initial single-household dataset. The next backend milestone is expanding from the current seed-backed read/write slice into full authenticated household management and real workflow state transitions.
+
+For local/demo environments, sample household seeding can be toggled with `TaskBandit__Bootstrap__SeedDemoData`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.

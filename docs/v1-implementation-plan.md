@@ -31,8 +31,7 @@
 
 ## Immediate Next Steps
 
-- replace in-memory backend data with EF Core and PostgreSQL persistence
-- add authentication and household bootstrap endpoints
+- expand the new EF Core/PostgreSQL foundation beyond seeded household data
+- add authentication and connect it to the bootstrap flow
 - connect the web dashboard to live backend data
 - add Android data models, API client, and sync queue
-

@@ -9,17 +9,24 @@ public static class ChoreEndpoints
     {
         var group = app.MapGroup("/api/chores");
 
-        group.MapGet("/templates", (InMemoryTaskBanditStore store) =>
-            Results.Ok(store.GetTemplates()));
+        group.MapGet("/templates", async (
+            ITaskBanditRepository repository,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await repository.GetTemplatesAsync(cancellationToken)));
 
-        group.MapPost("/templates", (CreateChoreTemplateRequest request, InMemoryTaskBanditStore store) =>
+        group.MapPost("/templates", async (
+            CreateChoreTemplateRequest request,
+            ITaskBanditRepository repository,
+            CancellationToken cancellationToken) =>
         {
-            var template = store.CreateTemplate(request);
+            var template = await repository.CreateTemplateAsync(request, cancellationToken);
             return Results.Created($"/api/chores/templates/{template.Id}", template);
         });
 
-        group.MapGet("/instances", (InMemoryTaskBanditStore store) =>
-            Results.Ok(store.GetInstances()));
+        group.MapGet("/instances", async (
+            ITaskBanditRepository repository,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await repository.GetInstancesAsync(cancellationToken)));
 
         return app;
     }

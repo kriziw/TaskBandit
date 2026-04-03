@@ -9,13 +9,15 @@ public static class SettingsEndpoints
     {
         var group = app.MapGroup("/api/settings");
 
-        group.MapGet("/household", (InMemoryTaskBanditStore store) =>
-            Results.Ok(store.GetHousehold()));
+        group.MapGet("/household", async (ITaskBanditRepository repository, CancellationToken cancellationToken) =>
+            Results.Ok(await repository.GetHouseholdAsync(cancellationToken)));
 
-        group.MapPut("/household", (UpdateSettingsRequest request, InMemoryTaskBanditStore store) =>
-            Results.Ok(store.UpdateSettings(request)));
+        group.MapPut("/household", async (
+            UpdateSettingsRequest request,
+            ITaskBanditRepository repository,
+            CancellationToken cancellationToken) =>
+            Results.Ok(await repository.UpdateSettingsAsync(request, cancellationToken)));
 
         return app;
     }
 }
-

@@ -1,15 +1,23 @@
 using Microsoft.AspNetCore.HttpOverrides;
+using Microsoft.EntityFrameworkCore;
 using TaskBandit.Api.Configuration;
 using TaskBandit.Api.Endpoints;
 using TaskBandit.Api.Gamification;
+using TaskBandit.Api.Persistence;
 using TaskBandit.Api.Services;
 
 var builder = WebApplication.CreateBuilder(args);
+var connectionString = builder.Configuration.GetConnectionString("TaskBandit")
+    ?? throw new InvalidOperationException("Connection string 'TaskBandit' is not configured.");
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
-builder.Services.AddSingleton<InMemoryTaskBanditStore>();
+builder.Services.AddDbContext<TaskBanditDbContext>(options => options.UseNpgsql(connectionString));
 builder.Services.AddSingleton<PointsCalculator>();
+builder.Services.AddScoped<ITaskBanditRepository, TaskBanditRepository>();
+builder.Services.AddScoped<TaskBanditDbSeeder>();
+builder.Services.Configure<BootstrapOptions>(
+    builder.Configuration.GetSection(BootstrapOptions.SectionName));
 builder.Services.Configure<ReverseProxyOptions>(
     builder.Configuration.GetSection(ReverseProxyOptions.SectionName));
 builder.Services.Configure<ForwardedHeadersOptions>(options =>
@@ -26,6 +34,13 @@ builder.Services.Configure<ForwardedHeadersOptions>(options =>
 });
 
 var app = builder.Build();
+
+using (var scope = app.Services.CreateScope())
+{
+    var seeder = scope.ServiceProvider.GetRequiredService<TaskBanditDbSeeder>();
+    var dbContext = scope.ServiceProvider.GetRequiredService<TaskBanditDbContext>();
+    await seeder.SeedAsync(dbContext, CancellationToken.None);
+}
 
 var reverseProxyOptions = app.Configuration
     .GetSection(ReverseProxyOptions.SectionName)
@@ -52,6 +67,7 @@ app.MapGet("/", () => Results.Ok(new
 }));
 
 app.MapGet("/health", () => Results.Ok(new { status = "healthy" }));
+app.MapBootstrapEndpoints();
 app.MapDashboardEndpoints();
 app.MapGamificationEndpoints();
 app.MapSettingsEndpoints();
