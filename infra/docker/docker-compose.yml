@@ -9,7 +9,7 @@ services:
       POSTGRES_USER: ${TASKBANDIT_DB_USER:-taskbandit}
       POSTGRES_PASSWORD: ${TASKBANDIT_DB_PASSWORD:-taskbandit}
     ports:
-      - "5432:5432"
+      - "${TASKBANDIT_DB_HOST_PORT:-5432}:5432"
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
@@ -17,7 +17,7 @@ services:
     image: kriziw/taskbandit:${TASKBANDIT_IMAGE_TAG:-latest}
     container_name: taskbandit-server
     environment:
-      PORT: 8080
+      PORT: ${TASKBANDIT_PORT:-8080}
       DATABASE_URL: postgresql://${TASKBANDIT_DB_USER:-taskbandit}:${TASKBANDIT_DB_PASSWORD:-taskbandit}@postgres:5432/${TASKBANDIT_DB_NAME:-taskbandit}?schema=public
       TASKBANDIT_JWT_SECRET: ${TASKBANDIT_JWT_SECRET:-taskbandit-dev-secret-change-me}
       TASKBANDIT_JWT_EXPIRES_IN: ${TASKBANDIT_JWT_EXPIRES_IN:-7d}
@@ -30,7 +30,7 @@ services:
       TASKBANDIT_REVERSE_PROXY_PATH_BASE: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
       TASKBANDIT_STORAGE_ROOT: ${TASKBANDIT_STORAGE_ROOT:-/var/lib/taskbandit/storage}
     ports:
-      - "8080:8080"
+      - "${TASKBANDIT_PORT:-8080}:${TASKBANDIT_PORT:-8080}"
     depends_on:
       - postgres
     pull_policy: always
