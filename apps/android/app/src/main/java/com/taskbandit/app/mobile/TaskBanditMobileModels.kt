@@ -76,6 +76,11 @@ data class MobileReleaseInfo(
     val commitSha: String
 )
 
+data class MobileChoreTemplate(
+    val id: String,
+    val title: String
+)
+
 data class MobileDashboard(
     val user: MobileUser,
     val pendingApprovals: Int,
@@ -83,5 +88,6 @@ data class MobileDashboard(
     val streakLeader: String,
     val leaderboard: List<MobileLeaderboardEntry>,
     val chores: List<MobileChore>,
-    val notifications: List<MobileNotification>
+    val notifications: List<MobileNotification>,
+    val templates: List<MobileChoreTemplate>
 )

@@ -32,10 +32,13 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,6 +47,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -75,10 +79,17 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 import java.util.UUID
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
+
+private enum class MobileDashboardTab {
+    CHORES,
+    CREATE,
+    UPDATES
+}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -122,6 +133,8 @@ private fun TaskBanditApp(
     val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
+    val choreCreatedMessage = stringResource(R.string.mobile_chore_created)
+    val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     val currentReleaseInfo = remember {
         MobileReleaseInfo(
@@ -145,6 +158,7 @@ private fun TaskBanditApp(
     var activeNotificationAction by remember { mutableStateOf<String?>(null) }
     var activeStartAction by remember { mutableStateOf<String?>(null) }
     var activeSubmitAction by remember { mutableStateOf<String?>(null) }
+    var activeCreateAction by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
@@ -427,6 +441,41 @@ private fun TaskBanditApp(
         }
     }
 
+    fun createChore(templateId: String, delayHours: Int) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        val resolvedDelayHours = delayHours.coerceAtLeast(1)
+        activeCreateAction = "create:$templateId"
+        errorMessage = null
+        noticeMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    val dueAt = Instant.now()
+                        .plus(resolvedDelayHours.toLong(), ChronoUnit.HOURS)
+                        .toString()
+                    api.createChoreInstance(
+                        baseUrl = baseUrl,
+                        token = token,
+                        templateId = templateId,
+                        dueAtIsoUtc = dueAt
+                    )
+                }
+            }.onSuccess {
+                noticeMessage = choreCreatedMessage
+                refreshDashboard()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message ?: createChoreFailedMessage
+                }
+            }
+            activeCreateAction = null
+        }
+    }
+
     LaunchedEffect(session.token) {
         if (session.token != null) {
             if (
@@ -520,6 +569,7 @@ private fun TaskBanditApp(
             activeNotificationAction = activeNotificationAction,
             activeStartAction = activeStartAction,
             activeSubmitAction = activeSubmitAction,
+            activeCreateAction = activeCreateAction,
             errorMessage = errorMessage,
             noticeMessage = noticeMessage,
             queuedSubmissionCount = queuedSubmissionCount,
@@ -534,7 +584,8 @@ private fun TaskBanditApp(
             selectedProofUris = selectedProofUris,
             onPickProofs = ::openProofPicker,
             onStartChore = ::startChore,
-            onSubmitChore = ::submitChore
+            onSubmitChore = ::submitChore,
+            onCreateChore = ::createChore
         )
     }
 }
@@ -726,6 +777,46 @@ private fun LoginScreen(
 }
 
 @Composable
+private fun DashboardActionCard(
+    badge: String,
+    title: String,
+    body: String,
+    actionLabel: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = badge,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(
+                onClick = onClick,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(actionLabel)
+            }
+        }
+    }
+}
+
+@Composable
 private fun DashboardScreen(
     dashboard: MobileDashboard?,
     serverUrl: String,
@@ -738,6 +829,7 @@ private fun DashboardScreen(
     activeNotificationAction: String?,
     activeStartAction: String?,
     activeSubmitAction: String?,
+    activeCreateAction: String?,
     errorMessage: String?,
     noticeMessage: String?,
     queuedSubmissionCount: Int,
@@ -752,12 +844,49 @@ private fun DashboardScreen(
     selectedProofUris: Map<String, List<String>>,
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
-    onSubmitChore: (String) -> Unit
+    onSubmitChore: (String) -> Unit,
+    onCreateChore: (String, Int) -> Unit
 ) {
     val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
     val visibleChores = dashboard?.chores.orEmpty().filter { it.state != "pending_approval" }
+    val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
+    var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
+    var createDelayHours by rememberSaveable { mutableStateOf(4) }
+    var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    val createDelayOptions = listOf(2, 4, 8, 24, 48)
 
-    Scaffold { padding ->
+    LaunchedEffect(isCreatorRole) {
+        if (!isCreatorRole && activeTab == MobileDashboardTab.CREATE) {
+            activeTab = MobileDashboardTab.CHORES
+        }
+    }
+
+    Scaffold(
+        bottomBar = {
+            NavigationBar {
+                NavigationBarItem(
+                    selected = activeTab == MobileDashboardTab.CHORES,
+                    onClick = { activeTab = MobileDashboardTab.CHORES },
+                    icon = { Text("✓") },
+                    label = { Text(stringResource(R.string.mobile_tab_chores)) }
+                )
+                if (isCreatorRole) {
+                    NavigationBarItem(
+                        selected = activeTab == MobileDashboardTab.CREATE,
+                        onClick = { activeTab = MobileDashboardTab.CREATE },
+                        icon = { Text("+") },
+                        label = { Text(stringResource(R.string.mobile_tab_create)) }
+                    )
+                }
+                NavigationBarItem(
+                    selected = activeTab == MobileDashboardTab.UPDATES,
+                    onClick = { activeTab = MobileDashboardTab.UPDATES },
+                    icon = { Text("!") },
+                    label = { Text(stringResource(R.string.mobile_tab_updates)) }
+                )
+            }
+        }
+    ) { padding ->
         LazyColumn(
             modifier = Modifier
                 .fillMaxSize()
@@ -805,6 +934,47 @@ private fun DashboardScreen(
                                 dashboard?.user?.currentStreak ?: 0
                             ),
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.mobile_dashboard_start_here),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        DashboardActionCard(
+                            badge = stringResource(R.string.mobile_dashboard_primary_badge),
+                            title = stringResource(R.string.mobile_dashboard_primary_title),
+                            body = stringResource(R.string.mobile_dashboard_primary_body),
+                            actionLabel = stringResource(
+                                if (activeTab == MobileDashboardTab.CHORES) {
+                                    R.string.mobile_dashboard_here
+                                } else {
+                                    R.string.mobile_dashboard_open_chores
+                                }
+                            ),
+                            enabled = activeTab != MobileDashboardTab.CHORES,
+                            onClick = {
+                                activeTab = MobileDashboardTab.CHORES
+                                expandedChoreIds = emptySet()
+                            }
+                        )
+                        DashboardActionCard(
+                            badge = stringResource(R.string.mobile_dashboard_secondary_badge),
+                            title = stringResource(R.string.mobile_dashboard_secondary_title),
+                            body = stringResource(
+                                if (isCreatorRole) {
+                                    R.string.mobile_dashboard_secondary_body
+                                } else {
+                                    R.string.mobile_dashboard_secondary_body_locked
+                                }
+                            ),
+                            actionLabel = stringResource(
+                                when {
+                                    !isCreatorRole -> R.string.mobile_dashboard_admin_only
+                                    activeTab == MobileDashboardTab.CREATE -> R.string.mobile_dashboard_here
+                                    else -> R.string.mobile_dashboard_open_create
+                                }
+                            ),
+                            enabled = isCreatorRole && activeTab != MobileDashboardTab.CREATE,
+                            onClick = { activeTab = MobileDashboardTab.CREATE }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(onClick = onRefresh, enabled = !isBusy) {
@@ -868,249 +1038,371 @@ private fun DashboardScreen(
                 }
             }
 
-            item {
-                Text(
-                    text = stringResource(R.string.mobile_my_chores),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            if (pendingApprovals.isNotEmpty()) {
+            if (activeTab == MobileDashboardTab.CHORES) {
                 item {
                     Text(
-                        text = stringResource(R.string.mobile_pending_approvals),
+                        text = stringResource(R.string.mobile_my_chores),
                         style = MaterialTheme.typography.titleLarge,
                         fontWeight = FontWeight.SemiBold
                     )
                 }
 
-                items(pendingApprovals) { chore ->
-                    Card {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
-                            Text(
-                                text = stringResource(
-                                    R.string.mobile_due_at,
-                                    formatApiTimestamp(chore.dueAt)
-                                ),
-                                style = MaterialTheme.typography.bodyMedium
-                            )
-                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Button(
-                                    onClick = { onApprove(chore.id) },
-                                    enabled = activeReviewAction == null
-                                ) {
-                                    Text(
-                                        stringResource(
-                                            if (activeReviewAction == "approve:${chore.id}") {
-                                                R.string.mobile_approving
-                                            } else {
-                                                R.string.mobile_approve
-                                            }
-                                        )
-                                    )
-                                }
-                                Button(
-                                    onClick = { onReject(chore.id) },
-                                    enabled = activeReviewAction == null
-                                ) {
-                                    Text(
-                                        stringResource(
-                                            if (activeReviewAction == "reject:${chore.id}") {
-                                                R.string.mobile_rejecting
-                                            } else {
-                                                R.string.mobile_reject
-                                            }
-                                        )
-                                    )
-                                }
-                            }
-                        }
+                if (pendingApprovals.isNotEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.mobile_pending_approvals),
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold
+                        )
                     }
-                }
-            }
 
-            items(visibleChores) { chore ->
-                val selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet()
-                val selectedProofCount = selectedProofUris[chore.id]?.size ?: 0
-                val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
-                        Text(
-                            text = stringResource(
-                                R.string.mobile_due_at,
-                                formatApiTimestamp(chore.dueAt)
-                            ),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = if (chore.isOverdue) {
-                                stringResource(R.string.mobile_state_overdue)
-                            } else {
-                                chore.state.replace('_', ' ')
-                            },
-                            style = MaterialTheme.typography.labelLarge
-                        )
-                        if (chore.checklist.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                chore.checklist.forEach { item ->
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    items(pendingApprovals) { chore ->
+                        Card {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    text = stringResource(
+                                        R.string.mobile_due_at,
+                                        formatApiTimestamp(chore.dueAt)
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(
+                                        onClick = { onApprove(chore.id) },
+                                        enabled = activeReviewAction == null
                                     ) {
-                                        Checkbox(
-                                            checked = selectedChecklistIds.contains(item.id),
-                                            onCheckedChange = {
-                                                onToggleChecklistItem(
-                                                    chore.id,
-                                                    item.id,
-                                                    chore.completedChecklistIds
-                                                )
-                                            },
-                                            enabled = isSubmittableState
-                                        )
                                         Text(
-                                            text = item.title,
-                                            style = MaterialTheme.typography.bodyMedium
+                                            stringResource(
+                                                if (activeReviewAction == "approve:${chore.id}") {
+                                                    R.string.mobile_approving
+                                                } else {
+                                                    R.string.mobile_approve
+                                                }
+                                            )
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { onReject(chore.id) },
+                                        enabled = activeReviewAction == null
+                                    ) {
+                                        Text(
+                                            stringResource(
+                                                if (activeReviewAction == "reject:${chore.id}") {
+                                                    R.string.mobile_rejecting
+                                                } else {
+                                                    R.string.mobile_reject
+                                                }
+                                            )
                                         )
                                     }
                                 }
                             }
                         }
-                        if (isSubmittableState) {
-                            Button(
-                                onClick = { onStartChore(chore.id) },
-                                enabled = activeStartAction == null && chore.state != "in_progress"
-                            ) {
-                                Text(
-                                    stringResource(
-                                        if (activeStartAction == "start:${chore.id}") {
-                                            R.string.mobile_starting
-                                        } else if (chore.state == "in_progress") {
-                                            R.string.mobile_started
-                                        } else {
-                                            R.string.mobile_start
-                                        }
-                                    )
-                                )
-                            }
-                        }
-                        if (isSubmittableState) {
-                            Button(
-                                onClick = { onPickProofs(chore.id) },
-                                enabled = activeSubmitAction == null
-                            ) {
-                                Text(stringResource(R.string.mobile_pick_photos))
-                            }
-                        }
-                        if (selectedProofCount > 0) {
-                            Text(
-                                text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        } else if (chore.requirePhotoProof) {
-                            Text(
-                                text = stringResource(R.string.mobile_photo_required_hint),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        if (isSubmittableState) {
-                            Button(
-                                onClick = { onSubmitChore(chore.id) },
-                                enabled = activeSubmitAction == null
-                            ) {
-                                Text(
-                                    stringResource(
-                                        if (activeSubmitAction == "submit:${chore.id}") {
-                                            R.string.mobile_submitting
-                                        } else {
-                                            R.string.mobile_submit
-                                        }
-                                    )
-                                )
-                            }
-                        }
                     }
                 }
-            }
 
-            item {
-                Text(
-                    text = stringResource(R.string.mobile_notifications),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
-            }
-
-            items(dashboard?.notifications.orEmpty().take(5)) { notification ->
-                Card {
-                    Column(
-                        modifier = Modifier.padding(16.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Text(text = notification.title, style = MaterialTheme.typography.titleMedium)
-                        Text(text = notification.message, style = MaterialTheme.typography.bodyMedium)
+                if (visibleChores.isEmpty()) {
+                    item {
                         Text(
-                            text = formatApiTimestamp(notification.createdAt),
-                            style = MaterialTheme.typography.bodySmall
+                            text = stringResource(R.string.mobile_no_chores),
+                            style = MaterialTheme.typography.bodyMedium
                         )
-                        if (!notification.isRead) {
-                            Button(
-                                onClick = { onNotificationRead(notification.id) },
-                                enabled = activeNotificationAction == null
+                    }
+                } else {
+                    items(visibleChores) { chore ->
+                        val selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet()
+                        val selectedProofCount = selectedProofUris[chore.id]?.size ?: 0
+                        val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+                        val showDetails = expandedChoreIds.contains(chore.id)
+
+                        Card {
+                            Column(
+                                modifier = Modifier.padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp)
                             ) {
+                                Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    stringResource(
-                                        if (activeNotificationAction == "notification:${notification.id}") {
-                                            R.string.mobile_marking_read
-                                        } else {
-                                            R.string.mobile_mark_read
-                                        }
-                                    )
+                                    text = stringResource(
+                                        R.string.mobile_due_at,
+                                        formatApiTimestamp(chore.dueAt)
+                                    ),
+                                    style = MaterialTheme.typography.bodySmall
                                 )
+                                Text(
+                                    text = if (chore.isOverdue) {
+                                        stringResource(R.string.mobile_state_overdue)
+                                    } else {
+                                        chore.state.replace('_', ' ')
+                                    },
+                                    style = MaterialTheme.typography.labelLarge
+                                )
+                                if (isSubmittableState) {
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = { onStartChore(chore.id) },
+                                            enabled = activeStartAction == null && chore.state != "in_progress"
+                                        ) {
+                                            Text(
+                                                stringResource(
+                                                    if (activeStartAction == "start:${chore.id}") {
+                                                        R.string.mobile_starting
+                                                    } else if (chore.state == "in_progress") {
+                                                        R.string.mobile_started
+                                                    } else {
+                                                        R.string.mobile_start
+                                                    }
+                                                )
+                                            )
+                                        }
+                                        Button(
+                                            onClick = { onSubmitChore(chore.id) },
+                                            enabled = activeSubmitAction == null
+                                        ) {
+                                            Text(
+                                                stringResource(
+                                                    if (activeSubmitAction == "submit:${chore.id}") {
+                                                        R.string.mobile_submitting
+                                                    } else {
+                                                        R.string.mobile_submit
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = { onPickProofs(chore.id) },
+                                            enabled = activeSubmitAction == null
+                                        ) {
+                                            Text(stringResource(R.string.mobile_pick_photos))
+                                        }
+                                        TextButton(
+                                            onClick = {
+                                                expandedChoreIds = if (showDetails) {
+                                                    expandedChoreIds - chore.id
+                                                } else {
+                                                    expandedChoreIds + chore.id
+                                                }
+                                            }
+                                        ) {
+                                            Text(
+                                                stringResource(
+                                                    if (showDetails) {
+                                                        R.string.mobile_hide_details
+                                                    } else {
+                                                        R.string.mobile_show_details
+                                                    }
+                                                )
+                                            )
+                                        }
+                                    }
+                                }
+                                if (showDetails && chore.checklist.isNotEmpty()) {
+                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        chore.checklist.forEach { item ->
+                                            Row(
+                                                verticalAlignment = Alignment.CenterVertically,
+                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                            ) {
+                                                Checkbox(
+                                                    checked = selectedChecklistIds.contains(item.id),
+                                                    onCheckedChange = {
+                                                        onToggleChecklistItem(
+                                                            chore.id,
+                                                            item.id,
+                                                            chore.completedChecklistIds
+                                                        )
+                                                    },
+                                                    enabled = isSubmittableState
+                                                )
+                                                Text(
+                                                    text = item.title,
+                                                    style = MaterialTheme.typography.bodyMedium
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                                if (showDetails) {
+                                    if (selectedProofCount > 0) {
+                                        Text(
+                                            text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    } else if (chore.requirePhotoProof) {
+                                        Text(
+                                            text = stringResource(R.string.mobile_photo_required_hint),
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
             }
 
-            item {
-                Text(
-                    text = stringResource(R.string.mobile_leaderboard),
-                    style = MaterialTheme.typography.titleLarge,
-                    fontWeight = FontWeight.SemiBold
-                )
+            if (activeTab == MobileDashboardTab.CREATE) {
+                item {
+                    Text(
+                        text = stringResource(R.string.mobile_create_title),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+                item {
+                    Text(
+                        text = stringResource(R.string.mobile_create_hint),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+                item {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        createDelayOptions.forEach { delay ->
+                            Button(
+                                onClick = { createDelayHours = delay },
+                                enabled = createDelayHours != delay
+                            ) {
+                                Text(stringResource(R.string.mobile_create_delay_option, delay))
+                            }
+                        }
+                    }
+                }
+
+                if (!isCreatorRole) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.mobile_create_no_permission),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else if (dashboard?.templates.orEmpty().isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.mobile_create_no_templates),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    items(dashboard?.templates.orEmpty()) { template ->
+                        Card {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
+                            ) {
+                                Text(
+                                    text = template.title,
+                                    style = MaterialTheme.typography.titleMedium,
+                                    modifier = Modifier.weight(1f)
+                                )
+                                Button(
+                                    onClick = { onCreateChore(template.id, createDelayHours) },
+                                    enabled = activeCreateAction == null
+                                ) {
+                                    if (activeCreateAction == "create:${template.id}") {
+                                        Text(stringResource(R.string.mobile_create_creating))
+                                    } else {
+                                        Text(
+                                            stringResource(
+                                                R.string.mobile_create_action,
+                                                createDelayHours
+                                            )
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
             }
 
-            items(dashboard?.leaderboard.orEmpty().take(5)) { entry ->
-                Card {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(16.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Column {
-                            Text(text = entry.displayName, style = MaterialTheme.typography.titleMedium)
-                            Text(text = entry.role, style = MaterialTheme.typography.bodySmall)
+            if (activeTab == MobileDashboardTab.UPDATES) {
+                item {
+                    Text(
+                        text = stringResource(R.string.mobile_notifications),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                if (dashboard?.notifications.orEmpty().isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.mobile_notifications_empty),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    items(dashboard?.notifications.orEmpty().take(5)) { notification ->
+                        Card {
+                            Column(
+                                modifier = Modifier.padding(16.dp),
+                                verticalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Text(text = notification.title, style = MaterialTheme.typography.titleMedium)
+                                Text(text = notification.message, style = MaterialTheme.typography.bodyMedium)
+                                Text(
+                                    text = formatApiTimestamp(notification.createdAt),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                                if (!notification.isRead) {
+                                    Button(
+                                        onClick = { onNotificationRead(notification.id) },
+                                        enabled = activeNotificationAction == null
+                                    ) {
+                                        Text(
+                                            stringResource(
+                                                if (activeNotificationAction == "notification:${notification.id}") {
+                                                    R.string.mobile_marking_read
+                                                } else {
+                                                    R.string.mobile_mark_read
+                                                }
+                                            )
+                                        )
+                                    }
+                                }
+                            }
                         }
-                        Column(horizontalAlignment = Alignment.End) {
-                            Text(
-                                text = stringResource(R.string.mobile_points_value, entry.points),
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                            Text(
-                                text = stringResource(R.string.mobile_streak_value, entry.currentStreak),
-                                style = MaterialTheme.typography.bodySmall
-                            )
+                    }
+                }
+
+                item {
+                    Text(
+                        text = stringResource(R.string.mobile_leaderboard),
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+
+                items(dashboard?.leaderboard.orEmpty().take(5)) { entry ->
+                    Card {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(16.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween
+                        ) {
+                            Column {
+                                Text(text = entry.displayName, style = MaterialTheme.typography.titleMedium)
+                                Text(text = entry.role, style = MaterialTheme.typography.bodySmall)
+                            }
+                            Column(horizontalAlignment = Alignment.End) {
+                                Text(
+                                    text = stringResource(R.string.mobile_points_value, entry.points),
+                                    style = MaterialTheme.typography.titleMedium
+                                )
+                                Text(
+                                    text = stringResource(R.string.mobile_streak_value, entry.currentStreak),
+                                    style = MaterialTheme.typography.bodySmall
+                                )
+                            }
                         }
                     }
                 }

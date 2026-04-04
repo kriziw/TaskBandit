@@ -15,6 +15,7 @@ import type {
   ChoreInstance,
   ChoreState,
   ChoreTemplate,
+  ChoreTemplateDependencyRule,
   CreateChoreInstanceInput,
   CreateChoreTemplateInput,
   CreateHouseholdMemberInput,
@@ -29,6 +30,7 @@ import type {
   PointsLedgerEntry,
   ReleaseInfo,
   RecurrenceType,
+  FollowUpDelayUnit,
   RuntimeLogEntry,
   SignupInput,
   UpdateHouseholdMemberInput
@@ -112,6 +114,39 @@ const recurrenceWeekdayOrder = [
   "FRIDAY",
   "SATURDAY"
 ] as const;
+
+const defaultDependencyDelayValue = 1;
+const defaultDependencyDelayUnit: FollowUpDelayUnit = "hours";
+
+function normalizeTemplateDependencyRules(
+  dependencyRules?: ChoreTemplateDependencyRule[],
+  dependencyTemplateIds?: string[]
+) {
+  const normalized = new Map<string, ChoreTemplateDependencyRule>();
+  for (const dependencyRule of dependencyRules ?? []) {
+    if (!dependencyRule.templateId) {
+      continue;
+    }
+
+    normalized.set(dependencyRule.templateId, {
+      templateId: dependencyRule.templateId,
+      delayValue: Math.max(1, Math.floor(Number(dependencyRule.delayValue || 1))),
+      delayUnit: dependencyRule.delayUnit === "days" ? "days" : "hours"
+    });
+  }
+
+  for (const templateId of dependencyTemplateIds ?? []) {
+    if (!normalized.has(templateId)) {
+      normalized.set(templateId, {
+        templateId,
+        delayValue: defaultDependencyDelayValue,
+        delayUnit: defaultDependencyDelayUnit
+      });
+    }
+  }
+
+  return [...normalized.values()];
+}
 
 function createTemporaryPassword(length = 16) {
   const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
@@ -309,6 +344,7 @@ export function App() {
     recurrenceWeekdays: [],
     requirePhotoProof: false,
     dependencyTemplateIds: [],
+    dependencyRules: [],
     checklist: []
   });
   const [instanceForm, setInstanceForm] = useState<InstanceFormState>({
@@ -1100,6 +1136,19 @@ export function App() {
     }
   }
 
+  function formatFollowUpDelayLabel(rule: ChoreTemplateDependencyRule) {
+    const unitLabel =
+      rule.delayUnit === "days"
+        ? rule.delayValue === 1
+          ? t("templates.delay_day")
+          : t("templates.delay_days")
+        : rule.delayValue === 1
+          ? t("templates.delay_hour")
+          : t("templates.delay_hours");
+
+    return `${rule.delayValue} ${unitLabel}`;
+  }
+
   function handleLogout(message?: string) {
     window.localStorage.removeItem(tokenStorageKey);
     setToken(null);
@@ -1606,7 +1655,11 @@ export function App() {
         required: item.required
       }))
       .filter((item) => item.title.length > 0);
-    const sanitizedDependencyIds = [...new Set(templateForm.dependencyTemplateIds ?? [])];
+    const sanitizedDependencyRules = normalizeTemplateDependencyRules(
+      templateForm.dependencyRules,
+      templateForm.dependencyTemplateIds
+    );
+    const sanitizedDependencyIds = sanitizedDependencyRules.map((dependencyRule) => dependencyRule.templateId);
     const sanitizedRecurrenceWeekdays =
       templateForm.recurrenceType === "custom_weekly"
         ? [...new Set(templateForm.recurrenceWeekdays ?? [])]
@@ -1623,6 +1676,7 @@ export function App() {
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
         dependencyTemplateIds: sanitizedDependencyIds,
+        dependencyRules: sanitizedDependencyRules,
         recurrenceWeekdays: sanitizedRecurrenceWeekdays,
         recurrenceIntervalDays: sanitizedIntervalDays,
         checklist: sanitizedChecklist
@@ -1998,6 +2052,70 @@ export function App() {
     }));
   }
 
+  function toggleTemplateDependencyRule(templateId: string, enabled: boolean) {
+    setTemplateForm((current) => {
+      const currentRules = normalizeTemplateDependencyRules(
+        current.dependencyRules,
+        current.dependencyTemplateIds
+      );
+
+      const nextRules = enabled
+        ? [
+            ...currentRules.filter((dependencyRule) => dependencyRule.templateId !== templateId),
+            {
+              templateId,
+              delayValue: defaultDependencyDelayValue,
+              delayUnit: defaultDependencyDelayUnit
+            }
+          ]
+        : currentRules.filter((dependencyRule) => dependencyRule.templateId !== templateId);
+
+      return {
+        ...current,
+        dependencyRules: nextRules,
+        dependencyTemplateIds: nextRules.map((dependencyRule) => dependencyRule.templateId)
+      };
+    });
+  }
+
+  function updateTemplateDependencyRule(
+    templateId: string,
+    nextValue: Partial<Pick<ChoreTemplateDependencyRule, "delayValue" | "delayUnit">>
+  ) {
+    setTemplateForm((current) => {
+      const currentRules = normalizeTemplateDependencyRules(
+        current.dependencyRules,
+        current.dependencyTemplateIds
+      );
+      const existingRule = currentRules.find((dependencyRule) => dependencyRule.templateId === templateId);
+      if (!existingRule) {
+        return current;
+      }
+
+      const updatedRule: ChoreTemplateDependencyRule = {
+        ...existingRule,
+        ...nextValue,
+        delayValue: Math.max(
+          1,
+          Math.floor(
+            Number(nextValue.delayValue ?? existingRule.delayValue ?? defaultDependencyDelayValue)
+          )
+        ),
+        delayUnit: nextValue.delayUnit ?? existingRule.delayUnit ?? defaultDependencyDelayUnit
+      };
+
+      const nextRules = currentRules.map((dependencyRule) =>
+        dependencyRule.templateId === templateId ? updatedRule : dependencyRule
+      );
+
+      return {
+        ...current,
+        dependencyRules: nextRules,
+        dependencyTemplateIds: nextRules.map((dependencyRule) => dependencyRule.templateId)
+      };
+    });
+  }
+
   function resetTemplateForm() {
     setEditingTemplateId(null);
     setTemplateForm({
@@ -2010,6 +2128,7 @@ export function App() {
       recurrenceWeekdays: [],
       requirePhotoProof: false,
       dependencyTemplateIds: [],
+      dependencyRules: [],
       checklist: []
     });
   }
@@ -2036,6 +2155,10 @@ export function App() {
       recurrenceWeekdays: template.recurrence.weekdays,
       requirePhotoProof: template.requirePhotoProof,
       dependencyTemplateIds: template.dependencyTemplateIds,
+      dependencyRules: normalizeTemplateDependencyRules(
+        template.dependencyRules,
+        template.dependencyTemplateIds
+      ),
       checklist: template.checklist.map((item) => ({
         title: item.title,
         required: item.required
@@ -4307,15 +4430,24 @@ export function App() {
                             ? t("templates.photo_required")
                             : t("templates.photo_optional")}
                         </p>
-                        {template.dependencyTemplateIds.length > 0 ? (
+                        {normalizeTemplateDependencyRules(
+                          template.dependencyRules,
+                          template.dependencyTemplateIds
+                        ).length > 0 ? (
                           <p>
                             {t("templates.follow_ups")}:{" "}
-                            {template.dependencyTemplateIds
-                              .map(
-                                (dependencyId) =>
-                                  payload.templates.find((candidate) => candidate.id === dependencyId)?.title ??
-                                  t("common.unknown")
-                              )
+                            {normalizeTemplateDependencyRules(
+                              template.dependencyRules,
+                              template.dependencyTemplateIds
+                            )
+                              .map((dependencyRule) => {
+                                const followUpTemplateName =
+                                  payload.templates.find(
+                                    (candidate) => candidate.id === dependencyRule.templateId
+                                  )?.title ?? t("common.unknown");
+
+                                return `${followUpTemplateName} (+${formatFollowUpDelayLabel(dependencyRule)})`;
+                              })
                               .join(", ")}
                           </p>
                         ) : (
@@ -4484,32 +4616,74 @@ export function App() {
                       <div className="section-heading">
                         <h3>{t("templates.follow_ups")}</h3>
                         <span className="section-kicker">
-                          {(templateForm.dependencyTemplateIds ?? []).length}
+                          {normalizeTemplateDependencyRules(
+                            templateForm.dependencyRules,
+                            templateForm.dependencyTemplateIds
+                          ).length}
                         </span>
                       </div>
                       {payload.templates.length === 0 ? (
                         <p className="inline-message">{t("templates.follow_up_hint")}</p>
                       ) : (
                         payload.templates.map((template) => {
-                          const selected = (templateForm.dependencyTemplateIds ?? []).includes(template.id);
+                          const dependencyRules = normalizeTemplateDependencyRules(
+                            templateForm.dependencyRules,
+                            templateForm.dependencyTemplateIds
+                          );
+                          const selectedRule = dependencyRules.find(
+                            (dependencyRule) => dependencyRule.templateId === template.id
+                          );
+                          const selected = Boolean(selectedRule);
+
+                          if (template.id === editingTemplateId) {
+                            return null;
+                          }
+
                           return (
-                            <label className="toggle-row" key={template.id}>
-                              <span>{template.title}</span>
-                              <input
-                                type="checkbox"
-                                checked={selected}
-                                onChange={(event) =>
-                                  setTemplateForm((current) => ({
-                                    ...current,
-                                    dependencyTemplateIds: event.target.checked
-                                      ? [...new Set([...(current.dependencyTemplateIds ?? []), template.id])]
-                                      : (current.dependencyTemplateIds ?? []).filter(
-                                          (dependencyId) => dependencyId !== template.id
-                                        )
-                                  }))
-                                }
-                              />
-                            </label>
+                            <div className="task-row compact" key={template.id}>
+                              <label className="toggle-row">
+                                <span>{template.title}</span>
+                                <input
+                                  type="checkbox"
+                                  checked={selected}
+                                  onChange={(event) =>
+                                    toggleTemplateDependencyRule(template.id, event.target.checked)
+                                  }
+                                />
+                              </label>
+                              {selectedRule ? (
+                                <div className="button-row">
+                                  <label>
+                                    <span>{t("templates.follow_up_delay")}</span>
+                                    <input
+                                      type="number"
+                                      min={1}
+                                      max={365}
+                                      value={selectedRule.delayValue}
+                                      onChange={(event) =>
+                                        updateTemplateDependencyRule(template.id, {
+                                          delayValue: Number(event.target.value || 1)
+                                        })
+                                      }
+                                    />
+                                  </label>
+                                  <label>
+                                    <span>{t("templates.follow_up_delay_unit")}</span>
+                                    <select
+                                      value={selectedRule.delayUnit}
+                                      onChange={(event) =>
+                                        updateTemplateDependencyRule(template.id, {
+                                          delayUnit: event.target.value as FollowUpDelayUnit
+                                        })
+                                      }
+                                    >
+                                      <option value="hours">{t("templates.delay_hours")}</option>
+                                      <option value="days">{t("templates.delay_days")}</option>
+                                    </select>
+                                  </label>
+                                </div>
+                              ) : null}
+                            </div>
                           );
                         })
                       )}
