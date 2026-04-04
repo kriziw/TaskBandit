@@ -43,6 +43,14 @@ class TaskBanditSessionStore(
         return createdValue
     }
 
+    fun savePushToken(token: String) {
+        preferences.edit()
+            .putString("push_token", token)
+            .apply()
+    }
+
+    fun readPushToken(): String? = preferences.getString("push_token", null)
+
     fun clearToken(baseUrl: String) {
         preferences.edit()
             .putString("base_url", baseUrl.ifBlank { defaultApiBaseUrl })

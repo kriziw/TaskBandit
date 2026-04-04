@@ -38,6 +38,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - a live React web dashboard with local login, language files, approvals, household settings, and chore views
 - per-member notification preferences respected by reminder and activity notifications
 - Android installations now register notification devices with the server, so push-delivery plumbing has a durable foundation for future provider-backed sends
+- optional Firebase Cloud Messaging delivery is now wired on the server and Android can register real FCM tokens when Firebase is configured at build/runtime
 - optional SMTP settings configurable from the admin UI, with built-in connection testing
 - a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
@@ -98,6 +99,7 @@ Manual setup:
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
    `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true` is the emergency recovery switch that keeps local sign-in available even if the UI setting disables it.
    If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
+   FCM is also optional. Leave `TASKBANDIT_FCM_ENABLED=false` unless you are actively wiring Firebase Admin delivery for Android push notifications.
 3. Start TaskBandit:
    `docker compose up -d`
 4. Open `http://localhost:<TASKBANDIT_PORT>`.
@@ -119,9 +121,12 @@ Manual setup:
 - `TASKBANDIT_REMINDER_INTERVAL_MS=300000` controls how often the backend scans for due-soon and overdue reminder notifications. Set it to `0` to disable the worker.
 - `TASKBANDIT_DUE_SOON_WINDOW_HOURS=6` controls how far ahead TaskBandit creates due-soon reminders.
 - `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC=6` controls when the once-per-day TaskBandit summary notification is generated for each user.
+- `TASKBANDIT_PUSH_DELIVERY_INTERVAL_MS=60000` controls how often the backend processes queued push deliveries. Set it to `0` to disable background push sending.
 - `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
 - `TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage` is the server-side path used for uploaded proof photos inside the container.
 - Android clients now register a durable installation ID with the server so notification-device records move with the data volume and can later be upgraded to real push delivery providers.
+- `TASKBANDIT_FCM_ENABLED=false` keeps server-side Firebase Cloud Messaging off entirely.
+- `TASKBANDIT_FCM_SERVICE_ACCOUNT_BASE64` is the preferred way to pass a Firebase service-account JSON into Docker Compose for push delivery. `TASKBANDIT_FCM_SERVICE_ACCOUNT_JSON` also works if you prefer a raw JSON env value.
 - UI-managed configuration and household state now live under the bind-mounted `TASKBANDIT_DATA_ROOT` folder:
   PostgreSQL data is stored in `${TASKBANDIT_DATA_ROOT}/postgres`, and app-managed files such as uploads and runtime logs are stored in `${TASKBANDIT_DATA_ROOT}/taskbandit`.
   If you migrate that folder to another host and bring the stack up again, the household settings and other UI-managed data come with it.
@@ -151,6 +156,14 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, optional Authentik-focused OIDC sign-in is available through the server-managed authorization-code flow, and auth provider settings can now be managed from the admin UI.
 SMTP can now also be configured from the admin UI as an optional instance capability, with a connection test for validating host, port, and credentials before future email-based features use it.
 Notification-device registration is now live for signed-in Android clients, and the backend logs push-delivery fan-out groundwork in the admin runtime log even before a full FCM provider pipeline is enabled.
+The backend now also queues provider-backed push deliveries in PostgreSQL and can send them through Firebase Admin when FCM is enabled in the environment.
+
+## Android Push Notes
+
+Android push is optional and degrades cleanly:
+- if the Android app is built without Firebase values, it still runs and registers as a generic notification device
+- if the app is built with `TASKBANDIT_FIREBASE_APP_ID`, `TASKBANDIT_FIREBASE_API_KEY`, `TASKBANDIT_FIREBASE_PROJECT_ID`, and `TASKBANDIT_FIREBASE_SENDER_ID`, it initializes Firebase at runtime and registers an FCM token when available
+- if the server is also configured with `TASKBANDIT_FCM_ENABLED=true` and a Firebase Admin service account, queued household notifications can be delivered as real Android push notifications
 
 Auth precedence:
 - Local auth follows the household UI setting unless `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true`, which force-keeps it available as a recovery path.

@@ -83,4 +83,6 @@
     <string name="widget_chore_overdue">• %1$s · overdue</string>
     <string name="widget_refresh">Refresh</string>
     <string name="widget_refreshing">Refreshing widget...</string>
+    <string name="mobile_push_channel_name">TaskBandit alerts</string>
+    <string name="mobile_push_channel_description">Due-soon reminders, approvals, and household TaskBandit updates.</string>
 </resources>

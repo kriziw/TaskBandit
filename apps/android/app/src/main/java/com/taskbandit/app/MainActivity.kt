@@ -1,7 +1,9 @@
 package com.taskbandit.app
 
+import android.Manifest
 import android.content.ContentResolver
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
@@ -10,6 +12,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -63,6 +66,7 @@ import com.taskbandit.app.mobile.TaskBanditSessionStore
 import com.taskbandit.app.mobile.TaskBanditTransportException
 import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
 import com.taskbandit.app.mobile.TaskBanditWidgetStore
+import com.taskbandit.app.push.TaskBanditFirebasePushManager
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import com.taskbandit.app.widget.TaskBanditWidgetProvider
 import kotlinx.coroutines.Dispatchers
@@ -136,6 +140,9 @@ private fun TaskBanditApp(
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(outboxStore.readQueue().size) }
+    val notificationPermissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { }
 
     val proofPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -181,12 +188,20 @@ private fun TaskBanditApp(
             runCatching {
                 val loadedDashboard = withContext(Dispatchers.IO) {
                     runCatching {
+                        val pushToken = TaskBanditFirebasePushManager.getTokenOrNull(context)
+                        if (!pushToken.isNullOrBlank()) {
+                            sessionStore.savePushToken(pushToken)
+                        }
+                        val registeredPushToken = pushToken ?: sessionStore.readPushToken()
+
                         api.registerNotificationDevice(
                             baseUrl = baseUrl,
                             token = token,
                             registration = MobileNotificationDeviceRegistration(
                                 installationId = installationId,
                                 deviceName = buildAndroidDeviceName(),
+                                provider = if (registeredPushToken.isNullOrBlank()) "generic" else "fcm",
+                                pushToken = registeredPushToken,
                                 appVersion = readAppVersion(context),
                                 locale = Locale.getDefault().toLanguageTag()
                             )
@@ -401,6 +416,13 @@ private fun TaskBanditApp(
 
     LaunchedEffect(session.token) {
         if (session.token != null) {
+            if (
+                TaskBanditFirebasePushManager.isConfigured() &&
+                Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
+            ) {
+                notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+            }
             refreshDashboard()
         }
     }

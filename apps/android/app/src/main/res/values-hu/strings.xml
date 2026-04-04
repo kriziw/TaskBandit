@@ -83,4 +83,6 @@
     <string name="widget_chore_overdue">• %1$s · lejart</string>
     <string name="widget_refresh">Frissites</string>
     <string name="widget_refreshing">Widget frissitese...</string>
+    <string name="mobile_push_channel_name">TaskBandit ertesitesek</string>
+    <string name="mobile_push_channel_description">Kozeli hataridok, jovahagyasok es egyeb TaskBandit frissitesek.</string>
 </resources>

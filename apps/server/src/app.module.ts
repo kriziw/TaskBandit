@@ -5,6 +5,7 @@ import { AppConfigModule } from "./common/config/app-config.module";
 import { I18nModule } from "./common/i18n/i18n.module";
 import { LoggingModule } from "./common/logging/logging.module";
 import { PrismaModule } from "./common/prisma/prisma.module";
+import { PushModule } from "./common/push/push.module";
 import { AuthModule } from "./modules/auth/auth.module";
 import { BootstrapModule } from "./modules/bootstrap/bootstrap.module";
 import { ChoresModule } from "./modules/chores/chores.module";
@@ -21,6 +22,7 @@ import { SettingsModule } from "./modules/settings/settings.module";
     I18nModule,
     LoggingModule,
     PrismaModule,
+    PushModule,
     AuthModule,
     BootstrapModule,
     DashboardModule,

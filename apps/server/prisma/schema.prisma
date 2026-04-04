@@ -71,6 +71,12 @@ enum NotificationDeviceProvider {
   FCM
 }
 
+enum NotificationPushDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+}
+
 model Household {
   id             String              @id @default(uuid()) @db.Uuid
   name           String
@@ -271,6 +277,7 @@ model Notification {
   readAtUtc       DateTime?
   household       Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
   recipient       User             @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  pushDeliveries  NotificationPushDelivery[]
 
   @@index([householdId, recipientUserId, createdAtUtc])
   @@index([recipientUserId, isRead, createdAtUtc])
@@ -302,6 +309,24 @@ model NotificationDevice {
   createdAtUtc         DateTime                   @default(now())
   updatedAtUtc         DateTime                   @updatedAt
   user                 User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  pushDeliveries       NotificationPushDelivery[]
 
   @@index([userId, notificationsEnabled, updatedAtUtc])
+}
+
+model NotificationPushDelivery {
+  id                   String                         @id @default(uuid()) @db.Uuid
+  notificationId       String                         @db.Uuid
+  notificationDeviceId String                         @db.Uuid
+  status               NotificationPushDeliveryStatus @default(PENDING)
+  providerMessageId    String?
+  errorMessage         String?
+  attemptedAtUtc       DateTime?
+  createdAtUtc         DateTime                       @default(now())
+  updatedAtUtc         DateTime                       @updatedAt
+  notification         Notification                   @relation(fields: [notificationId], references: [id], onDelete: Cascade)
+  notificationDevice   NotificationDevice             @relation(fields: [notificationDeviceId], references: [id], onDelete: Cascade)
+
+  @@unique([notificationId, notificationDeviceId], map: "notification_push_delivery_unique")
+  @@index([status, updatedAtUtc])
 }

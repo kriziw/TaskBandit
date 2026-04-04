@@ -3,6 +3,12 @@ import { ConfigService } from "@nestjs/config";
 import path from "node:path";
 import { OidcConfig } from "./oidc-config.type";
 
+type FirebaseServiceAccount = {
+  projectId: string;
+  clientEmail: string;
+  privateKey: string;
+};
+
 @Injectable()
 export class AppConfigService {
   constructor(private readonly configService: ConfigService) {}
@@ -49,6 +55,10 @@ export class AppConfigService {
     return Number(this.configService.get("TASKBANDIT_DAILY_SUMMARY_HOUR_UTC") ?? 6);
   }
 
+  get pushDeliveryIntervalMs(): number {
+    return Number(this.configService.get("TASKBANDIT_PUSH_DELIVERY_INTERVAL_MS") ?? 60000);
+  }
+
   get storageRootPath(): string {
     const configuredPath = this.configService.get<string>("TASKBANDIT_STORAGE_ROOT", "").trim();
     if (!configuredPath) {
@@ -66,6 +76,41 @@ export class AppConfigService {
 
   get runtimeLogBufferSize(): number {
     return Number(this.configService.get("TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE") ?? 1000);
+  }
+
+  get fcmEnabled(): boolean {
+    return this.configService.get<string>("TASKBANDIT_FCM_ENABLED", "false") === "true";
+  }
+
+  get fcmServiceAccount(): FirebaseServiceAccount | null {
+    const rawJson = this.configService.get<string>("TASKBANDIT_FCM_SERVICE_ACCOUNT_JSON", "").trim();
+    const rawBase64 = this.configService
+      .get<string>("TASKBANDIT_FCM_SERVICE_ACCOUNT_BASE64", "")
+      .trim();
+    const resolvedJson = rawJson || (rawBase64 ? Buffer.from(rawBase64, "base64").toString("utf8") : "");
+
+    if (!resolvedJson) {
+      return null;
+    }
+
+    try {
+      const parsed = JSON.parse(resolvedJson) as {
+        project_id?: string;
+        client_email?: string;
+        private_key?: string;
+      };
+      if (!parsed.project_id || !parsed.client_email || !parsed.private_key) {
+        return null;
+      }
+
+      return {
+        projectId: parsed.project_id,
+        clientEmail: parsed.client_email,
+        privateKey: parsed.private_key.replace(/\\n/g, "\n")
+      };
+    } catch {
+      return null;
+    }
   }
 
   get jwtSecret(): string {

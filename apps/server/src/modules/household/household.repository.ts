@@ -14,6 +14,7 @@ import {
   HouseholdRole,
   NotificationDevicePlatform,
   NotificationDeviceProvider,
+  NotificationPushDeliveryStatus,
   NotificationType,
   RecurrenceType,
   Prisma
@@ -421,6 +422,62 @@ export class HouseholdRepository {
     });
 
     return this.getNotificationDevices(householdId, userId);
+  }
+
+  async getPendingPushDeliveries(take = 25) {
+    const deliveries = await this.prisma.notificationPushDelivery.findMany({
+      where: {
+        status: NotificationPushDeliveryStatus.PENDING
+      },
+      include: {
+        notification: true,
+        notificationDevice: true
+      },
+      orderBy: {
+        createdAtUtc: "asc"
+      },
+      take
+    });
+
+    return deliveries.map((delivery) => ({
+      id: delivery.id,
+      notificationId: delivery.notificationId,
+      notificationDeviceId: delivery.notificationDeviceId,
+      title: delivery.notification.title,
+      message: delivery.notification.message,
+      entityType: delivery.notification.entityType,
+      entityId: delivery.notification.entityId,
+      provider: delivery.notificationDevice.provider,
+      pushToken: delivery.notificationDevice.pushToken,
+      deviceName: delivery.notificationDevice.deviceName
+    }));
+  }
+
+  async markPushDeliverySent(deliveryId: string, providerMessageId?: string | null) {
+    await this.prisma.notificationPushDelivery.update({
+      where: {
+        id: deliveryId
+      },
+      data: {
+        status: NotificationPushDeliveryStatus.SENT,
+        providerMessageId: providerMessageId ?? null,
+        errorMessage: null,
+        attemptedAtUtc: new Date()
+      }
+    });
+  }
+
+  async markPushDeliveryFailed(deliveryId: string, errorMessage: string) {
+    await this.prisma.notificationPushDelivery.update({
+      where: {
+        id: deliveryId
+      },
+      data: {
+        status: NotificationPushDeliveryStatus.FAILED,
+        errorMessage,
+        attemptedAtUtc: new Date()
+      }
+    });
   }
 
   async getNotifications(householdId: string, recipientUserId: string, take = 25) {
@@ -2580,12 +2637,12 @@ export class HouseholdRepository {
       }
     });
 
-    await this.logNotificationDeviceDelivery(executor, notification.id, input.recipientUserId, input.type);
+    await this.enqueuePushDeliveries(executor, notification.id, input.recipientUserId, input.type);
 
     return true;
   }
 
-  private async logNotificationDeviceDelivery(
+  private async enqueuePushDeliveries(
     executor: PrismaExecutor,
     notificationId: string,
     recipientUserId: string,
@@ -2594,7 +2651,13 @@ export class HouseholdRepository {
     const devices = await executor.notificationDevice.findMany({
       where: {
         userId: recipientUserId,
-        notificationsEnabled: true
+        notificationsEnabled: true,
+        pushToken: {
+          not: null
+        },
+        provider: {
+          in: [NotificationDeviceProvider.FCM]
+        }
       },
       orderBy: {
         updatedAtUtc: "desc"
@@ -2605,16 +2668,19 @@ export class HouseholdRepository {
       return;
     }
 
-    const deliverableCount = devices.filter((device) => Boolean(device.pushToken)).length;
-    const deviceSummary = devices
-      .map((device) => {
-        const tokenState = device.pushToken ? "token" : "pending-token";
-        return `${device.platform.toLowerCase()}/${device.provider.toLowerCase()}/${tokenState}`;
-      })
-      .join(", ");
+    await executor.notificationPushDelivery.createMany({
+      data: devices.map((device) => ({
+        notificationId,
+        notificationDeviceId: device.id,
+        status: NotificationPushDeliveryStatus.PENDING
+      })),
+      skipDuplicates: true
+    });
+
+    const deviceSummary = devices.map((device) => `${device.platform.toLowerCase()}/${device.provider.toLowerCase()}`).join(", ");
 
     this.appLogService.log(
-      `Queued push delivery groundwork for notification ${notificationId} (${type.toLowerCase()}) across ${devices.length} device(s), ${deliverableCount} with provider tokens. ${deviceSummary}`,
+      `Queued push delivery for notification ${notificationId} (${type.toLowerCase()}) across ${devices.length} deliverable device(s). ${deviceSummary}`,
       "PushDelivery"
     );
   }
