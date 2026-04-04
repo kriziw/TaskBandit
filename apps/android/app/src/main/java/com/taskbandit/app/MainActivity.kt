@@ -60,7 +60,9 @@ import com.taskbandit.app.mobile.TaskBanditSession
 import com.taskbandit.app.mobile.TaskBanditSessionStore
 import com.taskbandit.app.mobile.TaskBanditTransportException
 import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
+import com.taskbandit.app.mobile.TaskBanditWidgetStore
 import com.taskbandit.app.ui.theme.TaskBanditTheme
+import com.taskbandit.app.widget.TaskBanditWidgetProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -77,6 +79,7 @@ class MainActivity : ComponentActivity() {
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
         val outboxStore = TaskBanditOutboxStore(sharedPreferences)
+        val widgetStore = TaskBanditWidgetStore(sharedPreferences)
 
         setContent {
             TaskBanditTheme {
@@ -87,7 +90,8 @@ class MainActivity : ComponentActivity() {
                     TaskBanditApp(
                         api = TaskBanditMobileApi(),
                         sessionStore = sessionStore,
-                        outboxStore = outboxStore
+                        outboxStore = outboxStore,
+                        widgetStore = widgetStore
                     )
                 }
             }
@@ -99,7 +103,8 @@ class MainActivity : ComponentActivity() {
 private fun TaskBanditApp(
     api: TaskBanditMobileApi,
     sessionStore: TaskBanditSessionStore,
-    outboxStore: TaskBanditOutboxStore
+    outboxStore: TaskBanditOutboxStore,
+    widgetStore: TaskBanditWidgetStore
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -152,6 +157,8 @@ private fun TaskBanditApp(
     fun logout() {
         val baseUrl = normalizedServerUrl()
         sessionStore.clearToken(baseUrl)
+        widgetStore.clear()
+        TaskBanditWidgetProvider.refreshAllWidgets(context)
         session = TaskBanditSession(baseUrl = baseUrl, token = null)
         serverUrl = baseUrl
         dashboard = null
@@ -194,7 +201,10 @@ private fun TaskBanditApp(
                 dashboard = loadedDashboard
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, token)
-                queuedSubmissionCount = outboxStore.readQueue().size
+                val currentQueuedSubmissionCount = outboxStore.readQueue().size
+                queuedSubmissionCount = currentQueuedSubmissionCount
+                widgetStore.saveDashboard(loadedDashboard, currentQueuedSubmissionCount)
+                TaskBanditWidgetProvider.refreshAllWidgets(context)
                 if (flushedCount > 0) {
                     noticeMessage = syncedNoticeTemplate.format(flushedCount)
                 }
@@ -355,7 +365,12 @@ private fun TaskBanditApp(
                     withContext(Dispatchers.IO) {
                         outboxStore.enqueue(draft)
                     }
-                    queuedSubmissionCount = outboxStore.readQueue().size
+                    val currentQueuedSubmissionCount = outboxStore.readQueue().size
+                    queuedSubmissionCount = currentQueuedSubmissionCount
+                    dashboard?.let { loadedDashboard ->
+                        widgetStore.saveDashboard(loadedDashboard, currentQueuedSubmissionCount)
+                        TaskBanditWidgetProvider.refreshAllWidgets(context)
+                    }
                     selectedProofUris = selectedProofUris - choreId
                     submitSelections = submitSelections - choreId
                     noticeMessage = queuedNoticeMessage

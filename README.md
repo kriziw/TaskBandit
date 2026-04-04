@@ -36,7 +36,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - the v1 product and technical architecture
 - an initial NestJS + Prisma backend with PostgreSQL schema, starter endpoints, bootstrap flow, and local-auth foundations
 - a live React web dashboard with local login, language files, approvals, household settings, and chore views
-- the first-pass Android shell with localized string resources
+- an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
 - reverse-proxy aware server configuration for Nginx or Traefik deployments
@@ -48,6 +48,8 @@ This workspace currently has Node.js available, but does not have Gradle install
 ## Android Releases
 
 The repository now includes a GitHub Actions workflow that builds a release APK for Android phones when a GitHub release is published. Because the current app does not bundle native NDK libraries, the generated APK is a standard universal Android package and is suitable for ARM smartphones.
+
+The Android app also now includes a home-screen widget that shows the latest cached chore snapshot and can trigger a lightweight refresh using the signed-in session.
 
 If Android signing secrets are not configured yet, the workflow still builds and uploads a release APK artifact, but it does not attach that unsigned package to the GitHub release. Once you are ready for signed installs, add these GitHub repository secrets:
 

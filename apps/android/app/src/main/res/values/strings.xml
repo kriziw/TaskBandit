@@ -69,4 +69,18 @@
     <string name="mobile_approving">Approving...</string>
     <string name="mobile_reject">Reject</string>
     <string name="mobile_rejecting">Rejecting...</string>
+    <string name="widget_title">TaskBandit</string>
+    <string name="widget_description">TaskBandit chore snapshot widget</string>
+    <string name="widget_signed_out">Sign in from the app to load live chores.</string>
+    <string name="widget_subtitle_value">%1$s&apos;s crew pulse</string>
+    <string name="widget_summary_empty">No live household data yet.</string>
+    <string name="widget_summary_value">%1$d approvals, %2$d active chores</string>
+    <string name="widget_queue_clear">Queue clear</string>
+    <string name="widget_queue_value">%1$d offline submission(s) waiting</string>
+    <string name="widget_chore_empty">No chores cached yet.</string>
+    <string name="widget_chore_value">• %1$s · due %2$s</string>
+    <string name="widget_chore_with_photo">• %1$s · due %2$s · photo</string>
+    <string name="widget_chore_overdue">• %1$s · overdue</string>
+    <string name="widget_refresh">Refresh</string>
+    <string name="widget_refreshing">Refreshing widget...</string>
 </resources>

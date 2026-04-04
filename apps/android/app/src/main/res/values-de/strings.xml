@@ -69,4 +69,18 @@
     <string name="mobile_approving">Freigabe...</string>
     <string name="mobile_reject">Zuruckweisen</string>
     <string name="mobile_rejecting">Zuruckweisung...</string>
+    <string name="widget_title">TaskBandit</string>
+    <string name="widget_description">TaskBandit-Widget fur Haushaltsaufgaben</string>
+    <string name="widget_signed_out">Bitte in der App anmelden, um Live-Aufgaben zu laden.</string>
+    <string name="widget_subtitle_value">%1$s Team-Puls</string>
+    <string name="widget_summary_empty">Noch keine Live-Haushaltsdaten.</string>
+    <string name="widget_summary_value">%1$d Freigaben, %2$d aktive Aufgaben</string>
+    <string name="widget_queue_clear">Warteschlange leer</string>
+    <string name="widget_queue_value">%1$d Offline-Einreichung(en) warten</string>
+    <string name="widget_chore_empty">Noch keine Aufgaben zwischengespeichert.</string>
+    <string name="widget_chore_value">• %1$s · fallig %2$s</string>
+    <string name="widget_chore_with_photo">• %1$s · fallig %2$s · Foto</string>
+    <string name="widget_chore_overdue">• %1$s · uberfallig</string>
+    <string name="widget_refresh">Aktualisieren</string>
+    <string name="widget_refreshing">Widget wird aktualisiert...</string>
 </resources>

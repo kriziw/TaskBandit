@@ -69,4 +69,18 @@
     <string name="mobile_approving">Jovahagyas...</string>
     <string name="mobile_reject">Elutasitas</string>
     <string name="mobile_rejecting">Elutasitas...</string>
+    <string name="widget_title">TaskBandit</string>
+    <string name="widget_description">TaskBandit feladat-attekinto widget</string>
+    <string name="widget_signed_out">Jelentkezz be az alkalmazasban az elo feladatokhoz.</string>
+    <string name="widget_subtitle_value">%1$s csapatanak allapota</string>
+    <string name="widget_summary_empty">Meg nincs elo haztartasi adat.</string>
+    <string name="widget_summary_value">%1$d jovahagyas, %2$d aktiv feladat</string>
+    <string name="widget_queue_clear">Nincs varakozo sor</string>
+    <string name="widget_queue_value">%1$d offline bekuldes varakozik</string>
+    <string name="widget_chore_empty">Meg nincs gyorsitotarazott feladat.</string>
+    <string name="widget_chore_value">• %1$s · hatarido %2$s</string>
+    <string name="widget_chore_with_photo">• %1$s · hatarido %2$s · foto</string>
+    <string name="widget_chore_overdue">• %1$s · lejart</string>
+    <string name="widget_refresh">Frissites</string>
+    <string name="widget_refreshing">Widget frissitese...</string>
 </resources>
