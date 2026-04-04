@@ -122,6 +122,8 @@ export type HouseholdMember = {
   displayName: string;
   role: HouseholdRole;
   email?: string | null;
+  authProviders: Array<"local" | "oidc">;
+  localAuthConfigured: boolean;
   points: number;
   currentStreak: number;
 };

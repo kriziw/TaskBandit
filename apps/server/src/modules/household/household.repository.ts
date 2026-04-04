@@ -95,16 +95,7 @@ export class HouseholdRepository {
         settings: true,
         members: {
           include: {
-            identities: {
-              where: {
-                email: {
-                  not: null
-                }
-              },
-              orderBy: {
-                createdAtUtc: "asc"
-              }
-            }
+            identities: true
           }
         }
       }
@@ -122,16 +113,7 @@ export class HouseholdRepository {
         settings: true,
         members: {
           include: {
-            identities: {
-              where: {
-                email: {
-                  not: null
-                }
-              },
-              orderBy: {
-                createdAtUtc: "asc"
-              }
-            }
+            identities: true
           }
         }
       }
@@ -152,16 +134,7 @@ export class HouseholdRepository {
         settings: true,
         members: {
           include: {
-            identities: {
-              where: {
-                email: {
-                  not: null
-                }
-              },
-              orderBy: {
-                createdAtUtc: "asc"
-              }
-            }
+            identities: true
           }
         }
       }
@@ -2899,12 +2872,15 @@ export class HouseholdRepository {
       (identity) => identity.provider === AuthProvider.LOCAL && Boolean(identity.email)
     );
     const preferredEmail = localIdentity?.email ?? member.identities.find((identity) => Boolean(identity.email))?.email;
+    const authProviders = [...new Set(member.identities.map((identity) => identity.provider.toLowerCase()))];
 
     return {
       id: member.id,
       displayName: member.displayName,
       role: member.role.toLowerCase(),
       email: redactEmail ? null : preferredEmail ?? null,
+      authProviders,
+      localAuthConfigured: Boolean(localIdentity?.passwordHash),
       points: member.points,
       currentStreak: member.currentStreak
     };

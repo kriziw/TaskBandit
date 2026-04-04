@@ -3486,6 +3486,18 @@ export function App() {
                             <p>
                               {t(`role.${member.role}`)} - {member.email ?? t("common.none")}
                             </p>
+                            <div className="member-provider-row">
+                              {member.authProviders.map((provider) => (
+                                <span className="status-pill member-provider-pill" key={provider}>
+                                  {t(`members.provider_${provider}`)}
+                                </span>
+                              ))}
+                              <span className="member-provider-note">
+                                {member.localAuthConfigured
+                                  ? t("members.local_recovery_ready")
+                                  : t("members.local_recovery_missing")}
+                              </span>
+                            </div>
                           </div>
                           <div className="member-row-actions">
                             <strong>
@@ -3534,6 +3546,9 @@ export function App() {
                             </label>
                             {member.role === "admin" ? (
                               <p className="inline-message">{t("members.admin_role_locked")}</p>
+                            ) : null}
+                            {!member.localAuthConfigured ? (
+                              <p className="inline-message">{t("members.password_adds_local_auth")}</p>
                             ) : null}
                             <label>
                               <span>{t("members.email")}</span>
