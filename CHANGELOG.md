@@ -2,6 +2,20 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.11.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.10.0...taskbandit-v0.11.0) (2026-04-04)
+
+
+### Features
+
+* **web:** add settings jump links and prioritize general section ([c801817](https://github.com/kriziw/TaskBandit/commit/c8018179619088c94d48286e3d28596a64a7b890))
+* **web:** improve Settings jump links and section order ([5ff05be](https://github.com/kriziw/TaskBandit/commit/5ff05be8eef17c3b8adcde47ef704a377561cca6))
+
+
+### Bug Fixes
+
+* **ci:** stop duplicate docker release tagging ([697908e](https://github.com/kriziw/TaskBandit/commit/697908e7dcc24dfed7a3ce70093260a4805668b0))
+* **ci:** stop duplicate Docker release tagging ([a9442d3](https://github.com/kriziw/TaskBandit/commit/a9442d338fe430f4e4ed7fe336f6323bc223426c))
+
 ## [0.10.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.9.2...taskbandit-v0.10.0) (2026-04-04)
 
 
