@@ -13,7 +13,11 @@ on:
 
 jobs:
   publish:
-    if: ${{ github.event_name == 'workflow_dispatch' || !contains(github.event.head_commit.message, 'chore(main): release taskbandit ') }}
+    if: >-
+      ${{
+        github.event_name == 'workflow_dispatch' ||
+        contains(github.event.head_commit.message, 'chore(main): release taskbandit ') == false
+      }}
     runs-on: ubuntu-latest
     permissions:
       contents: read
