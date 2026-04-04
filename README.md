@@ -92,6 +92,7 @@ Manual setup:
 2. Review these values in `.env`:
    `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
+   If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
 3. Start TaskBandit:
    `docker compose up -d`
 4. Open `http://localhost:<TASKBANDIT_PORT>`.
@@ -117,6 +118,7 @@ Manual setup:
 - `TASKBANDIT_REVERSE_PROXY_ENABLED` and `TASKBANDIT_REVERSE_PROXY_PATH_BASE` should be set when TaskBandit is deployed behind Nginx or Traefik.
 - `TASKBANDIT_OIDC_ENABLED=false` keeps OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.
 - `TASKBANDIT_OIDC_*` values are optional and only needed when you wire Authentik or another OIDC provider.
+- `TASKBANDIT_OIDC_SCOPE=openid profile email` is the default OIDC scope used for the server-managed authorization-code flow.
 
 ## Web App Notes
 
@@ -133,7 +135,7 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 
 ## Backend Notes
 
-The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login foundations are in place, and Authentik-focused OIDC configuration is available as an optional feature for the next auth iteration.
+The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, and optional Authentik-focused OIDC sign-in is now available through the server-managed authorization-code flow.
 
 For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
 The repository also now includes an initial Prisma migration snapshot for the current backend model.

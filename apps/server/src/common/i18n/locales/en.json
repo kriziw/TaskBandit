@@ -4,6 +4,8 @@
   "auth.email_in_use": "That email address is already in use.",
   "auth.forbidden": "You do not have permission to perform this action.",
   "auth.invalid_credentials": "Invalid email or password.",
+  "auth.oidc_email_required": "The OIDC provider did not return an email address, so TaskBandit cannot create a parent account.",
+  "auth.oidc_state_invalid": "The OIDC sign-in link is invalid or has expired. Please try again.",
   "auth.self_signup_disabled": "Self-signup is currently disabled.",
   "auth.unauthorized": "You need to sign in to access this resource.",
   "bootstrap.already_initialized": "TaskBandit already has an initialized household.",

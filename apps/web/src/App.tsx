@@ -158,6 +158,30 @@ export function App() {
   }, [language]);
 
   useEffect(() => {
+    const currentUrl = new URL(window.location.href);
+    const oidcToken = currentUrl.searchParams.get("oidcToken");
+    const oidcError = currentUrl.searchParams.get("oidcError");
+
+    if (!oidcToken && !oidcError) {
+      return;
+    }
+
+    if (oidcToken) {
+      window.localStorage.setItem(tokenStorageKey, oidcToken);
+      setToken(oidcToken);
+      setLoginError(null);
+      setNotice(t("auth.oidc_success"));
+    } else if (oidcError) {
+      setLoginError(oidcError);
+      setNotice(null);
+    }
+
+    currentUrl.searchParams.delete("oidcToken");
+    currentUrl.searchParams.delete("oidcError");
+    window.history.replaceState({}, document.title, currentUrl.toString());
+  }, [t]);
+
+  useEffect(() => {
     if (token) {
       return;
     }
@@ -654,6 +678,13 @@ export function App() {
     } finally {
       setIsAuthenticating(false);
     }
+  }
+
+  function handleOidcSignIn() {
+    setIsAuthenticating(true);
+    setLoginError(null);
+    setNotice(t("auth.oidc_redirecting"));
+    window.location.assign(taskBanditApi.getOidcStartUrl(language, window.location.href));
   }
 
   async function handleBootstrapSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1459,6 +1490,19 @@ export function App() {
                 <button className="primary-button" type="submit" disabled={isAuthenticating}>
                   {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
                 </button>
+                {providers?.oidc.enabled ? (
+                  <>
+                    <p className="inline-message">{t("auth.oidc_hint")}</p>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      disabled={isAuthenticating}
+                      onClick={handleOidcSignIn}
+                    >
+                      {t("auth.oidc_sign_in")}
+                    </button>
+                  </>
+                ) : null}
               </form>
             </article>
           )}
@@ -1535,6 +1579,7 @@ export function App() {
                 {t("auth.oidc_provider")}: {providers?.oidc.enabled ? t("common.enabled") : t("common.disabled")}
               </li>
               {providers?.oidc.enabled ? <li>{providers.oidc.authority}</li> : null}
+              {providers?.oidc.enabled ? <li>{t("auth.oidc_callback_hint")}</li> : null}
             </ul>
           </article>
 

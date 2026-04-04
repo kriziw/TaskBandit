@@ -105,6 +105,20 @@ async function readErrorMessage(response: Response) {
 }
 
 export const taskBanditApi = {
+  getOidcStartUrl(language: AppLanguage, returnTo?: string) {
+    const apiBaseUrl = resolveApiBaseUrl();
+    const normalizedApiBaseUrl = /^https?:\/\//i.test(apiBaseUrl)
+      ? apiBaseUrl
+      : new URL(apiBaseUrl, window.location.origin).toString().replace(/\/+$/, "");
+    const url = new URL(`${normalizedApiBaseUrl}/api/auth/oidc/start`);
+    url.searchParams.set("language", language);
+
+    if (returnTo) {
+      url.searchParams.set("returnTo", returnTo);
+    }
+
+    return url.toString();
+  },
   getBootstrapStatus(language: AppLanguage) {
     return request<BootstrapStatus>("/api/bootstrap/status", { language });
   },

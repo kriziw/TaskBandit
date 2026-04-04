@@ -80,12 +80,18 @@ export class AppConfigService {
     const enabled = this.configService.get<string>("TASKBANDIT_OIDC_ENABLED", "false") === "true";
     const authority = this.configService.get<string>("TASKBANDIT_OIDC_AUTHORITY", "").trim();
     const clientId = this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_ID", "").trim();
+    const scope = this.configService.get<string>("TASKBANDIT_OIDC_SCOPE", "openid profile email").trim();
 
     return {
       enabled: enabled && Boolean(authority && clientId),
       authority,
-      clientId
+      clientId,
+      scope
     };
+  }
+
+  get oidcClientSecret(): string {
+    return this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_SECRET", "").trim();
   }
 
   withBasePath(path: string): string {
