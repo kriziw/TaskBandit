@@ -18,6 +18,7 @@ import type {
   HouseholdSettings,
   HouseholdNotificationHealthEntry,
   NotificationDevice,
+  NotificationRecovery,
   NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
@@ -265,6 +266,34 @@ export const taskBanditApi = {
   },
   getSystemStatus(token: string, language: AppLanguage) {
     return request<AdminSystemStatus>("/api/dashboard/admin/system-status", {
+      token,
+      language
+    });
+  },
+  getNotificationRecovery(token: string, language: AppLanguage) {
+    return request<NotificationRecovery>("/api/dashboard/admin/notification-recovery", {
+      token,
+      language
+    });
+  },
+  retryPushDelivery(token: string, language: AppLanguage, deliveryId: string) {
+    return request<{ deliveryId: string; sentCount: number; failedCount: number }>(
+      `/api/dashboard/admin/notification-recovery/push/${deliveryId}/retry`,
+      {
+        method: "POST",
+        token,
+        language
+      }
+    );
+  },
+  retryEmailDelivery(token: string, language: AppLanguage, notificationId: string) {
+    return request<{
+      notificationId: string;
+      sentCount: number;
+      failedCount: number;
+      skippedCount: number;
+    }>(`/api/dashboard/admin/notification-recovery/email/${notificationId}/retry`, {
+      method: "POST",
       token,
       language
     });

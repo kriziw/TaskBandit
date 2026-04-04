@@ -648,6 +648,11 @@ h4,
   margin-top: 14px;
 }
 
+.recovery-group {
+  display: grid;
+  gap: 10px;
+}
+
 .notification-delivery-block {
   padding: 12px;
   border-radius: 18px;

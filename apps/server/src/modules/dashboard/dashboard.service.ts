@@ -89,6 +89,30 @@ export class DashboardService {
     };
   }
 
+  getNotificationRecovery(user: AuthenticatedUser) {
+    return this.repository.getNotificationRecovery(user.householdId);
+  }
+
+  async retryPushDelivery(user: AuthenticatedUser, deliveryId: string) {
+    await this.repository.retryFailedPushDelivery(user.householdId, user.id, deliveryId);
+    const deliveryResult = await this.pushDeliveryWorkerService.runOnce(50);
+
+    return {
+      deliveryId,
+      ...deliveryResult
+    };
+  }
+
+  async retryEmailDelivery(user: AuthenticatedUser, notificationId: string) {
+    await this.repository.retryFailedEmailDelivery(user.householdId, user.id, notificationId);
+    const deliveryResult = await this.emailDeliveryWorkerService.runOnce(50);
+
+    return {
+      notificationId,
+      ...deliveryResult
+    };
+  }
+
   async exportChoresCsv(user: AuthenticatedUser) {
     const [household, instances] = await Promise.all([
       this.repository.getHousehold(user.householdId),

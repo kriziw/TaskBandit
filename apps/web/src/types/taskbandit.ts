@@ -248,6 +248,31 @@ export type AdminSystemStatus = {
   };
 };
 
+export type NotificationRecovery = {
+  failedPushDeliveries: Array<{
+    id: string;
+    notificationId: string;
+    title: string;
+    message: string;
+    recipientDisplayName: string;
+    deviceName: string | null;
+    provider: "generic" | "fcm";
+    attemptedAt: string | null;
+    error: string | null;
+    createdAt: string;
+  }>;
+  failedEmailNotifications: Array<{
+    id: string;
+    title: string;
+    message: string;
+    recipientDisplayName: string;
+    recipientEmail: string | null;
+    attemptedAt: string | null;
+    error: string | null;
+    createdAt: string;
+  }>;
+};
+
 export type Household = {
   householdId: string;
   name: string;

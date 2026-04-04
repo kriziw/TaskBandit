@@ -22,6 +22,7 @@ import type {
   HouseholdNotificationHealthEntry,
   HouseholdSettings,
   NotificationDevice,
+  NotificationRecovery,
   NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
@@ -40,6 +41,7 @@ type DashboardPayload = {
   notifications: NotificationEntry[];
   notificationDevices: NotificationDevice[];
   householdNotificationHealth: HouseholdNotificationHealthEntry[];
+  notificationRecovery: NotificationRecovery | null;
   systemStatus: AdminSystemStatus | null;
   notificationPreferences: NotificationPreferences;
   pointsLedger: PointsLedgerEntry[];
@@ -505,6 +507,7 @@ export function App() {
         notifications,
         notificationDevices,
         householdNotificationHealth,
+        notificationRecovery,
         systemStatus,
         notificationPreferences,
         pointsLedger,
@@ -523,6 +526,9 @@ export function App() {
         currentUser.role === "admin"
           ? taskBanditApi.getHouseholdNotificationHealth(accessToken, language)
           : Promise.resolve([]),
+        currentUser.role === "admin"
+          ? taskBanditApi.getNotificationRecovery(accessToken, language)
+          : Promise.resolve(null),
         currentUser.role === "admin"
           ? taskBanditApi.getSystemStatus(accessToken, language)
           : Promise.resolve(null),
@@ -545,6 +551,7 @@ export function App() {
         notifications,
         notificationDevices,
         householdNotificationHealth,
+        notificationRecovery,
         systemStatus,
         notificationPreferences,
         pointsLedger,
@@ -1439,6 +1446,42 @@ export function App() {
       await refreshSystemStatus(token, { reportErrors: true });
       setNotice(t("system_status.refreshed"));
       setPageError(null);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleRetryPushDelivery(deliveryId: string) {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`retry-push:${deliveryId}`);
+    try {
+      await taskBanditApi.retryPushDelivery(token, language, deliveryId);
+      await refreshDashboard(token, { silent: true });
+      setNotice(t("notification_recovery.push_retry_success"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("notification_recovery.push_retry_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleRetryEmailDelivery(notificationId: string) {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`retry-email:${notificationId}`);
+    try {
+      await taskBanditApi.retryEmailDelivery(token, language, notificationId);
+      await refreshDashboard(token, { silent: true });
+      setNotice(t("notification_recovery.email_retry_success"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("notification_recovery.email_retry_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -2973,6 +3016,117 @@ export function App() {
                   </div>
                 ) : (
                   <p className="inline-message">{t("system_status.empty")}</p>
+                )}
+              </article>
+            ) : null}
+
+            {payload.currentUser.role === "admin" ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.notification_recovery")}</h2>
+                  <span className="section-kicker">
+                    {(payload.notificationRecovery?.failedPushDeliveries.length ?? 0) +
+                      (payload.notificationRecovery?.failedEmailNotifications.length ?? 0)}
+                  </span>
+                </div>
+                <p>{t("notification_recovery.hint")}</p>
+                {payload.notificationRecovery &&
+                payload.notificationRecovery.failedPushDeliveries.length === 0 &&
+                payload.notificationRecovery.failedEmailNotifications.length === 0 ? (
+                  <p className="inline-message">{t("notification_recovery.empty")}</p>
+                ) : (
+                  <div className="stack-list">
+                    <div className="recovery-group">
+                      <div className="section-heading">
+                        <h3>{t("notification_recovery.failed_push")}</h3>
+                        <span className="section-kicker">
+                          {payload.notificationRecovery?.failedPushDeliveries.length ?? 0}
+                        </span>
+                      </div>
+                      {payload.notificationRecovery?.failedPushDeliveries.length ? (
+                        payload.notificationRecovery.failedPushDeliveries.map((entry) => (
+                          <div className="task-row compact" key={entry.id}>
+                            <div className="task-row-header">
+                              <strong>{entry.title}</strong>
+                              <span className="status-pill delivery-failed">
+                                {t("notifications.delivery_failed")}
+                              </span>
+                            </div>
+                            <p>
+                              {t("notification_recovery.recipient")}: {entry.recipientDisplayName}
+                            </p>
+                            <p>
+                              {t("notification_recovery.device")}:{" "}
+                              {entry.deviceName ?? t("common.unknown")} ({entry.provider})
+                            </p>
+                            <p>
+                              {t("notification_recovery.last_attempt")}: {formatDate(entry.attemptedAt)}
+                            </p>
+                            <p>
+                              {t("notification_recovery.error")}: {entry.error ?? t("common.none")}
+                            </p>
+                            <div className="button-row">
+                              <button
+                                className="ghost-button"
+                                type="button"
+                                disabled={busyAction === `retry-push:${entry.id}`}
+                                onClick={() => void handleRetryPushDelivery(entry.id)}
+                              >
+                                {t("notification_recovery.retry_push")}
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="inline-message">{t("notification_recovery.none_push")}</p>
+                      )}
+                    </div>
+                    <div className="recovery-group">
+                      <div className="section-heading">
+                        <h3>{t("notification_recovery.failed_email")}</h3>
+                        <span className="section-kicker">
+                          {payload.notificationRecovery?.failedEmailNotifications.length ?? 0}
+                        </span>
+                      </div>
+                      {payload.notificationRecovery?.failedEmailNotifications.length ? (
+                        payload.notificationRecovery.failedEmailNotifications.map((entry) => (
+                          <div className="task-row compact" key={entry.id}>
+                            <div className="task-row-header">
+                              <strong>{entry.title}</strong>
+                              <span className="status-pill delivery-failed">
+                                {t("notifications.delivery_failed")}
+                              </span>
+                            </div>
+                            <p>
+                              {t("notification_recovery.recipient")}: {entry.recipientDisplayName}
+                            </p>
+                            <p>
+                              {t("notification_recovery.email")}:{" "}
+                              {entry.recipientEmail ?? t("common.none")}
+                            </p>
+                            <p>
+                              {t("notification_recovery.last_attempt")}: {formatDate(entry.attemptedAt)}
+                            </p>
+                            <p>
+                              {t("notification_recovery.error")}: {entry.error ?? t("common.none")}
+                            </p>
+                            <div className="button-row">
+                              <button
+                                className="ghost-button"
+                                type="button"
+                                disabled={busyAction === `retry-email:${entry.id}`}
+                                onClick={() => void handleRetryEmailDelivery(entry.id)}
+                              >
+                                {t("notification_recovery.retry_email")}
+                              </button>
+                            </div>
+                          </div>
+                        ))
+                      ) : (
+                        <p className="inline-message">{t("notification_recovery.none_email")}</p>
+                      )}
+                    </div>
+                  </div>
                 )}
               </article>
             ) : null}

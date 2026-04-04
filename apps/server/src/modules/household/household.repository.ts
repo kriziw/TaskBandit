@@ -581,6 +581,83 @@ export class HouseholdRepository {
     }));
   }
 
+  async getNotificationRecovery(householdId: string, take = 50) {
+    const [failedPushDeliveries, failedEmailNotifications] = await Promise.all([
+      this.prisma.notificationPushDelivery.findMany({
+        where: {
+          status: NotificationPushDeliveryStatus.FAILED,
+          notification: {
+            householdId
+          }
+        },
+        include: {
+          notification: {
+            include: {
+              recipient: true
+            }
+          },
+          notificationDevice: true
+        },
+        orderBy: {
+          updatedAtUtc: "desc"
+        },
+        take
+      }),
+      this.prisma.notification.findMany({
+        where: {
+          householdId,
+          emailDeliveryStatus: NotificationEmailDeliveryStatus.FAILED
+        },
+        include: {
+          recipient: {
+            include: {
+              identities: {
+                where: {
+                  email: {
+                    not: null
+                  }
+                },
+                orderBy: {
+                  createdAtUtc: "asc"
+                }
+              }
+            }
+          }
+        },
+        orderBy: {
+          emailLastAttemptedAtUtc: "desc"
+        },
+        take
+      })
+    ]);
+
+    return {
+      failedPushDeliveries: failedPushDeliveries.map((delivery) => ({
+        id: delivery.id,
+        notificationId: delivery.notificationId,
+        title: delivery.notification.title,
+        message: delivery.notification.message,
+        recipientDisplayName: delivery.notification.recipient.displayName,
+        deviceName: delivery.notificationDevice.deviceName,
+        provider: delivery.notificationDevice.provider.toLowerCase(),
+        attemptedAt: delivery.attemptedAtUtc,
+        error: delivery.errorMessage,
+        createdAt: delivery.createdAtUtc
+      })),
+      failedEmailNotifications: failedEmailNotifications.map((notification) => ({
+        id: notification.id,
+        title: notification.title,
+        message: notification.message,
+        recipientDisplayName: notification.recipient.displayName,
+        recipientEmail:
+          notification.recipient.identities.find((identity) => Boolean(identity.email))?.email ?? null,
+        attemptedAt: notification.emailLastAttemptedAtUtc,
+        error: notification.emailDeliveryError,
+        createdAt: notification.createdAtUtc
+      }))
+    };
+  }
+
   async markPushDeliverySent(deliveryId: string, providerMessageId?: string | null) {
     await this.prisma.notificationPushDelivery.update({
       where: {
@@ -605,6 +682,53 @@ export class HouseholdRepository {
         errorMessage,
         attemptedAtUtc: new Date()
       }
+    });
+  }
+
+  async retryFailedPushDelivery(householdId: string, actorUserId: string, deliveryId: string) {
+    const existingDelivery = await this.prisma.notificationPushDelivery.findFirst({
+      where: {
+        id: deliveryId,
+        status: NotificationPushDeliveryStatus.FAILED,
+        notification: {
+          householdId
+        }
+      },
+      include: {
+        notification: {
+          include: {
+            recipient: true
+          }
+        },
+        notificationDevice: true
+      }
+    });
+
+    if (!existingDelivery) {
+      throw new NotFoundException({
+        message: "That failed push delivery could not be found."
+      });
+    }
+
+    await this.prisma.notificationPushDelivery.update({
+      where: {
+        id: deliveryId
+      },
+      data: {
+        status: NotificationPushDeliveryStatus.PENDING,
+        errorMessage: null,
+        providerMessageId: null,
+        attemptedAtUtc: null
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "notification.push_delivery.retried",
+      entityType: "notification_push_delivery",
+      entityId: deliveryId,
+      summary: `Retried failed push delivery for ${existingDelivery.notification.recipient.displayName} on ${existingDelivery.notificationDevice.deviceName ?? existingDelivery.notificationDevice.installationId}.`
     });
   }
 
@@ -700,6 +824,46 @@ export class HouseholdRepository {
         emailDeliveryError: reason,
         emailLastAttemptedAtUtc: new Date()
       }
+    });
+  }
+
+  async retryFailedEmailDelivery(householdId: string, actorUserId: string, notificationId: string) {
+    const existingNotification = await this.prisma.notification.findFirst({
+      where: {
+        id: notificationId,
+        householdId,
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.FAILED
+      },
+      include: {
+        recipient: true
+      }
+    });
+
+    if (!existingNotification) {
+      throw new NotFoundException({
+        message: "That failed email fallback could not be found."
+      });
+    }
+
+    await this.prisma.notification.update({
+      where: {
+        id: notificationId
+      },
+      data: {
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.PENDING,
+        emailDeliveryError: null,
+        emailLastAttemptedAtUtc: null,
+        emailDeliveredAtUtc: null
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "notification.email_delivery.retried",
+      entityType: "notification",
+      entityId: notificationId,
+      summary: `Retried failed email fallback for ${existingNotification.recipient.displayName}.`
     });
   }
 

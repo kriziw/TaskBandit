@@ -73,6 +73,24 @@ export class DashboardController {
     return this.dashboardService.getSystemStatus(user);
   }
 
+  @Get("admin/notification-recovery")
+  @Roles("admin")
+  getNotificationRecovery(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getNotificationRecovery(user);
+  }
+
+  @Post("admin/notification-recovery/push/:deliveryId/retry")
+  @Roles("admin")
+  retryPushDelivery(@CurrentUser() user: AuthenticatedUser, @Param("deliveryId") deliveryId: string) {
+    return this.dashboardService.retryPushDelivery(user, deliveryId);
+  }
+
+  @Post("admin/notification-recovery/email/:notificationId/retry")
+  @Roles("admin")
+  retryEmailDelivery(@CurrentUser() user: AuthenticatedUser, @Param("notificationId") notificationId: string) {
+    return this.dashboardService.retryEmailDelivery(user, notificationId);
+  }
+
   @Get("admin/logs/export.txt")
   @Roles("admin")
   async exportRuntimeLogsText(@Res({ passthrough: true }) response: Response) {

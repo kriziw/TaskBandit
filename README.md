@@ -46,6 +46,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
 - admin snapshot export of the live household state for backup/support use
 - an admin system-status panel for checking runtime readiness across database, storage, auth, push, and email fallback
+- an admin notification-recovery panel for retrying failed push or email-fallback deliveries
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
 - reverse-proxy aware server configuration for Nginx or Traefik deployments
@@ -166,6 +167,7 @@ Notification-device registration is now live for signed-in Android clients, and 
 The backend now also queues provider-backed push deliveries in PostgreSQL and can send them through Firebase Admin when FCM is enabled in the environment.
 Admins can also export a household snapshot JSON from the web UI. This is meant as a support/backup snapshot of the current live state, not as a full restore/import feature.
 Admins can now also inspect a live system-status panel from the web UI to verify that the instance is ready across database connectivity, storage writability, auth recovery path, push delivery, and email fallback.
+Admins can also retry failed push deliveries and failed email fallbacks from the web UI, which is useful for private self-hosted instances without shell-level log chasing.
 
 ## Android Push Notes
 
