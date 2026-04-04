@@ -951,7 +951,10 @@ private fun DashboardScreen(
                                 }
                             ),
                             enabled = activeTab != MobileDashboardTab.CHORES,
-                            onClick = { activeTab = MobileDashboardTab.CHORES }
+                            onClick = {
+                                activeTab = MobileDashboardTab.CHORES
+                                expandedChoreIds = emptySet()
+                            }
                         )
                         DashboardActionCard(
                             badge = stringResource(R.string.mobile_dashboard_secondary_badge),

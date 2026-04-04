@@ -42,10 +42,10 @@
     <string name="mobile_dashboard_summary">%1$d approvals waiting, %2$d active chores, %3$d streak</string>
     <string name="mobile_dashboard_start_here">Start here</string>
     <string name="mobile_dashboard_primary_badge">Primary</string>
-    <string name="mobile_dashboard_primary_title">Log chore progress fast</string>
-    <string name="mobile_dashboard_primary_body">Open your chore list, start work, add proof, and submit without hunting through menus.</string>
+    <string name="mobile_dashboard_primary_title">Work on a task</string>
+    <string name="mobile_dashboard_primary_body">Open your chores to update progress, add proof, and complete them without hunting through menus.</string>
     <string name="mobile_dashboard_secondary_badge">Secondary</string>
-    <string name="mobile_dashboard_secondary_title">Create chores quickly</string>
+    <string name="mobile_dashboard_secondary_title">Create a task</string>
     <string name="mobile_dashboard_secondary_body">Parents and admins can create a chore from a template in one tap.</string>
     <string name="mobile_dashboard_secondary_body_locked">Chore creation lives here, and becomes available for parent and admin accounts.</string>
     <string name="mobile_dashboard_open_chores">Open chores</string>
@@ -63,8 +63,8 @@
     <string name="mobile_pending_approvals">Pending approvals</string>
     <string name="mobile_due_at">Due %1$s</string>
     <string name="mobile_state_overdue">Overdue</string>
-    <string name="mobile_show_details">Details</string>
-    <string name="mobile_hide_details">Hide</string>
+    <string name="mobile_show_details">Open task</string>
+    <string name="mobile_hide_details">Close task</string>
     <string name="mobile_create_title">Create chores</string>
     <string name="mobile_create_hint">Secondary flow: create a chore from a template with one tap.</string>
     <string name="mobile_create_delay_option">+%1$dh</string>
