@@ -109,6 +109,7 @@ private fun TaskBanditApp(
     val queuedNoticeMessage = stringResource(R.string.mobile_submission_queued)
     val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
+    val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
@@ -120,6 +121,7 @@ private fun TaskBanditApp(
     var isSyncingQueue by remember { mutableStateOf(false) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
     var activeNotificationAction by remember { mutableStateOf<String?>(null) }
+    var activeStartAction by remember { mutableStateOf<String?>(null) }
     var activeSubmitAction by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
@@ -275,6 +277,31 @@ private fun TaskBanditApp(
         proofPicker.launch(arrayOf("image/*"))
     }
 
+    fun startChore(choreId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeStartAction = "start:$choreId"
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.startChore(baseUrl, token, choreId)
+                }
+            }.onSuccess {
+                noticeMessage = choreStartedMessage
+                refreshDashboard()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            activeStartAction = null
+        }
+    }
+
     fun submitChore(choreId: String) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
@@ -387,6 +414,7 @@ private fun TaskBanditApp(
             isSyncingQueue = isSyncingQueue,
             activeReviewAction = activeReviewAction,
             activeNotificationAction = activeNotificationAction,
+            activeStartAction = activeStartAction,
             activeSubmitAction = activeSubmitAction,
             errorMessage = errorMessage,
             noticeMessage = noticeMessage,
@@ -400,6 +428,7 @@ private fun TaskBanditApp(
             submitSelections = submitSelections,
             selectedProofUris = selectedProofUris,
             onPickProofs = ::openProofPicker,
+            onStartChore = ::startChore,
             onSubmitChore = ::submitChore
         )
     }
@@ -502,6 +531,7 @@ private fun DashboardScreen(
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
     activeNotificationAction: String?,
+    activeStartAction: String?,
     activeSubmitAction: String?,
     errorMessage: String?,
     noticeMessage: String?,
@@ -515,6 +545,7 @@ private fun DashboardScreen(
     submitSelections: Map<String, Set<String>>,
     selectedProofUris: Map<String, List<String>>,
     onPickProofs: (String) -> Unit,
+    onStartChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit
 ) {
     val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
@@ -712,6 +743,24 @@ private fun DashboardScreen(
                                         )
                                     }
                                 }
+                            }
+                        }
+                        if (isSubmittableState) {
+                            Button(
+                                onClick = { onStartChore(chore.id) },
+                                enabled = activeStartAction == null && chore.state != "in_progress"
+                            ) {
+                                Text(
+                                    stringResource(
+                                        if (activeStartAction == "start:${chore.id}") {
+                                            R.string.mobile_starting
+                                        } else if (chore.state == "in_progress") {
+                                            R.string.mobile_started
+                                        } else {
+                                            R.string.mobile_start
+                                        }
+                                    )
+                                )
                             }
                         }
                         if (isSubmittableState) {

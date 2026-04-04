@@ -122,6 +122,16 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun startChore(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/start",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
     fun submitChore(
         baseUrl: String,
         token: String,

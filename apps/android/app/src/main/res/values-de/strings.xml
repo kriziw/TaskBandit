@@ -48,6 +48,10 @@
     <string name="mobile_login_failed">Anmeldung fehlgeschlagen.</string>
     <string name="mobile_submit">Aufgabe senden</string>
     <string name="mobile_submitting">Wird gesendet...</string>
+    <string name="mobile_start">Aufgabe starten</string>
+    <string name="mobile_starting">Startet...</string>
+    <string name="mobile_started">In Bearbeitung</string>
+    <string name="mobile_chore_started">Aufgabe wurde in Bearbeitung versetzt.</string>
     <string name="mobile_checklist_required">Erledige alle Pflichtpunkte der Checkliste, bevor du die Aufgabe sendest.</string>
     <string name="mobile_photo_required_hint">Diese Aufgabe braucht mindestens ein Beweisfoto.</string>
     <string name="mobile_photo_required_missing">Fuge mindestens ein Beweisfoto hinzu, bevor du die Aufgabe sendest.</string>
