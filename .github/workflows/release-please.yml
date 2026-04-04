@@ -57,6 +57,7 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: ${{ steps.config.outputs.path }}
           manifest-file: .github/.release-please-manifest.json
+          skip-labeling: true
 
   release_android:
     needs: release_please
