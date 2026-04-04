@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.9.1](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.9.0...taskbandit-v0.9.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* harden release tag backfill workflow ([bcefb69](https://github.com/kriziw/TaskBandit/commit/bcefb699fd0cee3c84665a660790f02ed5db7ffe))
+
 ## [0.9.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.8.0...taskbandit-v0.9.0) (2026-04-04)
 
 
