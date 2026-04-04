@@ -918,6 +918,57 @@ export class HouseholdRepository {
     return instance ? this.mapInstance(instance) : null;
   }
 
+  async getAttachmentForViewer(user: {
+    id: string;
+    householdId: string;
+    role: "admin" | "parent" | "child";
+  }, attachmentId: string) {
+    const [settings, attachment] = await Promise.all([
+      user.role === "child"
+        ? this.prisma.householdSettings.findUnique({
+            where: {
+              householdId: user.householdId
+            }
+          })
+        : Promise.resolve(null),
+      this.prisma.choreAttachment.findFirst({
+        where: {
+          id: attachmentId,
+          choreInstance: {
+            householdId: user.householdId
+          }
+        },
+        include: {
+          choreInstance: {
+            select: {
+              id: true,
+              assigneeId: true
+            }
+          }
+        }
+      })
+    ]);
+
+    if (!attachment) {
+      return null;
+    }
+
+    const shouldRestrictOtherChores =
+      user.role === "child" && !(settings?.membersCanSeeFullHouseholdChoreDetails ?? true);
+
+    if (shouldRestrictOtherChores && attachment.choreInstance.assigneeId !== user.id) {
+      return null;
+    }
+
+    return {
+      id: attachment.id,
+      choreInstanceId: attachment.choreInstance.id,
+      clientFilename: attachment.clientFilename,
+      contentType: attachment.contentType,
+      storageKey: attachment.storageKey
+    };
+  }
+
   async submitInstance(input: {
     instanceId: string;
     actingUserId: string;

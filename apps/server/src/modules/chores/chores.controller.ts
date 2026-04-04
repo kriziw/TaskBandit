@@ -6,12 +6,15 @@ import {
   Param,
   Post,
   Put,
+  Res,
+  StreamableFile,
   UploadedFile,
   UseGuards,
   UseInterceptors
 } from "@nestjs/common";
 import { ApiBody, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
+import type { Response } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { Roles } from "../../common/auth/roles.decorator";
@@ -135,6 +138,30 @@ export class ChoresController {
     return this.choresService.uploadProof(file, user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
+  @Get("attachments/:id")
+  async downloadAttachment(
+    @Param("id") attachmentId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    const attachment = await this.choresService.downloadAttachment(
+      attachmentId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+    const safeFilename = this.buildContentDispositionFilename(attachment.clientFilename);
+
+    response.setHeader("Content-Type", attachment.contentType ?? "application/octet-stream");
+    response.setHeader(
+      "Content-Disposition",
+      `inline; filename="${safeFilename.asciiFallback}"; filename*=UTF-8''${safeFilename.encoded}`
+    );
+    response.setHeader("Cache-Control", "private, max-age=300");
+
+    return new StreamableFile(attachment.fileBuffer);
+  }
+
   @Post("instances/:id/submit")
   submit(
     @Param("id") instanceId: string,
@@ -180,5 +207,15 @@ export class ChoresController {
       user,
       this.i18nService.resolveLanguage(acceptLanguage)
     );
+  }
+
+  private buildContentDispositionFilename(filename: string) {
+    const normalizedFilename = filename.trim() || "proof-image";
+    const asciiFallback = normalizedFilename.replace(/[^a-zA-Z0-9._-]+/g, "-") || "proof-image";
+
+    return {
+      asciiFallback,
+      encoded: encodeURIComponent(normalizedFilename)
+    };
   }
 }

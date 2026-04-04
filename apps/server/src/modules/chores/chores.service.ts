@@ -92,6 +92,31 @@ export class ChoresService {
     return this.proofStorageService.storeProofUpload(file, user, language);
   }
 
+  async downloadAttachment(
+    attachmentId: string,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const attachment = await this.repository.getAttachmentForViewer(user, attachmentId);
+    if (!attachment?.storageKey) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    try {
+      const fileBuffer = await this.proofStorageService.readProofUpload(attachment.storageKey);
+      return {
+        ...attachment,
+        fileBuffer
+      };
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+        return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      }
+
+      throw error;
+    }
+  }
+
   async submitInstance(
     instanceId: string,
     dto: SubmitChoreDto,

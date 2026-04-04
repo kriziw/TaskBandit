@@ -313,6 +313,29 @@ export const taskBanditApi = {
 
     return (await response.json()) as UploadedProof;
   },
+  async downloadProofAttachment(token: string, language: AppLanguage, attachmentId: string) {
+    const response = await fetch(`${resolveApiBaseUrl()}/api/chores/attachments/${attachmentId}`, {
+      method: "GET",
+      headers: buildHeaders(token, language)
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new TaskBanditApiError(message, response.status);
+    }
+
+    const contentDisposition = response.headers.get("Content-Disposition");
+    const encodedFilename =
+      contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1] ??
+      contentDisposition?.match(/filename=\"?([^\";]+)\"?/i)?.[1] ??
+      null;
+
+    return {
+      blob: await response.blob(),
+      filename: encodedFilename ? decodeURIComponent(encodedFilename) : null,
+      contentType: response.headers.get("Content-Type")
+    };
+  },
   approveChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/approve`, {
       method: "POST",

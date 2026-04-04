@@ -4,6 +4,7 @@ import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import type {
   AuditLogEntry,
+  ChoreAttachment,
   AuthProviders,
   AuthenticatedUser,
   BootstrapHouseholdInput,
@@ -874,6 +875,61 @@ export function App() {
     }));
   }
 
+  async function handleOpenAttachment(attachment: ChoreAttachment) {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`attachment:${attachment.id}`);
+
+    try {
+      const result = await taskBanditApi.downloadProofAttachment(token, language, attachment.id);
+      const objectUrl = window.URL.createObjectURL(result.blob);
+      const popup = window.open(objectUrl, "_blank", "noopener,noreferrer");
+
+      if (!popup) {
+        const link = document.createElement("a");
+        link.href = objectUrl;
+        link.download = result.filename ?? attachment.clientFilename;
+        document.body.append(link);
+        link.click();
+        link.remove();
+      }
+
+      window.setTimeout(() => {
+        window.URL.revokeObjectURL(objectUrl);
+      }, 60_000);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("attachments.open_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function renderAttachmentList(label: string, attachments: ChoreAttachment[]) {
+    return (
+      <div className="attachment-list">
+        <strong>{label}:</strong>
+        <ul className="simple-list compact-list">
+          {attachments.map((attachment) => (
+            <li key={attachment.id}>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={busyAction === `attachment:${attachment.id}`}
+                  onClick={() => void handleOpenAttachment(attachment)}
+                >
+                  {busyAction === `attachment:${attachment.id}`
+                    ? t("attachments.opening")
+                    : `${t("attachments.open")}: ${attachment.clientFilename}`}
+                </button>
+              </li>
+            ))}
+        </ul>
+      </div>
+    );
+  }
+
   function addChecklistDraftItem() {
     setTemplateForm((current) => ({
       ...current,
@@ -1283,16 +1339,9 @@ export function App() {
                             {t("task.note")}: {instance.submissionNote}
                           </p>
                         ) : null}
-                        {instance.attachments.length > 0 ? (
-                          <div className="attachment-list">
-                            <strong>{t("task.attachments")}:</strong>
-                            <ul className="simple-list compact-list">
-                              {instance.attachments.map((attachment) => (
-                                <li key={attachment.id}>{attachment.clientFilename}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
+                          {instance.attachments.length > 0 ? (
+                            renderAttachmentList(t("task.attachments"), instance.attachments)
+                          ) : null}
                         <label className="inline-field">
                           <span>{t("approval.review_note")}</span>
                           <textarea
@@ -1360,16 +1409,9 @@ export function App() {
                         ) : (
                           <p className="inline-message">{t("submission.photo_hint_optional")}</p>
                         )}
-                        {instance.attachments.length > 0 ? (
-                          <div className="attachment-list">
-                            <strong>{t("submission.previous_uploads")}:</strong>
-                            <ul className="simple-list compact-list">
-                              {instance.attachments.map((attachment) => (
-                                <li key={attachment.id}>{attachment.clientFilename}</li>
-                              ))}
-                            </ul>
-                          </div>
-                        ) : null}
+                          {instance.attachments.length > 0 ? (
+                            renderAttachmentList(t("submission.previous_uploads"), instance.attachments)
+                          ) : null}
                         {instance.checklist.length ? (
                           <div className="checklist">
                             {instance.checklist.map((item) => (

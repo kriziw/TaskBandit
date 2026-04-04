@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { mkdir, readFile, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
@@ -56,6 +56,28 @@ export class ProofStorageService {
       storageKey,
       sizeBytes: file.size
     };
+  }
+
+  async readProofUpload(storageKey: string) {
+    const absolutePath = this.resolveStoragePath(storageKey);
+    return readFile(absolutePath);
+  }
+
+  private resolveStoragePath(storageKey: string) {
+    const normalizedStorageKey = storageKey.trim();
+    const absolutePath = path.resolve(
+      this.appConfigService.storageRootPath,
+      ...normalizedStorageKey.split("/").filter(Boolean)
+    );
+    const relativePath = path.relative(this.appConfigService.storageRootPath, absolutePath);
+
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+      throw new BadRequestException({
+        message: "That proof upload path is invalid."
+      });
+    }
+
+    return absolutePath;
   }
 
   private sanitizeFilename(filename: string) {
