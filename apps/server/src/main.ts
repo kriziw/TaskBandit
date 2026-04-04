@@ -51,7 +51,7 @@ async function bootstrap() {
   const swaggerConfig = new DocumentBuilder()
     .setTitle("TaskBandit API")
     .setDescription("TaskBandit household chores API")
-    .setVersion("0.1.0")
+    .setVersion(config.releaseVersion)
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
   SwaggerModule.setup(config.withBasePath("docs"), app, swaggerDocument);

@@ -77,6 +77,27 @@ select {
   padding: 14px;
 }
 
+.workspace-version-block {
+  margin-top: 14px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(36, 48, 67, 0.08);
+  display: grid;
+  gap: 4px;
+}
+
+.workspace-version-label {
+  margin: 0;
+  font-size: 0.8rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: rgba(36, 48, 67, 0.66);
+}
+
+.workspace-version-block p,
+.workspace-version-block strong {
+  margin: 0;
+}
+
 .workspace-nav-kicker,
 .workspace-page-copy {
   margin: 0;
@@ -602,6 +623,24 @@ h4,
   background: rgba(115, 201, 244, 0.18);
 }
 
+.update-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.update-banner p {
+  margin: 6px 0 0;
+}
+
+.release-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
 .login-form,
 .settings-list,
 .stack-list,
@@ -1030,6 +1069,11 @@ h4,
 
   .workspace-page-header {
     flex-direction: column;
+  }
+
+  .update-banner {
+    flex-direction: column;
+    align-items: stretch;
   }
 
   .workspace-page-meta {

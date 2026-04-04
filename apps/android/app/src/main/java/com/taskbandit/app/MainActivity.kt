@@ -65,6 +65,7 @@ import com.taskbandit.app.mobile.TaskBanditSessionStore
 import com.taskbandit.app.mobile.TaskBanditTransportException
 import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
 import com.taskbandit.app.mobile.TaskBanditWidgetStore
+import com.taskbandit.app.mobile.MobileReleaseInfo
 import com.taskbandit.app.push.TaskBanditFirebasePushManager
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import com.taskbandit.app.widget.TaskBanditWidgetProvider
@@ -122,6 +123,13 @@ private fun TaskBanditApp(
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
+    val currentReleaseInfo = remember {
+        MobileReleaseInfo(
+            releaseVersion = BuildConfig.TASKBANDIT_RELEASE_VERSION,
+            buildNumber = BuildConfig.TASKBANDIT_BUILD_NUMBER,
+            commitSha = BuildConfig.TASKBANDIT_COMMIT_SHA
+        )
+    }
     val installationId = remember { sessionStore.getOrCreateInstallationId() }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
@@ -129,6 +137,8 @@ private fun TaskBanditApp(
     var dashboard by remember { mutableStateOf<MobileDashboard?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
+    var serverReleaseInfo by remember { mutableStateOf<MobileReleaseInfo?>(null) }
+    var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
     var isBusy by remember { mutableStateOf(session.token != null) }
     var isSyncingQueue by remember { mutableStateOf(false) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
@@ -172,6 +182,7 @@ private fun TaskBanditApp(
         session = TaskBanditSession(baseUrl = baseUrl, token = null)
         serverUrl = baseUrl
         dashboard = null
+        serverReleaseInfo = null
         isBusy = false
         errorMessage = null
         noticeMessage = null
@@ -185,7 +196,8 @@ private fun TaskBanditApp(
 
         coroutineScope.launch {
             runCatching {
-                val loadedDashboard = withContext(Dispatchers.IO) {
+                val (loadedDashboard, latestReleaseInfo) = withContext(Dispatchers.IO) {
+                    val latestReleaseInfo = runCatching { api.getReleaseInfo(baseUrl) }.getOrNull()
                     runCatching {
                         val pushToken = TaskBanditFirebasePushManager.getTokenOrNull(context)
                         if (!pushToken.isNullOrBlank()) {
@@ -207,7 +219,7 @@ private fun TaskBanditApp(
                         )
                     }
 
-                    api.loadDashboard(baseUrl, token)
+                    Pair(api.loadDashboard(baseUrl, token), latestReleaseInfo)
                 }
                 val flushedCount = flushQueuedSubmissions(
                     api = api,
@@ -219,17 +231,19 @@ private fun TaskBanditApp(
                 )
 
                 if (flushedCount > 0) {
-                    Pair(
+                    Triple(
                         withContext(Dispatchers.IO) {
                             api.loadDashboard(baseUrl, token)
                         },
-                        flushedCount
+                        flushedCount,
+                        latestReleaseInfo
                     )
                 } else {
-                    Pair(loadedDashboard, 0)
+                    Triple(loadedDashboard, 0, latestReleaseInfo)
                 }
-            }.onSuccess { (loadedDashboard, flushedCount) ->
+            }.onSuccess { (loadedDashboard, flushedCount, latestReleaseInfo) ->
                 dashboard = loadedDashboard
+                serverReleaseInfo = latestReleaseInfo
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, token)
                 val currentQueuedSubmissionCount = outboxStore.readQueue().size
@@ -426,13 +440,47 @@ private fun TaskBanditApp(
         }
     }
 
+    LaunchedEffect(serverUrl, session.token) {
+        if (session.token != null) {
+            return@LaunchedEffect
+        }
+
+        val baseUrl = normalizedServerUrl()
+        runCatching {
+            withContext(Dispatchers.IO) {
+                api.getReleaseInfo(baseUrl)
+            }
+        }.onSuccess { latestReleaseInfo ->
+            serverReleaseInfo = latestReleaseInfo
+        }.onFailure {
+            serverReleaseInfo = null
+        }
+    }
+
+    val availableUpdate = serverReleaseInfo?.takeIf {
+        compareReleaseInfo(currentReleaseInfo, it) < 0
+    }
+    val availableUpdateKey = availableUpdate?.let(::createReleaseKey)
+    val visibleUpdate = availableUpdate?.takeIf { availableUpdateKey != dismissedUpdateKey }
+    val currentReleaseLabel = formatReleaseLabel(currentReleaseInfo)
+    val serverReleaseLabel = serverReleaseInfo?.let(::formatReleaseLabel)
+    fun dismissUpdateNotice() {
+        val updateKey = availableUpdateKey ?: return
+        sessionStore.saveDismissedUpdateKey(updateKey)
+        dismissedUpdateKey = updateKey
+    }
+
     if (session.token == null) {
         LoginScreen(
             serverUrl = serverUrl,
+            currentReleaseLabel = currentReleaseLabel,
+            serverReleaseLabel = serverReleaseLabel,
+            availableUpdate = visibleUpdate,
             email = email,
             password = password,
             isBusy = isBusy,
             errorMessage = errorMessage,
+            onDismissUpdate = ::dismissUpdateNotice,
             onServerUrlChange = {
                 serverUrl = it
                 sessionStore.saveBaseUrl(it)
@@ -463,6 +511,9 @@ private fun TaskBanditApp(
         DashboardScreen(
             dashboard = dashboard,
             serverUrl = serverUrl,
+            currentReleaseLabel = currentReleaseLabel,
+            serverReleaseLabel = serverReleaseLabel,
+            availableUpdate = visibleUpdate,
             isBusy = isBusy,
             isSyncingQueue = isSyncingQueue,
             activeReviewAction = activeReviewAction,
@@ -472,6 +523,7 @@ private fun TaskBanditApp(
             errorMessage = errorMessage,
             noticeMessage = noticeMessage,
             queuedSubmissionCount = queuedSubmissionCount,
+            onDismissUpdate = ::dismissUpdateNotice,
             onRefresh = ::refreshDashboard,
             onLogout = ::logout,
             onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
@@ -496,20 +548,67 @@ private fun buildAndroidDeviceName(): String {
         .ifBlank { "Android device" }
 }
 
+private fun parseReleaseVersionParts(value: String): List<Int> =
+    value.split('.', '-')
+        .mapNotNull { it.toIntOrNull() }
+
+private fun compareReleaseVersions(current: String, latest: String): Int {
+    val currentParts = parseReleaseVersionParts(current)
+    val latestParts = parseReleaseVersionParts(latest)
+    val maxSize = maxOf(currentParts.size, latestParts.size)
+
+    for (index in 0 until maxSize) {
+        val currentValue = currentParts.getOrElse(index) { 0 }
+        val latestValue = latestParts.getOrElse(index) { 0 }
+        if (currentValue != latestValue) {
+            return currentValue.compareTo(latestValue)
+        }
+    }
+
+    return 0
+}
+
+private fun compareReleaseInfo(current: MobileReleaseInfo, latest: MobileReleaseInfo): Int {
+    val versionComparison = compareReleaseVersions(current.releaseVersion, latest.releaseVersion)
+    if (versionComparison != 0) {
+        return versionComparison
+    }
+
+    val currentBuild = current.buildNumber.toIntOrNull()
+    val latestBuild = latest.buildNumber.toIntOrNull()
+    if (currentBuild != null && latestBuild != null && currentBuild != latestBuild) {
+        return currentBuild.compareTo(latestBuild)
+    }
+
+    return current.buildNumber.compareTo(latest.buildNumber)
+}
+
+private fun createReleaseKey(release: MobileReleaseInfo): String =
+    "${release.releaseVersion}+${release.buildNumber}"
+
+private fun formatReleaseLabel(release: MobileReleaseInfo): String =
+    "v${release.releaseVersion} (build ${release.buildNumber})"
+
 private fun readAppVersion(context: android.content.Context): String? {
     return runCatching {
         val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
-        packageInfo.versionName?.ifBlank { null } ?: packageInfo.longVersionCode.toString()
+        val versionName = packageInfo.versionName?.ifBlank { BuildConfig.TASKBANDIT_RELEASE_VERSION }
+            ?: BuildConfig.TASKBANDIT_RELEASE_VERSION
+        "$versionName+${BuildConfig.TASKBANDIT_BUILD_NUMBER}"
     }.getOrNull()
 }
 
 @Composable
 private fun LoginScreen(
     serverUrl: String,
+    currentReleaseLabel: String,
+    serverReleaseLabel: String?,
+    availableUpdate: MobileReleaseInfo?,
     email: String,
     password: String,
     isBusy: Boolean,
     errorMessage: String?,
+    onDismissUpdate: () -> Unit,
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -547,6 +646,40 @@ private fun LoginScreen(
                     text = stringResource(R.string.mobile_login_hint),
                     style = MaterialTheme.typography.bodyMedium
                 )
+                Text(
+                    text = stringResource(R.string.mobile_app_release, currentReleaseLabel),
+                    style = MaterialTheme.typography.bodySmall
+                )
+                if (serverReleaseLabel != null) {
+                    Text(
+                        text = stringResource(R.string.mobile_server_release, serverReleaseLabel),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                }
+                if (availableUpdate != null) {
+                    Card {
+                        Column(
+                            modifier = Modifier.padding(14.dp),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = stringResource(R.string.mobile_update_available_title),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Text(
+                                text = stringResource(
+                                    R.string.mobile_update_available_body,
+                                    currentReleaseLabel,
+                                    formatReleaseLabel(availableUpdate)
+                                ),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                            Button(onClick = onDismissUpdate) {
+                                Text(stringResource(R.string.mobile_update_dismiss))
+                            }
+                        }
+                    }
+                }
                 OutlinedTextField(
                     value = serverUrl,
                     onValueChange = onServerUrlChange,
@@ -596,6 +729,9 @@ private fun LoginScreen(
 private fun DashboardScreen(
     dashboard: MobileDashboard?,
     serverUrl: String,
+    currentReleaseLabel: String,
+    serverReleaseLabel: String?,
+    availableUpdate: MobileReleaseInfo?,
     isBusy: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
@@ -605,6 +741,7 @@ private fun DashboardScreen(
     errorMessage: String?,
     noticeMessage: String?,
     queuedSubmissionCount: Int,
+    onDismissUpdate: () -> Unit,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
@@ -646,6 +783,16 @@ private fun DashboardScreen(
                             text = dashboard?.user?.displayName ?: stringResource(R.string.common_loading_short),
                             style = MaterialTheme.typography.headlineMedium
                         )
+                        Text(
+                            text = stringResource(R.string.mobile_app_release, currentReleaseLabel),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                        if (serverReleaseLabel != null) {
+                            Text(
+                                text = stringResource(R.string.mobile_server_release, serverReleaseLabel),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
                         Text(
                             text = serverUrl,
                             style = MaterialTheme.typography.bodySmall
@@ -692,6 +839,30 @@ private fun DashboardScreen(
                                 text = errorMessage,
                                 color = MaterialTheme.colorScheme.error
                             )
+                        }
+                        if (availableUpdate != null) {
+                            Card {
+                                Column(
+                                    modifier = Modifier.padding(14.dp),
+                                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_available_title),
+                                        style = MaterialTheme.typography.titleMedium
+                                    )
+                                    Text(
+                                        text = stringResource(
+                                            R.string.mobile_update_available_body,
+                                            currentReleaseLabel,
+                                            formatReleaseLabel(availableUpdate)
+                                        ),
+                                        style = MaterialTheme.typography.bodySmall
+                                    )
+                                    Button(onClick = onDismissUpdate) {
+                                        Text(stringResource(R.string.mobile_update_dismiss))
+                                    }
+                                }
+                            }
                         }
                     }
                 }

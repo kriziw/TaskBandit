@@ -106,6 +106,15 @@ jobs:
             echo "TASKBANDIT_ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
+      - name: Set Android release metadata
+        shell: bash
+        run: |
+          {
+            echo "TASKBANDIT_RELEASE_VERSION=${{ needs.release_please.outputs.version }}"
+            echo "TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}"
+            echo "TASKBANDIT_COMMIT_SHA=${{ needs.release_please.outputs.sha }}"
+          } >> "$GITHUB_ENV"
+
       - name: Build release APK
         run: gradle :app:assembleRelease
 
@@ -168,5 +177,9 @@ jobs:
           context: .
           file: ./apps/server/Dockerfile
           push: true
+          build-args: |
+            TASKBANDIT_RELEASE_VERSION=${{ needs.release_please.outputs.version }}
+            TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}
+            TASKBANDIT_COMMIT_SHA=${{ needs.release_please.outputs.sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

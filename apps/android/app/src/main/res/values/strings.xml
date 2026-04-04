@@ -29,6 +29,11 @@
     <string name="leaderboard_name_luca">Luca</string>
     <string name="mobile_login_title">Sign in to TaskBandit</string>
     <string name="mobile_login_hint">Connect your Android app to the self-hosted server and pull your live chores.</string>
+    <string name="mobile_app_release">App %1$s</string>
+    <string name="mobile_server_release">Server %1$s</string>
+    <string name="mobile_update_available_title">Newer version available</string>
+    <string name="mobile_update_available_body">This app is on %1$s while the server is already on %2$s. Update when you can.</string>
+    <string name="mobile_update_dismiss">Dismiss</string>
     <string name="mobile_server_url">Server URL</string>
     <string name="mobile_email">Email</string>
     <string name="mobile_password">Password</string>

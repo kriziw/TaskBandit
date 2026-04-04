@@ -51,6 +51,14 @@ class TaskBanditSessionStore(
 
     fun readPushToken(): String? = preferences.getString("push_token", null)
 
+    fun readDismissedUpdateKey(): String? = preferences.getString("dismissed_update_key", null)
+
+    fun saveDismissedUpdateKey(value: String) {
+        preferences.edit()
+            .putString("dismissed_update_key", value)
+            .apply()
+    }
+
     fun clearToken(baseUrl: String) {
         preferences.edit()
             .putString("base_url", baseUrl.ifBlank { defaultApiBaseUrl })

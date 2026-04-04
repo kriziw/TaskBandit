@@ -54,6 +54,21 @@ jobs:
             echo "TASKBANDIT_ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
           } >> "$GITHUB_ENV"
 
+      - name: Read release version
+        id: version
+        shell: bash
+        run: |
+          echo "value=$(tr -d '\r\n' < ../../version.txt)" >> "$GITHUB_OUTPUT"
+
+      - name: Set Android release metadata
+        shell: bash
+        run: |
+          {
+            echo "TASKBANDIT_RELEASE_VERSION=${{ steps.version.outputs.value }}"
+            echo "TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}"
+            echo "TASKBANDIT_COMMIT_SHA=${{ github.sha }}"
+          } >> "$GITHUB_ENV"
+
       - name: Build release APK
         run: gradle :app:assembleRelease
 

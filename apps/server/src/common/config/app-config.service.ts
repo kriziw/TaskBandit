@@ -1,5 +1,6 @@
 import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
+import fs from "node:fs";
 import path from "node:path";
 import { OidcConfig } from "./oidc-config.type";
 
@@ -13,8 +14,41 @@ type FirebaseServiceAccount = {
 export class AppConfigService {
   constructor(private readonly configService: ConfigService) {}
 
+  private readRepositoryVersionFile(): string {
+    const candidatePaths = [
+      path.resolve(process.cwd(), "version.txt"),
+      path.resolve(process.cwd(), "..", "..", "version.txt"),
+      path.resolve(process.cwd(), "..", "..", "..", "version.txt")
+    ];
+
+    for (const candidatePath of candidatePaths) {
+      if (!fs.existsSync(candidatePath)) {
+        continue;
+      }
+
+      const value = fs.readFileSync(candidatePath, "utf8").trim();
+      if (value) {
+        return value;
+      }
+    }
+
+    return "0.0.0-dev";
+  }
+
   get port(): number {
     return Number(this.configService.get("PORT") ?? 8080);
+  }
+
+  get releaseVersion(): string {
+    return this.configService.get<string>("TASKBANDIT_RELEASE_VERSION", "").trim() || this.readRepositoryVersionFile();
+  }
+
+  get buildNumber(): string {
+    return this.configService.get<string>("TASKBANDIT_BUILD_NUMBER", "").trim() || "local";
+  }
+
+  get commitSha(): string {
+    return this.configService.get<string>("TASKBANDIT_COMMIT_SHA", "").trim() || "local";
   }
 
   get databaseUrl(): string {
