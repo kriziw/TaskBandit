@@ -1,14 +1,19 @@
 package com.taskbandit.app.mobile
 
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.MediaType.Companion.toMediaTypeOrNull
+import okhttp3.MultipartBody
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
+import java.io.IOException
 
 class TaskBanditUnauthorizedException : IllegalStateException()
+class TaskBanditTransportException(message: String, cause: Throwable? = null) :
+    IllegalStateException(message, cause)
 
 class TaskBanditMobileApi {
     private val httpClient = OkHttpClient()
@@ -122,11 +127,24 @@ class TaskBanditMobileApi {
         token: String,
         instanceId: String,
         completedChecklistItemIds: List<String>,
+        attachments: List<MobileUploadedProof> = emptyList(),
         note: String? = null
     ) {
         val payload = JSONObject()
             .put("completedChecklistItemIds", JSONArray(completedChecklistItemIds))
-            .put("attachments", JSONArray())
+            .put(
+                "attachments",
+                JSONArray().apply {
+                    attachments.forEach { attachment ->
+                        put(
+                            JSONObject()
+                                .put("clientFilename", attachment.clientFilename)
+                                .put("contentType", attachment.contentType)
+                                .put("storageKey", attachment.storageKey)
+                        )
+                    }
+                }
+            )
             .put("note", note ?: "")
 
         requestJson(
@@ -136,6 +154,57 @@ class TaskBanditMobileApi {
             method = "POST",
             body = payload
         )
+    }
+
+    fun uploadProof(
+        baseUrl: String,
+        token: String,
+        filename: String,
+        contentType: String,
+        contentBytes: ByteArray
+    ): MobileUploadedProof {
+        val requestBody = MultipartBody.Builder()
+            .setType(MultipartBody.FORM)
+            .addFormDataPart(
+                "file",
+                filename,
+                contentBytes.toRequestBody(contentType.toMediaTypeOrNull())
+            )
+            .build()
+
+        val request = Request.Builder()
+            .url("${baseUrl.trim().trimEnd('/')}/api/chores/uploads/proof")
+            .header("Accept", "application/json")
+            .header("Authorization", "Bearer $token")
+            .post(requestBody)
+            .build()
+
+        try {
+            return httpClient.newCall(request).execute().use { response ->
+                val responseText = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    val parsed = JSONTokener(responseText).nextValue() as? JSONObject
+                        ?: throw IllegalStateException("Unexpected upload response shape.")
+                    return@use MobileUploadedProof(
+                        clientFilename = parsed.optString("clientFilename"),
+                        contentType = parsed.optString("contentType"),
+                        storageKey = parsed.optString("storageKey"),
+                        sizeBytes = parsed.optLong("sizeBytes")
+                    )
+                }
+
+                if (response.code == 401) {
+                    throw TaskBanditUnauthorizedException()
+                }
+
+                throw IllegalStateException(readErrorMessage(responseText))
+            }
+        } catch (exception: IOException) {
+            throw TaskBanditTransportException(
+                message = "Could not reach the TaskBandit server.",
+                cause = exception
+            )
+        }
     }
 
     private fun requestJson(
@@ -180,17 +249,24 @@ class TaskBanditMobileApi {
             else -> requestBuilder.get()
         }
 
-        httpClient.newCall(requestBuilder.build()).execute().use { response ->
-            val responseText = response.body?.string().orEmpty()
-            if (response.isSuccessful) {
-                return responseText
-            }
+        try {
+            httpClient.newCall(requestBuilder.build()).execute().use { response ->
+                val responseText = response.body?.string().orEmpty()
+                if (response.isSuccessful) {
+                    return responseText
+                }
 
-            if (response.code == 401) {
-                throw TaskBanditUnauthorizedException()
-            }
+                if (response.code == 401) {
+                    throw TaskBanditUnauthorizedException()
+                }
 
-            throw IllegalStateException(readErrorMessage(responseText))
+                throw IllegalStateException(readErrorMessage(responseText))
+            }
+        } catch (exception: IOException) {
+            throw TaskBanditTransportException(
+                message = "Could not reach the TaskBandit server.",
+                cause = exception
+            )
         }
     }
 

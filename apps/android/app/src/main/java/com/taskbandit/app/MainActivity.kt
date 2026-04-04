@@ -1,8 +1,14 @@
 package com.taskbandit.app
 
+import android.content.ContentResolver
+import android.content.Intent
 import android.os.Bundle
+import android.provider.OpenableColumns
+import android.net.Uri
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -30,6 +36,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -37,6 +44,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -44,9 +52,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.MobileUploadedProof
 import com.taskbandit.app.mobile.TaskBanditMobileApi
+import com.taskbandit.app.mobile.TaskBanditOutboxStore
+import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
 import com.taskbandit.app.mobile.TaskBanditSession
 import com.taskbandit.app.mobile.TaskBanditSessionStore
+import com.taskbandit.app.mobile.TaskBanditTransportException
 import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import kotlinx.coroutines.Dispatchers
@@ -55,15 +67,16 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        val sessionStore = TaskBanditSessionStore(
-            getSharedPreferences("taskbandit-session", MODE_PRIVATE)
-        )
+        val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
+        val sessionStore = TaskBanditSessionStore(sharedPreferences)
+        val outboxStore = TaskBanditOutboxStore(sharedPreferences)
 
         setContent {
             TaskBanditTheme {
@@ -73,7 +86,8 @@ class MainActivity : ComponentActivity() {
                 ) {
                     TaskBanditApp(
                         api = TaskBanditMobileApi(),
-                        sessionStore = sessionStore
+                        sessionStore = sessionStore,
+                        outboxStore = outboxStore
                     )
                 }
             }
@@ -84,23 +98,52 @@ class MainActivity : ComponentActivity() {
 @Composable
 private fun TaskBanditApp(
     api: TaskBanditMobileApi,
-    sessionStore: TaskBanditSessionStore
+    sessionStore: TaskBanditSessionStore,
+    outboxStore: TaskBanditOutboxStore
 ) {
+    val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val loginFailedMessage = stringResource(R.string.mobile_login_failed)
-    val photoUnsupportedMessage = stringResource(R.string.mobile_photo_required_hint)
     val checklistRequiredMessage = stringResource(R.string.mobile_checklist_required)
+    val photoRequiredMessage = stringResource(R.string.mobile_photo_required_missing)
+    val queuedNoticeMessage = stringResource(R.string.mobile_submission_queued)
+    val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
+    val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
     var password by remember { mutableStateOf("TaskBandit123!") }
     var dashboard by remember { mutableStateOf<MobileDashboard?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var noticeMessage by remember { mutableStateOf<String?>(null) }
     var isBusy by remember { mutableStateOf(session.token != null) }
+    var isSyncingQueue by remember { mutableStateOf(false) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
     var activeNotificationAction by remember { mutableStateOf<String?>(null) }
     var activeSubmitAction by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
+    var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
+    var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
+    var queuedSubmissionCount by remember { mutableIntStateOf(outboxStore.readQueue().size) }
+
+    val proofPicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenMultipleDocuments()
+    ) { uris ->
+        val choreId = pendingPhotoPickerChoreId
+        if (choreId != null) {
+            uris.forEach { uri ->
+                runCatching {
+                    context.contentResolver.takePersistableUriPermission(
+                        uri,
+                        Intent.FLAG_GRANT_READ_URI_PERMISSION
+                    )
+                }
+            }
+
+            selectedProofUris = selectedProofUris + (choreId to uris.map(Uri::toString))
+        }
+        pendingPhotoPickerChoreId = null
+    }
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
@@ -112,6 +155,7 @@ private fun TaskBanditApp(
         dashboard = null
         isBusy = false
         errorMessage = null
+        noticeMessage = null
     }
 
     fun refreshDashboard() {
@@ -122,13 +166,36 @@ private fun TaskBanditApp(
 
         coroutineScope.launch {
             runCatching {
-                withContext(Dispatchers.IO) {
+                val loadedDashboard = withContext(Dispatchers.IO) {
                     api.loadDashboard(baseUrl, token)
                 }
-            }.onSuccess { loadedDashboard ->
+                val flushedCount = flushQueuedSubmissions(
+                    api = api,
+                    outboxStore = outboxStore,
+                    baseUrl = baseUrl,
+                    token = token,
+                    contentResolver = context.contentResolver,
+                    onSyncingChange = { isSyncing -> isSyncingQueue = isSyncing }
+                )
+
+                if (flushedCount > 0) {
+                    Pair(
+                        withContext(Dispatchers.IO) {
+                            api.loadDashboard(baseUrl, token)
+                        },
+                        flushedCount
+                    )
+                } else {
+                    Pair(loadedDashboard, 0)
+                }
+            }.onSuccess { (loadedDashboard, flushedCount) ->
                 dashboard = loadedDashboard
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, token)
+                queuedSubmissionCount = outboxStore.readQueue().size
+                if (flushedCount > 0) {
+                    noticeMessage = syncedNoticeTemplate.format(flushedCount)
+                }
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -137,6 +204,7 @@ private fun TaskBanditApp(
                 }
             }
             isBusy = false
+            isSyncingQueue = false
         }
     }
 
@@ -202,36 +270,68 @@ private fun TaskBanditApp(
         submitSelections = submitSelections + (choreId to nextSelection)
     }
 
+    fun openProofPicker(choreId: String) {
+        pendingPhotoPickerChoreId = choreId
+        proofPicker.launch(arrayOf("image/*"))
+    }
+
     fun submitChore(choreId: String) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
         val chore = dashboard?.chores?.firstOrNull { it.id == choreId } ?: return
 
-        if (chore.requirePhotoProof) {
-            errorMessage = photoUnsupportedMessage
-            return
-        }
-
         val selectedChecklistIds = (submitSelections[choreId] ?: chore.completedChecklistIds.toSet()).toList()
+        val proofUriStrings = selectedProofUris[choreId].orEmpty()
         val missingRequiredItems = chore.checklist.filter { it.required && !selectedChecklistIds.contains(it.id) }
         if (missingRequiredItems.isNotEmpty()) {
             errorMessage = checklistRequiredMessage
             return
         }
 
+        if (chore.requirePhotoProof && proofUriStrings.isEmpty()) {
+            errorMessage = photoRequiredMessage
+            return
+        }
+
+        val draft = MobileChoreSubmissionDraft(
+            id = UUID.randomUUID().toString(),
+            choreId = choreId,
+            completedChecklistIds = selectedChecklistIds,
+            proofUriStrings = proofUriStrings,
+            note = null,
+            queuedAtEpochMillis = System.currentTimeMillis()
+        )
+
         activeSubmitAction = "submit:$choreId"
         errorMessage = null
+        noticeMessage = null
 
         coroutineScope.launch {
-            runCatching {
+            try {
                 withContext(Dispatchers.IO) {
-                    api.submitChore(baseUrl, token, choreId, selectedChecklistIds)
+                    submitDraft(
+                        api = api,
+                        baseUrl = baseUrl,
+                        token = token,
+                        draft = draft,
+                        contentResolver = context.contentResolver
+                    )
                 }
-            }.onSuccess {
+                selectedProofUris = selectedProofUris - choreId
+                submitSelections = submitSelections - choreId
+                noticeMessage = submissionSentMessage
                 refreshDashboard()
-            }.onFailure { throwable ->
+            } catch (throwable: Throwable) {
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
+                } else if (throwable is TaskBanditTransportException) {
+                    withContext(Dispatchers.IO) {
+                        outboxStore.enqueue(draft)
+                    }
+                    queuedSubmissionCount = outboxStore.readQueue().size
+                    selectedProofUris = selectedProofUris - choreId
+                    submitSelections = submitSelections - choreId
+                    noticeMessage = queuedNoticeMessage
                 } else {
                     errorMessage = throwable.message
                 }
@@ -284,10 +384,13 @@ private fun TaskBanditApp(
             dashboard = dashboard,
             serverUrl = serverUrl,
             isBusy = isBusy,
+            isSyncingQueue = isSyncingQueue,
             activeReviewAction = activeReviewAction,
             activeNotificationAction = activeNotificationAction,
             activeSubmitAction = activeSubmitAction,
             errorMessage = errorMessage,
+            noticeMessage = noticeMessage,
+            queuedSubmissionCount = queuedSubmissionCount,
             onRefresh = ::refreshDashboard,
             onLogout = ::logout,
             onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
@@ -295,6 +398,8 @@ private fun TaskBanditApp(
             onNotificationRead = ::markNotificationRead,
             onToggleChecklistItem = ::toggleChecklistItem,
             submitSelections = submitSelections,
+            selectedProofUris = selectedProofUris,
+            onPickProofs = ::openProofPicker,
             onSubmitChore = ::submitChore
         )
     }
@@ -394,10 +499,13 @@ private fun DashboardScreen(
     dashboard: MobileDashboard?,
     serverUrl: String,
     isBusy: Boolean,
+    isSyncingQueue: Boolean,
     activeReviewAction: String?,
     activeNotificationAction: String?,
     activeSubmitAction: String?,
     errorMessage: String?,
+    noticeMessage: String?,
+    queuedSubmissionCount: Int,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
@@ -405,6 +513,8 @@ private fun DashboardScreen(
     onNotificationRead: (String) -> Unit,
     onToggleChecklistItem: (String, String, List<String>) -> Unit,
     submitSelections: Map<String, Set<String>>,
+    selectedProofUris: Map<String, List<String>>,
+    onPickProofs: (String) -> Unit,
     onSubmitChore: (String) -> Unit
 ) {
     val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
@@ -460,6 +570,22 @@ private fun DashboardScreen(
                             Button(onClick = onLogout) {
                                 Text(stringResource(R.string.mobile_logout))
                             }
+                        }
+                        if (queuedSubmissionCount > 0 || isSyncingQueue) {
+                            Text(
+                                text = if (isSyncingQueue) {
+                                    stringResource(R.string.mobile_syncing_queue)
+                                } else {
+                                    stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount)
+                                },
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                        if (!noticeMessage.isNullOrBlank()) {
+                            Text(
+                                text = noticeMessage,
+                                color = MaterialTheme.colorScheme.primary
+                            )
                         }
                         if (!errorMessage.isNullOrBlank()) {
                             Text(
@@ -539,6 +665,7 @@ private fun DashboardScreen(
 
             items(visibleChores) { chore ->
                 val selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet()
+                val selectedProofCount = selectedProofUris[chore.id]?.size ?: 0
                 val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
                 Card {
                     Column(
@@ -577,7 +704,7 @@ private fun DashboardScreen(
                                                     chore.completedChecklistIds
                                                 )
                                             },
-                                            enabled = isSubmittableState && !chore.requirePhotoProof
+                                            enabled = isSubmittableState
                                         )
                                         Text(
                                             text = item.title,
@@ -587,12 +714,26 @@ private fun DashboardScreen(
                                 }
                             }
                         }
-                        if (chore.requirePhotoProof) {
+                        if (isSubmittableState) {
+                            Button(
+                                onClick = { onPickProofs(chore.id) },
+                                enabled = activeSubmitAction == null
+                            ) {
+                                Text(stringResource(R.string.mobile_pick_photos))
+                            }
+                        }
+                        if (selectedProofCount > 0) {
+                            Text(
+                                text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        } else if (chore.requirePhotoProof) {
                             Text(
                                 text = stringResource(R.string.mobile_photo_required_hint),
                                 style = MaterialTheme.typography.bodySmall
                             )
-                        } else if (isSubmittableState) {
+                        }
+                        if (isSubmittableState) {
                             Button(
                                 onClick = { onSubmitChore(chore.id) },
                                 enabled = activeSubmitAction == null
@@ -695,4 +836,104 @@ private fun formatApiTimestamp(value: String): String {
             .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault(value)
+}
+
+private suspend fun flushQueuedSubmissions(
+    api: TaskBanditMobileApi,
+    outboxStore: TaskBanditOutboxStore,
+    baseUrl: String,
+    token: String,
+    contentResolver: ContentResolver,
+    onSyncingChange: (Boolean) -> Unit
+): Int {
+    val drafts = outboxStore.readQueue()
+    if (drafts.isEmpty()) {
+        return 0
+    }
+
+    onSyncingChange(true)
+    var flushedCount = 0
+
+    for (draft in drafts) {
+        try {
+            withContext(Dispatchers.IO) {
+                submitDraft(
+                    api = api,
+                    baseUrl = baseUrl,
+                    token = token,
+                    draft = draft,
+                    contentResolver = contentResolver
+                )
+                outboxStore.remove(draft.id)
+            }
+            flushedCount += 1
+        } catch (throwable: Throwable) {
+            if (throwable is TaskBanditUnauthorizedException) {
+                throw throwable
+            }
+        }
+    }
+
+    onSyncingChange(false)
+    return flushedCount
+}
+
+private fun submitDraft(
+    api: TaskBanditMobileApi,
+    baseUrl: String,
+    token: String,
+    draft: MobileChoreSubmissionDraft,
+    contentResolver: ContentResolver
+) {
+    val uploadedProofs = draft.proofUriStrings.map { uriString ->
+        val proofInput = readProofInput(contentResolver, uriString)
+        api.uploadProof(
+            baseUrl = baseUrl,
+            token = token,
+            filename = proofInput.filename,
+            contentType = proofInput.contentType,
+            contentBytes = proofInput.bytes
+        )
+    }
+
+    api.submitChore(
+        baseUrl = baseUrl,
+        token = token,
+        instanceId = draft.choreId,
+        completedChecklistItemIds = draft.completedChecklistIds,
+        attachments = uploadedProofs,
+        note = draft.note
+    )
+}
+
+private data class ProofInput(
+    val filename: String,
+    val contentType: String,
+    val bytes: ByteArray
+)
+
+private fun readProofInput(contentResolver: ContentResolver, uriString: String): ProofInput {
+    val uri = Uri.parse(uriString)
+    val filename = readUriDisplayName(contentResolver, uri)
+    val contentType = contentResolver.getType(uri) ?: "image/jpeg"
+    val bytes = contentResolver.openInputStream(uri)?.use { stream ->
+        stream.readBytes()
+    } ?: throw IllegalStateException("Could not read the selected proof image.")
+
+    return ProofInput(
+        filename = filename,
+        contentType = contentType,
+        bytes = bytes
+    )
+}
+
+private fun readUriDisplayName(contentResolver: ContentResolver, uri: Uri): String {
+    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        val columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (columnIndex >= 0 && cursor.moveToFirst()) {
+            return cursor.getString(columnIndex).orEmpty().ifBlank { "proof-image" }
+        }
+    }
+
+    return "proof-image"
 }

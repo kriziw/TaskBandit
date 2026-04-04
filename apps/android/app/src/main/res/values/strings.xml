@@ -49,7 +49,15 @@
     <string name="mobile_submit">Submit chore</string>
     <string name="mobile_submitting">Submitting...</string>
     <string name="mobile_checklist_required">Complete all required checklist items before submitting.</string>
-    <string name="mobile_photo_required_hint">This chore needs photo proof. Android photo submission is the next slice.</string>
+    <string name="mobile_photo_required_hint">This chore needs at least one proof photo.</string>
+    <string name="mobile_photo_required_missing">Add at least one proof photo before submitting.</string>
+    <string name="mobile_pick_photos">Pick proof photos</string>
+    <string name="mobile_selected_photos">%1$d photo(s) selected</string>
+    <string name="mobile_submission_sent">Chore submitted from Android.</string>
+    <string name="mobile_submission_queued">No connection right now. The chore was queued for sync.</string>
+    <string name="mobile_queued_submissions">%1$d queued submission(s) waiting to sync</string>
+    <string name="mobile_syncing_queue">Syncing queued chores...</string>
+    <string name="mobile_queue_synced">Synced %1$d queued chore(s).</string>
     <string name="mobile_leaderboard">Leaderboard</string>
     <string name="mobile_points_value">%1$d points</string>
     <string name="mobile_streak_value">%1$d streak</string>

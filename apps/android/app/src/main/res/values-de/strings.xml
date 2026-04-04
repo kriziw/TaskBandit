@@ -49,7 +49,15 @@
     <string name="mobile_submit">Aufgabe senden</string>
     <string name="mobile_submitting">Wird gesendet...</string>
     <string name="mobile_checklist_required">Erledige alle Pflichtpunkte der Checkliste, bevor du die Aufgabe sendest.</string>
-    <string name="mobile_photo_required_hint">Diese Aufgabe braucht einen Foto-Nachweis. Android-Fotoabgabe ist der nachste Schritt.</string>
+    <string name="mobile_photo_required_hint">Diese Aufgabe braucht mindestens ein Beweisfoto.</string>
+    <string name="mobile_photo_required_missing">Fuge mindestens ein Beweisfoto hinzu, bevor du die Aufgabe sendest.</string>
+    <string name="mobile_pick_photos">Beweisfotos wahlen</string>
+    <string name="mobile_selected_photos">%1$d Foto(s) ausgewahlt</string>
+    <string name="mobile_submission_sent">Aufgabe wurde aus Android gesendet.</string>
+    <string name="mobile_submission_queued">Gerade keine Verbindung. Die Aufgabe wurde zur Synchronisierung vorgemerkt.</string>
+    <string name="mobile_queued_submissions">%1$d vorgemerkte Aufgabe(n) warten auf Synchronisierung</string>
+    <string name="mobile_syncing_queue">Vorgemerkte Aufgaben werden synchronisiert...</string>
+    <string name="mobile_queue_synced">%1$d vorgemerkte Aufgabe(n) wurden synchronisiert.</string>
     <string name="mobile_leaderboard">Bestenliste</string>
     <string name="mobile_points_value">%1$d Punkte</string>
     <string name="mobile_streak_value">%1$d Serie</string>

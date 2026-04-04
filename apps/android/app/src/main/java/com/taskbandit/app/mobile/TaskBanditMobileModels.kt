@@ -36,6 +36,22 @@ data class MobileChecklistItem(
     val required: Boolean
 )
 
+data class MobileUploadedProof(
+    val clientFilename: String,
+    val contentType: String,
+    val storageKey: String,
+    val sizeBytes: Long
+)
+
+data class MobileChoreSubmissionDraft(
+    val id: String,
+    val choreId: String,
+    val completedChecklistIds: List<String>,
+    val proofUriStrings: List<String>,
+    val note: String?,
+    val queuedAtEpochMillis: Long
+)
+
 data class MobileNotification(
     val id: String,
     val title: String,

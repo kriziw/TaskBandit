@@ -49,7 +49,15 @@
     <string name="mobile_submit">Feladat bekuldese</string>
     <string name="mobile_submitting">Bekuldes...</string>
     <string name="mobile_checklist_required">Minden kotelezo ellenorzo pontot fejezz be a bekuldes elott.</string>
-    <string name="mobile_photo_required_hint">Ehhez a feladathoz fotos bizonyitek kell. Az androidos fotobekuldes lesz a kovetkezo szelet.</string>
+    <string name="mobile_photo_required_hint">Ehhez a feladathoz legalabb egy fotos bizonyitek kell.</string>
+    <string name="mobile_photo_required_missing">Adj hozza legalabb egy fotos bizonyitekot a bekuldes elott.</string>
+    <string name="mobile_pick_photos">Bizonyitekfotok valasztasa</string>
+    <string name="mobile_selected_photos">%1$d foto kivalasztva</string>
+    <string name="mobile_submission_sent">A feladat androidrol be lett kuldve.</string>
+    <string name="mobile_submission_queued">Most nincs kapcsolat. A feladat sorba lett allitva szinkronizalashoz.</string>
+    <string name="mobile_queued_submissions">%1$d sorba allt feladat var szinkronizalasra</string>
+    <string name="mobile_syncing_queue">A sorba allt feladatok szinkronizalasa folyamatban...</string>
+    <string name="mobile_queue_synced">%1$d sorba allt feladat szinkronizalva lett.</string>
     <string name="mobile_leaderboard">Rangsor</string>
     <string name="mobile_points_value">%1$d pont</string>
     <string name="mobile_streak_value">%1$d szeria</string>
