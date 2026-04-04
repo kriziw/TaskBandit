@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.2.1](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.2.0...taskbandit-v0.2.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* use debian base for server image ([e2e80f1](https://github.com/kriziw/TaskBandit/commit/e2e80f17f89c92c805f998d13daff804f818716b))
+
 ## [0.2.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.1.0...taskbandit-v0.2.0) (2026-04-04)
 
 
