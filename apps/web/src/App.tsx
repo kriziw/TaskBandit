@@ -346,6 +346,9 @@ export function App() {
   const systemStatusRef = useRef<HTMLElement | null>(null);
   const runtimeLogsRef = useRef<HTMLElement | null>(null);
   const notificationRecoveryRef = useRef<HTMLElement | null>(null);
+  const generalSettingsRef = useRef<HTMLElement | null>(null);
+  const oidcSettingsRef = useRef<HTMLElement | null>(null);
+  const smtpSettingsRef = useRef<HTMLElement | null>(null);
 
   const languageOptions: Array<{ code: AppLanguage; label: string }> = [
     { code: "en", label: t("language.english") },
@@ -2132,7 +2135,11 @@ export function App() {
             : [])
         ];
       case "settings":
-        return [{ key: "settings-household", label: t("panel.household_settings"), ref: householdSettingsRef }];
+        return [
+          { key: "settings-general", label: t("settings.section_general"), ref: generalSettingsRef },
+          { key: "settings-oidc", label: t("settings.section_oidc"), ref: oidcSettingsRef },
+          { key: "settings-smtp", label: t("settings.section_smtp"), ref: smtpSettingsRef }
+        ];
       case "admin":
         return [
           { key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef },
@@ -3772,7 +3779,7 @@ export function App() {
                     <span className="section-kicker">{t("settings.admin_only")}</span>
                   </div>
                   <div className="settings-sections">
-                    <section className="settings-section">
+                    <section className="settings-section settings-section-oidc" ref={oidcSettingsRef}>
                       <div className="section-heading section-heading-compact">
                         <h3>{t("settings.section_oidc")}</h3>
                       </div>
@@ -3854,7 +3861,7 @@ export function App() {
                       </div>
                     </section>
 
-                    <section className="settings-section">
+                    <section className="settings-section settings-section-smtp" ref={smtpSettingsRef}>
                       <div className="section-heading section-heading-compact">
                         <h3>{t("settings.section_smtp")}</h3>
                       </div>
@@ -3978,7 +3985,7 @@ export function App() {
                       </div>
                     </section>
 
-                    <section className="settings-section">
+                    <section className="settings-section settings-section-general" ref={generalSettingsRef}>
                       <div className="section-heading section-heading-compact">
                         <h3>{t("settings.section_general")}</h3>
                       </div>
