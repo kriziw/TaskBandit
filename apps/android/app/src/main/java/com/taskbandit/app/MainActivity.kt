@@ -777,6 +777,46 @@ private fun LoginScreen(
 }
 
 @Composable
+private fun DashboardActionCard(
+    badge: String,
+    title: String,
+    body: String,
+    actionLabel: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Card(
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Column(
+            modifier = Modifier.padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Text(
+                text = badge,
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.primary
+            )
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium
+            )
+            Text(
+                text = body,
+                style = MaterialTheme.typography.bodySmall
+            )
+            Button(
+                onClick = onClick,
+                enabled = enabled,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(actionLabel)
+            }
+        }
+    }
+}
+
+@Composable
 private fun DashboardScreen(
     dashboard: MobileDashboard?,
     serverUrl: String,
@@ -894,6 +934,44 @@ private fun DashboardScreen(
                                 dashboard?.user?.currentStreak ?: 0
                             ),
                             style = MaterialTheme.typography.bodyMedium
+                        )
+                        Text(
+                            text = stringResource(R.string.mobile_dashboard_start_here),
+                            style = MaterialTheme.typography.titleSmall
+                        )
+                        DashboardActionCard(
+                            badge = stringResource(R.string.mobile_dashboard_primary_badge),
+                            title = stringResource(R.string.mobile_dashboard_primary_title),
+                            body = stringResource(R.string.mobile_dashboard_primary_body),
+                            actionLabel = stringResource(
+                                if (activeTab == MobileDashboardTab.CHORES) {
+                                    R.string.mobile_dashboard_here
+                                } else {
+                                    R.string.mobile_dashboard_open_chores
+                                }
+                            ),
+                            enabled = activeTab != MobileDashboardTab.CHORES,
+                            onClick = { activeTab = MobileDashboardTab.CHORES }
+                        )
+                        DashboardActionCard(
+                            badge = stringResource(R.string.mobile_dashboard_secondary_badge),
+                            title = stringResource(R.string.mobile_dashboard_secondary_title),
+                            body = stringResource(
+                                if (isCreatorRole) {
+                                    R.string.mobile_dashboard_secondary_body
+                                } else {
+                                    R.string.mobile_dashboard_secondary_body_locked
+                                }
+                            ),
+                            actionLabel = stringResource(
+                                when {
+                                    !isCreatorRole -> R.string.mobile_dashboard_admin_only
+                                    activeTab == MobileDashboardTab.CREATE -> R.string.mobile_dashboard_here
+                                    else -> R.string.mobile_dashboard_open_create
+                                }
+                            ),
+                            enabled = isCreatorRole && activeTab != MobileDashboardTab.CREATE,
+                            onClick = { activeTab = MobileDashboardTab.CREATE }
                         )
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(onClick = onRefresh, enabled = !isBusy) {
