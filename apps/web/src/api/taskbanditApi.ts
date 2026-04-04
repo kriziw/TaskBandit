@@ -262,6 +262,13 @@ export const taskBanditApi = {
       language
     });
   },
+  startInstance(token: string, language: AppLanguage, instanceId: string) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/start`, {
+      method: "POST",
+      token,
+      language
+    });
+  },
   async downloadChoresCsv(token: string, language: AppLanguage) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/exports/chores.csv`, {
       method: "GET",

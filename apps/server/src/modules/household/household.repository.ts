@@ -1199,6 +1199,37 @@ export class HouseholdRepository {
     };
   }
 
+  async startInstance(instanceId: string, householdId: string, actorUserId?: string) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: instanceId
+      },
+      data: {
+        state: ChoreState.IN_PROGRESS
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "instance.started",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: `Started chore "${updatedInstance.title}".`
+    });
+
+    return this.mapInstance(updatedInstance);
+  }
+
   async submitInstance(input: {
     instanceId: string;
     actingUserId: string;

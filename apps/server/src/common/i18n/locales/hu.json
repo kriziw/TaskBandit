@@ -12,6 +12,7 @@
   "chores.assignee_only_submit": "Ezt a feladatot csak a kijelolt felhasznalo vagy egy szulo/admin kuldheti be.",
   "chores.invalid_cancel_state": "Csak aktiv feladatokat lehet torolni.",
   "chores.invalid_edit_state": "Ez a feladat a jelenlegi allapotaban mar nem szerkesztheto.",
+  "chores.invalid_start_state": "Csak nyitott vagy javitasra visszakuldott feladatokat lehet elinditani.",
   "chores.invalid_review_state": "Csak jovahagyasra varo feladatokat lehet felulvizsgalni.",
   "chores.not_found": "Ez a feladat nem talalhato.",
   "chores.template_not_found": "Ez a feladatsablon nem talalhato.",

@@ -393,14 +393,24 @@ export function App() {
           </p>
         ) : null}
         {payload?.currentUser.role !== "child" &&
-        instance.state !== "completed" &&
-        instance.state !== "cancelled" ? (
-          <div className="button-row">
-            {instance.state !== "pending_approval" ? (
-              <button
-                className="ghost-button"
-                type="button"
-                onClick={() => startEditingInstance(instance)}
+          instance.state !== "completed" &&
+          instance.state !== "cancelled" ? (
+            <div className="button-row">
+              {instance.state !== "pending_approval" && instance.state !== "in_progress" ? (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={busyAction === `start:${instance.id}`}
+                  onClick={() => void handleStartInstance(instance.id)}
+                >
+                  {t("instances.start")}
+                </button>
+              ) : null}
+              {instance.state !== "pending_approval" ? (
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => startEditingInstance(instance)}
               >
                 {t("common.edit")}
               </button>
@@ -865,6 +875,33 @@ export function App() {
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("instances.cancel_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleStartInstance(instanceId: string) {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`start:${instanceId}`);
+    try {
+      const startedInstance = await taskBanditApi.startInstance(token, language, instanceId);
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              instances: current.instances.map((instance) =>
+                instance.id === instanceId ? startedInstance : instance
+              )
+            }
+          : current
+      );
+      setNotice(t("instances.started"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.start_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -1482,12 +1519,20 @@ export function App() {
                             rows={3}
                           />
                         </label>
-                        <button
-                          className="primary-button"
-                          type="button"
-                          disabled={busyAction === `submit:${instance.id}`}
-                          onClick={() => void handleSubmitChore(instance.id)}
-                        >
+                          <button
+                            className="secondary-button"
+                            type="button"
+                            disabled={busyAction === `start:${instance.id}` || instance.state === "in_progress"}
+                            onClick={() => void handleStartInstance(instance.id)}
+                          >
+                            {instance.state === "in_progress" ? t("state.in_progress") : t("instances.start")}
+                          </button>
+                          <button
+                            className="primary-button"
+                            type="button"
+                            disabled={busyAction === `submit:${instance.id}`}
+                            onClick={() => void handleSubmitChore(instance.id)}
+                          >
                           {t("submission.submit")}
                         </button>
                       </div>

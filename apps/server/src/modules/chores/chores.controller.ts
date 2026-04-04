@@ -108,6 +108,19 @@ export class ChoresController {
     );
   }
 
+  @Post("instances/:id/start")
+  start(
+    @Param("id") instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.startInstance(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
   @Post("uploads/proof")
   @UseInterceptors(
     FileInterceptor("file", {

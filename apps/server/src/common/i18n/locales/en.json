@@ -12,6 +12,7 @@
   "chores.assignee_only_submit": "Only the assigned user or a parent/admin can submit this chore.",
   "chores.invalid_cancel_state": "Only active chores can be cancelled.",
   "chores.invalid_edit_state": "This chore can no longer be edited in its current state.",
+  "chores.invalid_start_state": "Only open or fix-needed chores can be started.",
   "chores.invalid_review_state": "Only chores waiting for approval can be reviewed.",
   "chores.not_found": "That chore could not be found.",
   "chores.template_not_found": "That chore template could not be found.",
