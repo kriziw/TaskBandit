@@ -15,17 +15,18 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Validate PR title for release-please
-        shell: bash
-        run: |
-          set -euo pipefail
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const title = context.payload.pull_request?.title ?? "";
+            const conventionalPattern = /^(feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert)(\([^)]+\))?: .+/;
 
-          title="${{ github.event.pull_request.title }}"
+            if (conventionalPattern.test(title)) {
+              core.info(`PR title is release-please compatible: ${title}`);
+              return;
+            }
 
-          if [[ "$title" =~ ^(feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert)(\([^)]+\))?:\ .+ ]]; then
-            echo "PR title is release-please compatible: $title"
-            exit 0
-          fi
-
-          echo "Pull request titles targeting main must use a conventional prefix for squash-safe release-please behavior." >&2
-          echo "Examples: 'feat: add onboarding guide', 'fix(web): tighten settings layout', 'chore: refresh workflow docs'" >&2
-          exit 1
+            core.setFailed(
+              "Pull request titles targeting main must use a conventional prefix for squash-safe release-please behavior. " +
+              "Examples: 'feat: add onboarding guide', 'fix(web): tighten settings layout', 'chore: refresh workflow docs'."
+            );
