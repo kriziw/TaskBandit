@@ -33,13 +33,19 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
 
   private async runOnce() {
     try {
-      const result = await this.repository.processReminderNotifications({
-        now: new Date(),
+      const now = new Date();
+      const reminderResult = await this.repository.processReminderNotifications({
+        now,
         dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours
       });
+      const dailySummaryResult = await this.repository.processDailySummaryNotifications({
+        now,
+        summaryHourUtc: this.appConfigService.dailySummaryHourUtc
+      });
+      const createdCount = reminderResult.createdCount + dailySummaryResult.createdCount;
 
-      if (result.createdCount > 0) {
-        this.logger.log(`Generated ${result.createdCount} chore reminder notifications.`);
+      if (createdCount > 0) {
+        this.logger.log(`Generated ${createdCount} automated notification(s).`);
       }
     } catch (error) {
       this.logger.error(

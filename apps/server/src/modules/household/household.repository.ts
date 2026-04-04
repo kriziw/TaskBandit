@@ -388,6 +388,131 @@ export class HouseholdRepository {
     };
   }
 
+  async processDailySummaryNotifications(options: {
+    now: Date;
+    summaryHourUtc: number;
+  }) {
+    if (options.now.getUTCHours() !== options.summaryHourUtc) {
+      return {
+        createdCount: 0
+      };
+    }
+
+    const activeHouseholds = await this.prisma.householdSettings.findMany({
+      where: {
+        enablePushNotifications: true
+      },
+      select: {
+        householdId: true
+      }
+    });
+
+    if (activeHouseholds.length === 0) {
+      return {
+        createdCount: 0
+      };
+    }
+
+    const householdIds = activeHouseholds.map((household) => household.householdId);
+    const [members, instances] = await Promise.all([
+      this.prisma.user.findMany({
+        where: {
+          householdId: {
+            in: householdIds
+          }
+        },
+        select: {
+          id: true,
+          householdId: true,
+          role: true
+        }
+      }),
+      this.prisma.choreInstance.findMany({
+        where: {
+          householdId: {
+            in: householdIds
+          }
+        },
+        select: {
+          householdId: true,
+          assigneeId: true,
+          dueAtUtc: true,
+          state: true
+        }
+      })
+    ]);
+
+    const startOfDayUtc = new Date(options.now);
+    startOfDayUtc.setUTCHours(0, 0, 0, 0);
+    const endOfDayUtc = new Date(startOfDayUtc.getTime() + 24 * 60 * 60 * 1000);
+
+    let createdCount = 0;
+
+    for (const member of members) {
+      const existingSummary = await this.prisma.notification.findFirst({
+        where: {
+          householdId: member.householdId,
+          recipientUserId: member.id,
+          type: NotificationType.DAILY_SUMMARY,
+          createdAtUtc: {
+            gte: startOfDayUtc,
+            lt: endOfDayUtc
+          }
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (existingSummary) {
+        continue;
+      }
+
+      const assignedInstances = instances.filter((instance) => instance.assigneeId === member.id);
+      const dueTodayCount = assignedInstances.filter(
+        (instance) =>
+          instance.dueAtUtc >= startOfDayUtc &&
+          instance.dueAtUtc < endOfDayUtc &&
+          instance.state !== ChoreState.COMPLETED &&
+          instance.state !== ChoreState.CANCELLED
+      ).length;
+      const overdueCount = assignedInstances.filter(
+        (instance) =>
+          instance.dueAtUtc < options.now &&
+          instance.state !== ChoreState.COMPLETED &&
+          instance.state !== ChoreState.CANCELLED
+      ).length;
+      const approvalCount =
+        member.role === HouseholdRole.ADMIN || member.role === HouseholdRole.PARENT
+          ? instances.filter(
+              (instance) =>
+                instance.householdId === member.householdId &&
+                instance.state === ChoreState.PENDING_APPROVAL
+            ).length
+          : 0;
+
+      if (dueTodayCount === 0 && overdueCount === 0 && approvalCount === 0) {
+        continue;
+      }
+
+      await this.recordNotification(this.prisma, {
+        householdId: member.householdId,
+        recipientUserId: member.id,
+        type: NotificationType.DAILY_SUMMARY,
+        title: "Daily TaskBandit summary",
+        message: this.buildDailySummaryMessage(dueTodayCount, overdueCount, approvalCount),
+        entityType: "daily_summary",
+        entityId: startOfDayUtc.toISOString().slice(0, 10)
+      });
+
+      createdCount += 1;
+    }
+
+    return {
+      createdCount
+    };
+  }
+
   async processOverduePenalties(householdId: string, actorUserId?: string) {
     const householdSettings = await this.prisma.householdSettings.findUnique({
       where: {
@@ -2066,6 +2191,30 @@ export class HouseholdRepository {
       createdAt: entry.createdAtUtc,
       readAt: entry.readAtUtc
     };
+  }
+
+  private buildDailySummaryMessage(
+    dueTodayCount: number,
+    overdueCount: number,
+    approvalCount: number
+  ) {
+    const parts: string[] = [];
+
+    if (dueTodayCount > 0) {
+      parts.push(`You have ${dueTodayCount} chore${dueTodayCount === 1 ? "" : "s"} due today.`);
+    }
+
+    if (overdueCount > 0) {
+      parts.push(`${overdueCount} overdue chore${overdueCount === 1 ? "" : "s"} need attention.`);
+    }
+
+    if (approvalCount > 0) {
+      parts.push(
+        `${approvalCount} submission${approvalCount === 1 ? " is" : "s are"} waiting for approval.`
+      );
+    }
+
+    return parts.join(" ");
   }
 
   private async recordAuditLog(

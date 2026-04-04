@@ -45,6 +45,10 @@ export class AppConfigService {
     return Number(this.configService.get("TASKBANDIT_DUE_SOON_WINDOW_HOURS") ?? 6);
   }
 
+  get dailySummaryHourUtc(): number {
+    return Number(this.configService.get("TASKBANDIT_DAILY_SUMMARY_HOUR_UTC") ?? 6);
+  }
+
   get storageRootPath(): string {
     const configuredPath = this.configService.get<string>("TASKBANDIT_STORAGE_ROOT", "").trim();
     if (!configuredPath) {
