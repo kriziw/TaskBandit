@@ -15,10 +15,10 @@ jobs:
   release_please:
     runs-on: ubuntu-latest
     outputs:
-      release_created: ${{ steps.release.outputs.release_created }}
-      tag_name: ${{ steps.release.outputs.tag_name }}
-      version: ${{ steps.release.outputs.version }}
-      sha: ${{ steps.release.outputs.sha }}
+      release_created: ${{ steps.resolve_release.outputs.release_created }}
+      tag_name: ${{ steps.resolve_release.outputs.tag_name }}
+      version: ${{ steps.resolve_release.outputs.version }}
+      sha: ${{ steps.resolve_release.outputs.sha }}
       is_prerelease: ${{ steps.prerelease.outputs.value }}
       config_path: ${{ steps.config.outputs.path }}
     steps:
@@ -61,16 +61,88 @@ jobs:
           manifest-file: .github/.release-please-manifest.json
           skip-labeling: true
 
-      - name: Ensure release tag exists
-        if: ${{ steps.release.outputs.release_created == 'true' }}
+      - name: Fallback release for squashed release PRs
+        id: fallback_release
+        if: ${{ steps.release.outputs.release_created != 'true' }}
         env:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
           set -euo pipefail
 
-          tag_name="${{ steps.release.outputs.tag_name }}"
-          release_sha="${{ steps.release.outputs.sha }}"
+          commit_subject="$(git log -1 --pretty=%s)"
+          if [[ ! "$commit_subject" =~ ^chore\(main\):\ release\ taskbandit\ ([0-9]+\.[0-9]+\.[0-9]+)$ ]]; then
+            echo "release_created=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          version="${BASH_REMATCH[1]}"
+          tag_name="taskbandit-v${version}"
+          release_sha="${GITHUB_SHA}"
+
+          if git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
+            echo "Local tag $tag_name already exists."
+          elif git ls-remote --exit-code --tags origin "refs/tags/$tag_name" >/dev/null 2>&1; then
+            echo "Remote tag $tag_name already exists."
+            git fetch --tags origin
+          else
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git tag -a "$tag_name" "$release_sha" -m "Release $tag_name"
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "refs/tags/$tag_name"
+          fi
+
+          release_status="$(curl -sS -o /tmp/release.json -w '%{http_code}' \
+            -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            -H "X-GitHub-Api-Version: 2022-11-28" \
+            "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases/tags/${tag_name}")"
+
+          if [[ "$release_status" == "404" ]]; then
+            release_notes="$(awk -v version="$version" '
+              $0 ~ "^## \\[" version "\\]" { capture=1 }
+              capture && $0 ~ "^## \\[" && $0 !~ "^## \\[" version "\\]" { exit }
+              capture { print }
+            ' CHANGELOG.md)"
+
+            if [[ -z "$release_notes" ]]; then
+              release_notes="## ${version}\n\nRelease created from squashed release pull request fallback."
+            fi
+
+            jq -n \
+              --arg tag_name "$tag_name" \
+              --arg target_commitish "$release_sha" \
+              --arg name "taskbandit: v${version}" \
+              --arg body "$release_notes" \
+              --argjson prerelease ${{ steps.prerelease.outputs.value }} \
+              '{tag_name: $tag_name, target_commitish: $target_commitish, name: $name, body: $body, draft: false, prerelease: $prerelease}' \
+              > /tmp/create-release.json
+
+            curl -sS \
+              -X POST \
+              -H "Authorization: Bearer ${GITHUB_TOKEN}" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              "https://api.github.com/repos/${GITHUB_REPOSITORY}/releases" \
+              -d @/tmp/create-release.json \
+              > /tmp/release-created.json
+          fi
+
+          echo "release_created=true" >> "$GITHUB_OUTPUT"
+          echo "tag_name=$tag_name" >> "$GITHUB_OUTPUT"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+          echo "sha=$release_sha" >> "$GITHUB_OUTPUT"
+
+      - name: Ensure release tag exists
+        if: ${{ steps.release.outputs.release_created == 'true' || steps.fallback_release.outputs.release_created == 'true' }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          tag_name="${{ steps.release.outputs.tag_name || steps.fallback_release.outputs.tag_name }}"
+          release_sha="${{ steps.release.outputs.sha || steps.fallback_release.outputs.sha }}"
 
           git fetch --tags origin
 
@@ -83,6 +155,24 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git tag -a "$tag_name" "$release_sha" -m "Release $tag_name"
           git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${{ github.repository }}.git" "refs/tags/$tag_name"
+
+      - name: Resolve final release outputs
+        id: resolve_release
+        shell: bash
+        run: |
+          if [[ "${{ steps.release.outputs.release_created }}" == "true" ]]; then
+            echo "release_created=true" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${{ steps.release.outputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "version=${{ steps.release.outputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ steps.release.outputs.sha }}" >> "$GITHUB_OUTPUT"
+          elif [[ "${{ steps.fallback_release.outputs.release_created }}" == "true" ]]; then
+            echo "release_created=true" >> "$GITHUB_OUTPUT"
+            echo "tag_name=${{ steps.fallback_release.outputs.tag_name }}" >> "$GITHUB_OUTPUT"
+            echo "version=${{ steps.fallback_release.outputs.version }}" >> "$GITHUB_OUTPUT"
+            echo "sha=${{ steps.fallback_release.outputs.sha }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "release_created=false" >> "$GITHUB_OUTPUT"
+          fi
 
   release_android:
     needs: release_please
