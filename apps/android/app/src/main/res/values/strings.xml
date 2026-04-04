@@ -33,10 +33,10 @@
     <string name="mobile_email">Email</string>
     <string name="mobile_password">Password</string>
     <string name="mobile_login_action">Sign in</string>
-    <string name="common_loading_short">Loading…</string>
+    <string name="common_loading_short">Loading...</string>
     <string name="mobile_dashboard_summary">%1$d approvals waiting, %2$d active chores, %3$d streak</string>
     <string name="mobile_refresh">Refresh</string>
-    <string name="mobile_refreshing">Refreshing…</string>
+    <string name="mobile_refreshing">Refreshing...</string>
     <string name="mobile_logout">Log out</string>
     <string name="mobile_my_chores">My chores</string>
     <string name="mobile_pending_approvals">Pending approvals</string>
@@ -44,15 +44,17 @@
     <string name="mobile_state_overdue">Overdue</string>
     <string name="mobile_notifications">Notifications</string>
     <string name="mobile_mark_read">Mark read</string>
-    <string name="mobile_marking_read">Marking…</string>
+    <string name="mobile_marking_read">Marking...</string>
+    <string name="mobile_login_failed">Login failed.</string>
     <string name="mobile_submit">Submit chore</string>
-    <string name="mobile_submitting">Submitting…</string>
+    <string name="mobile_submitting">Submitting...</string>
+    <string name="mobile_checklist_required">Complete all required checklist items before submitting.</string>
     <string name="mobile_photo_required_hint">This chore needs photo proof. Android photo submission is the next slice.</string>
     <string name="mobile_leaderboard">Leaderboard</string>
     <string name="mobile_points_value">%1$d points</string>
     <string name="mobile_streak_value">%1$d streak</string>
     <string name="mobile_approve">Approve</string>
-    <string name="mobile_approving">Approving…</string>
+    <string name="mobile_approving">Approving...</string>
     <string name="mobile_reject">Reject</string>
-    <string name="mobile_rejecting">Rejecting…</string>
+    <string name="mobile_rejecting">Rejecting...</string>
 </resources>

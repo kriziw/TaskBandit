@@ -87,6 +87,9 @@ private fun TaskBanditApp(
     sessionStore: TaskBanditSessionStore
 ) {
     val coroutineScope = rememberCoroutineScope()
+    val loginFailedMessage = stringResource(R.string.mobile_login_failed)
+    val photoUnsupportedMessage = stringResource(R.string.mobile_photo_required_hint)
+    val checklistRequiredMessage = stringResource(R.string.mobile_checklist_required)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
@@ -205,14 +208,14 @@ private fun TaskBanditApp(
         val chore = dashboard?.chores?.firstOrNull { it.id == choreId } ?: return
 
         if (chore.requirePhotoProof) {
-            errorMessage = "Photo-proof chores are not yet supported in the Android app."
+            errorMessage = photoUnsupportedMessage
             return
         }
 
         val selectedChecklistIds = (submitSelections[choreId] ?: chore.completedChecklistIds.toSet()).toList()
         val missingRequiredItems = chore.checklist.filter { it.required && !selectedChecklistIds.contains(it.id) }
         if (missingRequiredItems.isNotEmpty()) {
-            errorMessage = "Complete all required checklist items before submitting."
+            errorMessage = checklistRequiredMessage
             return
         }
 
@@ -270,7 +273,7 @@ private fun TaskBanditApp(
                         sessionStore.saveSession(baseUrl, token)
                         session = TaskBanditSession(baseUrl = baseUrl, token = token)
                     }.onFailure { throwable ->
-                        errorMessage = throwable.message ?: "Login failed."
+                        errorMessage = throwable.message ?: loginFailedMessage
                     }
                     isBusy = false
                 }

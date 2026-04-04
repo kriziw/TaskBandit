@@ -33,10 +33,10 @@
     <string name="mobile_email">Email</string>
     <string name="mobile_password">Jelszo</string>
     <string name="mobile_login_action">Bejelentkezes</string>
-    <string name="common_loading_short">Betoltes…</string>
+    <string name="common_loading_short">Betoltes...</string>
     <string name="mobile_dashboard_summary">%1$d jovahagyas var, %2$d aktiv feladat, %3$d szeria</string>
     <string name="mobile_refresh">Frissites</string>
-    <string name="mobile_refreshing">Frissites…</string>
+    <string name="mobile_refreshing">Frissites...</string>
     <string name="mobile_logout">Kijelentkezes</string>
     <string name="mobile_my_chores">Feladataim</string>
     <string name="mobile_pending_approvals">Varakozo jovahagyasok</string>
@@ -44,15 +44,17 @@
     <string name="mobile_state_overdue">Lejart</string>
     <string name="mobile_notifications">Ertesitesek</string>
     <string name="mobile_mark_read">Olvasottnak jeloles</string>
-    <string name="mobile_marking_read">Jeloles…</string>
+    <string name="mobile_marking_read">Jeloles...</string>
+    <string name="mobile_login_failed">Sikertelen bejelentkezes.</string>
     <string name="mobile_submit">Feladat bekuldese</string>
-    <string name="mobile_submitting">Bekuldes…</string>
+    <string name="mobile_submitting">Bekuldes...</string>
+    <string name="mobile_checklist_required">Minden kotelezo ellenorzo pontot fejezz be a bekuldes elott.</string>
     <string name="mobile_photo_required_hint">Ehhez a feladathoz fotos bizonyitek kell. Az androidos fotobekuldes lesz a kovetkezo szelet.</string>
     <string name="mobile_leaderboard">Rangsor</string>
     <string name="mobile_points_value">%1$d pont</string>
     <string name="mobile_streak_value">%1$d szeria</string>
     <string name="mobile_approve">Jovahagyas</string>
-    <string name="mobile_approving">Jovahagyas…</string>
+    <string name="mobile_approving">Jovahagyas...</string>
     <string name="mobile_reject">Elutasitas</string>
-    <string name="mobile_rejecting">Elutasitas…</string>
+    <string name="mobile_rejecting">Elutasitas...</string>
 </resources>
