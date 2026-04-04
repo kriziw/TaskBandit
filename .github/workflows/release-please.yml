@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
 
       - name: Resolve prerelease setting
         id: prerelease
@@ -58,6 +60,25 @@ jobs:
           config-file: ${{ steps.config.outputs.path }}
           manifest-file: .github/.release-please-manifest.json
           skip-labeling: true
+
+      - name: Ensure release tag exists on main
+        if: ${{ steps.release.outputs.release_created == 'true' && steps.release.outputs.tag_name != '' }}
+        shell: bash
+        run: |
+          tag_name="${{ steps.release.outputs.tag_name }}"
+          target_sha="${{ github.sha }}"
+
+          git fetch --tags origin
+
+          if git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
+            echo "Tag $tag_name already exists."
+            exit 0
+          fi
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -a "$tag_name" "$target_sha" -m "Release $tag_name"
+          git push origin "refs/tags/$tag_name"
 
   release_android:
     needs: release_please

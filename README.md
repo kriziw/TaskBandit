@@ -81,8 +81,15 @@ TaskBandit now uses `release-please` as the main release-preparation workflow.
 - The intended workflow is to do day-to-day work on branches and merge via PRs, with `main` treated as the release branch.
 - If you keep pushing feature work directly to `main`, `release-please` will quite reasonably keep preparing the next release PR after releasable commits such as `feat:` and `fix:`.
 - When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned Docker images.
+- The workflow also backstops the Git tag creation step so the release tag exists even if GitHub release creation behaves unexpectedly.
 - The separate `android-release` workflow is manual-only, so the release APK is not built twice for the same release event.
 - The `simple` release strategy tracks the root [CHANGELOG.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/CHANGELOG.md) and [version.txt](C:/Users/krist/Documents/GitHub/Chore%20Manager/version.txt).
+
+Tag recovery:
+
+- If older releases are missing tags, `release-please` can incorrectly pull old commits into newer release notes.
+- A one-time manual workflow named `backfill-release-tags` is included to repair the known missing historical tags safely.
+- The workflow skips tags that already exist, so it can be run once without damaging good tags.
 
 Prerelease control:
 
