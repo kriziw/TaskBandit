@@ -1,4 +1,5 @@
-import { FormEvent, useEffect, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+import type { RefObject } from "react";
 import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
@@ -52,6 +53,7 @@ type InstanceFormState = CreateChoreInstanceInput;
 type BootstrapFormState = BootstrapHouseholdInput;
 type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
+type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
 
 const householdBoardStateOrder: ChoreState[] = [
   "open",
@@ -141,12 +143,18 @@ export function App() {
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
+  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const householdSettingsRef = useRef<HTMLElement | null>(null);
+  const membersRef = useRef<HTMLElement | null>(null);
+  const templatesRef = useRef<HTMLElement | null>(null);
+  const scheduleRef = useRef<HTMLElement | null>(null);
 
   const languageOptions: Array<{ code: AppLanguage; label: string }> = [
     { code: "en", label: t("language.english") },
@@ -213,6 +221,10 @@ export function App() {
     if (payload) {
       setSettingsDraft(payload.household.settings);
       setNotificationPreferencesDraft(payload.notificationPreferences);
+      if (payload.household.settings.onboardingCompleted) {
+        setOnboardingDismissed(false);
+        setOnboardingStep("welcome");
+      }
     }
   }, [payload]);
 
@@ -310,6 +322,57 @@ export function App() {
     ],
     [payload, t]
   );
+
+  const showOnboarding = Boolean(
+    payload &&
+      payload.currentUser.role === "admin" &&
+      !payload.household.settings.onboardingCompleted &&
+      !onboardingDismissed
+  );
+
+  const onboardingSteps = useMemo(
+    () => [
+      {
+        key: "welcome" as const,
+        title: t("onboarding.welcome_title"),
+        description: t("onboarding.welcome_body"),
+        actionLabel: null,
+        action: null
+      },
+      {
+        key: "settings" as const,
+        title: t("onboarding.settings_title"),
+        description: t("onboarding.settings_body"),
+        actionLabel: t("onboarding.go_settings"),
+        action: () => scrollToSection(householdSettingsRef)
+      },
+      {
+        key: "members" as const,
+        title: t("onboarding.members_title"),
+        description: t("onboarding.members_body"),
+        actionLabel: t("onboarding.go_members"),
+        action: () => scrollToSection(membersRef)
+      },
+      {
+        key: "chores" as const,
+        title: t("onboarding.chores_title"),
+        description: t("onboarding.chores_body"),
+        actionLabel: t("onboarding.go_templates"),
+        action: () => scrollToSection(templatesRef)
+      },
+      {
+        key: "overview" as const,
+        title: t("onboarding.overview_title"),
+        description: t("onboarding.overview_body"),
+        actionLabel: t("onboarding.go_schedule"),
+        action: () => scrollToSection(scheduleRef)
+      }
+    ],
+    [t]
+  );
+
+  const onboardingIndex = onboardingSteps.findIndex((step) => step.key === onboardingStep);
+  const currentOnboardingStep = onboardingSteps[Math.max(onboardingIndex, 0)];
 
   const visibleHouseholdChores = useMemo(() => {
     const instances = payload?.instances ?? [];
@@ -852,6 +915,41 @@ export function App() {
       );
     } finally {
       setBusyAction(null);
+    }
+  }
+
+  async function handleCompleteOnboarding() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("complete-onboarding");
+    try {
+      const household = await taskBanditApi.updateHousehold(token, language, {
+        onboardingCompleted: true
+      });
+      setPayload((current) => (current ? { ...current, household } : current));
+      setSettingsDraft(household.settings);
+      setOnboardingDismissed(false);
+      setOnboardingStep("welcome");
+      setNotice(t("onboarding.completed"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("onboarding.complete_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function handleNextOnboardingStep() {
+    if (onboardingIndex < onboardingSteps.length - 1) {
+      setOnboardingStep(onboardingSteps[onboardingIndex + 1].key);
+    }
+  }
+
+  function handlePreviousOnboardingStep() {
+    if (onboardingIndex > 0) {
+      setOnboardingStep(onboardingSteps[onboardingIndex - 1].key);
     }
   }
 
@@ -1678,6 +1776,78 @@ export function App() {
         </section>
       ) : (
         <>
+          {showOnboarding ? (
+            <section className="onboarding-shell">
+              <article className="panel onboarding-panel">
+                <div className="section-heading">
+                  <h2>{t("onboarding.title")}</h2>
+                  <span className="section-kicker">
+                    {t("onboarding.progress")
+                      .replace("{current}", String(onboardingIndex + 1))
+                      .replace("{total}", String(onboardingSteps.length))}
+                  </span>
+                </div>
+                <div className="onboarding-step-list">
+                  {onboardingSteps.map((step, index) => (
+                    <button
+                      key={step.key}
+                      className={`onboarding-chip ${step.key === onboardingStep ? "active" : ""}`}
+                      type="button"
+                      onClick={() => setOnboardingStep(step.key)}
+                    >
+                      <span>{index + 1}</span>
+                      <strong>{step.title}</strong>
+                    </button>
+                  ))}
+                </div>
+                <div className="onboarding-body">
+                  <h3>{currentOnboardingStep.title}</h3>
+                  <p>{currentOnboardingStep.description}</p>
+                </div>
+                <div className="button-row">
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={onboardingIndex === 0}
+                    onClick={handlePreviousOnboardingStep}
+                  >
+                    {t("onboarding.back")}
+                  </button>
+                  {currentOnboardingStep.actionLabel && currentOnboardingStep.action ? (
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      onClick={currentOnboardingStep.action}
+                    >
+                      {currentOnboardingStep.actionLabel}
+                    </button>
+                  ) : null}
+                  {onboardingIndex < onboardingSteps.length - 1 ? (
+                    <button className="primary-button" type="button" onClick={handleNextOnboardingStep}>
+                      {t("onboarding.next")}
+                    </button>
+                  ) : (
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={busyAction === "complete-onboarding"}
+                      onClick={() => void handleCompleteOnboarding()}
+                    >
+                      {t("onboarding.finish")}
+                    </button>
+                  )}
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => setOnboardingDismissed(true)}
+                  >
+                    {t("onboarding.later")}
+                  </button>
+                </div>
+              </article>
+            </section>
+          ) : null}
+
           <section className="metrics">
             {featuredMetrics.map((metric) => (
               <DashboardCard key={metric.label} label={metric.label} value={metric.value} />
@@ -2169,7 +2339,7 @@ export function App() {
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
               <>
-                <article className="panel">
+                <article className="panel" ref={householdSettingsRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_settings")}</h2>
                     <span className="section-kicker">{t("settings.admin_only")}</span>
@@ -2455,7 +2625,7 @@ export function App() {
                   </button>
                   </article>
 
-                <article className="panel">
+                <article className="panel" ref={membersRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_members")}</h2>
                     <span className="section-kicker">{payload.household.members.length}</span>
@@ -2529,7 +2699,7 @@ export function App() {
                   </form>
                 </article>
 
-                <article className="panel panel-wide">
+                <article className="panel panel-wide" ref={templatesRef}>
                   <div className="section-heading">
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
@@ -2817,7 +2987,7 @@ export function App() {
                   </form>
                 </article>
 
-                <article className="panel">
+                <article className="panel" ref={scheduleRef}>
                   <div className="section-heading">
                     <h2>{t("panel.schedule_chore")}</h2>
                     <span className="section-kicker">{visibleHouseholdChores.length}</span>
@@ -2920,6 +3090,13 @@ function downloadBlob(blob: Blob, filename: string) {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(objectUrl);
+}
+
+function scrollToSection(targetRef: RefObject<HTMLElement | null>) {
+  targetRef.current?.scrollIntoView({
+    behavior: "smooth",
+    block: "start"
+  });
 }
 
 function readErrorMessage(error: unknown, fallbackMessage: string) {

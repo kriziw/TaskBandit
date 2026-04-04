@@ -10,6 +10,11 @@ export class UpdateSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsBoolean()
+  onboardingCompleted?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
   membersCanSeeFullHouseholdChoreDetails?: boolean;
 
   @ApiPropertyOptional()

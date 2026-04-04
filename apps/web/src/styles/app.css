@@ -63,6 +63,7 @@ select {
 .toolbar,
 .toolbar-group,
 .hero-meta,
+.onboarding-step-list,
 .section-heading,
 .task-row-header,
 .button-row,
@@ -191,6 +192,65 @@ h4,
   grid-template-columns: 1.45fr 0.9fr;
   gap: 24px;
   align-items: center;
+}
+
+.onboarding-shell {
+  margin: 0 0 24px;
+}
+
+.onboarding-panel {
+  border: 2px solid rgba(255, 201, 74, 0.58);
+  background:
+    linear-gradient(145deg, rgba(255, 248, 232, 0.96), rgba(255, 236, 211, 0.94)),
+    var(--mist);
+}
+
+.onboarding-step-list {
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 18px;
+}
+
+.onboarding-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.74);
+  color: var(--ink);
+  cursor: pointer;
+}
+
+.onboarding-chip span {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 999px;
+  background: rgba(115, 199, 244, 0.24);
+  font-weight: 800;
+}
+
+.onboarding-chip.active {
+  border-color: rgba(115, 217, 179, 0.7);
+  background: rgba(115, 217, 179, 0.16);
+}
+
+.onboarding-body {
+  margin-bottom: 18px;
+}
+
+.onboarding-body h3 {
+  margin: 0 0 10px;
+  font-size: 1.55rem;
+}
+
+.onboarding-body p {
+  margin: 0;
+  line-height: 1.6;
 }
 
 .eyebrow {
@@ -758,6 +818,7 @@ h4,
   .button-row,
   .task-row-header,
   .hero-meta,
+  .onboarding-step-list,
   .board-column-header,
   .calendar-day-header {
     flex-direction: column;

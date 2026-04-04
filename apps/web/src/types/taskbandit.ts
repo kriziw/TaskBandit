@@ -108,6 +108,7 @@ export type HouseholdMember = {
 
 export type HouseholdSettings = {
   selfSignupEnabled: boolean;
+  onboardingCompleted: boolean;
   membersCanSeeFullHouseholdChoreDetails: boolean;
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;

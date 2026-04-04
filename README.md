@@ -38,6 +38,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - a live React web dashboard with local login, language files, approvals, household settings, and chore views
 - per-member notification preferences respected by reminder and activity notifications
 - optional SMTP settings configurable from the admin UI, with built-in connection testing
+- a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household

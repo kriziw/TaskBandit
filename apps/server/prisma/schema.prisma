@@ -78,6 +78,7 @@ model Household {
 model HouseholdSettings {
   householdId                            String    @id @db.Uuid
   selfSignupEnabled                      Boolean   @default(false)
+  onboardingCompleted                   Boolean   @default(false)
   membersCanSeeFullHouseholdChoreDetails Boolean   @default(true)
   enablePushNotifications                Boolean   @default(true)
   enableOverduePenalties                 Boolean   @default(true)

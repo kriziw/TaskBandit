@@ -53,6 +53,7 @@ export class HouseholdRepository {
         settings: {
           create: {
             selfSignupEnabled,
+            onboardingCompleted: false,
             membersCanSeeFullHouseholdChoreDetails: true,
             enablePushNotifications: true,
             enableOverduePenalties: true,
@@ -175,6 +176,7 @@ export class HouseholdRepository {
       },
       data: {
         selfSignupEnabled: dto.selfSignupEnabled ?? household.settings?.selfSignupEnabled,
+        onboardingCompleted: dto.onboardingCompleted ?? household.settings?.onboardingCompleted ?? false,
         membersCanSeeFullHouseholdChoreDetails:
           dto.membersCanSeeFullHouseholdChoreDetails ??
           household.settings?.membersCanSeeFullHouseholdChoreDetails,
@@ -1644,6 +1646,7 @@ export class HouseholdRepository {
         settings: {
           create: {
             selfSignupEnabled: false,
+            onboardingCompleted: false,
             membersCanSeeFullHouseholdChoreDetails: true,
             enablePushNotifications: true,
             enableOverduePenalties: true,
@@ -2119,6 +2122,7 @@ export class HouseholdRepository {
       name: household.name,
       settings: {
         selfSignupEnabled: household.settings?.selfSignupEnabled ?? false,
+        onboardingCompleted: household.settings?.onboardingCompleted ?? false,
         membersCanSeeFullHouseholdChoreDetails:
           household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
