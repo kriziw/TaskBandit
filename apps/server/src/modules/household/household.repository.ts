@@ -55,7 +55,10 @@ export class HouseholdRepository {
             selfSignupEnabled,
             membersCanSeeFullHouseholdChoreDetails: true,
             enablePushNotifications: true,
-            enableOverduePenalties: true
+            enableOverduePenalties: true,
+            localAuthEnabled: true,
+            oidcEnabled: false,
+            oidcScope: "openid profile email"
           }
         },
         members: {
@@ -176,7 +179,25 @@ export class HouseholdRepository {
         enablePushNotifications:
           dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
         enableOverduePenalties:
-          dto.enableOverduePenalties ?? household.settings?.enableOverduePenalties
+          dto.enableOverduePenalties ?? household.settings?.enableOverduePenalties,
+        localAuthEnabled: dto.localAuthEnabled ?? household.settings?.localAuthEnabled ?? true,
+        oidcEnabled: dto.oidcEnabled ?? household.settings?.oidcEnabled ?? false,
+        oidcAuthority:
+          dto.oidcAuthority !== undefined
+            ? dto.oidcAuthority.trim() || null
+            : household.settings?.oidcAuthority ?? null,
+        oidcClientId:
+          dto.oidcClientId !== undefined
+            ? dto.oidcClientId.trim() || null
+            : household.settings?.oidcClientId ?? null,
+        oidcClientSecret:
+          dto.oidcClientSecret !== undefined
+            ? dto.oidcClientSecret.trim() || null
+            : household.settings?.oidcClientSecret ?? null,
+        oidcScope:
+          dto.oidcScope !== undefined
+            ? dto.oidcScope.trim() || "openid profile email"
+            : household.settings?.oidcScope ?? "openid profile email"
       }
     });
 
@@ -1602,7 +1623,10 @@ export class HouseholdRepository {
             selfSignupEnabled: false,
             membersCanSeeFullHouseholdChoreDetails: true,
             enablePushNotifications: true,
-            enableOverduePenalties: true
+            enableOverduePenalties: true,
+            localAuthEnabled: true,
+            oidcEnabled: false,
+            oidcScope: "openid profile email"
           }
         },
         members: {
@@ -2073,7 +2097,18 @@ export class HouseholdRepository {
         membersCanSeeFullHouseholdChoreDetails:
           household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
-        enableOverduePenalties: household.settings?.enableOverduePenalties ?? true
+        enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
+        localAuthEnabled: household.settings?.localAuthEnabled ?? true,
+        localAuthForcedByConfig: false,
+        localAuthEffective: household.settings?.localAuthEnabled ?? true,
+        oidcEnabled: household.settings?.oidcEnabled ?? false,
+        oidcAuthority: household.settings?.oidcAuthority ?? "",
+        oidcClientId: household.settings?.oidcClientId ?? "",
+        oidcClientSecret: household.settings?.oidcClientSecret ?? "",
+        oidcClientSecretConfigured: Boolean(household.settings?.oidcClientSecret),
+        oidcScope: household.settings?.oidcScope ?? "openid profile email",
+        oidcEffective: household.settings?.oidcEnabled ?? false,
+        oidcSource: "ui"
       },
       members: household.members
         .map((member) => this.mapMember(member, options?.redactMemberEmails ?? false))

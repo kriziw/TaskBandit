@@ -81,6 +81,12 @@ model HouseholdSettings {
   membersCanSeeFullHouseholdChoreDetails Boolean   @default(true)
   enablePushNotifications                Boolean   @default(true)
   enableOverduePenalties                 Boolean   @default(true)
+  localAuthEnabled                       Boolean   @default(true)
+  oidcEnabled                            Boolean   @default(false)
+  oidcAuthority                          String?
+  oidcClientId                           String?
+  oidcClientSecret                       String?
+  oidcScope                              String    @default("openid profile email")
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 

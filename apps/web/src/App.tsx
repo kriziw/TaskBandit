@@ -816,7 +816,9 @@ export function App() {
     setBusyAction("save-settings");
     try {
       const household = await taskBanditApi.updateHousehold(token, language, settingsDraft);
+      const nextProviders = await taskBanditApi.getProviders(language);
       setPayload((current) => (current ? { ...current, household } : current));
+      setProviders(nextProviders);
       setNotice(t("settings.saved"));
       setPageError(null);
     } catch (error) {
@@ -1507,35 +1509,45 @@ export function App() {
             <article className="panel login-panel">
               <div className="section-heading">
                 <h2>{t("auth.sign_in")}</h2>
-                <span className="section-kicker">{t("auth.demo_ready")}</span>
+                <span className="section-kicker">
+                  {providers?.local.enabled ? t("auth.demo_ready") : t("auth.local_disabled_notice")}
+                </span>
               </div>
               <form className="login-form" onSubmit={handleLoginSubmit}>
-                <label>
-                  <span>{t("auth.email")}</span>
-                  <input
-                    type="email"
-                    value={loginForm.email}
-                    onChange={(event) =>
-                      setLoginForm((current) => ({ ...current, email: event.target.value }))
-                    }
-                    autoComplete="email"
-                  />
-                </label>
-                <label>
-                  <span>{t("auth.password")}</span>
-                  <input
-                    type="password"
-                    value={loginForm.password}
-                    onChange={(event) =>
-                      setLoginForm((current) => ({ ...current, password: event.target.value }))
-                    }
-                    autoComplete="current-password"
-                  />
-                </label>
+                {providers?.local.enabled ? (
+                  <>
+                    <label>
+                      <span>{t("auth.email")}</span>
+                      <input
+                        type="email"
+                        value={loginForm.email}
+                        onChange={(event) =>
+                          setLoginForm((current) => ({ ...current, email: event.target.value }))
+                        }
+                        autoComplete="email"
+                      />
+                    </label>
+                    <label>
+                      <span>{t("auth.password")}</span>
+                      <input
+                        type="password"
+                        value={loginForm.password}
+                        onChange={(event) =>
+                          setLoginForm((current) => ({ ...current, password: event.target.value }))
+                        }
+                        autoComplete="current-password"
+                      />
+                    </label>
+                  </>
+                ) : (
+                  <p className="inline-message">{t("auth.local_disabled_notice")}</p>
+                )}
                 {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
-                <button className="primary-button" type="submit" disabled={isAuthenticating}>
-                  {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
-                </button>
+                {providers?.local.enabled ? (
+                  <button className="primary-button" type="submit" disabled={isAuthenticating}>
+                    {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
+                  </button>
+                ) : null}
                 {providers?.oidc.enabled ? (
                   <>
                     <p className="inline-message">{t("auth.oidc_hint")}</p>
@@ -1553,7 +1565,9 @@ export function App() {
             </article>
           )}
 
-          {bootstrapStatus?.isBootstrapped !== false && providers?.local.selfSignupEnabled ? (
+          {bootstrapStatus?.isBootstrapped !== false &&
+          providers?.local.enabled &&
+          providers.local.selfSignupEnabled ? (
             <article className="panel login-panel">
               <div className="section-heading">
                 <h2>{t("auth.sign_up")}</h2>
@@ -1600,17 +1614,19 @@ export function App() {
             </article>
           ) : null}
 
-          <article className="panel">
-            <div className="section-heading">
-              <h2>{t("panel.demo_accounts")}</h2>
-              <span className="section-kicker">{t("panel.demo_password")}</span>
-            </div>
-            <ul className="simple-list">
-              <li>Alex - alex@taskbandit.local - {t("role.admin")}</li>
-              <li>Maya - maya@taskbandit.local - {t("role.parent")}</li>
-              <li>Luca - luca@taskbandit.local - {t("role.child")}</li>
-            </ul>
-          </article>
+          {providers?.local.enabled ? (
+            <article className="panel">
+              <div className="section-heading">
+                <h2>{t("panel.demo_accounts")}</h2>
+                <span className="section-kicker">{t("panel.demo_password")}</span>
+              </div>
+              <ul className="simple-list">
+                <li>Alex - alex@taskbandit.local - {t("role.admin")}</li>
+                <li>Maya - maya@taskbandit.local - {t("role.parent")}</li>
+                <li>Luca - luca@taskbandit.local - {t("role.child")}</li>
+              </ul>
+            </article>
+          ) : null}
 
           <article className="panel">
             <div className="section-heading">
@@ -1621,10 +1637,12 @@ export function App() {
               <li>
                 {t("auth.local_provider")}: {providers?.local.enabled ? t("common.enabled") : t("common.disabled")}
               </li>
+              {providers?.local.forcedByConfig ? <li>{t("auth.local_forced_note")}</li> : null}
               <li>
                 {t("auth.oidc_provider")}: {providers?.oidc.enabled ? t("common.enabled") : t("common.disabled")}
               </li>
               {providers?.oidc.enabled ? <li>{providers.oidc.authority}</li> : null}
+              {providers?.oidc.enabled ? <li>{t(`auth.oidc_source_${providers.oidc.source}`)}</li> : null}
               {providers?.oidc.enabled ? <li>{t("auth.oidc_callback_hint")}</li> : null}
             </ul>
           </article>
@@ -2193,6 +2211,92 @@ export function App() {
                         }
                       />
                     </label>
+                    <label className="toggle-row">
+                      <span>{t("settings.local_auth_enabled")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.localAuthEnabled}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, localAuthEnabled: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                    {settingsDraft.localAuthForcedByConfig ? (
+                      <p className="inline-message">{t("settings.local_auth_forced_note")}</p>
+                    ) : null}
+                    <label className="toggle-row">
+                      <span>{t("settings.oidc_enabled")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.oidcEnabled}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, oidcEnabled: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.oidc_authority")}</span>
+                      <input
+                        type="text"
+                        value={settingsDraft.oidcAuthority}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, oidcAuthority: event.target.value } : current
+                          )
+                        }
+                        placeholder="https://auth.example.com/application/o/taskbandit/"
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.oidc_client_id")}</span>
+                      <input
+                        type="text"
+                        value={settingsDraft.oidcClientId}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, oidcClientId: event.target.value } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.oidc_client_secret")}</span>
+                      <input
+                        type="password"
+                        value={settingsDraft.oidcClientSecret}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, oidcClientSecret: event.target.value } : current
+                          )
+                        }
+                        placeholder={
+                          settingsDraft.oidcClientSecretConfigured
+                            ? t("settings.oidc_secret_saved")
+                            : ""
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.oidc_scope")}</span>
+                      <input
+                        type="text"
+                        value={settingsDraft.oidcScope}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, oidcScope: event.target.value } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <p className="inline-message">
+                      {t("settings.oidc_runtime_status")
+                        .replace("{effective}", settingsDraft.oidcEffective ? t("common.enabled") : t("common.disabled"))
+                        .replace("{source}", t(`auth.oidc_source_${settingsDraft.oidcSource}`))}
+                    </p>
                   </div>
                   <button
                     className="primary-button"

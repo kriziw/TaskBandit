@@ -76,22 +76,25 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_JWT_EXPIRES_IN", "7d");
   }
 
-  get oidcConfig(): OidcConfig {
+  get forceLocalAuthEnabled(): boolean {
+    return this.configService.get<string>("TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED", "false") === "true";
+  }
+
+  get oidcFallbackConfig(): OidcConfig {
     const enabled = this.configService.get<string>("TASKBANDIT_OIDC_ENABLED", "false") === "true";
     const authority = this.configService.get<string>("TASKBANDIT_OIDC_AUTHORITY", "").trim();
     const clientId = this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_ID", "").trim();
+    const clientSecret = this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_SECRET", "").trim();
     const scope = this.configService.get<string>("TASKBANDIT_OIDC_SCOPE", "openid profile email").trim();
 
     return {
       enabled: enabled && Boolean(authority && clientId),
       authority,
       clientId,
-      scope
+      clientSecret,
+      scope,
+      source: enabled && authority && clientId ? "env" : "none"
     };
-  }
-
-  get oidcClientSecret(): string {
-    return this.configService.get<string>("TASKBANDIT_OIDC_CLIENT_SECRET", "").trim();
   }
 
   withBasePath(path: string): string {

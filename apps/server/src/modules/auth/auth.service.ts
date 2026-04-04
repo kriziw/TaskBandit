@@ -43,6 +43,16 @@ type OidcProfile = {
   preferred_username?: string;
 };
 
+type StoredAuthSettings = {
+  selfSignupEnabled: boolean;
+  localAuthEnabled: boolean;
+  oidcEnabled: boolean;
+  oidcAuthority: string;
+  oidcClientId: string;
+  oidcClientSecret: string;
+  oidcScope: string;
+};
+
 @Injectable()
 export class AuthService {
   private oidcMetadataPromise: Promise<OidcMetadata> | null = null;
@@ -58,6 +68,13 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, language: SupportedLanguage) {
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig();
+    if (!localAuthConfig.enabled) {
+      throw new ForbiddenException({
+        message: this.i18nService.translate("auth.local_disabled", language)
+      });
+    }
+
     const normalizedEmail = this.normalizeEmail(dto.email);
     const identity = await this.prisma.authIdentity.findUnique({
       where: {
@@ -85,21 +102,29 @@ export class AuthService {
   }
 
   async signup(dto: SignupDto, language: SupportedLanguage) {
-    const household = await this.prisma.household.findFirst({
-      include: {
-        settings: true
-      }
-    });
-
-    if (!household) {
+    const settings = await this.getStoredAuthSettings();
+    if (!settings) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.bootstrap_required", language)
       });
     }
 
-    if (!household.settings?.selfSignupEnabled) {
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(settings);
+    if (!localAuthConfig.enabled) {
+      throw new ForbiddenException({
+        message: this.i18nService.translate("auth.local_disabled", language)
+      });
+    }
+
+    if (!settings.selfSignupEnabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.self_signup_disabled", language)
+      });
+    }
+
+    if (!localAuthConfig.householdId) {
+      throw new ForbiddenException({
+        message: this.i18nService.translate("auth.bootstrap_required", language)
       });
     }
 
@@ -119,7 +144,7 @@ export class AuthService {
     const passwordHash = await hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
-        householdId: household.id,
+        householdId: localAuthConfig.householdId,
         displayName: dto.displayName.trim(),
         role: HouseholdRole.PARENT,
         identities: {
@@ -179,18 +204,18 @@ export class AuthService {
   }
 
   async getProviders() {
-    const household = await this.prisma.household.findFirst({
-      include: {
-        settings: true
-      }
-    });
+    const settings = await this.getStoredAuthSettings();
+    const local = await this.getEffectiveLocalAuthConfig(settings);
+    const oidc = await this.getEffectiveOidcConfig(settings);
 
     return {
-      local: {
-        enabled: true,
-        selfSignupEnabled: household?.settings?.selfSignupEnabled ?? false
-      },
-      oidc: this.appConfigService.oidcConfig
+      local,
+      oidc: {
+        enabled: oidc.enabled,
+        authority: oidc.authority,
+        clientId: oidc.clientId,
+        source: oidc.source
+      }
     };
   }
 
@@ -234,11 +259,12 @@ export class AuthService {
     state: string
   ) {
     const metadata = await this.getOidcMetadata();
+    const oidcConfig = await this.getEffectiveOidcConfig();
     const params = new URLSearchParams({
-      client_id: this.appConfigService.oidcConfig.clientId,
+      client_id: oidcConfig.clientId,
       response_type: "code",
       redirect_uri: callbackUrl,
-      scope: this.appConfigService.oidcConfig.scope,
+      scope: oidcConfig.scope,
       state
     });
 
@@ -251,6 +277,7 @@ export class AuthService {
     language: SupportedLanguage
   ) {
     const metadata = await this.getOidcMetadata();
+    const oidcConfig = await this.getEffectiveOidcConfig();
     const tokenResponse = await fetch(metadata.token_endpoint, {
       method: "POST",
       headers: {
@@ -261,8 +288,8 @@ export class AuthService {
         grant_type: "authorization_code",
         code,
         redirect_uri: callbackUrl,
-        client_id: this.appConfigService.oidcConfig.clientId,
-        client_secret: this.appConfigService.oidcClientSecret
+        client_id: oidcConfig.clientId,
+        client_secret: oidcConfig.clientSecret
       })
     });
 
@@ -344,19 +371,14 @@ export class AuthService {
     }
 
     if (!user) {
-      const household = await this.prisma.household.findFirst({
-        include: {
-          settings: true
-        }
-      });
-
-      if (!household) {
+      const settings = await this.getStoredAuthSettings();
+      if (!settings) {
         throw new ForbiddenException({
           message: this.i18nService.translate("auth.bootstrap_required", language)
         });
       }
 
-      if (!household.settings?.selfSignupEnabled) {
+      if (!settings.selfSignupEnabled) {
         throw new ForbiddenException({
           message: this.i18nService.translate("auth.self_signup_disabled", language)
         });
@@ -368,9 +390,15 @@ export class AuthService {
         });
       }
 
+      if (!oidcConfig.householdId) {
+        throw new ForbiddenException({
+          message: this.i18nService.translate("auth.bootstrap_required", language)
+        });
+      }
+
       const createdUser = await this.prisma.user.create({
         data: {
-          householdId: household.id,
+          householdId: oidcConfig.householdId,
           displayName,
           role: HouseholdRole.PARENT,
           identities: {
@@ -449,14 +477,15 @@ export class AuthService {
   }
 
   private async getOidcMetadata() {
-    if (!this.appConfigService.oidcConfig.enabled) {
+    const oidcConfig = await this.getEffectiveOidcConfig();
+    if (!oidcConfig.enabled) {
       throw new UnauthorizedException({
         message: this.i18nService.translate("auth.unauthorized", "en")
       });
     }
 
     if (!this.oidcMetadataPromise) {
-      const metadataUrl = `${this.appConfigService.oidcConfig.authority.replace(/\/+$/, "")}/.well-known/openid-configuration`;
+      const metadataUrl = `${oidcConfig.authority.replace(/\/+$/, "")}/.well-known/openid-configuration`;
       this.oidcMetadataPromise = fetch(metadataUrl, {
         headers: {
           Accept: "application/json"
@@ -476,6 +505,73 @@ export class AuthService {
     }
 
     return this.oidcMetadataPromise;
+  }
+
+  private async getStoredAuthSettings(): Promise<(StoredAuthSettings & { householdId: string }) | null> {
+    const household = await this.prisma.household.findFirst({
+      include: {
+        settings: true
+      }
+    });
+
+    if (!household) {
+      return null;
+    }
+
+    return {
+      householdId: household.id,
+      selfSignupEnabled: household.settings?.selfSignupEnabled ?? false,
+      localAuthEnabled: household.settings?.localAuthEnabled ?? true,
+      oidcEnabled: household.settings?.oidcEnabled ?? false,
+      oidcAuthority: household.settings?.oidcAuthority?.trim() ?? "",
+      oidcClientId: household.settings?.oidcClientId?.trim() ?? "",
+      oidcClientSecret: household.settings?.oidcClientSecret?.trim() ?? "",
+      oidcScope: household.settings?.oidcScope?.trim() || "openid profile email"
+    };
+  }
+
+  private async getEffectiveLocalAuthConfig(
+    settings?: (StoredAuthSettings & { householdId: string }) | null
+  ) {
+    const resolvedSettings = settings ?? (await this.getStoredAuthSettings());
+    return {
+      enabled:
+        this.appConfigService.forceLocalAuthEnabled || (resolvedSettings?.localAuthEnabled ?? true),
+      forcedByConfig: this.appConfigService.forceLocalAuthEnabled,
+      selfSignupEnabled:
+        (this.appConfigService.forceLocalAuthEnabled || (resolvedSettings?.localAuthEnabled ?? true)) &&
+        (resolvedSettings?.selfSignupEnabled ?? false),
+      householdId: resolvedSettings?.householdId ?? null
+    };
+  }
+
+  private async getEffectiveOidcConfig(
+    settings?: (StoredAuthSettings & { householdId: string }) | null
+  ) {
+    const resolvedSettings = settings ?? (await this.getStoredAuthSettings());
+    const fallback = this.appConfigService.oidcFallbackConfig;
+    const uiAuthority = resolvedSettings?.oidcAuthority ?? "";
+    const uiClientId = resolvedSettings?.oidcClientId ?? "";
+    const uiClientSecret = resolvedSettings?.oidcClientSecret ?? "";
+    const uiScope = resolvedSettings?.oidcScope ?? "openid profile email";
+    const uiEnabled = Boolean(resolvedSettings?.oidcEnabled && uiAuthority && uiClientId);
+
+    if (uiEnabled) {
+      return {
+        enabled: true,
+        authority: uiAuthority,
+        clientId: uiClientId,
+        clientSecret: uiClientSecret,
+        scope: uiScope,
+        source: "ui" as const,
+        householdId: resolvedSettings?.householdId ?? null
+      };
+    }
+
+    return {
+      ...fallback,
+      householdId: resolvedSettings?.householdId ?? null
+    };
   }
 
   private mapRole(role: HouseholdRole): AuthenticatedUser["role"] {

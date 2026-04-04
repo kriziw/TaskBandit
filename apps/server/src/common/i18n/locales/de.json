@@ -4,6 +4,7 @@
   "auth.email_in_use": "Diese E-Mail-Adresse wird bereits verwendet.",
   "auth.forbidden": "Du hast keine Berechtigung, diese Aktion auszufuehren.",
   "auth.invalid_credentials": "Ungueltige E-Mail oder ungueltiges Passwort.",
+  "auth.local_disabled": "Die lokale Anmeldung ist fuer diesen Haushalt derzeit deaktiviert.",
   "auth.oidc_email_required": "Der OIDC-Anbieter hat keine E-Mail-Adresse geliefert, daher kann TaskBandit kein Elternkonto erstellen.",
   "auth.oidc_state_invalid": "Der OIDC-Anmeldelink ist ungueltig oder abgelaufen. Bitte versuche es erneut.",
   "auth.self_signup_disabled": "Die Selbstregistrierung ist derzeit deaktiviert.",

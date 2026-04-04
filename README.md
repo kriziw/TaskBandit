@@ -93,6 +93,7 @@ Manual setup:
 2. Review these values in `.env`:
    `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_DATA_ROOT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
+   `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true` is the emergency recovery switch that keeps local sign-in available even if the UI setting disables it.
    If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
 3. Start TaskBandit:
    `docker compose up -d`
@@ -121,8 +122,9 @@ Manual setup:
   PostgreSQL data is stored in `${TASKBANDIT_DATA_ROOT}/postgres`, and app-managed files such as uploads and runtime logs are stored in `${TASKBANDIT_DATA_ROOT}/taskbandit`.
   If you migrate that folder to another host and bring the stack up again, the household settings and other UI-managed data come with it.
 - `TASKBANDIT_REVERSE_PROXY_ENABLED` and `TASKBANDIT_REVERSE_PROXY_PATH_BASE` should be set when TaskBandit is deployed behind Nginx or Traefik.
-- `TASKBANDIT_OIDC_ENABLED=false` keeps OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.
-- `TASKBANDIT_OIDC_*` values are optional and only needed when you wire Authentik or another OIDC provider.
+- `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=false` is the recovery override. When set to `true`, local sign-in stays effectively on even if an admin disabled it from the UI.
+- `TASKBANDIT_OIDC_ENABLED=false` keeps environment-based fallback OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.
+- `TASKBANDIT_OIDC_*` values are optional and only needed when you want environment-based fallback OIDC instead of, or in addition to, the UI-managed OIDC settings.
 - `TASKBANDIT_OIDC_SCOPE=openid profile email` is the default OIDC scope used for the server-managed authorization-code flow.
 
 ## Web App Notes
@@ -141,7 +143,12 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 
 ## Backend Notes
 
-The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, and optional Authentik-focused OIDC sign-in is now available through the server-managed authorization-code flow.
+The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, optional Authentik-focused OIDC sign-in is available through the server-managed authorization-code flow, and auth provider settings can now be managed from the admin UI.
+
+Auth precedence:
+- Local auth follows the household UI setting unless `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true`, which force-keeps it available as a recovery path.
+- OIDC prefers the household UI configuration when enabled there.
+- If UI-managed OIDC is off or incomplete, TaskBandit can still fall back to environment-based `TASKBANDIT_OIDC_*` configuration.
 
 For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
 The repository also now includes an initial Prisma migration snapshot for the current backend model.

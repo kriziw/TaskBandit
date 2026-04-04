@@ -111,6 +111,17 @@ export type HouseholdSettings = {
   membersCanSeeFullHouseholdChoreDetails: boolean;
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;
+  localAuthEnabled: boolean;
+  localAuthForcedByConfig: boolean;
+  localAuthEffective: boolean;
+  oidcEnabled: boolean;
+  oidcAuthority: string;
+  oidcClientId: string;
+  oidcClientSecret: string;
+  oidcClientSecretConfigured: boolean;
+  oidcScope: string;
+  oidcEffective: boolean;
+  oidcSource: "ui" | "env" | "none";
 };
 
 export type NotificationPreferences = {
@@ -200,12 +211,14 @@ export type UploadedProof = {
 export type AuthProviders = {
   local: {
     enabled: boolean;
+    forcedByConfig: boolean;
     selfSignupEnabled: boolean;
   };
   oidc: {
     enabled: boolean;
     authority: string;
     clientId: string;
+    source: "ui" | "env" | "none";
   };
 };
 

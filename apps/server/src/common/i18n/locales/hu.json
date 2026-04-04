@@ -4,6 +4,7 @@
   "auth.email_in_use": "Ez az e-mail cim mar hasznalatban van.",
   "auth.forbidden": "Nincs jogosultsagod ehhez a muvelethez.",
   "auth.invalid_credentials": "Ervenytelen e-mail cim vagy jelszo.",
+  "auth.local_disabled": "A helyi bejelentkezes jelenleg ki van kapcsolva ebben a haztartasban.",
   "auth.oidc_email_required": "Az OIDC szolgaltato nem adott vissza e-mail cimet, igy a TaskBandit nem tud szuloi fiokot letrehozni.",
   "auth.oidc_state_invalid": "Az OIDC bejelentkezesi hivatkozas ervenytelen vagy lejart. Probald ujra.",
   "auth.self_signup_disabled": "Az onallo regisztracio jelenleg ki van kapcsolva.",

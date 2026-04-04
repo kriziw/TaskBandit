@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsOptional } from "class-validator";
+import { IsBoolean, IsOptional, IsString } from "class-validator";
 
 export class UpdateSettingsDto {
   @ApiPropertyOptional()
@@ -21,5 +21,34 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsBoolean()
   enableOverduePenalties?: boolean;
-}
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  localAuthEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  oidcEnabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  oidcAuthority?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  oidcClientId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  oidcClientSecret?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  oidcScope?: string;
+}
