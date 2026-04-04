@@ -1,4 +1,6 @@
 :root {
+  --font-brand: "Fredoka", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-body: "Nunito", "Segoe UI", sans-serif;
   --ink: #243043;
   --cream: #fff7e8;
   --sky: #73c7f4;
@@ -11,6 +13,20 @@
   --shadow: 0 24px 60px rgba(36, 48, 67, 0.14);
 }
 
+@font-face {
+  font-family: "Fredoka";
+  src: url("/fonts/fredoka.ttf") format("truetype");
+  font-weight: 300 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: "Nunito";
+  src: url("/fonts/nunito.ttf") format("truetype");
+  font-weight: 200 900;
+  font-style: normal;
+}
+
 * {
   box-sizing: border-box;
 }
@@ -19,7 +35,7 @@ body {
   margin: 0;
   min-width: 320px;
   min-height: 100vh;
-  font-family: "Trebuchet MS", "Segoe UI", sans-serif;
+  font-family: var(--font-body);
   color: var(--ink);
   background:
     radial-gradient(circle at top left, rgba(115, 201, 244, 0.55), transparent 30%),
@@ -103,6 +119,25 @@ select {
   font-weight: 700;
 }
 
+h1,
+h2,
+h3,
+h4,
+.eyebrow,
+.toolbar-pill,
+.user-badge,
+.language-picker,
+.primary-button,
+.secondary-button,
+.ghost-button,
+.section-kicker,
+.status-pill,
+.inline-message,
+.empty-state,
+.segmented-toggle button {
+  font-family: var(--font-brand);
+}
+
 .language-picker select {
   border: none;
   background: transparent;
@@ -174,6 +209,7 @@ select {
   margin: 0;
   font-size: clamp(2.6rem, 6vw, 4.5rem);
   line-height: 0.96;
+  letter-spacing: 0.01em;
 }
 
 .lede {
@@ -332,6 +368,7 @@ select {
 .panel label {
   font-size: 0.98rem;
   line-height: 1.6;
+  font-family: var(--font-body);
 }
 
 .metric-card strong {

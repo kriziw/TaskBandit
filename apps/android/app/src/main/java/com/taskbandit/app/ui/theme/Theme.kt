@@ -25,7 +25,7 @@ private val DarkColors = darkColorScheme(
 fun TaskBanditTheme(content: @Composable () -> Unit) {
     MaterialTheme(
         colorScheme = LightColors,
+        typography = TaskBanditTypography,
         content = content
     )
 }
-

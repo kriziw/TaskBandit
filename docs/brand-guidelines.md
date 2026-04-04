@@ -21,6 +21,13 @@ TaskBandit uses a cute raccoon mascot with a friendly bandit look. The character
 - Gold: `#FFC94A`
 - Coral: `#FF7A6B`
 
+## Typography
+
+- Brand and headings: `Fredoka`
+- UI body copy: `Nunito`
+- Typography should feel rounded, soft, and cheerful rather than corporate or neutral
+- Headings can lean bolder and tighter for mascot energy, but body text should stay highly readable
+
 ## Voice
 
 - "Nice work, bandit."
@@ -33,4 +40,4 @@ TaskBandit uses a cute raccoon mascot with a friendly bandit look. The character
 - playful accents without clutter
 - gamification should feel rewarding, not noisy
 - admin tools should stay readable and calm even within the colorful brand
-
+- playful typography should show up in hero moments, section titles, and action buttons, while dense forms and settings screens keep the calmer body font
