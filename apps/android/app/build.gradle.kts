@@ -3,6 +3,18 @@ plugins {
     id("org.jetbrains.kotlin.android")
 }
 
+val repositoryVersionFile = rootProject.file("../../version.txt")
+val resolvedReleaseVersion =
+    System.getenv("TASKBANDIT_RELEASE_VERSION")
+        ?.takeIf { it.isNotBlank() }
+        ?: repositoryVersionFile.takeIf { it.exists() }?.readText()?.trim()
+        ?: "0.0.0-dev"
+val resolvedBuildNumber =
+    System.getenv("TASKBANDIT_BUILD_NUMBER")
+        ?.toIntOrNull()
+        ?.takeIf { it > 0 }
+        ?: 1
+val resolvedCommitSha = System.getenv("TASKBANDIT_COMMIT_SHA")?.takeIf { it.isNotBlank() } ?: "local"
 val releaseKeystorePath = System.getenv("TASKBANDIT_ANDROID_KEYSTORE_PATH")
 val releaseKeystorePassword = System.getenv("TASKBANDIT_ANDROID_KEYSTORE_PASSWORD")
 val releaseKeyAlias = System.getenv("TASKBANDIT_ANDROID_KEY_ALIAS")
@@ -21,8 +33,11 @@ android {
         applicationId = "com.taskbandit.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = resolvedBuildNumber
+        versionName = resolvedReleaseVersion
+        buildConfigField("String", "TASKBANDIT_RELEASE_VERSION", "\"$resolvedReleaseVersion\"")
+        buildConfigField("String", "TASKBANDIT_BUILD_NUMBER", "\"$resolvedBuildNumber\"")
+        buildConfigField("String", "TASKBANDIT_COMMIT_SHA", "\"$resolvedCommitSha\"")
         buildConfigField(
             "String",
             "TASKBANDIT_FIREBASE_APP_ID",

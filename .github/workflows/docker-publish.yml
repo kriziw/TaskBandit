@@ -19,6 +19,12 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Read release version
+        id: version
+        shell: bash
+        run: |
+          echo "value=$(tr -d '\r\n' < version.txt)" >> "$GITHUB_OUTPUT"
+
       - name: Resolve prerelease setting
         id: prerelease
         shell: bash
@@ -44,7 +50,7 @@ jobs:
         with:
           images: kriziw/taskbandit
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ steps.prerelease.outputs.value != 'true' }}
             type=raw,value=prerelease,enable=${{ steps.prerelease.outputs.value == 'true' }}
             type=sha,format=short
 
@@ -54,5 +60,9 @@ jobs:
           context: .
           file: ./apps/server/Dockerfile
           push: true
+          build-args: |
+            TASKBANDIT_RELEASE_VERSION=${{ steps.version.outputs.value }}
+            TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}
+            TASKBANDIT_COMMIT_SHA=${{ github.sha }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

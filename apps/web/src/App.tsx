@@ -27,6 +27,7 @@ import type {
   NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
+  ReleaseInfo,
   RecurrenceType,
   RuntimeLogEntry,
   SignupInput,
@@ -35,6 +36,7 @@ import type {
 
 const tokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
+const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -199,9 +201,65 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
 }
 
+function parseReleaseVersionParts(value: string) {
+  return value
+    .split(/[.-]/)
+    .map((segment) => Number.parseInt(segment, 10))
+    .filter((segment) => Number.isFinite(segment));
+}
+
+function compareReleaseVersions(left: string, right: string) {
+  const leftParts = parseReleaseVersionParts(left);
+  const rightParts = parseReleaseVersionParts(right);
+  const maxLength = Math.max(leftParts.length, rightParts.length);
+
+  for (let index = 0; index < maxLength; index += 1) {
+    const leftValue = leftParts[index] ?? 0;
+    const rightValue = rightParts[index] ?? 0;
+    if (leftValue !== rightValue) {
+      return leftValue - rightValue;
+    }
+  }
+
+  return 0;
+}
+
+function compareReleaseInfo(current: ReleaseInfo, latest: ReleaseInfo) {
+  const versionComparison = compareReleaseVersions(current.releaseVersion, latest.releaseVersion);
+  if (versionComparison !== 0) {
+    return versionComparison;
+  }
+
+  const currentBuild = Number.parseInt(current.buildNumber, 10);
+  const latestBuild = Number.parseInt(latest.buildNumber, 10);
+  if (Number.isFinite(currentBuild) && Number.isFinite(latestBuild) && currentBuild !== latestBuild) {
+    return currentBuild - latestBuild;
+  }
+
+  return current.buildNumber.localeCompare(latest.buildNumber);
+}
+
+function createReleaseKey(release: ReleaseInfo) {
+  return `${release.releaseVersion}+${release.buildNumber}`;
+}
+
+function formatReleaseLabel(release: ReleaseInfo) {
+  return `v${release.releaseVersion} · build ${release.buildNumber}`;
+}
+
+const currentWebReleaseInfo: ReleaseInfo = {
+  releaseVersion: import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION ?? "0.0.0-dev",
+  buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
+  commitSha: import.meta.env.VITE_TASKBANDIT_COMMIT_SHA ?? "local"
+};
+
 export function App() {
   const { language, setLanguage, t } = useI18n();
   const [token, setToken] = useState<string | null>(() => readStoredToken());
+  const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
+  const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
+    window.localStorage.getItem(dismissedUpdateStorageKey)
+  );
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
@@ -423,6 +481,27 @@ export function App() {
     return () => window.removeEventListener("hashchange", onHashChange);
   }, []);
 
+  useEffect(() => {
+    let cancelled = false;
+
+    void taskBanditApi
+      .getReleaseInfo(language)
+      .then((releaseInfo) => {
+        if (!cancelled) {
+          setServerReleaseInfo(releaseInfo);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setServerReleaseInfo(null);
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language]);
+
   const memberLookup = useMemo(() => {
     const members = payload?.household.members ?? [];
     return new Map(members.map((member) => [member.id, member]));
@@ -545,6 +624,17 @@ export function App() {
 
   const activePageLabel =
     availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
+  const availableUpdate = useMemo(() => {
+    if (!serverReleaseInfo) {
+      return null;
+    }
+
+    return compareReleaseInfo(currentWebReleaseInfo, serverReleaseInfo) < 0 ? serverReleaseInfo : null;
+  }, [serverReleaseInfo]);
+  const availableUpdateKey = availableUpdate ? createReleaseKey(availableUpdate) : null;
+  const showAvailableUpdateNotice = Boolean(
+    availableUpdate && availableUpdateKey && dismissedUpdateKey !== availableUpdateKey
+  );
 
   const pageDescriptions: Record<WorkspacePage, string> = {
     overview: t("page.overview_description"),
@@ -2068,6 +2158,15 @@ export function App() {
     }
   }
 
+  function handleDismissAvailableUpdate() {
+    if (!availableUpdateKey) {
+      return;
+    }
+
+    window.localStorage.setItem(dismissedUpdateStorageKey, availableUpdateKey);
+    setDismissedUpdateKey(availableUpdateKey);
+  }
+
   return (
     <main className="app-shell">
       <section className="toolbar">
@@ -2127,6 +2226,31 @@ export function App() {
 
       {notice ? <div className="notice-banner success">{notice}</div> : null}
       {pageError ? <div className="notice-banner error">{pageError}</div> : null}
+      {showAvailableUpdateNotice && availableUpdate ? (
+        <div className="notice-banner info update-banner">
+          <div>
+            <strong>{t("release.update_available_title")}</strong>
+            <p>
+              {t("release.update_available_body")
+                .replace("{current}", formatReleaseLabel(currentWebReleaseInfo))
+                .replace("{latest}", formatReleaseLabel(availableUpdate))}
+            </p>
+          </div>
+          <button className="ghost-button" type="button" onClick={handleDismissAvailableUpdate}>
+            {t("release.dismiss_update")}
+          </button>
+        </div>
+      ) : null}
+      <div className="release-strip">
+        <span className="status-pill">
+          {t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}
+        </span>
+        {serverReleaseInfo ? (
+          <span className="status-pill">
+            {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
+          </span>
+        ) : null}
+      </div>
 
       {!payload ? (
         <section className="content-grid login-grid">
@@ -2446,6 +2570,13 @@ export function App() {
                     {page.label}
                   </button>
                 ))}
+              </div>
+              <div className="workspace-version-block">
+                <p className="workspace-version-label">{t("release.web_label")}</p>
+                <strong>{formatReleaseLabel(currentWebReleaseInfo)}</strong>
+                {serverReleaseInfo ? (
+                  <p>{t("release.server_label").replace("{release}", formatReleaseLabel(serverReleaseInfo))}</p>
+                ) : null}
               </div>
             </div>
           </aside>

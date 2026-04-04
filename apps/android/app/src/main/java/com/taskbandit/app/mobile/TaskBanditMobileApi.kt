@@ -32,6 +32,15 @@ class TaskBanditMobileApi {
         ).getString("accessToken")
     }
 
+    fun getReleaseInfo(baseUrl: String): MobileReleaseInfo {
+        val releaseJson = requestJson(baseUrl, "/api/meta/release")
+        return MobileReleaseInfo(
+            releaseVersion = releaseJson.optString("releaseVersion"),
+            buildNumber = releaseJson.optString("buildNumber"),
+            commitSha = releaseJson.optString("commitSha")
+        )
+    }
+
     fun loadDashboard(baseUrl: String, token: String): MobileDashboard {
         val userJson = requestJson(baseUrl, "/api/auth/me", token = token)
         val summaryJson = requestJson(baseUrl, "/api/dashboard/summary", token = token)

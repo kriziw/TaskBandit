@@ -70,6 +70,12 @@ data class MobileNotification(
     val createdAt: String
 )
 
+data class MobileReleaseInfo(
+    val releaseVersion: String,
+    val buildNumber: String,
+    val commitSha: String
+)
+
 data class MobileDashboard(
     val user: MobileUser,
     val pendingApprovals: Int,

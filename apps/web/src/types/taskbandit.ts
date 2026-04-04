@@ -46,6 +46,12 @@ export type ApiStatusResponse = {
   message: string;
 };
 
+export type ReleaseInfo = {
+  releaseVersion: string;
+  buildNumber: string;
+  commitSha: string;
+};
+
 export type DashboardSummary = {
   pendingApprovals: number;
   activeChores: number;

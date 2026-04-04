@@ -30,6 +30,7 @@ jobs:
             "taskbandit-v0.5.0 df010e4"
             "taskbandit-v0.6.0 84d56b9"
             "taskbandit-v0.7.0 46b5e84"
+            "taskbandit-v0.8.0 3a799e2"
           )
 
           {

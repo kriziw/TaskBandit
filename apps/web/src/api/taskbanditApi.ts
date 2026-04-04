@@ -25,6 +25,7 @@ import type {
   PointsLedgerEntry,
   RuntimeLogEntry,
   SignupInput,
+  ReleaseInfo,
   UpdateHouseholdMemberInput,
   UploadedProof
 } from "../types/taskbandit";
@@ -114,6 +115,9 @@ async function readErrorMessage(response: Response) {
 }
 
 export const taskBanditApi = {
+  getReleaseInfo(language: AppLanguage) {
+    return request<ReleaseInfo>("/api/meta/release", { language });
+  },
   getOidcStartUrl(language: AppLanguage, returnTo?: string) {
     const apiBaseUrl = resolveApiBaseUrl();
     const normalizedApiBaseUrl = /^https?:\/\//i.test(apiBaseUrl)

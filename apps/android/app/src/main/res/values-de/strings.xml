@@ -29,6 +29,11 @@
     <string name="leaderboard_name_luca">Luca</string>
     <string name="mobile_login_title">Bei TaskBandit anmelden</string>
     <string name="mobile_login_hint">Verbinde die Android-App mit deinem selbst gehosteten Server und lade deine Live-Aufgaben.</string>
+    <string name="mobile_app_release">App %1$s</string>
+    <string name="mobile_server_release">Server %1$s</string>
+    <string name="mobile_update_available_title">Neuere Version verfügbar</string>
+    <string name="mobile_update_available_body">Diese App läuft auf %1$s, während der Server schon auf %2$s ist. Bitte aktualisiere sie bei Gelegenheit.</string>
+    <string name="mobile_update_dismiss">Ausblenden</string>
     <string name="mobile_server_url">Server-URL</string>
     <string name="mobile_email">E-Mail</string>
     <string name="mobile_password">Passwort</string>
