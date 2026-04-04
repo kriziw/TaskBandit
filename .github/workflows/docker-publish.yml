@@ -5,6 +5,8 @@ on:
     branches: ["main"]
     paths:
       - "apps/server/**"
+      - "apps/web/**"
+      - ".dockerignore"
       - ".github/workflows/docker-publish.yml"
       - "infra/docker/**"
   workflow_dispatch:

@@ -102,6 +102,7 @@ TaskBandit is intended to support self-hosting behind reverse proxies such as Ng
 
 Docker Compose is configured to pull the server image from Docker Hub via `kriziw/taskbandit`. Use `TASKBANDIT_IMAGE_TAG` to pin a specific published tag if you do not want `latest`.
 The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
+The Docker publish workflow now refreshes the image on `main` when either the server or bundled web UI changes, and it can also be run manually from GitHub Actions.
 Localization structure and language-file locations are documented in `docs/localization.md`.
 Authentication endpoints and environment variables are documented in `docs/authentication.md`.
 Chore submission and review endpoints are documented in `docs/chore-workflow.md`.
