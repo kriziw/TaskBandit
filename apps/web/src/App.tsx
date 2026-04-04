@@ -2241,16 +2241,6 @@ export function App() {
           </button>
         </div>
       ) : null}
-      <div className="release-strip">
-        <span className="status-pill">
-          {t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}
-        </span>
-        {serverReleaseInfo ? (
-          <span className="status-pill">
-            {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
-          </span>
-        ) : null}
-      </div>
 
       {!payload ? (
         <section className="content-grid login-grid">
@@ -2570,13 +2560,6 @@ export function App() {
                     {page.label}
                   </button>
                 ))}
-              </div>
-              <div className="workspace-version-block">
-                <p className="workspace-version-label">{t("release.web_label")}</p>
-                <strong>{formatReleaseLabel(currentWebReleaseInfo)}</strong>
-                {serverReleaseInfo ? (
-                  <p>{t("release.server_label").replace("{release}", formatReleaseLabel(serverReleaseInfo))}</p>
-                ) : null}
               </div>
             </div>
           </aside>
@@ -4669,6 +4652,18 @@ export function App() {
           </div>
         </div>
       )}
+      <footer className="app-release-footer">
+        <div className="app-release-footer-inner">
+          <span className="app-release-chip">
+            {t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}
+          </span>
+          {serverReleaseInfo ? (
+            <span className="app-release-chip">
+              {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
+            </span>
+          ) : null}
+        </div>
+      </footer>
     </main>
   );
 }
