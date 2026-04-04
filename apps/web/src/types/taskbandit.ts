@@ -113,6 +113,14 @@ export type HouseholdSettings = {
   enableOverduePenalties: boolean;
 };
 
+export type NotificationPreferences = {
+  receiveAssignments: boolean;
+  receiveReviewUpdates: boolean;
+  receiveDueSoonReminders: boolean;
+  receiveOverdueAlerts: boolean;
+  receiveDailySummary: boolean;
+};
+
 export type Household = {
   householdId: string;
   name: string;

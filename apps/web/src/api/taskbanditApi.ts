@@ -13,6 +13,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
   RuntimeLogEntry,
@@ -216,6 +217,12 @@ export const taskBanditApi = {
       language
     });
   },
+  getNotificationPreferences(token: string, language: AppLanguage) {
+    return request<NotificationPreferences>("/api/settings/notifications", {
+      token,
+      language
+    });
+  },
   getAuditLog(token: string, language: AppLanguage) {
     return request<AuditLogEntry[]>("/api/settings/audit-log", {
       token,
@@ -228,6 +235,18 @@ export const taskBanditApi = {
       token,
       language,
       body: settings
+    });
+  },
+  updateNotificationPreferences(
+    token: string,
+    language: AppLanguage,
+    preferences: Partial<NotificationPreferences>
+  ) {
+    return request<NotificationPreferences>("/api/settings/notifications", {
+      method: "PUT",
+      token,
+      language,
+      body: preferences
     });
   },
   createHouseholdMember(token: string, language: AppLanguage, input: CreateHouseholdMemberInput) {

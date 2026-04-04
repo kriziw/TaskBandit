@@ -18,6 +18,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
   RecurrenceType,
@@ -33,6 +34,7 @@ type DashboardPayload = {
   household: Household;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
+  notificationPreferences: NotificationPreferences;
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
@@ -104,6 +106,8 @@ export function App() {
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLogEntry[]>([]);
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
+  const [notificationPreferencesDraft, setNotificationPreferencesDraft] =
+    useState<NotificationPreferences | null>(null);
   const [submitSelections, setSubmitSelections] = useState<Record<string, string[]>>({});
   const [selectedProofFiles, setSelectedProofFiles] = useState<Record<string, File[]>>({});
   const [submitNotes, setSubmitNotes] = useState<Record<string, string>>({});
@@ -197,6 +201,7 @@ export function App() {
       setPayload(null);
       setRuntimeLogs([]);
       setSettingsDraft(null);
+      setNotificationPreferencesDraft(null);
       setIsLoading(false);
       return;
     }
@@ -207,6 +212,7 @@ export function App() {
   useEffect(() => {
     if (payload) {
       setSettingsDraft(payload.household.settings);
+      setNotificationPreferencesDraft(payload.notificationPreferences);
     }
   }, [payload]);
 
@@ -385,7 +391,17 @@ export function App() {
 
     try {
       const currentUser = await taskBanditApi.getCurrentUser(accessToken, language);
-      const [dashboard, household, auditLog, notifications, pointsLedger, templates, instances, nextRuntimeLogs] =
+      const [
+        dashboard,
+        household,
+        auditLog,
+        notifications,
+        notificationPreferences,
+        pointsLedger,
+        templates,
+        instances,
+        nextRuntimeLogs
+      ] =
         await Promise.all([
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
@@ -393,6 +409,7 @@ export function App() {
           ? Promise.resolve([])
           : taskBanditApi.getAuditLog(accessToken, language),
         taskBanditApi.getNotifications(accessToken, language),
+        taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
           ? Promise.resolve([])
@@ -409,6 +426,7 @@ export function App() {
         household,
         auditLog,
         notifications,
+        notificationPreferences,
         pointsLedger,
         templates,
         instances
@@ -637,6 +655,7 @@ export function App() {
     setPayload(null);
     setRuntimeLogs([]);
     setSettingsDraft(null);
+    setNotificationPreferencesDraft(null);
     setLoginError(message ?? null);
     setNotice(null);
   }
@@ -802,6 +821,33 @@ export function App() {
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("settings.save_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleSaveNotificationPreferences() {
+    if (!token || !notificationPreferencesDraft) {
+      return;
+    }
+
+    setBusyAction("save-notification-preferences");
+    try {
+      const nextPreferences = await taskBanditApi.updateNotificationPreferences(
+        token,
+        language,
+        notificationPreferencesDraft
+      );
+      setPayload((current) =>
+        current ? { ...current, notificationPreferences: nextPreferences } : current
+      );
+      setNotificationPreferencesDraft(nextPreferences);
+      setNotice(t("settings.notification_preferences_saved"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(
+        readErrorMessage(error, t("settings.notification_preferences_save_failed"))
+      );
     } finally {
       setBusyAction(null);
     }
@@ -2004,6 +2050,87 @@ export function App() {
                 </div>
               )}
             </article>
+
+            {notificationPreferencesDraft ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.notification_preferences")}</h2>
+                  <span className="section-kicker">{t("settings.member_level")}</span>
+                </div>
+                <div className="settings-list">
+                  <label className="toggle-row">
+                    <span>{t("settings.notify_assignments")}</span>
+                    <input
+                      type="checkbox"
+                      checked={notificationPreferencesDraft.receiveAssignments}
+                      onChange={(event) =>
+                        setNotificationPreferencesDraft((current) =>
+                          current ? { ...current, receiveAssignments: event.target.checked } : current
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="toggle-row">
+                    <span>{t("settings.notify_reviews")}</span>
+                    <input
+                      type="checkbox"
+                      checked={notificationPreferencesDraft.receiveReviewUpdates}
+                      onChange={(event) =>
+                        setNotificationPreferencesDraft((current) =>
+                          current ? { ...current, receiveReviewUpdates: event.target.checked } : current
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="toggle-row">
+                    <span>{t("settings.notify_due_soon")}</span>
+                    <input
+                      type="checkbox"
+                      checked={notificationPreferencesDraft.receiveDueSoonReminders}
+                      onChange={(event) =>
+                        setNotificationPreferencesDraft((current) =>
+                          current
+                            ? { ...current, receiveDueSoonReminders: event.target.checked }
+                            : current
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="toggle-row">
+                    <span>{t("settings.notify_overdue")}</span>
+                    <input
+                      type="checkbox"
+                      checked={notificationPreferencesDraft.receiveOverdueAlerts}
+                      onChange={(event) =>
+                        setNotificationPreferencesDraft((current) =>
+                          current ? { ...current, receiveOverdueAlerts: event.target.checked } : current
+                        )
+                      }
+                    />
+                  </label>
+                  <label className="toggle-row">
+                    <span>{t("settings.notify_daily_summary")}</span>
+                    <input
+                      type="checkbox"
+                      checked={notificationPreferencesDraft.receiveDailySummary}
+                      onChange={(event) =>
+                        setNotificationPreferencesDraft((current) =>
+                          current ? { ...current, receiveDailySummary: event.target.checked } : current
+                        )
+                      }
+                    />
+                  </label>
+                </div>
+                <button
+                  className="primary-button"
+                  type="button"
+                  disabled={busyAction === "save-notification-preferences"}
+                  onClick={() => void handleSaveNotificationPreferences()}
+                >
+                  {t("settings.save_notification_preferences")}
+                </button>
+              </article>
+            ) : null}
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
               <>

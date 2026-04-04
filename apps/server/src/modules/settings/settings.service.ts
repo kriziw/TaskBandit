@@ -5,6 +5,7 @@ import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
+import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
 @Injectable()
@@ -23,8 +24,16 @@ export class SettingsService {
     return this.repository.getAuditLog(user.householdId);
   }
 
+  getNotificationPreferences(user: AuthenticatedUser) {
+    return this.repository.getNotificationPreferences(user.householdId, user.id);
+  }
+
   updateSettings(dto: UpdateSettingsDto, user: AuthenticatedUser) {
     return this.repository.updateSettings(dto, user.householdId, user.id);
+  }
+
+  updateNotificationPreferences(dto: UpdateNotificationPreferencesDto, user: AuthenticatedUser) {
+    return this.repository.updateNotificationPreferences(dto, user.householdId, user.id);
   }
 
   async createHouseholdMember(

@@ -8,6 +8,7 @@ import { RolesGuard } from "../../common/auth/roles.guard";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SettingsService } from "./settings.service";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
+import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
 @ApiTags("settings")
@@ -30,10 +31,23 @@ export class SettingsController {
     return this.settingsService.getAuditLog(user);
   }
 
+  @Get("notifications")
+  getNotificationPreferences(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.getNotificationPreferences(user);
+  }
+
   @Put("household")
   @Roles("admin")
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {
     return this.settingsService.updateSettings(dto, user);
+  }
+
+  @Put("notifications")
+  updateNotificationPreferences(
+    @Body() dto: UpdateNotificationPreferencesDto,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    return this.settingsService.updateNotificationPreferences(dto, user);
   }
 
   @Post("household/members")

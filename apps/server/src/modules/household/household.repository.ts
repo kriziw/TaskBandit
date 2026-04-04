@@ -22,6 +22,7 @@ import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto"
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
 import { CreateHouseholdMemberDto } from "../settings/dto/create-household-member.dto";
+import { UpdateNotificationPreferencesDto } from "../settings/dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
 type PrismaExecutor = PrismaService | Prisma.TransactionClient;
@@ -225,6 +226,51 @@ export class HouseholdRepository {
     return pointsLedger.map((entry) => this.mapPointsLedgerEntry(entry));
   }
 
+  async getNotificationPreferences(householdId: string, userId: string) {
+    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const preference = await this.prisma.notificationPreference.upsert({
+      where: {
+        userId
+      },
+      update: {},
+      create: {
+        userId
+      }
+    });
+
+    return this.mapNotificationPreference(preference);
+  }
+
+  async updateNotificationPreferences(
+    dto: UpdateNotificationPreferencesDto,
+    householdId: string,
+    userId: string
+  ) {
+    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const preference = await this.prisma.notificationPreference.upsert({
+      where: {
+        userId
+      },
+      update: {
+        receiveAssignments: dto.receiveAssignments,
+        receiveReviewUpdates: dto.receiveReviewUpdates,
+        receiveDueSoonReminders: dto.receiveDueSoonReminders,
+        receiveOverdueAlerts: dto.receiveOverdueAlerts,
+        receiveDailySummary: dto.receiveDailySummary
+      },
+      create: {
+        userId,
+        receiveAssignments: dto.receiveAssignments ?? true,
+        receiveReviewUpdates: dto.receiveReviewUpdates ?? true,
+        receiveDueSoonReminders: dto.receiveDueSoonReminders ?? true,
+        receiveOverdueAlerts: dto.receiveOverdueAlerts ?? true,
+        receiveDailySummary: dto.receiveDailySummary ?? true
+      }
+    });
+
+    return this.mapNotificationPreference(preference);
+  }
+
   async getNotifications(householdId: string, recipientUserId: string, take = 25) {
     const notifications = await this.prisma.notification.findMany({
       where: {
@@ -367,7 +413,7 @@ export class HouseholdRepository {
         continue;
       }
 
-      await this.recordNotification(this.prisma, {
+      const createdNotification = await this.recordNotification(this.prisma, {
         householdId: instance.householdId,
         recipientUserId: instance.assigneeId,
         type,
@@ -380,7 +426,9 @@ export class HouseholdRepository {
         entityId: instance.id
       });
 
-      createdCount += 1;
+      if (createdNotification) {
+        createdCount += 1;
+      }
     }
 
     return {
@@ -496,7 +544,7 @@ export class HouseholdRepository {
         continue;
       }
 
-      await this.recordNotification(this.prisma, {
+      const createdNotification = await this.recordNotification(this.prisma, {
         householdId: member.householdId,
         recipientUserId: member.id,
         type: NotificationType.DAILY_SUMMARY,
@@ -506,7 +554,9 @@ export class HouseholdRepository {
         entityId: startOfDayUtc.toISOString().slice(0, 10)
       });
 
-      createdCount += 1;
+      if (createdNotification) {
+        createdCount += 1;
+      }
     }
 
     return {
@@ -2225,6 +2275,18 @@ export class HouseholdRepository {
     };
   }
 
+  private mapNotificationPreference(
+    preference: Prisma.NotificationPreferenceGetPayload<object>
+  ) {
+    return {
+      receiveAssignments: preference.receiveAssignments,
+      receiveReviewUpdates: preference.receiveReviewUpdates,
+      receiveDueSoonReminders: preference.receiveDueSoonReminders,
+      receiveOverdueAlerts: preference.receiveOverdueAlerts,
+      receiveDailySummary: preference.receiveDailySummary
+    };
+  }
+
   private buildDailySummaryMessage(
     dueTodayCount: number,
     overdueCount: number,
@@ -2305,6 +2367,11 @@ export class HouseholdRepository {
       entityId?: string | null;
     }
   ) {
+    const shouldSendNotification = await this.shouldSendNotification(executor, input);
+    if (!shouldSendNotification) {
+      return false;
+    }
+
     await executor.notification.create({
       data: {
         householdId: input.householdId,
@@ -2316,6 +2383,63 @@ export class HouseholdRepository {
         entityId: input.entityId ?? null
       }
     });
+
+    return true;
+  }
+
+  private async shouldSendNotification(
+    executor: PrismaExecutor,
+    input: {
+      recipientUserId: string;
+      type: NotificationType;
+    }
+  ) {
+    const preference = await executor.notificationPreference.findUnique({
+      where: {
+        userId: input.recipientUserId
+      }
+    });
+
+    if (!preference) {
+      return true;
+    }
+
+    switch (input.type) {
+      case NotificationType.CHORE_ASSIGNED:
+        return preference.receiveAssignments;
+      case NotificationType.CHORE_APPROVED:
+      case NotificationType.CHORE_REJECTED:
+      case NotificationType.CHORE_CANCELLED:
+      case NotificationType.CHORE_SUBMITTED:
+        return preference.receiveReviewUpdates;
+      case NotificationType.CHORE_DUE_SOON:
+        return preference.receiveDueSoonReminders;
+      case NotificationType.CHORE_OVERDUE:
+      case NotificationType.OVERDUE_PENALTY:
+        return preference.receiveOverdueAlerts;
+      case NotificationType.DAILY_SUMMARY:
+        return preference.receiveDailySummary;
+      default:
+        return true;
+    }
+  }
+
+  private async ensureUserBelongsToHousehold(householdId: string, userId: string) {
+    const user = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        householdId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!user) {
+      throw new NotFoundException({
+        message: "That household member could not be found."
+      });
+    }
   }
 
   private mapAssignmentStrategy(strategy: AssignmentStrategyType) {

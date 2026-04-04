@@ -97,6 +97,7 @@ model User {
   auditLogs     AuditLog[]    @relation("AuditActor")
   pointsLedgerEntries PointsLedgerEntry[] @relation("PointsLedgerUser")
   notifications Notification[] @relation("NotificationRecipient")
+  notificationPreference NotificationPreference?
 }
 
 model AuthIdentity {
@@ -248,4 +249,15 @@ model Notification {
 
   @@index([householdId, recipientUserId, createdAtUtc])
   @@index([recipientUserId, isRead, createdAtUtc])
+}
+
+model NotificationPreference {
+  userId                  String   @id @db.Uuid
+  receiveAssignments      Boolean  @default(true)
+  receiveReviewUpdates    Boolean  @default(true)
+  receiveDueSoonReminders Boolean  @default(true)
+  receiveOverdueAlerts    Boolean  @default(true)
+  receiveDailySummary     Boolean  @default(true)
+  updatedAtUtc            DateTime @updatedAt
+  user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
