@@ -17,7 +17,8 @@ The current workflow publishes:
 
 - `latest` from the default branch
 - `prerelease` when `PRE_RELEASE_SETTING` is truthy
-- a short SHA tag for each published commit
+
+Versioned release tags like `0.9.2` and `v0.9.2` are published by the controlled release workflow (`release-please.yml`).
 
 The automatic Docker publish workflow runs on pushes to `main` that touch the deployable image inputs, including:
 
