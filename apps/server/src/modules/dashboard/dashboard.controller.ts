@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
@@ -6,6 +6,7 @@ import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { Roles } from "../../common/auth/roles.decorator";
 import { RolesGuard } from "../../common/auth/roles.guard";
+import { SendTestNotificationDto } from "./dto/send-test-notification.dto";
 import { DashboardService } from "./dashboard.service";
 
 @ApiTags("dashboard")
@@ -49,6 +50,15 @@ export class DashboardController {
   @Roles("admin")
   processNotificationMaintenance() {
     return this.dashboardService.processNotificationMaintenance();
+  }
+
+  @Post("maintenance/test-notification")
+  @Roles("admin")
+  sendTestNotification(
+    @CurrentUser() user: AuthenticatedUser,
+    @Body() dto: SendTestNotificationDto
+  ) {
+    return this.dashboardService.sendTestNotification(user, dto.recipientUserId);
   }
 
   @Get("admin/logs")

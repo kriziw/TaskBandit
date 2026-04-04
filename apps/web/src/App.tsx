@@ -1095,6 +1095,32 @@ export function App() {
     }
   }
 
+  async function handleSendTestNotification(recipientUserId: string) {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`test-notification:${recipientUserId}`);
+    try {
+      const result = await taskBanditApi.sendTestNotification(token, language, recipientUserId);
+      await refreshDashboard(token, { silent: true });
+      setNotice(
+        t("settings.test_notification_sent")
+          .replace("{name}", result.recipientDisplayName)
+          .replace("{pushSent}", String(result.pushSentCount))
+          .replace("{pushFailed}", String(result.pushFailedCount))
+          .replace("{emailSent}", String(result.emailSentCount))
+          .replace("{emailFailed}", String(result.emailFailedCount))
+          .replace("{emailSkipped}", String(result.emailSkippedCount))
+      );
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("settings.test_notification_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleTestSmtp() {
     if (!token) {
       return;
@@ -2676,6 +2702,16 @@ export function App() {
                             {formatDate(entry.latestDeviceSeenAt)}
                           </p>
                         ) : null}
+                        <div className="button-row">
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            disabled={busyAction === `test-notification:${entry.userId}`}
+                            onClick={() => void handleSendTestNotification(entry.userId)}
+                          >
+                            {t("settings.send_test_notification")}
+                          </button>
+                        </div>
                       </div>
                     ))}
                   </div>

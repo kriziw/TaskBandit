@@ -502,6 +502,56 @@ export class HouseholdRepository {
     return count > 0;
   }
 
+  async createAdminTestNotification(input: {
+    householdId: string;
+    actorUserId: string;
+    actorDisplayName: string;
+    recipientUserId: string;
+  }) {
+    const recipient = await this.prisma.user.findFirst({
+      where: {
+        id: input.recipientUserId,
+        householdId: input.householdId
+      },
+      select: {
+        id: true,
+        displayName: true
+      }
+    });
+
+    if (!recipient) {
+      throw new NotFoundException({
+        message: "That household member could not be found."
+      });
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await this.recordNotification(tx, {
+        householdId: input.householdId,
+        recipientUserId: recipient.id,
+        type: NotificationType.CHORE_DUE_SOON,
+        title: "TaskBandit test notification",
+        message: `This is a delivery test from ${input.actorDisplayName}. If this reached you, your current notification path is working.`,
+        entityType: "notification_test",
+        entityId: input.actorUserId
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId: input.householdId,
+        actorUserId: input.actorUserId,
+        action: "notification.test_sent",
+        entityType: "notification_test",
+        entityId: recipient.id,
+        summary: `Sent a test notification to ${recipient.displayName}.`
+      });
+    });
+
+    return {
+      recipientUserId: recipient.id,
+      recipientDisplayName: recipient.displayName
+    };
+  }
+
   async getPendingPushDeliveries(take = 25) {
     const deliveries = await this.prisma.notificationPushDelivery.findMany({
       where: {

@@ -67,6 +67,23 @@ export class DashboardService {
     };
   }
 
+  async sendTestNotification(user: AuthenticatedUser, recipientUserId?: string) {
+    const notificationResult = await this.repository.createAdminTestNotification({
+      householdId: user.householdId,
+      actorUserId: user.id,
+      actorDisplayName: user.displayName,
+      recipientUserId: recipientUserId ?? user.id
+    });
+
+    const deliveryResult = await this.processNotificationMaintenance();
+
+    return {
+      recipientUserId: notificationResult.recipientUserId,
+      recipientDisplayName: notificationResult.recipientDisplayName,
+      ...deliveryResult
+    };
+  }
+
   async exportChoresCsv(user: AuthenticatedUser) {
     const [household, instances] = await Promise.all([
       this.repository.getHousehold(user.householdId),

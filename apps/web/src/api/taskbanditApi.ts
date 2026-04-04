@@ -231,6 +231,24 @@ export const taskBanditApi = {
       }
     );
   },
+  sendTestNotification(token: string, language: AppLanguage, recipientUserId?: string) {
+    return request<{
+      recipientUserId: string;
+      recipientDisplayName: string;
+      reminderCount: number;
+      dailySummaryCount: number;
+      pushSentCount: number;
+      pushFailedCount: number;
+      emailSentCount: number;
+      emailFailedCount: number;
+      emailSkippedCount: number;
+    }>("/api/dashboard/maintenance/test-notification", {
+      method: "POST",
+      token,
+      language,
+      body: recipientUserId ? { recipientUserId } : {}
+    });
+  },
   testSmtp(token: string, language: AppLanguage) {
     return request<{ ok: boolean }>("/api/settings/smtp/test", {
       method: "POST",
