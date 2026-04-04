@@ -11,6 +11,7 @@ import {
   ChoreChecklistCompletion,
   ChoreState,
   Difficulty,
+  FollowUpDelayUnit,
   HouseholdRole,
   NotificationEmailDeliveryStatus,
   NotificationDevicePlatform,
@@ -1564,7 +1565,8 @@ export class HouseholdRepository {
   }
 
   async createTemplate(dto: CreateChoreTemplateDto, householdId: string, actorUserId?: string) {
-    const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])];
+    const dependencyRules = this.normalizeDependencyRules(dto);
+    const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
 
     if (dependencyTemplateIds.length > 0) {
       const availableDependencies = await this.prisma.choreTemplate.findMany({
@@ -1610,8 +1612,10 @@ export class HouseholdRepository {
               })) ?? []
           },
           dependencies: {
-            create: dependencyTemplateIds.map((followUpTemplateId) => ({
-              followUpTemplateId
+            create: dependencyRules.map((dependencyRule) => ({
+              followUpTemplateId: dependencyRule.followUpTemplateId,
+              followUpDelayValue: dependencyRule.followUpDelayValue,
+              followUpDelayUnit: dependencyRule.followUpDelayUnit
             }))
           }
         },
@@ -1637,9 +1641,8 @@ export class HouseholdRepository {
   }
 
   async updateTemplate(templateId: string, dto: CreateChoreTemplateDto, householdId: string, actorUserId?: string) {
-    const dependencyTemplateIds = [...new Set(dto.dependencyTemplateIds ?? [])].filter(
-      (dependencyId) => dependencyId !== templateId
-    );
+    const dependencyRules = this.normalizeDependencyRules(dto, templateId);
+    const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
 
     if (dependencyTemplateIds.length > 0) {
       const availableDependencies = await this.prisma.choreTemplate.findMany({
@@ -1699,8 +1702,10 @@ export class HouseholdRepository {
               })) ?? []
           },
           dependencies: {
-            create: dependencyTemplateIds.map((followUpTemplateId) => ({
-              followUpTemplateId
+            create: dependencyRules.map((dependencyRule) => ({
+              followUpTemplateId: dependencyRule.followUpTemplateId,
+              followUpDelayValue: dependencyRule.followUpDelayValue,
+              followUpDelayUnit: dependencyRule.followUpDelayUnit
             }))
           }
         },
@@ -2431,7 +2436,9 @@ export class HouseholdRepository {
               dependencies: {
                 create: [
                   {
-                    followUpTemplateId: dryingTemplateId
+                    followUpTemplateId: dryingTemplateId,
+                    followUpDelayValue: 2,
+                    followUpDelayUnit: FollowUpDelayUnit.HOURS
                   }
                 ]
               }
@@ -2476,6 +2483,43 @@ export class HouseholdRepository {
       default:
         return 10;
     }
+  }
+
+  private normalizeDependencyRules(dto: CreateChoreTemplateDto, templateId?: string) {
+    const normalizedRules = (dto.dependencyRules ?? [])
+      .map((dependencyRule) => ({
+        followUpTemplateId: dependencyRule.templateId,
+        followUpDelayValue: Math.max(1, Math.floor(dependencyRule.delayValue ?? 1)),
+        followUpDelayUnit: dependencyRule.delayUnit ?? FollowUpDelayUnit.HOURS
+      }))
+      .filter((dependencyRule) =>
+        templateId ? dependencyRule.followUpTemplateId !== templateId : true
+      );
+
+    if (normalizedRules.length > 0) {
+      const uniqueRules = new Map<
+        string,
+        {
+          followUpTemplateId: string;
+          followUpDelayValue: number;
+          followUpDelayUnit: FollowUpDelayUnit;
+        }
+      >();
+
+      for (const dependencyRule of normalizedRules) {
+        uniqueRules.set(dependencyRule.followUpTemplateId, dependencyRule);
+      }
+
+      return [...uniqueRules.values()];
+    }
+
+    return [...new Set(dto.dependencyTemplateIds ?? [])]
+      .filter((dependencyId) => (templateId ? dependencyId !== templateId : true))
+      .map((followUpTemplateId) => ({
+        followUpTemplateId,
+        followUpDelayValue: 1,
+        followUpDelayUnit: FollowUpDelayUnit.HOURS
+      }));
   }
 
   private async validateAssignee(
@@ -2612,7 +2656,9 @@ export class HouseholdRepository {
         templateId: instance.templateId
       },
       select: {
-        followUpTemplateId: true
+        followUpTemplateId: true,
+        followUpDelayValue: true,
+        followUpDelayUnit: true
       }
     });
 
@@ -2637,10 +2683,21 @@ export class HouseholdRepository {
       return;
     }
 
-    const followUpDueAt = this.calculateFollowUpDueAt(instance.dueAtUtc, instance.completedAtUtc ?? new Date());
+    const followUpTemplateLookup = new Map(followUpTemplates.map((template) => [template.id, template]));
 
     await this.prisma.$transaction(async (tx) => {
-      for (const template of followUpTemplates) {
+      for (const dependency of dependencies) {
+        const template = followUpTemplateLookup.get(dependency.followUpTemplateId);
+        if (!template) {
+          continue;
+        }
+
+        const followUpDueAt = this.calculateFollowUpDueAt(
+          instance.completedAtUtc ?? new Date(),
+          dependency.followUpDelayValue,
+          dependency.followUpDelayUnit
+        );
+
         const assigneeId = await this.resolveAssigneeForTemplate(
           tx,
           instance.householdId,
@@ -2738,12 +2795,22 @@ export class HouseholdRepository {
     });
   }
 
-  private calculateFollowUpDueAt(originalDueAtUtc: Date, completedAtUtc: Date) {
-    if (originalDueAtUtc.getTime() > completedAtUtc.getTime()) {
-      return originalDueAtUtc;
+  private calculateFollowUpDueAt(
+    completedAtUtc: Date,
+    followUpDelayValue: number,
+    followUpDelayUnit: FollowUpDelayUnit
+  ) {
+    const normalizedDelayValue = Math.max(1, Math.floor(followUpDelayValue));
+    const delayHours =
+      followUpDelayUnit === FollowUpDelayUnit.DAYS
+        ? normalizedDelayValue * 24
+        : normalizedDelayValue;
+
+    if (!Number.isFinite(delayHours) || delayHours <= 0) {
+      return new Date(completedAtUtc.getTime() + 60 * 60 * 1000);
     }
 
-    return new Date(completedAtUtc.getTime() + 60 * 60 * 1000);
+    return new Date(completedAtUtc.getTime() + delayHours * 60 * 60 * 1000);
   }
 
   private calculateRecurringDueAt(
@@ -2891,6 +2958,12 @@ export class HouseholdRepository {
       include: { checklistItems: true; dependencies: true };
     }>
   ) {
+    const dependencyRules = template.dependencies.map((dependency) => ({
+      templateId: dependency.followUpTemplateId,
+      delayValue: dependency.followUpDelayValue,
+      delayUnit: dependency.followUpDelayUnit.toLowerCase()
+    }));
+
     return {
       id: template.id,
       title: template.title,
@@ -2911,7 +2984,8 @@ export class HouseholdRepository {
           title: item.title,
           required: item.required
         })),
-      dependencyTemplateIds: template.dependencies.map((dependency) => dependency.followUpTemplateId)
+      dependencyTemplateIds: dependencyRules.map((dependencyRule) => dependencyRule.templateId),
+      dependencyRules
     };
   }
 

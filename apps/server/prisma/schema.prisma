@@ -50,6 +50,11 @@ enum RecurrenceType {
   CUSTOM_WEEKLY
 }
 
+enum FollowUpDelayUnit {
+  HOURS
+  DAYS
+}
+
 enum NotificationType {
   CHORE_ASSIGNED
   CHORE_SUBMITTED
@@ -199,6 +204,8 @@ model ChoreTemplateDependency {
   id                 String        @id @default(uuid()) @db.Uuid
   templateId         String        @db.Uuid
   followUpTemplateId String        @db.Uuid
+  followUpDelayValue Int           @default(1)
+  followUpDelayUnit  FollowUpDelayUnit @default(HOURS)
   template           ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
 }
 

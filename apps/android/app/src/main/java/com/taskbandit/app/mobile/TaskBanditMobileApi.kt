@@ -102,6 +102,14 @@ class TaskBanditMobileApi {
             }
         }
 
+        val templates = if (user.role == "admin" || user.role == "parent") {
+            runCatching {
+                requestJsonArray(baseUrl, "/api/chores/templates", token = token)
+            }.getOrNull()?.let(::parseTemplates).orEmpty()
+        } else {
+            emptyList()
+        }
+
         return MobileDashboard(
             user = user,
             pendingApprovals = summaryJson.optInt("pendingApprovals"),
@@ -109,7 +117,8 @@ class TaskBanditMobileApi {
             streakLeader = summaryJson.optString("streakLeader"),
             leaderboard = leaderboard,
             chores = chores,
-            notifications = notifications
+            notifications = notifications,
+            templates = templates
         )
     }
 
@@ -162,6 +171,30 @@ class TaskBanditMobileApi {
             token = token,
             method = "POST",
             body = JSONObject()
+        )
+    }
+
+    fun createChoreInstance(
+        baseUrl: String,
+        token: String,
+        templateId: String,
+        dueAtIsoUtc: String,
+        assigneeId: String? = null
+    ) {
+        val payload = JSONObject()
+            .put("templateId", templateId)
+            .put("dueAt", dueAtIsoUtc)
+
+        if (!assigneeId.isNullOrBlank()) {
+            payload.put("assigneeId", assigneeId)
+        }
+
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances",
+            token = token,
+            method = "POST",
+            body = payload
         )
     }
 
@@ -374,6 +407,30 @@ class TaskBanditMobileApi {
                 if (value.isNotBlank()) {
                     add(value)
                 }
+            }
+        }
+    }
+
+    private fun parseTemplates(entries: JSONArray?): List<MobileChoreTemplate> {
+        if (entries == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until entries.length()) {
+                val item = entries.optJSONObject(index) ?: continue
+                val id = item.optString("id")
+                val title = item.optString("title")
+                if (id.isBlank() || title.isBlank()) {
+                    continue
+                }
+
+                add(
+                    MobileChoreTemplate(
+                        id = id,
+                        title = title
+                    )
+                )
             }
         }
     }

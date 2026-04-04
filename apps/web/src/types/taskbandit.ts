@@ -326,6 +326,14 @@ export type AssignmentStrategy =
   | "highest_streak"
   | "manual_default_assignee";
 
+export type FollowUpDelayUnit = "hours" | "days";
+
+export type ChoreTemplateDependencyRule = {
+  templateId: string;
+  delayValue: number;
+  delayUnit: FollowUpDelayUnit;
+};
+
 export type ChoreTemplate = {
   id: string;
   title: string;
@@ -341,6 +349,7 @@ export type ChoreTemplate = {
   requirePhotoProof: boolean;
   checklist: ChoreTemplateChecklistItem[];
   dependencyTemplateIds: string[];
+  dependencyRules: ChoreTemplateDependencyRule[];
 };
 
 export type ChoreAttachment = {
@@ -433,6 +442,7 @@ export type CreateChoreTemplateInput = {
   recurrenceWeekdays?: string[];
   requirePhotoProof: boolean;
   dependencyTemplateIds?: string[];
+  dependencyRules?: ChoreTemplateDependencyRule[];
   checklist?: Array<{
     title: string;
     required: boolean;
