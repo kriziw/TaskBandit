@@ -57,15 +57,15 @@ select {
 .app-shell {
   max-width: 1440px;
   margin: 0 auto;
-  padding: 32px 20px 56px;
+  padding: 24px 18px 40px;
 }
 
 .workspace-shell {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
-  gap: 20px;
+  gap: 16px;
   align-items: start;
-  margin-top: 24px;
+  margin-top: 18px;
 }
 
 .workspace-sidebar {
@@ -74,7 +74,7 @@ select {
 }
 
 .workspace-sidebar-panel {
-  padding: 18px;
+  padding: 14px;
 }
 
 .workspace-nav-kicker,
@@ -83,8 +83,8 @@ select {
 }
 
 .workspace-nav-kicker {
-  margin-bottom: 14px;
-  font-size: 0.9rem;
+  margin-bottom: 10px;
+  font-size: 0.82rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: rgba(36, 48, 67, 0.72);
@@ -92,7 +92,7 @@ select {
 
 .workspace-nav {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .workspace-nav-button {
@@ -100,10 +100,10 @@ select {
   background: rgba(255, 255, 255, 0.75);
   color: var(--ink);
   border-radius: 18px;
-  padding: 14px 16px;
+  padding: 11px 14px;
   text-align: left;
   font-family: var(--font-brand);
-  font-size: 1rem;
+  font-size: 0.96rem;
   cursor: pointer;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
@@ -123,16 +123,15 @@ select {
   min-width: 0;
 }
 
-.workspace-subnav-panel,
-.workspace-launchpad {
-  margin-top: 18px;
+.workspace-subnav-panel {
+  margin-top: 14px;
 }
 
 .workspace-subnav {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
-  margin-top: 14px;
+  gap: 8px;
+  margin-top: 10px;
 }
 
 .workspace-subnav-button {
@@ -140,7 +139,7 @@ select {
   background: rgba(255, 255, 255, 0.8);
   color: var(--ink);
   border-radius: 999px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
@@ -155,17 +154,17 @@ select {
   display: flex;
   align-items: flex-start;
   justify-content: space-between;
-  gap: 18px;
+  gap: 14px;
 }
 
 .workspace-page-header h2 {
-  margin: 0 0 10px;
-  font-size: 2rem;
+  margin: 0 0 6px;
+  font-size: 1.8rem;
 }
 
 .workspace-page-meta {
   display: flex;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
   justify-content: flex-end;
 }
@@ -191,13 +190,13 @@ select {
 }
 
 .toolbar {
-  gap: 16px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .toolbar-group {
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -206,8 +205,8 @@ select {
 .language-picker {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: 999px;
   background: var(--mist);
   border: 1px solid var(--line);
@@ -217,8 +216,8 @@ select {
 .user-badge {
   flex-direction: column;
   align-items: flex-start;
-  gap: 4px;
-  border-radius: 22px;
+  gap: 2px;
+  border-radius: 18px;
 }
 
 .user-badge span,
@@ -260,7 +259,7 @@ h4,
 .secondary-button {
   border: none;
   border-radius: 999px;
-  padding: 12px 18px;
+  padding: 10px 16px;
   font-weight: 700;
   cursor: pointer;
   transition: transform 140ms ease, opacity 140ms ease, box-shadow 140ms ease;
@@ -305,7 +304,7 @@ h4,
 }
 
 .onboarding-shell {
-  margin: 0 0 24px;
+  margin: 0 0 18px;
 }
 
 .onboarding-panel {
@@ -316,16 +315,16 @@ h4,
 }
 
 .onboarding-step-list {
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .onboarding-chip {
   display: inline-flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 14px;
+  gap: 8px;
+  padding: 8px 12px;
   border-radius: 999px;
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.74);
@@ -337,8 +336,8 @@ h4,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  height: 26px;
+  width: 22px;
+  height: 22px;
   border-radius: 999px;
   background: rgba(115, 199, 244, 0.24);
   font-weight: 800;
@@ -350,12 +349,12 @@ h4,
 }
 
 .onboarding-body {
-  margin-bottom: 18px;
+  margin-bottom: 14px;
 }
 
 .onboarding-body h3 {
-  margin: 0 0 10px;
-  font-size: 1.55rem;
+  margin: 0 0 8px;
+  font-size: 1.4rem;
 }
 
 .onboarding-body p {
@@ -389,7 +388,7 @@ h4,
 }
 
 .hero-meta {
-  gap: 12px;
+  gap: 10px;
   flex-wrap: wrap;
 }
 
@@ -401,9 +400,9 @@ h4,
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  padding: 7px 12px;
+  padding: 6px 10px;
   border-radius: 999px;
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   font-weight: 700;
 }
 
@@ -424,9 +423,9 @@ h4,
 .mascot-card {
   display: grid;
   place-items: center;
-  gap: 14px;
+  gap: 12px;
   min-height: 320px;
-  padding: 24px;
+  padding: 20px;
 }
 
 .mascot-card p {
@@ -509,43 +508,8 @@ h4,
 .metrics,
 .content-grid {
   display: grid;
-  gap: 18px;
-  margin-top: 24px;
-}
-
-.launchpad-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
   gap: 14px;
-  margin-top: 16px;
-}
-
-.launchpad-card {
-  display: grid;
-  gap: 8px;
-  padding: 18px;
-  border-radius: 22px;
-  border: 1px solid var(--line);
-  background: linear-gradient(145deg, rgba(255, 255, 255, 0.84), rgba(255, 248, 232, 0.88));
-  color: var(--ink);
-  text-align: left;
-  cursor: pointer;
-  transition: transform 140ms ease, border-color 140ms ease, box-shadow 140ms ease;
-}
-
-.launchpad-card:hover {
-  transform: translateY(-1px);
-  border-color: rgba(115, 199, 244, 0.5);
-}
-
-.launchpad-card strong {
-  font-family: var(--font-brand);
-  font-size: 1.1rem;
-}
-
-.launchpad-card span {
-  font-size: 0.92rem;
-  line-height: 1.5;
+  margin-top: 18px;
 }
 
 .metrics {
@@ -562,6 +526,7 @@ h4,
 
 .dashboard-grid {
   align-items: start;
+  grid-template-columns: 1fr;
 }
 
 .workspace-main .page-panel {
@@ -580,31 +545,31 @@ h4,
 
 .panel,
 .metric-card {
-  padding: 22px;
+  padding: 18px;
 }
 
 .panel-wide {
-  grid-column: span 2;
+  grid-column: span 1;
 }
 
 .metric-card p,
 .panel p,
 .panel li,
 .panel label {
-  font-size: 0.98rem;
-  line-height: 1.6;
+  font-size: 0.95rem;
+  line-height: 1.5;
   font-family: var(--font-body);
 }
 
 .metric-card strong {
   display: block;
-  margin-top: 8px;
-  font-size: 1.85rem;
+  margin-top: 6px;
+  font-size: 1.65rem;
 }
 
 .section-heading {
-  gap: 12px;
-  margin-bottom: 14px;
+  gap: 10px;
+  margin-bottom: 10px;
 }
 
 .section-heading h2,
@@ -617,8 +582,8 @@ h4,
 }
 
 .notice-banner {
-  margin-top: 18px;
-  padding: 14px 18px;
+  margin-top: 14px;
+  padding: 12px 16px;
   border-radius: 18px;
   border: 1px solid var(--line);
   box-shadow: var(--shadow);
@@ -643,30 +608,30 @@ h4,
 .simple-list,
 .checklist {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .member-form {
-  margin-top: 18px;
+  margin-top: 14px;
 }
 
 .member-row {
-  gap: 16px;
+  gap: 12px;
 }
 
 .member-row-actions {
   display: grid;
   justify-items: end;
-  gap: 10px;
+  gap: 8px;
   flex-shrink: 0;
 }
 
 .member-provider-row {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   flex-wrap: wrap;
-  margin-top: 8px;
+  margin-top: 6px;
 }
 
 .member-provider-pill {
@@ -679,7 +644,7 @@ h4,
 }
 
 .member-edit-form {
-  padding: 16px;
+  padding: 14px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.64);
   border: 1px dashed rgba(36, 48, 67, 0.14);
@@ -688,8 +653,8 @@ h4,
 .household-filter-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
-  gap: 12px;
-  margin-bottom: 18px;
+  gap: 10px;
+  margin-bottom: 14px;
 }
 
 .household-filter-bar label {
@@ -700,7 +665,7 @@ h4,
 .login-form label,
 .inline-field {
   display: grid;
-  gap: 6px;
+  gap: 4px;
 }
 
 .login-form input,
@@ -713,16 +678,16 @@ h4,
   border-radius: 16px;
   background: var(--mist-strong);
   color: var(--ink);
-  padding: 12px 14px;
+  padding: 10px 12px;
 }
 
 .inline-field textarea {
-  min-height: 88px;
+  min-height: 76px;
   resize: vertical;
 }
 
 .login-form textarea {
-  min-height: 110px;
+  min-height: 96px;
   resize: vertical;
 }
 
@@ -744,13 +709,13 @@ h4,
 }
 
 .my-chore-groups {
-  gap: 18px;
+  gap: 14px;
 }
 
 .my-chore-section {
   display: grid;
-  gap: 12px;
-  padding: 16px;
+  gap: 10px;
+  padding: 14px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.42);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -767,20 +732,20 @@ h4,
 .board-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .calendar-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 16px;
+  gap: 14px;
 }
 
 .board-column {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   align-content: start;
-  padding: 16px;
+  padding: 14px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.42);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -788,9 +753,9 @@ h4,
 
 .calendar-day {
   display: grid;
-  gap: 12px;
+  gap: 10px;
   align-content: start;
-  padding: 16px;
+  padding: 14px;
   border-radius: 24px;
   background: rgba(255, 255, 255, 0.42);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -812,7 +777,7 @@ h4,
 
 .task-row,
 .leader-row {
-  padding: 16px;
+  padding: 13px 14px;
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.54);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -825,36 +790,36 @@ h4,
 
 .task-row-header {
   justify-content: space-between;
-  gap: 12px;
-  margin-bottom: 8px;
+  gap: 10px;
+  margin-bottom: 6px;
 }
 
 .button-row {
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .notification-delivery-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-  gap: 10px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 8px;
 }
 
 .system-status-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 12px;
-  margin-top: 14px;
+  gap: 10px;
+  margin-top: 10px;
 }
 
 .recovery-group {
   display: grid;
-  gap: 10px;
+  gap: 8px;
 }
 
 .notification-delivery-block {
-  padding: 12px;
+  padding: 10px 12px;
   border-radius: 18px;
   background: rgba(36, 48, 67, 0.05);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -962,11 +927,11 @@ h4,
 
 .checklist-item,
 .toggle-row {
-  gap: 12px;
+  gap: 10px;
 }
 
 .toggle-row {
-  padding: 12px 0;
+  padding: 10px 0;
   border-top: 1px solid rgba(36, 48, 67, 0.08);
 }
 
@@ -982,16 +947,16 @@ h4,
 
 .attachment-list {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .log-viewer {
   display: grid;
-  gap: 12px;
+  gap: 10px;
 }
 
 .log-entry {
-  padding: 14px 16px;
+  padding: 12px 14px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -1000,7 +965,7 @@ h4,
 .log-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 10px;
+  gap: 8px;
   align-items: center;
   font-size: 0.82rem;
   font-weight: 700;
@@ -1027,7 +992,7 @@ h4,
 
 .log-message,
 .log-stack {
-  margin: 10px 0 0;
+  margin: 8px 0 0;
   font-family: "Courier New", monospace;
   font-size: 0.92rem;
   white-space: pre-wrap;
@@ -1035,7 +1000,7 @@ h4,
 }
 
 .log-stack {
-  padding: 12px;
+  padding: 10px;
   border-radius: 14px;
   background: rgba(36, 48, 67, 0.08);
   overflow-x: auto;
@@ -1075,9 +1040,6 @@ h4,
     grid-column: span 1;
   }
 
-  .launchpad-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 @media (max-width: 640px) {

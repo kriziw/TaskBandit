@@ -1,0 +1,55 @@
+name: backfill-release-tags
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  backfill:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Backfill missing release tags
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --tags origin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          releases=(
+            "taskbandit-v0.2.1 8bef6dd"
+            "taskbandit-v0.4.0 ca9b6a5"
+            "taskbandit-v0.5.0 df010e4"
+            "taskbandit-v0.6.0 84d56b9"
+            "taskbandit-v0.7.0 46b5e84"
+          )
+
+          {
+            echo "## Release tag backfill"
+            echo
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          for release in "${releases[@]}"; do
+            tag_name="${release%% *}"
+            commit_sha="${release##* }"
+
+            if git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
+              echo "Tag $tag_name already exists; skipping."
+              echo "- $tag_name already existed" >> "$GITHUB_STEP_SUMMARY"
+              continue
+            fi
+
+            git tag -a "$tag_name" "$commit_sha" -m "Release $tag_name"
+            git push origin "refs/tags/$tag_name"
+
+            echo "Created $tag_name at $commit_sha"
+            echo "- Created $tag_name at \`$commit_sha\`" >> "$GITHUB_STEP_SUMMARY"
+          done

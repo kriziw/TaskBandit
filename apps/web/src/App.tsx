@@ -111,12 +111,55 @@ const recurrenceWeekdayOrder = [
   "SATURDAY"
 ] as const;
 
+function createTemporaryPassword(length = 16) {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const symbols = "!@#$%*-_?";
+  const allCharacters = uppercase + lowercase + digits + symbols;
+  const randomValues = new Uint32Array(length);
+  const cryptoProvider = globalThis.crypto;
+
+  if (cryptoProvider?.getRandomValues) {
+    cryptoProvider.getRandomValues(randomValues);
+  } else {
+    for (let index = 0; index < length; index += 1) {
+      randomValues[index] = Math.floor(Math.random() * 0xffffffff);
+    }
+  }
+
+  const requiredCharacters = [
+    uppercase[randomValues[0] % uppercase.length],
+    lowercase[randomValues[1] % lowercase.length],
+    digits[randomValues[2] % digits.length],
+    symbols[randomValues[3] % symbols.length]
+  ];
+
+  const generatedCharacters = [
+    ...requiredCharacters,
+    ...Array.from({ length: Math.max(length - requiredCharacters.length, 0) }, (_, index) => {
+      const randomValue = randomValues[index + requiredCharacters.length];
+      return allCharacters[randomValue % allCharacters.length];
+    })
+  ];
+
+  for (let index = generatedCharacters.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomValues[index] % (index + 1);
+    [generatedCharacters[index], generatedCharacters[swapIndex]] = [
+      generatedCharacters[swapIndex],
+      generatedCharacters[index]
+    ];
+  }
+
+  return generatedCharacters.join("");
+}
+
 function createEmptyMemberForm(): MemberFormState {
   return {
     displayName: "",
     role: "child",
     email: "",
-    password: "",
+    password: createTemporaryPassword(),
     sendInviteEmail: false
   };
 }
@@ -234,7 +277,6 @@ export function App() {
   const membersRef = useRef<HTMLElement | null>(null);
   const templatesRef = useRef<HTMLElement | null>(null);
   const scheduleRef = useRef<HTMLElement | null>(null);
-  const overviewLaunchpadRef = useRef<HTMLElement | null>(null);
   const approvalQueueRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
@@ -1955,13 +1997,10 @@ export function App() {
     t("roadmap.leaderboard")
   ];
 
-  const overviewQuickLinks = availablePages.filter((page) => page.key !== "overview");
-
   const pageSectionLinks = useMemo<WorkspaceSectionLink[]>(() => {
     switch (activePage) {
       case "overview":
         return [
-          { key: "overview-launchpad", label: t("panel.quick_actions"), ref: overviewLaunchpadRef },
           ...(payload?.currentUser.role !== "child"
             ? [{ key: "overview-approvals", label: t("panel.approval_queue"), ref: approvalQueueRef }]
             : []),
@@ -2516,28 +2555,6 @@ export function App() {
                 </div>
               </article>
             </section>
-          ) : null}
-
-          {activePage === "overview" ? (
-          <section className="panel workspace-launchpad" ref={overviewLaunchpadRef}>
-            <div className="section-heading">
-              <h2>{t("panel.quick_actions")}</h2>
-              <span className="section-kicker">{t("overview.quick_actions_hint")}</span>
-            </div>
-            <div className="launchpad-grid">
-              {overviewQuickLinks.map((page) => (
-                <button
-                  key={page.key}
-                  className="launchpad-card"
-                  type="button"
-                  onClick={() => openWorkspacePage(page.key)}
-                >
-                  <strong>{page.label}</strong>
-                  <span>{pageDescriptions[page.key]}</span>
-                </button>
-              ))}
-            </div>
-          </section>
           ) : null}
 
           {activePage === "overview" ? (
@@ -4092,6 +4109,7 @@ export function App() {
                         autoComplete="new-password"
                       />
                     </label>
+                    <p className="inline-message">{t("members.password_generated_hint")}</p>
                     <label className="toggle-row">
                       <span>{t("members.send_invite_email")}</span>
                       <input
