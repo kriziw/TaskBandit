@@ -73,6 +73,12 @@ export class DashboardController {
     return this.dashboardService.getSystemStatus(user);
   }
 
+  @Get("admin/backup-readiness")
+  @Roles("admin")
+  getBackupReadiness(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getBackupReadiness(user);
+  }
+
   @Get("admin/notification-recovery")
   @Roles("admin")
   getNotificationRecovery(@CurrentUser() user: AuthenticatedUser) {

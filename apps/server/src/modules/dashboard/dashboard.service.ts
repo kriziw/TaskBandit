@@ -321,6 +321,52 @@ export class DashboardService {
     };
   }
 
+  async getBackupReadiness(user: AuthenticatedUser) {
+    const checkedAt = new Date().toISOString();
+    const household = await this.repository.getHousehold(user.householdId);
+    const dataRootHint = this.appConfigService.dataRootHint || null;
+    const postgresDataPathHint = dataRootHint ? path.posix.join(dataRootHint, "postgres") : null;
+    const appDataPathHint = dataRootHint ? path.posix.join(dataRootHint, "taskbandit") : null;
+    const oidcUiConfigured = Boolean(
+      household.settings.oidcEnabled &&
+        household.settings.oidcAuthority &&
+        household.settings.oidcClientId
+    );
+    const smtpConfigured = Boolean(
+      household.settings.smtpEnabled &&
+        household.settings.smtpHost &&
+        household.settings.smtpPort &&
+        household.settings.smtpFromEmail &&
+        (!household.settings.smtpUsername || household.settings.smtpPasswordConfigured)
+    );
+
+    return {
+      checkedAt,
+      hostPaths: {
+        dataRootHint,
+        postgresDataPathHint,
+        appDataPathHint,
+        composeFileHint: this.appConfigService.composeFileHint || null,
+        envFileHint: this.appConfigService.envFileHint || null
+      },
+      serverPaths: {
+        storageRootPath: this.appConfigService.storageRootPath,
+        runtimeLogFilePath: this.appConfigService.runtimeLogFilePath
+      },
+      exports: {
+        householdSnapshotReady: true,
+        runtimeLogsReady: true
+      },
+      recovery: {
+        localAuthForcedByConfig: this.appConfigService.forceLocalAuthEnabled,
+        oidcUiConfigured,
+        oidcEnvFallbackEnabled: this.appConfigService.oidcFallbackConfig.enabled,
+        smtpConfigured,
+        pushConfigured: this.appConfigService.fcmEnabled
+      }
+    };
+  }
+
   private escapeCsv(value: string) {
     const normalized = value.replace(/"/g, '""');
     return `"${normalized}"`;

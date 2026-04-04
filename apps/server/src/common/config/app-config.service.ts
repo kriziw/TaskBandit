@@ -74,6 +74,18 @@ export class AppConfigService {
       : path.resolve(process.cwd(), configuredPath);
   }
 
+  get dataRootHint(): string {
+    return this.configService.get<string>("TASKBANDIT_DATA_ROOT_HINT", "").trim();
+  }
+
+  get composeFileHint(): string {
+    return this.configService.get<string>("TASKBANDIT_COMPOSE_FILE_HINT", "./docker-compose.yml").trim();
+  }
+
+  get envFileHint(): string {
+    return this.configService.get<string>("TASKBANDIT_ENV_FILE_HINT", "./.env").trim();
+  }
+
   get runtimeLogFilePath(): string {
     return path.resolve(this.storageRootPath, "logs", "taskbandit-runtime.log");
   }

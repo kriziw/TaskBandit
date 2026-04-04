@@ -250,6 +250,32 @@ export type AdminSystemStatus = {
   };
 };
 
+export type BackupReadiness = {
+  checkedAt: string;
+  hostPaths: {
+    dataRootHint: string | null;
+    postgresDataPathHint: string | null;
+    appDataPathHint: string | null;
+    composeFileHint: string | null;
+    envFileHint: string | null;
+  };
+  serverPaths: {
+    storageRootPath: string;
+    runtimeLogFilePath: string;
+  };
+  exports: {
+    householdSnapshotReady: boolean;
+    runtimeLogsReady: boolean;
+  };
+  recovery: {
+    localAuthForcedByConfig: boolean;
+    oidcUiConfigured: boolean;
+    oidcEnvFallbackEnabled: boolean;
+    smtpConfigured: boolean;
+    pushConfigured: boolean;
+  };
+};
+
 export type NotificationRecovery = {
   failedPushDeliveries: Array<{
     id: string;

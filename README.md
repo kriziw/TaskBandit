@@ -45,6 +45,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
 - admin snapshot export of the live household state for backup/support use
+- an admin backup-readiness panel showing which host paths, files, and recovery settings should be preserved before migrating the stack
 - an admin system-status panel for checking runtime readiness across database, storage, auth, push, and email fallback
 - an admin notification-recovery panel for retrying failed push or email-fallback deliveries
 - Docker-based local infrastructure for PostgreSQL
@@ -130,6 +131,7 @@ Manual setup:
 - `TASKBANDIT_EMAIL_DELIVERY_INTERVAL_MS=60000` controls how often the backend processes queued notification email fallbacks. Set it to `0` to disable notification email delivery while keeping SMTP available for password reset and invites.
 - `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
 - `TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage` is the server-side path used for uploaded proof photos inside the container.
+- `TASKBANDIT_DATA_ROOT_HINT=./data`, `TASKBANDIT_COMPOSE_FILE_HINT=./docker-compose.yml`, and `TASKBANDIT_ENV_FILE_HINT=./.env` feed the admin backup-readiness panel with the host-side paths operators should preserve during migration.
 - Android clients now register a durable installation ID with the server so notification-device records move with the data volume and can later be upgraded to real push delivery providers.
 - `TASKBANDIT_FCM_ENABLED=false` keeps server-side Firebase Cloud Messaging off entirely.
 - `TASKBANDIT_FCM_SERVICE_ACCOUNT_BASE64` is the preferred way to pass a Firebase service-account JSON into Docker Compose for push delivery. `TASKBANDIT_FCM_SERVICE_ACCOUNT_JSON` also works if you prefer a raw JSON env value.
@@ -167,6 +169,7 @@ Notification-device registration is now live for signed-in Android clients, and 
 The backend now also queues provider-backed push deliveries in PostgreSQL and can send them through Firebase Admin when FCM is enabled in the environment.
 Admins can also export a household snapshot JSON from the web UI. This is meant as a support/backup snapshot of the current live state, not as a full restore/import feature.
 Admins can now also inspect a live system-status panel from the web UI to verify that the instance is ready across database connectivity, storage writability, auth recovery path, push delivery, and email fallback.
+Admins can now also inspect a backup-readiness panel from the web UI to see which bind-mounted host paths and config files should move with the stack, alongside quick links to the household snapshot and runtime log exports.
 Admins can also retry failed push deliveries and failed email fallbacks from the web UI, which is useful for private self-hosted instances without shell-level log chasing.
 
 ## Android Push Notes

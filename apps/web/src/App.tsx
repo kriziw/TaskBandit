@@ -6,6 +6,7 @@ import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import type {
   AdminSystemStatus,
   AuditLogEntry,
+  BackupReadiness,
   ChoreAttachment,
   AuthProviders,
   AuthenticatedUser,
@@ -44,6 +45,7 @@ type DashboardPayload = {
   householdNotificationHealth: HouseholdNotificationHealthEntry[];
   notificationRecovery: NotificationRecovery | null;
   systemStatus: AdminSystemStatus | null;
+  backupReadiness: BackupReadiness | null;
   notificationPreferences: NotificationPreferences;
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
@@ -526,6 +528,7 @@ export function App() {
         householdNotificationHealth,
         notificationRecovery,
         systemStatus,
+        backupReadiness,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -549,6 +552,9 @@ export function App() {
         currentUser.role === "admin"
           ? taskBanditApi.getSystemStatus(accessToken, language)
           : Promise.resolve(null),
+        currentUser.role === "admin"
+          ? taskBanditApi.getBackupReadiness(accessToken, language)
+          : Promise.resolve(null),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
@@ -570,6 +576,7 @@ export function App() {
         householdNotificationHealth,
         notificationRecovery,
         systemStatus,
+        backupReadiness,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -624,6 +631,29 @@ export function App() {
 
       if (options.reportErrors) {
         setPageError(readErrorMessage(error, t("system_status.load_failed")));
+      }
+    }
+  }
+
+  async function refreshBackupReadiness(accessToken: string, options: { reportErrors: boolean }) {
+    try {
+      const nextBackupReadiness = await taskBanditApi.getBackupReadiness(accessToken, language);
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              backupReadiness: nextBackupReadiness
+            }
+          : current
+      );
+    } catch (error) {
+      if (error instanceof TaskBanditApiError && error.status === 401) {
+        handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (options.reportErrors) {
+        setPageError(readErrorMessage(error, t("backup.load_failed")));
       }
     }
   }
@@ -1498,6 +1528,21 @@ export function App() {
     try {
       await refreshSystemStatus(token, { reportErrors: true });
       setNotice(t("system_status.refreshed"));
+      setPageError(null);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleRefreshBackupReadiness() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("refresh-backup-readiness");
+    try {
+      await refreshBackupReadiness(token, { reportErrors: true });
+      setNotice(t("backup.refreshed"));
       setPageError(null);
     } finally {
       setBusyAction(null);
@@ -2888,6 +2933,147 @@ export function App() {
                       </div>
                     ))}
                   </div>
+                )}
+              </article>
+            ) : null}
+
+            {payload.currentUser.role === "admin" ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.backup_readiness")}</h2>
+                  <div className="toolbar-group">
+                    <span className="section-kicker">
+                      {payload.backupReadiness
+                        ? formatDate(payload.backupReadiness.checkedAt)
+                        : t("common.none")}
+                    </span>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "refresh-backup-readiness"}
+                      onClick={() => void handleRefreshBackupReadiness()}
+                    >
+                      {t("backup.refresh")}
+                    </button>
+                  </div>
+                </div>
+                <p>{t("backup.hint")}</p>
+                {payload.backupReadiness ? (
+                  <div className="system-status-grid">
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("backup.host_paths")}</strong>
+                        <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
+                      </div>
+                      <p>
+                        {t("backup.data_root")}:{" "}
+                        {payload.backupReadiness.hostPaths.dataRootHint ?? t("backup.path_unavailable")}
+                      </p>
+                      <p>
+                        {t("backup.postgres_data")}:{" "}
+                        {payload.backupReadiness.hostPaths.postgresDataPathHint ?? t("backup.path_unavailable")}
+                      </p>
+                      <p>
+                        {t("backup.taskbandit_data")}:{" "}
+                        {payload.backupReadiness.hostPaths.appDataPathHint ?? t("backup.path_unavailable")}
+                      </p>
+                      <p>
+                        {t("backup.compose_file")}:{" "}
+                        {payload.backupReadiness.hostPaths.composeFileHint ?? t("backup.path_unavailable")}
+                      </p>
+                      <p>
+                        {t("backup.env_file")}:{" "}
+                        {payload.backupReadiness.hostPaths.envFileHint ?? t("backup.path_unavailable")}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("backup.server_paths")}</strong>
+                        <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
+                      </div>
+                      <p>
+                        {t("backup.storage_root")}: {payload.backupReadiness.serverPaths.storageRootPath}
+                      </p>
+                      <p>
+                        {t("backup.runtime_log_path")}: {payload.backupReadiness.serverPaths.runtimeLogFilePath}
+                      </p>
+                      <p>{t("backup.server_paths_hint")}</p>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("backup.exports")}</strong>
+                        <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
+                      </div>
+                      <p>
+                        {t("backup.snapshot_export")}:{" "}
+                        {payload.backupReadiness.exports.householdSnapshotReady
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.runtime_log_export")}:{" "}
+                        {payload.backupReadiness.exports.runtimeLogsReady
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <div className="button-row">
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          disabled={busyAction === "download-household-snapshot"}
+                          onClick={() => void handleDownloadHouseholdSnapshot()}
+                        >
+                          {t("exports.download_household_snapshot")}
+                        </button>
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          disabled={busyAction === "export-runtime-logs-text"}
+                          onClick={() => void handleDownloadRuntimeLogs("txt")}
+                        >
+                          {t("logs.export_text")}
+                        </button>
+                      </div>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("backup.recovery_features")}</strong>
+                        <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
+                      </div>
+                      <p>
+                        {t("backup.local_recovery")}:{" "}
+                        {payload.backupReadiness.recovery.localAuthForcedByConfig
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.oidc_ui")}:{" "}
+                        {payload.backupReadiness.recovery.oidcUiConfigured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.oidc_env")}:{" "}
+                        {payload.backupReadiness.recovery.oidcEnvFallbackEnabled
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.smtp")}:{" "}
+                        {payload.backupReadiness.recovery.smtpConfigured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.push")}:{" "}
+                        {payload.backupReadiness.recovery.pushConfigured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="inline-message">{t("backup.empty")}</p>
                 )}
               </article>
             ) : null}

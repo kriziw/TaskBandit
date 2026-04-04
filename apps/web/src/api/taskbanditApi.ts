@@ -5,6 +5,7 @@ import type {
   AuthenticatedUser,
   AuthProviders,
   AuthResponse,
+  BackupReadiness,
   BootstrapHouseholdInput,
   BootstrapStatus,
   ChoreInstance,
@@ -267,6 +268,12 @@ export const taskBanditApi = {
   },
   getSystemStatus(token: string, language: AppLanguage) {
     return request<AdminSystemStatus>("/api/dashboard/admin/system-status", {
+      token,
+      language
+    });
+  },
+  getBackupReadiness(token: string, language: AppLanguage) {
+    return request<BackupReadiness>("/api/dashboard/admin/backup-readiness", {
       token,
       language
     });
