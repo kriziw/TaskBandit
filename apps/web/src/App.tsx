@@ -2195,6 +2195,43 @@ export function App() {
                         </span>
                       </div>
                       <p>{notification.message}</p>
+                      <div className="notification-delivery-grid">
+                        <div className="notification-delivery-block">
+                          <span className={`status-pill delivery-${notification.delivery.push.status}`}>
+                            {t("notifications.push_delivery")}:{" "}
+                            {t(`notifications.delivery_${notification.delivery.push.status}`)}
+                          </span>
+                          <p>
+                            {t("notifications.delivery_targets")}:{" "}
+                            {notification.delivery.push.targetCount}
+                          </p>
+                          {notification.delivery.push.targetCount > 0 ? (
+                            <p>
+                              {t("notifications.delivery_counts")
+                                .replace("{sent}", String(notification.delivery.push.sentCount))
+                                .replace("{pending}", String(notification.delivery.push.pendingCount))
+                                .replace("{failed}", String(notification.delivery.push.failedCount))}
+                            </p>
+                          ) : null}
+                        </div>
+                        <div className="notification-delivery-block">
+                          <span className={`status-pill delivery-${notification.delivery.email.status}`}>
+                            {t("notifications.email_fallback")}:{" "}
+                            {t(`notifications.delivery_${notification.delivery.email.status}`)}
+                          </span>
+                          {notification.delivery.email.attemptedAt ? (
+                            <p>
+                              {t("notifications.delivery_attempted")}:{" "}
+                              {formatDate(notification.delivery.email.attemptedAt)}
+                            </p>
+                          ) : null}
+                          {notification.delivery.email.error ? (
+                            <p>
+                              {t("notifications.delivery_error")}: {notification.delivery.email.error}
+                            </p>
+                          ) : null}
+                        </div>
+                      </div>
                       <div className="button-row">
                         <p>
                           {t("notifications.recorded")}: {formatDate(notification.createdAt)}

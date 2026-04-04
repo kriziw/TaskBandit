@@ -590,6 +590,9 @@ export class HouseholdRepository {
         householdId,
         recipientUserId
       },
+      include: {
+        pushDeliveries: true
+      },
       orderBy: {
         createdAtUtc: "desc"
       },
@@ -2626,7 +2629,33 @@ export class HouseholdRepository {
     };
   }
 
-  private mapNotification(entry: Prisma.NotificationGetPayload<object>) {
+  private mapNotification(
+    entry: Prisma.NotificationGetPayload<{
+      include: {
+        pushDeliveries: true;
+      };
+    }>
+  ) {
+    const pushSentCount = entry.pushDeliveries.filter(
+      (delivery) => delivery.status === NotificationPushDeliveryStatus.SENT
+    ).length;
+    const pushFailedCount = entry.pushDeliveries.filter(
+      (delivery) => delivery.status === NotificationPushDeliveryStatus.FAILED
+    ).length;
+    const pushPendingCount = entry.pushDeliveries.filter(
+      (delivery) => delivery.status === NotificationPushDeliveryStatus.PENDING
+    ).length;
+    const pushStatus =
+      entry.pushDeliveries.length === 0
+        ? "not_configured"
+        : pushSentCount > 0
+          ? "sent"
+          : pushPendingCount > 0
+            ? "pending"
+            : pushFailedCount > 0
+              ? "failed"
+              : "not_configured";
+
     return {
       id: entry.id,
       type: entry.type.toLowerCase(),
@@ -2636,7 +2665,22 @@ export class HouseholdRepository {
       entityId: entry.entityId,
       isRead: entry.isRead,
       createdAt: entry.createdAtUtc,
-      readAt: entry.readAtUtc
+      readAt: entry.readAtUtc,
+      delivery: {
+        push: {
+          status: pushStatus,
+          targetCount: entry.pushDeliveries.length,
+          sentCount: pushSentCount,
+          failedCount: pushFailedCount,
+          pendingCount: pushPendingCount
+        },
+        email: {
+          status: entry.emailDeliveryStatus.toLowerCase(),
+          deliveredAt: entry.emailDeliveredAtUtc,
+          attemptedAt: entry.emailLastAttemptedAtUtc,
+          error: entry.emailDeliveryError
+        }
+      }
     };
   }
 

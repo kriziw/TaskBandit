@@ -634,6 +634,24 @@ h4,
   margin-top: 10px;
 }
 
+.notification-delivery-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.notification-delivery-block {
+  padding: 12px;
+  border-radius: 18px;
+  background: rgba(36, 48, 67, 0.05);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.notification-delivery-block p {
+  margin: 8px 0 0;
+}
+
 .status-pill {
   border: 1px solid rgba(36, 48, 67, 0.08);
   color: var(--ink);
@@ -694,6 +712,23 @@ h4,
 
 .state-cancelled {
   background: rgba(36, 48, 67, 0.1);
+}
+
+.delivery-not_configured,
+.delivery-skipped {
+  background: rgba(36, 48, 67, 0.1);
+}
+
+.delivery-pending {
+  background: rgba(255, 201, 74, 0.22);
+}
+
+.delivery-sent {
+  background: rgba(115, 217, 179, 0.22);
+}
+
+.delivery-failed {
+  background: rgba(255, 122, 107, 0.18);
 }
 
 .checklist-item,

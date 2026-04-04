@@ -91,6 +91,21 @@ export type NotificationEntry = {
   isRead: boolean;
   createdAt: string;
   readAt: string | null;
+  delivery: {
+    push: {
+      status: "not_configured" | "pending" | "sent" | "failed";
+      targetCount: number;
+      sentCount: number;
+      failedCount: number;
+      pendingCount: number;
+    };
+    email: {
+      status: "pending" | "sent" | "failed" | "skipped";
+      deliveredAt: string | null;
+      attemptedAt: string | null;
+      error: string | null;
+    };
+  };
 };
 
 export type RuntimeLogEntry = {
