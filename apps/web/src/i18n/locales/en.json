@@ -412,6 +412,7 @@
   "members.role": "Role",
   "members.email": "Email",
   "members.password": "Temporary password",
+  "members.password_generated_hint": "A strong temporary password is generated automatically. You can keep it or change it before creating the member.",
   "members.create": "Create member",
   "members.created": "Household member created.",
   "members.created_invited": "Household member created and invite email sent.",

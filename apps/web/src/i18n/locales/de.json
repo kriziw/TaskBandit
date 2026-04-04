@@ -412,6 +412,7 @@
   "members.role": "Rolle",
   "members.email": "E-Mail",
   "members.password": "Temporaeres Passwort",
+  "members.password_generated_hint": "Ein starkes temporaeres Passwort wird automatisch erzeugt. Du kannst es vor dem Anlegen behalten oder aendern.",
   "members.create": "Mitglied anlegen",
   "members.created": "Haushaltsmitglied erstellt.",
   "members.created_invited": "Haushaltsmitglied erstellt und Einladungs-E-Mail gesendet.",

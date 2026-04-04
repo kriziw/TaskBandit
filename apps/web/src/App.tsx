@@ -111,12 +111,55 @@ const recurrenceWeekdayOrder = [
   "SATURDAY"
 ] as const;
 
+function createTemporaryPassword(length = 16) {
+  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
+  const lowercase = "abcdefghijkmnopqrstuvwxyz";
+  const digits = "23456789";
+  const symbols = "!@#$%*-_?";
+  const allCharacters = uppercase + lowercase + digits + symbols;
+  const randomValues = new Uint32Array(length);
+  const cryptoProvider = globalThis.crypto;
+
+  if (cryptoProvider?.getRandomValues) {
+    cryptoProvider.getRandomValues(randomValues);
+  } else {
+    for (let index = 0; index < length; index += 1) {
+      randomValues[index] = Math.floor(Math.random() * 0xffffffff);
+    }
+  }
+
+  const requiredCharacters = [
+    uppercase[randomValues[0] % uppercase.length],
+    lowercase[randomValues[1] % lowercase.length],
+    digits[randomValues[2] % digits.length],
+    symbols[randomValues[3] % symbols.length]
+  ];
+
+  const generatedCharacters = [
+    ...requiredCharacters,
+    ...Array.from({ length: Math.max(length - requiredCharacters.length, 0) }, (_, index) => {
+      const randomValue = randomValues[index + requiredCharacters.length];
+      return allCharacters[randomValue % allCharacters.length];
+    })
+  ];
+
+  for (let index = generatedCharacters.length - 1; index > 0; index -= 1) {
+    const swapIndex = randomValues[index] % (index + 1);
+    [generatedCharacters[index], generatedCharacters[swapIndex]] = [
+      generatedCharacters[swapIndex],
+      generatedCharacters[index]
+    ];
+  }
+
+  return generatedCharacters.join("");
+}
+
 function createEmptyMemberForm(): MemberFormState {
   return {
     displayName: "",
     role: "child",
     email: "",
-    password: "",
+    password: createTemporaryPassword(),
     sendInviteEmail: false
   };
 }
@@ -4066,6 +4109,7 @@ export function App() {
                         autoComplete="new-password"
                       />
                     </label>
+                    <p className="inline-message">{t("members.password_generated_hint")}</p>
                     <label className="toggle-row">
                       <span>{t("members.send_invite_email")}</span>
                       <input

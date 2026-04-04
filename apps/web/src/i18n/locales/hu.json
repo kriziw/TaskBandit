@@ -412,6 +412,7 @@
   "members.role": "Szerepkör",
   "members.email": "E-mail",
   "members.password": "Ideiglenes jelszó",
+  "members.password_generated_hint": "A rendszer automatikusan létrehoz egy erős ideiglenes jelszót. Megtarthatod, vagy a tag létrehozása előtt átírhatod.",
   "members.create": "Tag létrehozása",
   "members.created": "A háztartási tag létrejött.",
   "members.created_invited": "A háztartási tag létrejött, és a meghívó e-mail el lett küldve.",
