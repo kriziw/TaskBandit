@@ -20,6 +20,7 @@ jobs:
       version: ${{ steps.release.outputs.version }}
       sha: ${{ steps.release.outputs.sha }}
       is_prerelease: ${{ steps.prerelease.outputs.value }}
+      config_path: ${{ steps.config.outputs.path }}
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
@@ -39,27 +40,22 @@ jobs:
 
           echo "value=$value" >> "$GITHUB_OUTPUT"
 
-      - name: Build effective release-please config
+      - name: Select release-please config
+        id: config
         shell: bash
         run: |
-          node <<'EOF'
-          const fs = require("node:fs");
-          const prerelease = process.env.PRERELEASE === "true";
-          const basePath = ".github/release-please-config.json";
-          const outputPath = ".github/release-please-config.runtime.json";
-          const config = JSON.parse(fs.readFileSync(basePath, "utf8"));
-          config.prerelease = prerelease;
-          fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`);
-          EOF
-        env:
-          PRERELEASE: ${{ steps.prerelease.outputs.value }}
+          if [[ "${{ steps.prerelease.outputs.value }}" == "true" ]]; then
+            echo "path=.github/release-please-config.prerelease.json" >> "$GITHUB_OUTPUT"
+          else
+            echo "path=.github/release-please-config.json" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: Run release-please
         id: release
         uses: googleapis/release-please-action@v4
         with:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
-          config-file: .github/release-please-config.runtime.json
+          config-file: ${{ steps.config.outputs.path }}
           manifest-file: .github/.release-please-manifest.json
 
   release_android:
