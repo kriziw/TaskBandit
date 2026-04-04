@@ -668,6 +668,10 @@ h4,
   border: 1px solid rgba(36, 48, 67, 0.08);
 }
 
+.settings-section .button-row {
+  margin-top: 14px;
+}
+
 .page-settings label {
   display: grid;
   gap: 4px;
