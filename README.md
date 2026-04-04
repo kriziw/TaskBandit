@@ -1,4 +1,10 @@
-# TaskBandit
+<p align="center">
+  <img src="docs/assets/taskbandit-logo.svg" alt="TaskBandit logo" width="520" />
+</p>
+
+<p align="center">
+  Self-hosted chores, approvals, streaks, and proof photos for playful households.
+</p>
 
 TaskBandit is a self-hosted, heavily gamified household chore manager with:
 

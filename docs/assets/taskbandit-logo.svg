@@ -1,0 +1,27 @@
+<svg width="860" height="260" viewBox="0 0 860 260" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <rect width="860" height="260" rx="36" fill="#FFF7E8"/>
+  <g transform="translate(36 30)">
+    <circle cx="100" cy="100" r="92" fill="#73C7F4"/>
+    <ellipse cx="100" cy="112" rx="64" ry="58" fill="#E9EEF5"/>
+    <path d="M52 54L76 20L94 64C79 63 65 60 52 54Z" fill="#243043"/>
+    <path d="M148 54L124 20L106 64C121 63 135 60 148 54Z" fill="#243043"/>
+    <path d="M64 73C77 64 91 60 100 60C109 60 123 64 136 73L126 97C117 92 109 89 100 89C91 89 83 92 74 97L64 73Z" fill="#243043"/>
+    <ellipse cx="76" cy="105" rx="11" ry="14" fill="#243043"/>
+    <ellipse cx="124" cy="105" rx="11" ry="14" fill="#243043"/>
+    <circle cx="79" cy="101" r="3.5" fill="#FFF7E8"/>
+    <circle cx="127" cy="101" r="3.5" fill="#FFF7E8"/>
+    <ellipse cx="100" cy="130" rx="16" ry="12" fill="#243043"/>
+    <path d="M90 145C93 151 97 154 100 154C103 154 107 151 110 145" stroke="#243043" stroke-width="6" stroke-linecap="round"/>
+    <path d="M42 146C42 180 68 204 100 204C132 204 158 180 158 146C158 142 158 138 157 134C146 151 125 163 100 163C75 163 54 151 43 134C42 138 42 142 42 146Z" fill="#FFC94A"/>
+    <path d="M53 169C68 178 84 183 100 183C116 183 132 178 147 169" stroke="#FF7A6B" stroke-width="12" stroke-linecap="round"/>
+    <path d="M166 96C180 88 190 87 198 90C184 100 175 112 171 128" stroke="#243043" stroke-width="10" stroke-linecap="round"/>
+    <path d="M170 133C182 129 191 131 198 137C185 143 177 151 173 161" stroke="#243043" stroke-width="10" stroke-linecap="round"/>
+  </g>
+  <g transform="translate(255 58)">
+    <text x="0" y="78" fill="#243043" font-family="'Trebuchet MS', 'Avenir Next', sans-serif" font-size="72" font-weight="800" letter-spacing="1.2">TaskBandit</text>
+    <text x="4" y="126" fill="#FF7A6B" font-family="'Trebuchet MS', 'Avenir Next', sans-serif" font-size="24" font-weight="700" letter-spacing="2.8">PLAYFUL HOUSEHOLD CHORE CREW</text>
+    <rect x="0" y="148" width="440" height="14" rx="7" fill="#73D9B3"/>
+    <rect x="0" y="148" width="286" height="14" rx="7" fill="#FFC94A"/>
+    <text x="2" y="198" fill="#243043" font-family="'Trebuchet MS', 'Avenir Next', sans-serif" font-size="25" font-weight="500">Self-hosted chores, approvals, streaks, and proof photos.</text>
+  </g>
+</svg>
