@@ -28,7 +28,8 @@ import type {
   PointsLedgerEntry,
   RecurrenceType,
   RuntimeLogEntry,
-  SignupInput
+  SignupInput,
+  UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
 const tokenStorageKey = "taskbandit-access-token";
@@ -62,6 +63,7 @@ type PasswordResetCompleteFormState = {
 };
 
 type MemberFormState = CreateHouseholdMemberInput;
+type MemberEditFormState = UpdateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
 type InstanceFormState = CreateChoreInstanceInput;
 type BootstrapFormState = BootstrapHouseholdInput;
@@ -89,6 +91,25 @@ const recurrenceWeekdayOrder = [
   "FRIDAY",
   "SATURDAY"
 ] as const;
+
+function createEmptyMemberForm(): MemberFormState {
+  return {
+    displayName: "",
+    role: "child",
+    email: "",
+    password: "",
+    sendInviteEmail: false
+  };
+}
+
+function createEmptyMemberEditForm(): MemberEditFormState {
+  return {
+    displayName: "",
+    role: "child",
+    email: "",
+    password: ""
+  };
+}
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
@@ -137,13 +158,9 @@ export function App() {
   const [selectedProofFiles, setSelectedProofFiles] = useState<Record<string, File[]>>({});
   const [submitNotes, setSubmitNotes] = useState<Record<string, string>>({});
   const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
-  const [memberForm, setMemberForm] = useState<MemberFormState>({
-    displayName: "",
-    role: "child",
-    email: "",
-    password: "",
-    sendInviteEmail: false
-  });
+  const [memberForm, setMemberForm] = useState<MemberFormState>(createEmptyMemberForm);
+  const [memberEditForm, setMemberEditForm] = useState<MemberEditFormState>(createEmptyMemberEditForm);
+  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [templateForm, setTemplateForm] = useState<TemplateFormState>({
     title: "",
     description: "",
@@ -1241,17 +1258,53 @@ export function App() {
     try {
       const result = await taskBanditApi.createHouseholdMember(token, language, memberForm);
       setPayload((current) => (current ? { ...current, household: result.household } : current));
-      setMemberForm({
-        displayName: "",
-        role: "child",
-        email: "",
-        password: "",
-        sendInviteEmail: false
-      });
+      setMemberForm(createEmptyMemberForm());
       setNotice(result.inviteEmailSent ? t("members.created_invited") : t("members.created"));
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("members.create_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function beginEditingMember(member: Household["members"][number]) {
+    setEditingMemberId(member.id);
+    setMemberEditForm({
+      displayName: member.displayName,
+      role: member.role === "admin" ? "parent" : member.role,
+      email: member.email ?? "",
+      password: ""
+    });
+    setNotice(null);
+    setPageError(null);
+  }
+
+  function cancelEditingMember() {
+    setEditingMemberId(null);
+    setMemberEditForm(createEmptyMemberEditForm());
+  }
+
+  async function handleUpdateHouseholdMember(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!token || !editingMemberId) {
+      return;
+    }
+
+    setBusyAction(`update-member:${editingMemberId}`);
+    try {
+      await taskBanditApi.updateHouseholdMember(token, language, editingMemberId, {
+        displayName: memberEditForm.displayName,
+        role: memberEditForm.role,
+        email: memberEditForm.email,
+        password: memberEditForm.password?.trim() ? memberEditForm.password : undefined
+      });
+      await refreshDashboard(token, { silent: true });
+      cancelEditingMember();
+      setNotice(t("members.updated"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("members.update_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -3426,16 +3479,104 @@ export function App() {
                   </div>
                   <div className="stack-list">
                     {payload.household.members.map((member) => (
-                      <div className="leader-row" key={member.id}>
-                        <div>
-                          <strong>{member.displayName}</strong>
-                          <p>
-                            {t(`role.${member.role}`)} - {member.email ?? t("common.none")}
-                          </p>
+                      <div key={member.id}>
+                        <div className="leader-row member-row">
+                          <div>
+                            <strong>{member.displayName}</strong>
+                            <p>
+                              {t(`role.${member.role}`)} - {member.email ?? t("common.none")}
+                            </p>
+                          </div>
+                          <div className="member-row-actions">
+                            <strong>
+                              {formatNumber(member.points)} {t("user.points")}
+                            </strong>
+                            <button
+                              className="ghost-button"
+                              type="button"
+                              onClick={() => beginEditingMember(member)}
+                              disabled={busyAction === `update-member:${member.id}`}
+                            >
+                              {t("common.edit")}
+                            </button>
+                          </div>
                         </div>
-                        <strong>
-                          {formatNumber(member.points)} {t("user.points")}
-                        </strong>
+                        {editingMemberId === member.id ? (
+                          <form className="login-form member-form member-edit-form" onSubmit={handleUpdateHouseholdMember}>
+                            <label>
+                              <span>{t("members.display_name")}</span>
+                              <input
+                                type="text"
+                                value={memberEditForm.displayName}
+                                onChange={(event) =>
+                                  setMemberEditForm((current) => ({
+                                    ...current,
+                                    displayName: event.target.value
+                                  }))
+                                }
+                              />
+                            </label>
+                            <label>
+                              <span>{t("members.role")}</span>
+                              <select
+                                value={member.role === "admin" ? "parent" : memberEditForm.role}
+                                disabled={member.role === "admin"}
+                                onChange={(event) =>
+                                  setMemberEditForm((current) => ({
+                                    ...current,
+                                    role: event.target.value as "parent" | "child"
+                                  }))
+                                }
+                              >
+                                <option value="child">{t("role.child")}</option>
+                                <option value="parent">{t("role.parent")}</option>
+                              </select>
+                            </label>
+                            {member.role === "admin" ? (
+                              <p className="inline-message">{t("members.admin_role_locked")}</p>
+                            ) : null}
+                            <label>
+                              <span>{t("members.email")}</span>
+                              <input
+                                type="email"
+                                value={memberEditForm.email}
+                                onChange={(event) =>
+                                  setMemberEditForm((current) => ({
+                                    ...current,
+                                    email: event.target.value
+                                  }))
+                                }
+                                autoComplete="email"
+                              />
+                            </label>
+                            <label>
+                              <span>{t("members.new_password")}</span>
+                              <input
+                                type="password"
+                                value={memberEditForm.password ?? ""}
+                                onChange={(event) =>
+                                  setMemberEditForm((current) => ({
+                                    ...current,
+                                    password: event.target.value
+                                  }))
+                                }
+                                autoComplete="new-password"
+                              />
+                            </label>
+                            <div className="button-row">
+                              <button
+                                className="primary-button"
+                                type="submit"
+                                disabled={busyAction === `update-member:${member.id}`}
+                              >
+                                {t("members.save")}
+                              </button>
+                              <button className="ghost-button" type="button" onClick={cancelEditingMember}>
+                                {t("common.cancel")}
+                              </button>
+                            </div>
+                          </form>
+                        ) : null}
                       </div>
                     ))}
                   </div>

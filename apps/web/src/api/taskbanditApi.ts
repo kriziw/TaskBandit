@@ -24,6 +24,7 @@ import type {
   PointsLedgerEntry,
   RuntimeLogEntry,
   SignupInput,
+  UpdateHouseholdMemberInput,
   UploadedProof
 } from "../types/taskbandit";
 import type { AppLanguage } from "../i18n/I18nProvider";
@@ -358,6 +359,19 @@ export const taskBanditApi = {
   createHouseholdMember(token: string, language: AppLanguage, input: CreateHouseholdMemberInput) {
     return request<CreateHouseholdMemberResult>("/api/settings/household/members", {
       method: "POST",
+      token,
+      language,
+      body: input
+    });
+  },
+  updateHouseholdMember(
+    token: string,
+    language: AppLanguage,
+    memberId: string,
+    input: UpdateHouseholdMemberInput
+  ) {
+    return request<Household>(`/api/settings/household/members/${memberId}`, {
+      method: "PUT",
       token,
       language,
       body: input

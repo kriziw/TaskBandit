@@ -382,6 +382,13 @@ export type CreateHouseholdMemberResult = {
   inviteEmailSent: boolean;
 };
 
+export type UpdateHouseholdMemberInput = {
+  displayName: string;
+  role: "parent" | "child";
+  email: string;
+  password?: string;
+};
+
 export type CreateChoreTemplateInput = {
   title: string;
   description: string;

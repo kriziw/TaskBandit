@@ -485,6 +485,24 @@ h4,
   margin-top: 18px;
 }
 
+.member-row {
+  gap: 16px;
+}
+
+.member-row-actions {
+  display: grid;
+  justify-items: end;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.member-edit-form {
+  padding: 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.64);
+  border: 1px dashed rgba(36, 48, 67, 0.14);
+}
+
 .household-filter-bar {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));

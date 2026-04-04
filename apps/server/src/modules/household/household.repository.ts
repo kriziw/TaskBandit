@@ -29,6 +29,7 @@ import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto"
 import { CreateHouseholdMemberDto } from "../settings/dto/create-household-member.dto";
 import { RegisterNotificationDeviceDto } from "../settings/dto/register-notification-device.dto";
 import { UpdateNotificationPreferencesDto } from "../settings/dto/update-notification-preferences.dto";
+import { UpdateHouseholdMemberDto } from "../settings/dto/update-household-member.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
 type PrismaExecutor = PrismaService | Prisma.TransactionClient;
@@ -96,9 +97,13 @@ export class HouseholdRepository {
           include: {
             identities: {
               where: {
-                provider: AuthProvider.LOCAL
+                email: {
+                  not: null
+                }
               },
-              take: 1
+              orderBy: {
+                createdAtUtc: "asc"
+              }
             }
           }
         }
@@ -119,9 +124,13 @@ export class HouseholdRepository {
           include: {
             identities: {
               where: {
-                provider: AuthProvider.LOCAL
+                email: {
+                  not: null
+                }
               },
-              take: 1
+              orderBy: {
+                createdAtUtc: "asc"
+              }
             }
           }
         }
@@ -145,9 +154,13 @@ export class HouseholdRepository {
           include: {
             identities: {
               where: {
-                provider: AuthProvider.LOCAL
+                email: {
+                  not: null
+                }
               },
-              take: 1
+              orderBy: {
+                createdAtUtc: "asc"
+              }
             }
           }
         }
@@ -1352,6 +1365,148 @@ export class HouseholdRepository {
       household: await this.getHousehold(householdId),
       createdMember
     };
+  }
+
+  async updateHouseholdMember(
+    memberId: string,
+    dto: UpdateHouseholdMemberDto,
+    householdId: string,
+    emailInUseMessage: string,
+    actorUserId?: string,
+    passwordHash?: string
+  ) {
+    const normalizedEmail = dto.email.trim().toLowerCase();
+    const existingMember = await this.prisma.user.findFirst({
+      where: {
+        id: memberId,
+        householdId
+      },
+      include: {
+        identities: {
+          where: {
+            OR: [
+              {
+                provider: AuthProvider.LOCAL
+              },
+              {
+                email: {
+                  not: null
+                }
+              }
+            ]
+          },
+          orderBy: {
+            createdAtUtc: "asc"
+          }
+        }
+      }
+    });
+
+    if (!existingMember) {
+      throw new NotFoundException({
+        message: "That household member could not be found."
+      });
+    }
+
+    const localIdentity =
+      existingMember.identities.find((identity) => identity.provider === AuthProvider.LOCAL) ?? null;
+    const primaryEmailIdentity =
+      localIdentity ?? existingMember.identities.find((identity) => Boolean(identity.email)) ?? null;
+
+    const emailAlreadyInUse = await this.prisma.authIdentity.findFirst({
+      where: {
+        email: normalizedEmail,
+        userId: {
+          not: existingMember.id
+        }
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (emailAlreadyInUse) {
+      throw new ConflictException({
+        message: emailInUseMessage
+      });
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      const nextRole =
+        existingMember.role === HouseholdRole.ADMIN
+          ? HouseholdRole.ADMIN
+          : dto.role === "child"
+            ? HouseholdRole.CHILD
+            : HouseholdRole.PARENT;
+
+      await tx.user.update({
+        where: {
+          id: existingMember.id
+        },
+        data: {
+          displayName: dto.displayName.trim(),
+          role: nextRole
+        }
+      });
+
+      if (localIdentity) {
+        await tx.authIdentity.update({
+          where: {
+            id: localIdentity.id
+          },
+          data: {
+            providerSubject: normalizedEmail,
+            email: normalizedEmail,
+            passwordHash: passwordHash ?? localIdentity.passwordHash
+          }
+        });
+
+        if (passwordHash) {
+          await tx.passwordResetToken.updateMany({
+            where: {
+              authIdentityId: localIdentity.id,
+              usedAtUtc: null
+            },
+            data: {
+              usedAtUtc: new Date()
+            }
+          });
+        }
+      } else if (passwordHash) {
+        await tx.authIdentity.create({
+          data: {
+            userId: existingMember.id,
+            provider: AuthProvider.LOCAL,
+            providerSubject: normalizedEmail,
+            email: normalizedEmail,
+            passwordHash
+          }
+        });
+      } else if (primaryEmailIdentity) {
+        await tx.authIdentity.update({
+          where: {
+            id: primaryEmailIdentity.id
+          },
+          data: {
+            email: normalizedEmail
+          }
+        });
+      }
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "member.updated",
+        entityType: "household_member",
+        entityId: existingMember.id,
+        summary:
+          existingMember.role === HouseholdRole.ADMIN
+            ? `Updated household owner profile for ${dto.displayName.trim()}.`
+            : `Updated ${dto.role} account for ${dto.displayName.trim()}.`
+      });
+    });
+
+    return this.getHousehold(householdId);
   }
 
   async getDashboardSummary(householdId: string) {
@@ -2740,11 +2895,16 @@ export class HouseholdRepository {
     }>,
     redactEmail = false
   ) {
+    const localIdentity = member.identities.find(
+      (identity) => identity.provider === AuthProvider.LOCAL && Boolean(identity.email)
+    );
+    const preferredEmail = localIdentity?.email ?? member.identities.find((identity) => Boolean(identity.email))?.email;
+
     return {
       id: member.id,
       displayName: member.displayName,
       role: member.role.toLowerCase(),
-      email: redactEmail ? null : member.identities[0]?.email ?? null,
+      email: redactEmail ? null : preferredEmail ?? null,
       points: member.points,
       currentStreak: member.currentStreak
     };

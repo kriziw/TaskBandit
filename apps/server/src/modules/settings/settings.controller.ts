@@ -11,6 +11,7 @@ import { SettingsService } from "./settings.service";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
 import { RegisterNotificationDeviceDto } from "./dto/register-notification-device.dto";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
+import { UpdateHouseholdMemberDto } from "./dto/update-household-member.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
 @ApiTags("settings")
@@ -98,6 +99,22 @@ export class SettingsController {
       user,
       this.i18nService.resolveLanguage(acceptLanguage),
       this.buildSignInUrl(request)
+    );
+  }
+
+  @Put("household/members/:memberId")
+  @Roles("admin")
+  updateHouseholdMember(
+    @Param("memberId") memberId: string,
+    @Body() dto: UpdateHouseholdMemberDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.settingsService.updateHouseholdMember(
+      memberId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
     );
   }
 

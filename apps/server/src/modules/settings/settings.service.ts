@@ -8,6 +8,7 @@ import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
 import { RegisterNotificationDeviceDto } from "./dto/register-notification-device.dto";
 import { SmtpService } from "./smtp.service";
+import { UpdateHouseholdMemberDto } from "./dto/update-household-member.dto";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
@@ -144,6 +145,23 @@ export class SettingsService {
       household: created.household,
       inviteEmailSent: Boolean(dto.sendInviteEmail)
     };
+  }
+
+  async updateHouseholdMember(
+    memberId: string,
+    dto: UpdateHouseholdMemberDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const passwordHash = dto.password ? await this.authService.hashPassword(dto.password) : undefined;
+    return this.repository.updateHouseholdMember(
+      memberId,
+      dto,
+      user.householdId,
+      this.i18nService.translate("auth.email_in_use", language),
+      user.id,
+      passwordHash
+    );
   }
 
   async testSmtp(user: AuthenticatedUser) {
