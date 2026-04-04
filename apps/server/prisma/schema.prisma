@@ -62,6 +62,15 @@ enum NotificationType {
   OVERDUE_PENALTY
 }
 
+enum NotificationDevicePlatform {
+  ANDROID
+}
+
+enum NotificationDeviceProvider {
+  GENERIC
+  FCM
+}
+
 model Household {
   id             String              @id @default(uuid()) @db.Uuid
   name           String
@@ -113,6 +122,7 @@ model User {
   pointsLedgerEntries PointsLedgerEntry[] @relation("PointsLedgerUser")
   notifications Notification[] @relation("NotificationRecipient")
   notificationPreference NotificationPreference?
+  notificationDevices NotificationDevice[]
 }
 
 model AuthIdentity {
@@ -275,4 +285,23 @@ model NotificationPreference {
   receiveDailySummary     Boolean  @default(true)
   updatedAtUtc            DateTime @updatedAt
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model NotificationDevice {
+  id                   String                     @id @default(uuid()) @db.Uuid
+  userId               String                     @db.Uuid
+  installationId       String                     @unique
+  platform             NotificationDevicePlatform
+  provider             NotificationDeviceProvider @default(GENERIC)
+  pushToken            String?
+  deviceName           String?
+  appVersion           String?
+  locale               String?
+  notificationsEnabled Boolean                    @default(true)
+  lastSeenAtUtc        DateTime                   @default(now())
+  createdAtUtc         DateTime                   @default(now())
+  updatedAtUtc         DateTime                   @updatedAt
+  user                 User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, notificationsEnabled, updatedAtUtc])
 }

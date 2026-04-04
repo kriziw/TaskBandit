@@ -12,16 +12,20 @@ import {
   ChoreState,
   Difficulty,
   HouseholdRole,
+  NotificationDevicePlatform,
+  NotificationDeviceProvider,
   NotificationType,
   RecurrenceType,
   Prisma
 } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto";
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
 import { CreateHouseholdMemberDto } from "../settings/dto/create-household-member.dto";
+import { RegisterNotificationDeviceDto } from "../settings/dto/register-notification-device.dto";
 import { UpdateNotificationPreferencesDto } from "../settings/dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
@@ -29,7 +33,10 @@ type PrismaExecutor = PrismaService | Prisma.TransactionClient;
 
 @Injectable()
 export class HouseholdRepository {
-  constructor(private readonly prisma: PrismaService) {}
+  constructor(
+    private readonly prisma: PrismaService,
+    private readonly appLogService: AppLogService
+  ) {}
 
   async getBootstrapStatus() {
     const householdCount = await this.prisma.household.count();
@@ -315,6 +322,105 @@ export class HouseholdRepository {
     });
 
     return this.mapNotificationPreference(preference);
+  }
+
+  async getNotificationDevices(householdId: string, userId: string) {
+    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const devices = await this.prisma.notificationDevice.findMany({
+      where: {
+        userId
+      },
+      orderBy: {
+        updatedAtUtc: "desc"
+      }
+    });
+
+    return devices.map((device) => this.mapNotificationDevice(device));
+  }
+
+  async registerNotificationDevice(
+    dto: RegisterNotificationDeviceDto,
+    householdId: string,
+    userId: string
+  ) {
+    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const installationId = dto.installationId.trim();
+    const platform = this.mapNotificationDevicePlatform(dto.platform);
+    const provider = this.mapNotificationDeviceProvider(dto.provider);
+    const notificationDevice = await this.prisma.notificationDevice.upsert({
+      where: {
+        installationId
+      },
+      update: {
+        userId,
+        platform,
+        provider,
+        pushToken: dto.pushToken?.trim() || null,
+        deviceName: dto.deviceName?.trim() || null,
+        appVersion: dto.appVersion?.trim() || null,
+        locale: dto.locale?.trim() || null,
+        notificationsEnabled: dto.notificationsEnabled ?? true,
+        lastSeenAtUtc: new Date()
+      },
+      create: {
+        userId,
+        installationId,
+        platform,
+        provider,
+        pushToken: dto.pushToken?.trim() || null,
+        deviceName: dto.deviceName?.trim() || null,
+        appVersion: dto.appVersion?.trim() || null,
+        locale: dto.locale?.trim() || null,
+        notificationsEnabled: dto.notificationsEnabled ?? true,
+        lastSeenAtUtc: new Date()
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId: userId,
+      action: "notification.device.registered",
+      entityType: "notification_device",
+      entityId: notificationDevice.id,
+      summary: `Registered ${platform.toLowerCase()} notification device "${notificationDevice.deviceName ?? installationId}".`
+    });
+
+    return this.mapNotificationDevice(notificationDevice);
+  }
+
+  async deleteNotificationDevice(deviceId: string, householdId: string, userId: string) {
+    const existingDevice = await this.prisma.notificationDevice.findFirst({
+      where: {
+        id: deviceId,
+        userId,
+        user: {
+          householdId
+        }
+      }
+    });
+
+    if (!existingDevice) {
+      throw new NotFoundException({
+        message: "That notification device could not be found."
+      });
+    }
+
+    await this.prisma.notificationDevice.delete({
+      where: {
+        id: deviceId
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId: userId,
+      action: "notification.device.deleted",
+      entityType: "notification_device",
+      entityId: deviceId,
+      summary: `Removed notification device "${existingDevice.deviceName ?? existingDevice.installationId}".`
+    });
+
+    return this.getNotificationDevices(householdId, userId);
   }
 
   async getNotifications(householdId: string, recipientUserId: string, take = 25) {
@@ -2360,6 +2466,23 @@ export class HouseholdRepository {
     };
   }
 
+  private mapNotificationDevice(device: Prisma.NotificationDeviceGetPayload<object>) {
+    return {
+      id: device.id,
+      installationId: device.installationId,
+      platform: device.platform.toLowerCase(),
+      provider: device.provider.toLowerCase(),
+      pushTokenConfigured: Boolean(device.pushToken),
+      deviceName: device.deviceName,
+      appVersion: device.appVersion,
+      locale: device.locale,
+      notificationsEnabled: device.notificationsEnabled,
+      lastSeenAt: device.lastSeenAtUtc,
+      createdAt: device.createdAtUtc,
+      updatedAt: device.updatedAtUtc
+    };
+  }
+
   private buildDailySummaryMessage(
     dueTodayCount: number,
     overdueCount: number,
@@ -2445,7 +2568,7 @@ export class HouseholdRepository {
       return false;
     }
 
-    await executor.notification.create({
+    const notification = await executor.notification.create({
       data: {
         householdId: input.householdId,
         recipientUserId: input.recipientUserId,
@@ -2457,7 +2580,43 @@ export class HouseholdRepository {
       }
     });
 
+    await this.logNotificationDeviceDelivery(executor, notification.id, input.recipientUserId, input.type);
+
     return true;
+  }
+
+  private async logNotificationDeviceDelivery(
+    executor: PrismaExecutor,
+    notificationId: string,
+    recipientUserId: string,
+    type: NotificationType
+  ) {
+    const devices = await executor.notificationDevice.findMany({
+      where: {
+        userId: recipientUserId,
+        notificationsEnabled: true
+      },
+      orderBy: {
+        updatedAtUtc: "desc"
+      }
+    });
+
+    if (devices.length === 0) {
+      return;
+    }
+
+    const deliverableCount = devices.filter((device) => Boolean(device.pushToken)).length;
+    const deviceSummary = devices
+      .map((device) => {
+        const tokenState = device.pushToken ? "token" : "pending-token";
+        return `${device.platform.toLowerCase()}/${device.provider.toLowerCase()}/${tokenState}`;
+      })
+      .join(", ");
+
+    this.appLogService.log(
+      `Queued push delivery groundwork for notification ${notificationId} (${type.toLowerCase()}) across ${devices.length} device(s), ${deliverableCount} with provider tokens. ${deviceSummary}`,
+      "PushDelivery"
+    );
   }
 
   private async shouldSendNotification(
@@ -2527,6 +2686,24 @@ export class HouseholdRepository {
         return "manual_default_assignee";
       default:
         return "round_robin";
+    }
+  }
+
+  private mapNotificationDevicePlatform(platform?: string) {
+    switch (platform) {
+      case "android":
+      default:
+        return NotificationDevicePlatform.ANDROID;
+    }
+  }
+
+  private mapNotificationDeviceProvider(provider?: string) {
+    switch (provider) {
+      case "fcm":
+        return NotificationDeviceProvider.FCM;
+      case "generic":
+      default:
+        return NotificationDeviceProvider.GENERIC;
     }
   }
 

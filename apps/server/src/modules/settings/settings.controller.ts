@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Headers, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Post, Put, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
@@ -8,6 +8,7 @@ import { RolesGuard } from "../../common/auth/roles.guard";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SettingsService } from "./settings.service";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
+import { RegisterNotificationDeviceDto } from "./dto/register-notification-device.dto";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
@@ -36,6 +37,11 @@ export class SettingsController {
     return this.settingsService.getNotificationPreferences(user);
   }
 
+  @Get("notification-devices")
+  getNotificationDevices(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.getNotificationDevices(user);
+  }
+
   @Put("household")
   @Roles("admin")
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {
@@ -48,6 +54,22 @@ export class SettingsController {
     @CurrentUser() user: AuthenticatedUser
   ) {
     return this.settingsService.updateNotificationPreferences(dto, user);
+  }
+
+  @Post("notification-devices/register")
+  registerNotificationDevice(
+    @Body() dto: RegisterNotificationDeviceDto,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    return this.settingsService.registerNotificationDevice(dto, user);
+  }
+
+  @Delete("notification-devices/:deviceId")
+  deleteNotificationDevice(
+    @Param("deviceId") deviceId: string,
+    @CurrentUser() user: AuthenticatedUser
+  ) {
+    return this.settingsService.deleteNotificationDevice(deviceId, user);
   }
 
   @Post("smtp/test")

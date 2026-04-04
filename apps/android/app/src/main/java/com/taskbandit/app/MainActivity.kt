@@ -2,6 +2,7 @@ package com.taskbandit.app
 
 import android.content.ContentResolver
 import android.content.Intent
+import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
 import android.net.Uri
@@ -52,6 +53,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
 import com.taskbandit.app.mobile.MobileUploadedProof
 import com.taskbandit.app.mobile.TaskBanditMobileApi
 import com.taskbandit.app.mobile.TaskBanditOutboxStore
@@ -69,6 +71,7 @@ import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 import java.util.UUID
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
@@ -116,6 +119,7 @@ private fun TaskBanditApp(
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
+    val installationId = remember { sessionStore.getOrCreateInstallationId() }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
     var password by remember { mutableStateOf("TaskBandit123!") }
@@ -176,6 +180,19 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 val loadedDashboard = withContext(Dispatchers.IO) {
+                    runCatching {
+                        api.registerNotificationDevice(
+                            baseUrl = baseUrl,
+                            token = token,
+                            registration = MobileNotificationDeviceRegistration(
+                                installationId = installationId,
+                                deviceName = buildAndroidDeviceName(),
+                                appVersion = readAppVersion(context),
+                                locale = Locale.getDefault().toLanguageTag()
+                            )
+                        )
+                    }
+
                     api.loadDashboard(baseUrl, token)
                 }
                 val flushedCount = flushQueuedSubmissions(
@@ -447,6 +464,22 @@ private fun TaskBanditApp(
             onSubmitChore = ::submitChore
         )
     }
+}
+
+private fun buildAndroidDeviceName(): String {
+    val manufacturer = Build.MANUFACTURER.orEmpty().trim()
+    val model = Build.MODEL.orEmpty().trim()
+    return listOf(manufacturer, model)
+        .filter { it.isNotBlank() }
+        .joinToString(" ")
+        .ifBlank { "Android device" }
+}
+
+private fun readAppVersion(context: android.content.Context): String? {
+    return runCatching {
+        val packageInfo = context.packageManager.getPackageInfo(context.packageName, 0)
+        packageInfo.versionName?.ifBlank { null } ?: packageInfo.longVersionCode.toString()
+    }.getOrNull()
 }
 
 @Composable

@@ -122,6 +122,30 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun registerNotificationDevice(
+        baseUrl: String,
+        token: String,
+        registration: MobileNotificationDeviceRegistration
+    ) {
+        val payload = JSONObject()
+            .put("installationId", registration.installationId)
+            .put("platform", "android")
+            .put("provider", registration.provider)
+            .put("pushToken", registration.pushToken ?: "")
+            .put("deviceName", registration.deviceName)
+            .put("appVersion", registration.appVersion ?: "")
+            .put("locale", registration.locale ?: "")
+            .put("notificationsEnabled", registration.notificationsEnabled)
+
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/settings/notification-devices/register",
+            token = token,
+            method = "POST",
+            body = payload
+        )
+    }
+
     fun startChore(baseUrl: String, token: String, instanceId: String) {
         requestJson(
             baseUrl = baseUrl,

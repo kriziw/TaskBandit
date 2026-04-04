@@ -37,6 +37,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - an initial NestJS + Prisma backend with PostgreSQL schema, starter endpoints, bootstrap flow, and local-auth foundations
 - a live React web dashboard with local login, language files, approvals, household settings, and chore views
 - per-member notification preferences respected by reminder and activity notifications
+- Android installations now register notification devices with the server, so push-delivery plumbing has a durable foundation for future provider-backed sends
 - optional SMTP settings configurable from the admin UI, with built-in connection testing
 - a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
@@ -120,6 +121,7 @@ Manual setup:
 - `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC=6` controls when the once-per-day TaskBandit summary notification is generated for each user.
 - `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
 - `TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage` is the server-side path used for uploaded proof photos inside the container.
+- Android clients now register a durable installation ID with the server so notification-device records move with the data volume and can later be upgraded to real push delivery providers.
 - UI-managed configuration and household state now live under the bind-mounted `TASKBANDIT_DATA_ROOT` folder:
   PostgreSQL data is stored in `${TASKBANDIT_DATA_ROOT}/postgres`, and app-managed files such as uploads and runtime logs are stored in `${TASKBANDIT_DATA_ROOT}/taskbandit`.
   If you migrate that folder to another host and bring the stack up again, the household settings and other UI-managed data come with it.
@@ -148,6 +150,7 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 
 The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, optional Authentik-focused OIDC sign-in is available through the server-managed authorization-code flow, and auth provider settings can now be managed from the admin UI.
 SMTP can now also be configured from the admin UI as an optional instance capability, with a connection test for validating host, port, and credentials before future email-based features use it.
+Notification-device registration is now live for signed-in Android clients, and the backend logs push-delivery fan-out groundwork in the admin runtime log even before a full FCM provider pipeline is enabled.
 
 Auth precedence:
 - Local auth follows the household UI setting unless `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true`, which force-keeps it available as a recovery path.

@@ -43,6 +43,16 @@ data class MobileUploadedProof(
     val sizeBytes: Long
 )
 
+data class MobileNotificationDeviceRegistration(
+    val installationId: String,
+    val deviceName: String,
+    val provider: String = "generic",
+    val pushToken: String? = null,
+    val appVersion: String? = null,
+    val locale: String? = null,
+    val notificationsEnabled: Boolean = true
+)
+
 data class MobileChoreSubmissionDraft(
     val id: String,
     val choreId: String,

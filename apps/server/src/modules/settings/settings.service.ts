@@ -6,6 +6,7 @@ import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
+import { RegisterNotificationDeviceDto } from "./dto/register-notification-device.dto";
 import { SmtpService } from "./smtp.service";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
@@ -31,6 +32,10 @@ export class SettingsService {
 
   getNotificationPreferences(user: AuthenticatedUser) {
     return this.repository.getNotificationPreferences(user.householdId, user.id);
+  }
+
+  getNotificationDevices(user: AuthenticatedUser) {
+    return this.repository.getNotificationDevices(user.householdId, user.id);
   }
 
   async updateSettings(dto: UpdateSettingsDto, user: AuthenticatedUser) {
@@ -66,6 +71,14 @@ export class SettingsService {
 
   updateNotificationPreferences(dto: UpdateNotificationPreferencesDto, user: AuthenticatedUser) {
     return this.repository.updateNotificationPreferences(dto, user.householdId, user.id);
+  }
+
+  registerNotificationDevice(dto: RegisterNotificationDeviceDto, user: AuthenticatedUser) {
+    return this.repository.registerNotificationDevice(dto, user.householdId, user.id);
+  }
+
+  deleteNotificationDevice(deviceId: string, user: AuthenticatedUser) {
+    return this.repository.deleteNotificationDevice(deviceId, user.householdId, user.id);
   }
 
   async createHouseholdMember(

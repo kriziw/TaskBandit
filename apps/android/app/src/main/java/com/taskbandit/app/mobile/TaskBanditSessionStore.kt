@@ -1,6 +1,7 @@
 package com.taskbandit.app.mobile
 
 import android.content.SharedPreferences
+import java.util.UUID
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
 
@@ -27,6 +28,19 @@ class TaskBanditSessionStore(
         preferences.edit()
             .putString("base_url", baseUrl.ifBlank { defaultApiBaseUrl })
             .apply()
+    }
+
+    fun getOrCreateInstallationId(): String {
+        val existingValue = preferences.getString("installation_id", null)
+        if (!existingValue.isNullOrBlank()) {
+            return existingValue
+        }
+
+        val createdValue = UUID.randomUUID().toString()
+        preferences.edit()
+            .putString("installation_id", createdValue)
+            .apply()
+        return createdValue
     }
 
     fun clearToken(baseUrl: String) {
