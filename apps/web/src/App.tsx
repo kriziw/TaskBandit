@@ -1381,6 +1381,24 @@ export function App() {
     }
   }
 
+  async function handleDownloadHouseholdSnapshot() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("download-household-snapshot");
+    try {
+      const blob = await taskBanditApi.downloadHouseholdSnapshot(token, language);
+      downloadBlob(blob, "taskbandit-household-snapshot.json");
+      setNotice(t("exports.household_snapshot_downloaded"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("exports.household_snapshot_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleCancelInstance(instanceId: string) {
     if (!token) {
       return;
@@ -2418,6 +2436,16 @@ export function App() {
                   >
                     {t("exports.download_chores")}
                   </button>
+                  {payload.currentUser.role === "admin" ? (
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "download-household-snapshot"}
+                      onClick={() => void handleDownloadHouseholdSnapshot()}
+                    >
+                      {t("exports.download_household_snapshot")}
+                    </button>
+                  ) : null}
                 </div>
               </div>
               <div className="household-filter-bar">

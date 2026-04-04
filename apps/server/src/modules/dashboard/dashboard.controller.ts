@@ -83,6 +83,17 @@ export class DashboardController {
     return this.dashboardService.exportRuntimeLogsJson();
   }
 
+  @Get("admin/exports/household.json")
+  @Roles("admin")
+  async exportHouseholdSnapshot(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    response.setHeader("Content-Type", "application/json; charset=utf-8");
+    response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-household-snapshot.json"');
+    return this.dashboardService.exportHouseholdSnapshot(user);
+  }
+
   @Get("exports/chores.csv")
   async exportChores(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) response: Response) {
     response.setHeader("Content-Type", "text/csv; charset=utf-8");

@@ -418,6 +418,19 @@ export const taskBanditApi = {
 
     return response.blob();
   },
+  async downloadHouseholdSnapshot(token: string, language: AppLanguage) {
+    const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/admin/exports/household.json`, {
+      method: "GET",
+      headers: buildHeaders(token, language)
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new TaskBanditApiError(message, response.status);
+    }
+
+    return response.blob();
+  },
   getInstances(token: string, language: AppLanguage) {
     return request<ChoreInstance[]>("/api/chores/instances", {
       token,

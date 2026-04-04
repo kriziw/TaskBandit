@@ -367,6 +367,9 @@
   "exports.download_chores": "CSV herunterladen",
   "exports.chores_downloaded": "Aufgabenexport heruntergeladen.",
   "exports.chores_failed": "TaskBandit konnte den Aufgabenexport nicht herunterladen.",
+  "exports.download_household_snapshot": "Haushalts-Snapshot herunterladen",
+  "exports.household_snapshot_downloaded": "Haushalts-Snapshot heruntergeladen.",
+  "exports.household_snapshot_failed": "TaskBandit konnte den Haushalts-Snapshot nicht herunterladen.",
   "empty.filtered_chores": "Keine Aufgaben passen zu den aktuellen Filtern.",
   "error.load_dashboard": "TaskBandit konnte das Live-Dashboard nicht laden.",
   "error.missing_template": "Die Aufgabenvorlage fur diese Instanz wurde nicht gefunden."

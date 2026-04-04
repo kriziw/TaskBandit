@@ -44,6 +44,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - local-account password reset via SMTP-backed email links
 - a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
+- admin snapshot export of the live household state for backup/support use
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
 - reverse-proxy aware server configuration for Nginx or Traefik deployments
@@ -150,6 +151,7 @@ The web UI now connects to the live API for:
 - admin household settings
 - member notification preference controls
 - admin-managed auth and SMTP provider controls
+- admin household snapshot export
 - local password reset request and completion flow
 - admin member creation for parent and child accounts
 
@@ -161,6 +163,7 @@ The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap pa
 SMTP can now also be configured from the admin UI as an optional instance capability, with a connection test for validating host, port, and credentials before future email-based features use it. Local accounts can now use that SMTP setup for password-reset emails from the web sign-in screen, while mobile push remains the primary day-to-day notification path for chore activity. Notification email delivery acts only as a fallback when no push-ready mobile device is available for the recipient.
 Notification-device registration is now live for signed-in Android clients, and the backend logs push-delivery fan-out groundwork in the admin runtime log even before a full FCM provider pipeline is enabled.
 The backend now also queues provider-backed push deliveries in PostgreSQL and can send them through Firebase Admin when FCM is enabled in the environment.
+Admins can also export a household snapshot JSON from the web UI. This is meant as a support/backup snapshot of the current live state, not as a full restore/import feature.
 
 ## Android Push Notes
 

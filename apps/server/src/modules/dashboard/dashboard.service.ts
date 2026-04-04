@@ -126,6 +126,36 @@ export class DashboardService {
       .join("\n");
   }
 
+  async exportHouseholdSnapshot(user: AuthenticatedUser) {
+    const [household, templates, instances, auditLog, pointsLedger, notificationHealth] =
+      await Promise.all([
+        this.repository.getHousehold(user.householdId),
+        this.repository.getTemplates(user.householdId),
+        this.repository.getInstances(user.householdId),
+        this.repository.getAuditLog(user.householdId, 500),
+        this.repository.getPointsLedger(user.householdId, 500),
+        this.repository.getHouseholdNotificationHealth(user.householdId)
+      ]);
+
+    return {
+      exportVersion: 1,
+      exportedAtUtc: new Date().toISOString(),
+      household: {
+        ...household,
+        settings: {
+          ...household.settings,
+          oidcClientSecret: "",
+          smtpPassword: ""
+        }
+      },
+      templates,
+      instances,
+      auditLog,
+      pointsLedger,
+      notificationHealth
+    };
+  }
+
   getRuntimeLogs(limit = 200) {
     return this.appLogService.getRecentEntries(limit);
   }

@@ -367,6 +367,9 @@
   "exports.download_chores": "Download CSV",
   "exports.chores_downloaded": "Chore export downloaded.",
   "exports.chores_failed": "TaskBandit could not download the chore export.",
+  "exports.download_household_snapshot": "Download household snapshot",
+  "exports.household_snapshot_downloaded": "Household snapshot downloaded.",
+  "exports.household_snapshot_failed": "TaskBandit could not download the household snapshot.",
   "empty.filtered_chores": "No chores match the current filters.",
   "error.load_dashboard": "TaskBandit could not load the live dashboard.",
   "error.missing_template": "The chore template could not be found for this instance."
