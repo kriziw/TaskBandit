@@ -2241,16 +2241,6 @@ export function App() {
           </button>
         </div>
       ) : null}
-      <div className="release-strip">
-        <span className="status-pill">
-          {t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}
-        </span>
-        {serverReleaseInfo ? (
-          <span className="status-pill">
-            {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
-          </span>
-        ) : null}
-      </div>
 
       {!payload ? (
         <section className="content-grid login-grid">
@@ -2570,13 +2560,6 @@ export function App() {
                     {page.label}
                   </button>
                 ))}
-              </div>
-              <div className="workspace-version-block">
-                <p className="workspace-version-label">{t("release.web_label")}</p>
-                <strong>{formatReleaseLabel(currentWebReleaseInfo)}</strong>
-                {serverReleaseInfo ? (
-                  <p>{t("release.server_label").replace("{release}", formatReleaseLabel(serverReleaseInfo))}</p>
-                ) : null}
               </div>
             </div>
           </aside>
@@ -3788,261 +3771,298 @@ export function App() {
                     <h2>{t("panel.household_settings")}</h2>
                     <span className="section-kicker">{t("settings.admin_only")}</span>
                   </div>
-                  <div className="settings-list">
-                    <label className="toggle-row">
-                      <span>{t("settings.self_signup")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.selfSignupEnabled}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, selfSignupEnabled: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="toggle-row">
-                      <span>{t("settings.full_visibility")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.membersCanSeeFullHouseholdChoreDetails}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current
-                              ? {
-                                  ...current,
-                                  membersCanSeeFullHouseholdChoreDetails: event.target.checked
-                                }
-                              : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="toggle-row">
-                      <span>{t("settings.push_notifications")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.enablePushNotifications}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, enablePushNotifications: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="toggle-row">
-                      <span>{t("settings.overdue_penalties")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.enableOverduePenalties}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, enableOverduePenalties: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="toggle-row">
-                      <span>{t("settings.local_auth_enabled")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.localAuthEnabled}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, localAuthEnabled: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    {settingsDraft.localAuthForcedByConfig ? (
-                      <p className="inline-message">{t("settings.local_auth_forced_note")}</p>
-                    ) : null}
-                    <label className="toggle-row">
-                      <span>{t("settings.oidc_enabled")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.oidcEnabled}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, oidcEnabled: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.oidc_authority")}</span>
-                      <input
-                        type="text"
-                        value={settingsDraft.oidcAuthority}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, oidcAuthority: event.target.value } : current
-                          )
-                        }
-                        placeholder="https://auth.example.com/application/o/taskbandit/"
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.oidc_client_id")}</span>
-                      <input
-                        type="text"
-                        value={settingsDraft.oidcClientId}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, oidcClientId: event.target.value } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.oidc_client_secret")}</span>
-                      <input
-                        type="password"
-                        value={settingsDraft.oidcClientSecret}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, oidcClientSecret: event.target.value } : current
-                          )
-                        }
-                        placeholder={
-                          settingsDraft.oidcClientSecretConfigured
-                            ? t("settings.oidc_secret_saved")
-                            : ""
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.oidc_scope")}</span>
-                      <input
-                        type="text"
-                        value={settingsDraft.oidcScope}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, oidcScope: event.target.value } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <p className="inline-message">
-                      {t("settings.oidc_runtime_status")
-                        .replace("{effective}", settingsDraft.oidcEffective ? t("common.enabled") : t("common.disabled"))
-                        .replace("{source}", t(`auth.oidc_source_${settingsDraft.oidcSource}`))}
-                    </p>
-                    <label className="toggle-row">
-                      <span>{t("settings.smtp_enabled")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.smtpEnabled}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpEnabled: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.smtp_host")}</span>
-                      <input
-                        type="text"
-                        value={settingsDraft.smtpHost}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpHost: event.target.value } : current
-                          )
-                        }
-                        placeholder="smtp.example.com"
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.smtp_port")}</span>
-                      <input
-                        type="number"
-                        min={1}
-                        max={65535}
-                        value={settingsDraft.smtpPort}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current
-                              ? { ...current, smtpPort: Number(event.target.value || 0) }
-                              : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label className="toggle-row">
-                      <span>{t("settings.smtp_secure")}</span>
-                      <input
-                        type="checkbox"
-                        checked={settingsDraft.smtpSecure}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpSecure: event.target.checked } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.smtp_username")}</span>
-                      <input
-                        type="text"
-                        value={settingsDraft.smtpUsername}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpUsername: event.target.value } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.smtp_password")}</span>
-                      <input
-                        type="password"
-                        value={settingsDraft.smtpPassword}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpPassword: event.target.value } : current
-                          )
-                        }
-                        placeholder={
-                          settingsDraft.smtpPasswordConfigured
-                            ? t("settings.smtp_password_saved")
-                            : ""
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.smtp_from_email")}</span>
-                      <input
-                        type="email"
-                        value={settingsDraft.smtpFromEmail}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpFromEmail: event.target.value } : current
-                          )
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("settings.smtp_from_name")}</span>
-                      <input
-                        type="text"
-                        value={settingsDraft.smtpFromName}
-                        onChange={(event) =>
-                          setSettingsDraft((current) =>
-                            current ? { ...current, smtpFromName: event.target.value } : current
-                          )
-                        }
-                      />
-                    </label>
+                  <div className="settings-sections">
+                    <section className="settings-section">
+                      <div className="section-heading section-heading-compact">
+                        <h3>{t("settings.section_oidc")}</h3>
+                      </div>
+                      <div className="settings-list">
+                        <label className="toggle-row">
+                          <span>{t("settings.oidc_enabled")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.oidcEnabled}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, oidcEnabled: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.oidc_authority")}</span>
+                          <input
+                            type="text"
+                            value={settingsDraft.oidcAuthority}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, oidcAuthority: event.target.value } : current
+                              )
+                            }
+                            placeholder="https://auth.example.com/application/o/taskbandit/"
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.oidc_client_id")}</span>
+                          <input
+                            type="text"
+                            value={settingsDraft.oidcClientId}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, oidcClientId: event.target.value } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.oidc_client_secret")}</span>
+                          <input
+                            type="password"
+                            value={settingsDraft.oidcClientSecret}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, oidcClientSecret: event.target.value } : current
+                              )
+                            }
+                            placeholder={
+                              settingsDraft.oidcClientSecretConfigured
+                                ? t("settings.oidc_secret_saved")
+                                : ""
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.oidc_scope")}</span>
+                          <input
+                            type="text"
+                            value={settingsDraft.oidcScope}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, oidcScope: event.target.value } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <p className="inline-message">
+                          {t("settings.oidc_runtime_status")
+                            .replace(
+                              "{effective}",
+                              settingsDraft.oidcEffective ? t("common.enabled") : t("common.disabled")
+                            )
+                            .replace("{source}", t(`auth.oidc_source_${settingsDraft.oidcSource}`))}
+                        </p>
+                      </div>
+                    </section>
+
+                    <section className="settings-section">
+                      <div className="section-heading section-heading-compact">
+                        <h3>{t("settings.section_smtp")}</h3>
+                      </div>
+                      <div className="settings-list">
+                        <label className="toggle-row">
+                          <span>{t("settings.smtp_enabled")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.smtpEnabled}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpEnabled: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.smtp_host")}</span>
+                          <input
+                            type="text"
+                            value={settingsDraft.smtpHost}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpHost: event.target.value } : current
+                              )
+                            }
+                            placeholder="smtp.example.com"
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.smtp_port")}</span>
+                          <input
+                            type="number"
+                            min={1}
+                            max={65535}
+                            value={settingsDraft.smtpPort}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current
+                                  ? { ...current, smtpPort: Number(event.target.value || 0) }
+                                  : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="toggle-row">
+                          <span>{t("settings.smtp_secure")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.smtpSecure}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpSecure: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.smtp_username")}</span>
+                          <input
+                            type="text"
+                            value={settingsDraft.smtpUsername}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpUsername: event.target.value } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.smtp_password")}</span>
+                          <input
+                            type="password"
+                            value={settingsDraft.smtpPassword}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpPassword: event.target.value } : current
+                              )
+                            }
+                            placeholder={
+                              settingsDraft.smtpPasswordConfigured
+                                ? t("settings.smtp_password_saved")
+                                : ""
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.smtp_from_email")}</span>
+                          <input
+                            type="email"
+                            value={settingsDraft.smtpFromEmail}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpFromEmail: event.target.value } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("settings.smtp_from_name")}</span>
+                          <input
+                            type="text"
+                            value={settingsDraft.smtpFromName}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, smtpFromName: event.target.value } : current
+                              )
+                            }
+                          />
+                        </label>
+                      </div>
+                      <div className="button-row">
+                        <button
+                          className="secondary-button"
+                          type="button"
+                          disabled={busyAction === "test-smtp"}
+                          onClick={() => void handleTestSmtp()}
+                        >
+                          {t("settings.smtp_test")}
+                        </button>
+                      </div>
+                    </section>
+
+                    <section className="settings-section">
+                      <div className="section-heading section-heading-compact">
+                        <h3>{t("settings.section_general")}</h3>
+                      </div>
+                      <div className="settings-list">
+                        <label className="toggle-row">
+                          <span>{t("settings.self_signup")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.selfSignupEnabled}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, selfSignupEnabled: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="toggle-row">
+                          <span>{t("settings.full_visibility")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.membersCanSeeFullHouseholdChoreDetails}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      membersCanSeeFullHouseholdChoreDetails: event.target.checked
+                                    }
+                                  : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="toggle-row">
+                          <span>{t("settings.push_notifications")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.enablePushNotifications}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, enablePushNotifications: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="toggle-row">
+                          <span>{t("settings.overdue_penalties")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.enableOverduePenalties}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, enableOverduePenalties: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        <label className="toggle-row">
+                          <span>{t("settings.local_auth_enabled")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.localAuthEnabled}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, localAuthEnabled: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
+                        {settingsDraft.localAuthForcedByConfig ? (
+                          <p className="inline-message">{t("settings.local_auth_forced_note")}</p>
+                        ) : null}
+                      </div>
+                    </section>
                   </div>
-                  <button
-                    className="primary-button"
-                    type="button"
-                    disabled={busyAction === "save-settings"}
-                    onClick={() => void handleSaveSettings()}
-                  >
-                    {t("settings.save")}
-                  </button>
+                  <div className="button-row">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      disabled={busyAction === "save-settings"}
+                      onClick={() => void handleSaveSettings()}
+                    >
+                      {t("settings.save")}
+                    </button>
                     <button
                       className="secondary-button"
                       type="button"
@@ -4056,17 +4076,10 @@ export function App() {
                     type="button"
                     disabled={busyAction === "process-notification-maintenance"}
                     onClick={() => void handleProcessNotificationMaintenance()}
-                  >
-                    {t("settings.process_notifications")}
-                  </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={busyAction === "test-smtp"}
-                    onClick={() => void handleTestSmtp()}
-                  >
-                    {t("settings.smtp_test")}
-                  </button>
+                    >
+                      {t("settings.process_notifications")}
+                    </button>
+                  </div>
                   </article>
 
                 <article className="panel page-panel page-household" ref={membersRef}>
@@ -4639,6 +4652,18 @@ export function App() {
           </div>
         </div>
       )}
+      <footer className="app-release-footer">
+        <div className="app-release-footer-inner">
+          <span className="app-release-chip">
+            {t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}
+          </span>
+          {serverReleaseInfo ? (
+            <span className="app-release-chip">
+              {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
+            </span>
+          ) : null}
+        </div>
+      </footer>
     </main>
   );
 }
