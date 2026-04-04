@@ -91,7 +91,7 @@ Manual setup:
 
 1. Copy `.env.example` to `.env`.
 2. Review these values in `.env`:
-   `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`.
+   `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_DATA_ROOT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
    If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
 3. Start TaskBandit:
@@ -110,12 +110,16 @@ Manual setup:
 - `TASKBANDIT_PORT=8080` controls both the port the app listens on inside Docker and the host port published by Docker Compose.
 - The server health endpoint is always available at `/health`, even when `TASKBANDIT_REVERSE_PROXY_PATH_BASE` is set.
 - `TASKBANDIT_DB_HOST_PORT=5432` controls which host port PostgreSQL is exposed on. The container still uses port `5432` internally.
+- `TASKBANDIT_DATA_ROOT=./data` is the host folder Docker Compose binds into the stack for durable migration-friendly data.
 - `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` creates the demo household automatically for local evaluation.
 - `TASKBANDIT_REMINDER_INTERVAL_MS=300000` controls how often the backend scans for due-soon and overdue reminder notifications. Set it to `0` to disable the worker.
 - `TASKBANDIT_DUE_SOON_WINDOW_HOURS=6` controls how far ahead TaskBandit creates due-soon reminders.
 - `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC=6` controls when the once-per-day TaskBandit summary notification is generated for each user.
 - `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
-- `TASKBANDIT_STORAGE_ROOT` is the server-side path used for uploaded proof photos. In Docker Compose this is mounted to a persistent volume.
+- `TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage` is the server-side path used for uploaded proof photos inside the container.
+- UI-managed configuration and household state now live under the bind-mounted `TASKBANDIT_DATA_ROOT` folder:
+  PostgreSQL data is stored in `${TASKBANDIT_DATA_ROOT}/postgres`, and app-managed files such as uploads and runtime logs are stored in `${TASKBANDIT_DATA_ROOT}/taskbandit`.
+  If you migrate that folder to another host and bring the stack up again, the household settings and other UI-managed data come with it.
 - `TASKBANDIT_REVERSE_PROXY_ENABLED` and `TASKBANDIT_REVERSE_PROXY_PATH_BASE` should be set when TaskBandit is deployed behind Nginx or Traefik.
 - `TASKBANDIT_OIDC_ENABLED=false` keeps OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.
 - `TASKBANDIT_OIDC_*` values are optional and only needed when you wire Authentik or another OIDC provider.
@@ -142,4 +146,5 @@ The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap pa
 For local/demo environments, sample household seeding can be toggled with `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`. For real installs, that should typically be disabled and the first household should be created through the bootstrap API.
 The repository also now includes an initial Prisma migration snapshot for the current backend model.
 Proof-photo uploads are stored on local disk under `TASKBANDIT_STORAGE_ROOT`, and the Docker Compose stack now mounts persistent storage for that directory.
+Docker Compose now uses a bind-mounted data root instead of Docker-only named volumes, so migrating the configured host data folder also migrates the PostgreSQL-backed UI configuration.
 If you change `TASKBANDIT_PORT`, the NestJS app will listen on that port automatically through the `PORT` environment variable passed by Docker Compose.

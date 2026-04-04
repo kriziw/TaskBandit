@@ -19,7 +19,7 @@ services:
     ports:
       - "${TASKBANDIT_DB_HOST_PORT:-5432}:5432"
     volumes:
-      - postgres-data:/var/lib/postgresql/data
+      - ${TASKBANDIT_DATA_ROOT:-./data}/postgres:/var/lib/postgresql/data
 
   server:
     image: kriziw/taskbandit:${TASKBANDIT_IMAGE_TAG:-latest}
@@ -54,8 +54,4 @@ services:
         condition: service_healthy
     pull_policy: always
     volumes:
-      - taskbandit-storage:/var/lib/taskbandit/storage
-
-volumes:
-  postgres-data:
-  taskbandit-storage:
+      - ${TASKBANDIT_DATA_ROOT:-./data}/taskbandit:/var/lib/taskbandit
