@@ -2,6 +2,19 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.13.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.12.1...taskbandit-v0.13.0) (2026-04-04)
+
+
+### Features
+
+* **android:** rework mobile dashboard experience ([6b302a2](https://github.com/kriziw/TaskBandit/commit/6b302a2b64d154e7534be9afad69c09b39e0a423))
+* **android:** rework mobile dashboard experience ([c8b6637](https://github.com/kriziw/TaskBandit/commit/c8b6637db76ba85ab60f6fa20d02eeb7da9faa15))
+
+
+### Bug Fixes
+
+* **ci:** repair docker publish workflow condition ([0db2e3e](https://github.com/kriziw/TaskBandit/commit/0db2e3edd4e0c5a56376b18aa5bec7a3a87bb6e1))
+
 ## [0.12.1](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.12.0...taskbandit-v0.12.1) (2026-04-04)
 
 
