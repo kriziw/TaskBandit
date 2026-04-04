@@ -34,6 +34,7 @@ import type {
 } from "./types/taskbandit";
 
 const tokenStorageKey = "taskbandit-access-token";
+const workspacePageStorageKey = "taskbandit-active-page";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -73,6 +74,21 @@ type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
 type WorkspacePage = "overview" | "chores" | "templates" | "household" | "notifications" | "settings" | "admin";
+type WorkspaceSectionLink = {
+  key: string;
+  label: string;
+  ref: RefObject<HTMLElement | null>;
+};
+
+const workspacePageOrder: WorkspacePage[] = [
+  "overview",
+  "chores",
+  "templates",
+  "household",
+  "notifications",
+  "settings",
+  "admin"
+];
 
 const householdBoardStateOrder: ChoreState[] = [
   "open",
@@ -116,6 +132,24 @@ function createEmptyMemberEditForm(): MemberEditFormState {
 
 function readStoredToken() {
   return window.localStorage.getItem(tokenStorageKey);
+}
+
+function isWorkspacePage(value: string | null): value is WorkspacePage {
+  return value !== null && workspacePageOrder.includes(value as WorkspacePage);
+}
+
+function readStoredWorkspacePage() {
+  const hashValue = window.location.hash.replace(/^#/, "").trim();
+  if (isWorkspacePage(hashValue)) {
+    return hashValue;
+  }
+
+  const stored = window.localStorage.getItem(workspacePageStorageKey);
+  if (isWorkspacePage(stored)) {
+    return stored;
+  }
+
+  return "overview";
 }
 
 function formatNumber(value: number) {
@@ -187,7 +221,7 @@ export function App() {
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
-  const [activePage, setActivePage] = useState<WorkspacePage>("overview");
+  const [activePage, setActivePage] = useState<WorkspacePage>(() => readStoredWorkspacePage());
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -200,6 +234,18 @@ export function App() {
   const membersRef = useRef<HTMLElement | null>(null);
   const templatesRef = useRef<HTMLElement | null>(null);
   const scheduleRef = useRef<HTMLElement | null>(null);
+  const overviewLaunchpadRef = useRef<HTMLElement | null>(null);
+  const approvalQueueRef = useRef<HTMLElement | null>(null);
+  const myChoresRef = useRef<HTMLElement | null>(null);
+  const householdChoresRef = useRef<HTMLElement | null>(null);
+  const notificationsRef = useRef<HTMLElement | null>(null);
+  const notificationPreferencesRef = useRef<HTMLElement | null>(null);
+  const notificationDevicesRef = useRef<HTMLElement | null>(null);
+  const notificationHealthRef = useRef<HTMLElement | null>(null);
+  const backupReadinessRef = useRef<HTMLElement | null>(null);
+  const systemStatusRef = useRef<HTMLElement | null>(null);
+  const runtimeLogsRef = useRef<HTMLElement | null>(null);
+  const notificationRecoveryRef = useRef<HTMLElement | null>(null);
 
   const languageOptions: Array<{ code: AppLanguage; label: string }> = [
     { code: "en", label: t("language.english") },
@@ -301,12 +347,39 @@ export function App() {
       return;
     }
 
+    if (activePage !== "admin") {
+      return;
+    }
+
+    void refreshRuntimeLogs(token, { reportErrors: false });
+
     const intervalId = window.setInterval(() => {
       void refreshRuntimeLogs(token, { reportErrors: false });
     }, 10000);
 
     return () => window.clearInterval(intervalId);
-  }, [language, payload?.currentUser.role, token]);
+  }, [activePage, language, payload?.currentUser.role, token]);
+
+  useEffect(() => {
+    window.localStorage.setItem(workspacePageStorageKey, activePage);
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.hash !== `#${activePage}`) {
+      currentUrl.hash = activePage;
+      window.history.replaceState({}, document.title, currentUrl.toString());
+    }
+  }, [activePage]);
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const hashValue = window.location.hash.replace(/^#/, "").trim();
+      if (isWorkspacePage(hashValue)) {
+        setActivePage(hashValue);
+      }
+    };
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   const memberLookup = useMemo(() => {
     const members = payload?.household.members ?? [];
@@ -430,6 +503,16 @@ export function App() {
 
   const activePageLabel =
     availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
+
+  const pageDescriptions: Record<WorkspacePage, string> = {
+    overview: t("page.overview_description"),
+    chores: t("page.chores_description"),
+    templates: t("page.templates_description"),
+    household: t("page.household_description"),
+    notifications: t("page.notifications_description"),
+    settings: t("page.settings_description"),
+    admin: t("page.admin_description")
+  };
 
   const onboardingSteps = useMemo(
     () => [
@@ -597,9 +680,9 @@ export function App() {
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language),
-        currentUser.role === "admin"
+        currentUser.role === "admin" && activePage === "admin"
           ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
-          : Promise.resolve([])
+          : Promise.resolve(runtimeLogs)
         ]);
 
       setPayload({
@@ -1872,6 +1955,71 @@ export function App() {
     t("roadmap.leaderboard")
   ];
 
+  const overviewQuickLinks = availablePages.filter((page) => page.key !== "overview");
+
+  const pageSectionLinks = useMemo<WorkspaceSectionLink[]>(() => {
+    switch (activePage) {
+      case "overview":
+        return [
+          { key: "overview-launchpad", label: t("panel.quick_actions"), ref: overviewLaunchpadRef },
+          ...(payload?.currentUser.role !== "child"
+            ? [{ key: "overview-approvals", label: t("panel.approval_queue"), ref: approvalQueueRef }]
+            : []),
+          { key: "overview-notifications", label: t("panel.notifications"), ref: notificationsRef }
+        ];
+      case "chores":
+        return [
+          { key: "chores-mine", label: t("panel.my_chores"), ref: myChoresRef },
+          { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef }
+        ];
+      case "templates":
+        return [
+          { key: "templates-list", label: t("panel.chore_templates"), ref: templatesRef },
+          { key: "templates-schedule", label: t("panel.schedule_chore"), ref: scheduleRef }
+        ];
+      case "household":
+        return [{ key: "household-members", label: t("panel.household_members"), ref: membersRef }];
+      case "notifications":
+        return [
+          { key: "notifications-inbox", label: t("panel.notifications"), ref: notificationsRef },
+          {
+            key: "notifications-preferences",
+            label: t("panel.notification_preferences"),
+            ref: notificationPreferencesRef
+          },
+          {
+            key: "notifications-devices",
+            label: t("panel.mobile_push_devices"),
+            ref: notificationDevicesRef
+          },
+          ...(payload?.currentUser.role === "admin"
+            ? [
+                {
+                  key: "notifications-health",
+                  label: t("panel.household_notification_health"),
+                  ref: notificationHealthRef
+                }
+              ]
+            : [])
+        ];
+      case "settings":
+        return [{ key: "settings-household", label: t("panel.household_settings"), ref: householdSettingsRef }];
+      case "admin":
+        return [
+          { key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef },
+          { key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef },
+          { key: "admin-logs", label: t("panel.runtime_logs"), ref: runtimeLogsRef },
+          {
+            key: "admin-recovery",
+            label: t("panel.notification_recovery"),
+            ref: notificationRecoveryRef
+          }
+        ];
+      default:
+        return [];
+    }
+  }, [activePage, payload?.currentUser.role, t]);
+
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
     setActivePage(page);
     if (targetRef) {
@@ -2254,7 +2402,7 @@ export function App() {
                     key={page.key}
                     className={`workspace-nav-button ${page.key === activePage ? "active" : ""}`}
                     type="button"
-                    onClick={() => setActivePage(page.key)}
+                    onClick={() => openWorkspacePage(page.key)}
                   >
                     {page.label}
                   </button>
@@ -2267,7 +2415,7 @@ export function App() {
               <div>
                 <p className="workspace-nav-kicker">{payload.household.name}</p>
                 <h2>{activePageLabel}</h2>
-                <p className="workspace-page-copy">{t("hero.authenticated_lede")}</p>
+                <p className="workspace-page-copy">{pageDescriptions[activePage]}</p>
               </div>
               <div className="workspace-page-meta">
                 <span className="status-pill">{t(`role.${payload.currentUser.role}`)}</span>
@@ -2279,6 +2427,24 @@ export function App() {
                 </span>
               </div>
             </section>
+
+            {pageSectionLinks.length > 0 ? (
+              <section className="panel workspace-subnav-panel">
+                <span className="section-kicker">{t("nav.jump_to")}</span>
+                <div className="workspace-subnav">
+                  {pageSectionLinks.map((link) => (
+                    <button
+                      key={link.key}
+                      className="workspace-subnav-button"
+                      type="button"
+                      onClick={() => scrollToSection(link.ref)}
+                    >
+                      {link.label}
+                    </button>
+                  ))}
+                </div>
+              </section>
+            ) : null}
 
           {showOnboarding && activePage === "overview" ? (
             <section className="onboarding-shell">
@@ -2353,6 +2519,28 @@ export function App() {
           ) : null}
 
           {activePage === "overview" ? (
+          <section className="panel workspace-launchpad" ref={overviewLaunchpadRef}>
+            <div className="section-heading">
+              <h2>{t("panel.quick_actions")}</h2>
+              <span className="section-kicker">{t("overview.quick_actions_hint")}</span>
+            </div>
+            <div className="launchpad-grid">
+              {overviewQuickLinks.map((page) => (
+                <button
+                  key={page.key}
+                  className="launchpad-card"
+                  type="button"
+                  onClick={() => openWorkspacePage(page.key)}
+                >
+                  <strong>{page.label}</strong>
+                  <span>{pageDescriptions[page.key]}</span>
+                </button>
+              ))}
+            </div>
+          </section>
+          ) : null}
+
+          {activePage === "overview" ? (
           <section className="metrics">
             {featuredMetrics.map((metric) => (
               <DashboardCard key={metric.label} label={metric.label} value={metric.value} />
@@ -2364,7 +2552,7 @@ export function App() {
 
           <section className="content-grid dashboard-grid">
             {payload.currentUser.role !== "child" ? (
-              <article className="panel page-panel page-overview">
+              <article className="panel page-panel page-overview" ref={approvalQueueRef}>
                 <div className="section-heading">
                   <h2>{t("panel.approval_queue")}</h2>
                   <span className="section-kicker">{pendingApprovals.length}</span>
@@ -2434,7 +2622,7 @@ export function App() {
               </article>
             ) : null}
 
-            <article className="panel page-panel page-chores">
+            <article className="panel page-panel page-chores" ref={myChoresRef}>
               <div className="section-heading">
                 <h2>{t("panel.my_chores")}</h2>
                 <span className="section-kicker">{myChores.length}</span>
@@ -2487,7 +2675,7 @@ export function App() {
               </div>
             </article>
 
-            <article className="panel page-panel page-notifications">
+            <article className="panel page-panel page-notifications" ref={notificationsRef}>
               <div className="section-heading">
                 <h2>{t("panel.notifications")}</h2>
                 <div className="toolbar-group">
@@ -2635,7 +2823,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-admin">
+              <article className="panel page-panel page-admin" ref={runtimeLogsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.runtime_logs")}</h2>
                   <div className="toolbar-group">
@@ -2688,7 +2876,7 @@ export function App() {
               </article>
             ) : null}
 
-            <article className="panel panel-wide page-panel page-chores">
+            <article className="panel panel-wide page-panel page-chores" ref={householdChoresRef}>
               <div className="section-heading">
                 <h2>{t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
@@ -2810,7 +2998,7 @@ export function App() {
             </article>
 
             {notificationPreferencesDraft ? (
-              <article className="panel page-panel page-notifications">
+              <article className="panel page-panel page-notifications" ref={notificationPreferencesRef}>
                 <div className="section-heading">
                   <h2>{t("panel.notification_preferences")}</h2>
                   <span className="section-kicker">{t("settings.member_level")}</span>
@@ -2891,7 +3079,7 @@ export function App() {
             ) : null}
 
             {payload.notificationDevices ? (
-              <article className="panel page-panel page-notifications">
+              <article className="panel page-panel page-notifications" ref={notificationDevicesRef}>
                 <div className="section-heading">
                   <h2>{t("panel.mobile_push_devices")}</h2>
                   <span className="section-kicker">{formatNumber(pushReadyDeviceCount)}</span>
@@ -2953,7 +3141,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-notifications">
+              <article className="panel page-panel page-notifications" ref={notificationHealthRef}>
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
                   <span className="section-kicker">{formatNumber(householdPushReadyCount)}</span>
@@ -3013,7 +3201,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-admin">
+              <article className="panel page-panel page-admin" ref={backupReadinessRef}>
                 <div className="section-heading">
                   <h2>{t("panel.backup_readiness")}</h2>
                   <div className="toolbar-group">
@@ -3154,7 +3342,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-admin">
+              <article className="panel page-panel page-admin" ref={systemStatusRef}>
                 <div className="section-heading">
                   <h2>{t("panel.system_status")}</h2>
                   <div className="toolbar-group">
@@ -3335,7 +3523,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-admin">
+              <article className="panel page-panel page-admin" ref={notificationRecoveryRef}>
                 <div className="section-heading">
                   <h2>{t("panel.notification_recovery")}</h2>
                   <span className="section-kicker">
