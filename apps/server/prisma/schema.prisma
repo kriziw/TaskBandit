@@ -77,6 +77,13 @@ enum NotificationPushDeliveryStatus {
   FAILED
 }
 
+enum NotificationEmailDeliveryStatus {
+  PENDING
+  SENT
+  FAILED
+  SKIPPED
+}
+
 model Household {
   id             String              @id @default(uuid()) @db.Uuid
   name           String
@@ -277,23 +284,28 @@ model PointsLedgerEntry {
 }
 
 model Notification {
-  id              String           @id @default(uuid()) @db.Uuid
-  householdId     String           @db.Uuid
-  recipientUserId String           @db.Uuid
-  type            NotificationType
-  title           String
-  message         String
-  entityType      String?
-  entityId        String?
-  isRead          Boolean          @default(false)
-  createdAtUtc    DateTime         @default(now())
-  readAtUtc       DateTime?
-  household       Household        @relation(fields: [householdId], references: [id], onDelete: Cascade)
-  recipient       User             @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
-  pushDeliveries  NotificationPushDelivery[]
+  id                      String                          @id @default(uuid()) @db.Uuid
+  householdId             String                          @db.Uuid
+  recipientUserId         String                          @db.Uuid
+  type                    NotificationType
+  title                   String
+  message                 String
+  entityType              String?
+  entityId                String?
+  isRead                  Boolean                         @default(false)
+  emailDeliveryStatus     NotificationEmailDeliveryStatus @default(SKIPPED)
+  emailDeliveryError      String?
+  emailDeliveredAtUtc     DateTime?
+  emailLastAttemptedAtUtc DateTime?
+  createdAtUtc            DateTime                        @default(now())
+  readAtUtc               DateTime?
+  household               Household                       @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  recipient               User                            @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
+  pushDeliveries          NotificationPushDelivery[]
 
   @@index([householdId, recipientUserId, createdAtUtc])
   @@index([recipientUserId, isRead, createdAtUtc])
+  @@index([emailDeliveryStatus, createdAtUtc])
 }
 
 model NotificationPreference {

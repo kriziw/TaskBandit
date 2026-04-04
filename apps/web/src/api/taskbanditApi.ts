@@ -218,6 +218,9 @@ export const taskBanditApi = {
       dailySummaryCount: number;
       pushSentCount: number;
       pushFailedCount: number;
+      emailSentCount: number;
+      emailFailedCount: number;
+      emailSkippedCount: number;
     }>(
       "/api/dashboard/maintenance/process-notifications",
       {

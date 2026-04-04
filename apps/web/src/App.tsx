@@ -1070,6 +1070,9 @@ export function App() {
           .replace("{summaries}", String(result.dailySummaryCount))
           .replace("{pushSent}", String(result.pushSentCount))
           .replace("{pushFailed}", String(result.pushFailedCount))
+          .replace("{emailSent}", String(result.emailSentCount))
+          .replace("{emailFailed}", String(result.emailFailedCount))
+          .replace("{emailSkipped}", String(result.emailSkippedCount))
       );
       setPageError(null);
     } catch (error) {

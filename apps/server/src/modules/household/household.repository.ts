@@ -12,6 +12,7 @@ import {
   ChoreState,
   Difficulty,
   HouseholdRole,
+  NotificationEmailDeliveryStatus,
   NotificationDevicePlatform,
   NotificationDeviceProvider,
   NotificationPushDeliveryStatus,
@@ -424,6 +425,14 @@ export class HouseholdRepository {
     return this.getNotificationDevices(householdId, userId);
   }
 
+  async hasDeliverablePushDevice(recipientUserId: string) {
+    const count = await this.prisma.notificationDevice.count({
+      where: this.buildDeliverablePushDeviceWhere(recipientUserId)
+    });
+
+    return count > 0;
+  }
+
   async getPendingPushDeliveries(take = 25) {
     const deliveries = await this.prisma.notificationPushDelivery.findMany({
       where: {
@@ -476,6 +485,101 @@ export class HouseholdRepository {
         status: NotificationPushDeliveryStatus.FAILED,
         errorMessage,
         attemptedAtUtc: new Date()
+      }
+    });
+  }
+
+  async getPendingEmailNotifications(take = 25) {
+    const notifications = await this.prisma.notification.findMany({
+      where: {
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.PENDING
+      },
+      include: {
+        household: {
+          include: {
+            settings: true
+          }
+        },
+        recipient: {
+          include: {
+            identities: {
+              where: {
+                email: {
+                  not: null
+                }
+              },
+              orderBy: {
+                createdAtUtc: "asc"
+              }
+            }
+          }
+        }
+      },
+      orderBy: {
+        createdAtUtc: "asc"
+      },
+      take
+    });
+
+    return notifications.map((notification) => ({
+      id: notification.id,
+      title: notification.title,
+      message: notification.message,
+      type: notification.type,
+      householdId: notification.householdId,
+      recipientUserId: notification.recipientUserId,
+      recipientEmail:
+        notification.recipient.identities.find((identity) => Boolean(identity.email))?.email ?? null,
+      smtpSettings: {
+        enabled: notification.household.settings?.smtpEnabled ?? false,
+        host: notification.household.settings?.smtpHost ?? "",
+        port: notification.household.settings?.smtpPort ?? 0,
+        secure: notification.household.settings?.smtpSecure ?? false,
+        username: notification.household.settings?.smtpUsername ?? "",
+        password: notification.household.settings?.smtpPassword ?? "",
+        fromEmail: notification.household.settings?.smtpFromEmail ?? "",
+        fromName: notification.household.settings?.smtpFromName ?? "",
+        passwordConfigured: Boolean(notification.household.settings?.smtpPassword)
+      }
+    }));
+  }
+
+  async markNotificationEmailSent(notificationId: string) {
+    await this.prisma.notification.update({
+      where: {
+        id: notificationId
+      },
+      data: {
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.SENT,
+        emailDeliveryError: null,
+        emailDeliveredAtUtc: new Date(),
+        emailLastAttemptedAtUtc: new Date()
+      }
+    });
+  }
+
+  async markNotificationEmailFailed(notificationId: string, errorMessage: string) {
+    await this.prisma.notification.update({
+      where: {
+        id: notificationId
+      },
+      data: {
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.FAILED,
+        emailDeliveryError: errorMessage,
+        emailLastAttemptedAtUtc: new Date()
+      }
+    });
+  }
+
+  async markNotificationEmailSkipped(notificationId: string, reason: string) {
+    await this.prisma.notification.update({
+      where: {
+        id: notificationId
+      },
+      data: {
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.SKIPPED,
+        emailDeliveryError: reason,
+        emailLastAttemptedAtUtc: new Date()
       }
     });
   }
@@ -2650,6 +2754,12 @@ export class HouseholdRepository {
       return false;
     }
 
+    const emailDeliveryStatus = await this.resolveNotificationEmailDeliveryStatus(
+      executor,
+      input.householdId,
+      input.recipientUserId
+    );
+
     const notification = await executor.notification.create({
       data: {
         householdId: input.householdId,
@@ -2658,13 +2768,58 @@ export class HouseholdRepository {
         title: input.title,
         message: input.message,
         entityType: input.entityType ?? null,
-        entityId: input.entityId ?? null
+        entityId: input.entityId ?? null,
+        emailDeliveryStatus
       }
     });
 
     await this.enqueuePushDeliveries(executor, notification.id, input.recipientUserId, input.type);
 
     return true;
+  }
+
+  private async resolveNotificationEmailDeliveryStatus(
+    executor: PrismaExecutor,
+    householdId: string,
+    recipientUserId: string
+  ) {
+    const [deliverablePushDeviceCount, householdSettings, recipientIdentity] = await Promise.all([
+      this.getDeliverablePushDeviceCount(executor, recipientUserId),
+      executor.householdSettings.findUnique({
+        where: {
+          householdId
+        }
+      }),
+      executor.authIdentity.findFirst({
+        where: {
+          userId: recipientUserId,
+          email: {
+            not: null
+          }
+        },
+        orderBy: {
+          createdAtUtc: "asc"
+        }
+      })
+    ]);
+
+    if (deliverablePushDeviceCount > 0) {
+      return NotificationEmailDeliveryStatus.SKIPPED;
+    }
+
+    if (!householdSettings?.smtpEnabled) {
+      return NotificationEmailDeliveryStatus.SKIPPED;
+    }
+
+    if (!householdSettings.smtpHost || !householdSettings.smtpPort || !householdSettings.smtpFromEmail) {
+      return NotificationEmailDeliveryStatus.SKIPPED;
+    }
+
+    if (!recipientIdentity?.email) {
+      return NotificationEmailDeliveryStatus.SKIPPED;
+    }
+
+    return NotificationEmailDeliveryStatus.PENDING;
   }
 
   private async enqueuePushDeliveries(
@@ -2674,16 +2829,7 @@ export class HouseholdRepository {
     type: NotificationType
   ) {
     const devices = await executor.notificationDevice.findMany({
-      where: {
-        userId: recipientUserId,
-        notificationsEnabled: true,
-        pushToken: {
-          not: null
-        },
-        provider: {
-          in: [NotificationDeviceProvider.FCM]
-        }
-      },
+      where: this.buildDeliverablePushDeviceWhere(recipientUserId),
       orderBy: {
         updatedAtUtc: "desc"
       }
@@ -2745,6 +2891,25 @@ export class HouseholdRepository {
       default:
         return true;
     }
+  }
+
+  private getDeliverablePushDeviceCount(executor: PrismaExecutor, recipientUserId: string) {
+    return executor.notificationDevice.count({
+      where: this.buildDeliverablePushDeviceWhere(recipientUserId)
+    });
+  }
+
+  private buildDeliverablePushDeviceWhere(recipientUserId: string): Prisma.NotificationDeviceWhereInput {
+    return {
+      userId: recipientUserId,
+      notificationsEnabled: true,
+      pushToken: {
+        not: null
+      },
+      provider: {
+        in: [NotificationDeviceProvider.FCM]
+      }
+    };
   }
 
   private async ensureUserBelongsToHousehold(householdId: string, userId: string) {

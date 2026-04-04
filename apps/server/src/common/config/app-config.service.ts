@@ -59,6 +59,10 @@ export class AppConfigService {
     return Number(this.configService.get("TASKBANDIT_PUSH_DELIVERY_INTERVAL_MS") ?? 60000);
   }
 
+  get emailDeliveryIntervalMs(): number {
+    return Number(this.configService.get("TASKBANDIT_EMAIL_DELIVERY_INTERVAL_MS") ?? 60000);
+  }
+
   get storageRootPath(): string {
     const configuredPath = this.configService.get<string>("TASKBANDIT_STORAGE_ROOT", "").trim();
     if (!configuredPath) {

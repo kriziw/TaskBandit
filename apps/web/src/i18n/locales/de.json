@@ -285,7 +285,7 @@
   "settings.overdue_processed": "{count} uberfallige Aufgaben verarbeitet und {points} Punkte Strafabzug angewendet.",
   "settings.overdue_none": "Keine uberfalligen Aufgaben brauchten eine Strafverarbeitung.",
   "settings.overdue_process_failed": "TaskBandit konnte die Uberfall-Strafen nicht verarbeiten.",
-  "settings.notifications_processed": "{reminders} Erinnerungen und {summaries} Tageszusammenfassungen wurden erzeugt. Push-Zustellung: {pushSent} gesendet, {pushFailed} fehlgeschlagen.",
+  "settings.notifications_processed": "{reminders} Erinnerungen und {summaries} Tageszusammenfassungen wurden erzeugt. Push-Zustellung: {pushSent} gesendet, {pushFailed} fehlgeschlagen. E-Mail-Fallback: {emailSent} gesendet, {emailFailed} fehlgeschlagen, {emailSkipped} ubersprungen.",
   "settings.notifications_process_failed": "TaskBandit konnte die Benachrichtigungswartung nicht ausfuhren.",
   "members.display_name": "Anzeigename",
   "members.role": "Rolle",

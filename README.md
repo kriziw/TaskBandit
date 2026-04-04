@@ -40,6 +40,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - Android installations now register notification devices with the server, and mobile push is the primary household notification channel
 - optional Firebase Cloud Messaging delivery is now wired on the server and Android can register real FCM tokens when Firebase is configured at build/runtime
 - optional SMTP settings configurable from the admin UI, with built-in connection testing
+- optional SMTP-backed fallback delivery for notifications when no push-ready mobile device is available
 - local-account password reset via SMTP-backed email links
 - a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
@@ -96,7 +97,7 @@ Manual setup:
 
 1. Copy `.env.example` to `.env`.
 2. Review these values in `.env`:
-   `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_DATA_ROOT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`.
+   `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_DATA_ROOT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`, `TASKBANDIT_PUSH_DELIVERY_INTERVAL_MS`, `TASKBANDIT_EMAIL_DELIVERY_INTERVAL_MS`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
    `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true` is the emergency recovery switch that keeps local sign-in available even if the UI setting disables it.
    If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
@@ -123,6 +124,7 @@ Manual setup:
 - `TASKBANDIT_DUE_SOON_WINDOW_HOURS=6` controls how far ahead TaskBandit creates due-soon reminders.
 - `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC=6` controls when the once-per-day TaskBandit summary notification is generated for each user.
 - `TASKBANDIT_PUSH_DELIVERY_INTERVAL_MS=60000` controls how often the backend processes queued push deliveries. Set it to `0` to disable background push sending.
+- `TASKBANDIT_EMAIL_DELIVERY_INTERVAL_MS=60000` controls how often the backend processes queued notification email fallbacks. Set it to `0` to disable notification email delivery while keeping SMTP available for password reset and invites.
 - `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
 - `TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage` is the server-side path used for uploaded proof photos inside the container.
 - Android clients now register a durable installation ID with the server so notification-device records move with the data volume and can later be upgraded to real push delivery providers.
@@ -156,7 +158,7 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 ## Backend Notes
 
 The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, optional Authentik-focused OIDC sign-in is available through the server-managed authorization-code flow, and auth provider settings can now be managed from the admin UI.
-SMTP can now also be configured from the admin UI as an optional instance capability, with a connection test for validating host, port, and credentials before future email-based features use it. Local accounts can now use that SMTP setup for password-reset emails from the web sign-in screen, while mobile push remains the primary day-to-day notification path for chore activity.
+SMTP can now also be configured from the admin UI as an optional instance capability, with a connection test for validating host, port, and credentials before future email-based features use it. Local accounts can now use that SMTP setup for password-reset emails from the web sign-in screen, while mobile push remains the primary day-to-day notification path for chore activity. Notification email delivery acts only as a fallback when no push-ready mobile device is available for the recipient.
 Notification-device registration is now live for signed-in Android clients, and the backend logs push-delivery fan-out groundwork in the admin runtime log even before a full FCM provider pipeline is enabled.
 The backend now also queues provider-backed push deliveries in PostgreSQL and can send them through Firebase Admin when FCM is enabled in the environment.
 
@@ -167,7 +169,7 @@ Android push is optional and degrades cleanly:
 - if the app is built with `TASKBANDIT_FIREBASE_APP_ID`, `TASKBANDIT_FIREBASE_API_KEY`, `TASKBANDIT_FIREBASE_PROJECT_ID`, and `TASKBANDIT_FIREBASE_SENDER_ID`, it initializes Firebase at runtime and registers an FCM token when available
 - if the server is also configured with `TASKBANDIT_FCM_ENABLED=true` and a Firebase Admin service account, queued household notifications can be delivered as real Android push notifications
 
-TaskBandit is designed with mobile push as the primary notification method for household activity. SMTP-backed email is currently intended for account recovery and admin-style messages such as invites, not as the main reminder channel.
+TaskBandit is designed with mobile push as the primary notification method for household activity. SMTP-backed email is currently intended for account recovery, admin-style messages such as invites, and notification fallback only when no push-ready device is available.
 
 Auth precedence:
 - Local auth follows the household UI setting unless `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true`, which force-keeps it available as a recovery path.

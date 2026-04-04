@@ -285,7 +285,7 @@
   "settings.overdue_processed": "{count} lejart feladat feldolgozva, osszesen {points} buntetopont levonva.",
   "settings.overdue_none": "Nem volt olyan lejart feladat, ami buntetesfeldolgozast igenyelt.",
   "settings.overdue_process_failed": "A TaskBandit nem tudta feldolgozni a lejarti bunteteseket.",
-  "settings.notifications_processed": "{reminders} emlekezteto es {summaries} napi osszegzo lett generalva. Push kezbesites: {pushSent} elkuldve, {pushFailed} sikertelen.",
+  "settings.notifications_processed": "{reminders} emlekezteto es {summaries} napi osszegzo lett generalva. Push kezbesites: {pushSent} elkuldve, {pushFailed} sikertelen. E-mail tartalek: {emailSent} elkuldve, {emailFailed} sikertelen, {emailSkipped} kihagyva.",
   "settings.notifications_process_failed": "A TaskBandit nem tudta lefuttatni az ertesitesi karbantartast.",
   "members.display_name": "Megjeleno nev",
   "members.role": "Szerepkor",

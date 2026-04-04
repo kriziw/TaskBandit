@@ -285,7 +285,7 @@
   "settings.overdue_processed": "Processed {count} overdue chores and applied {points} points in penalties.",
   "settings.overdue_none": "No overdue chores needed penalty processing.",
   "settings.overdue_process_failed": "TaskBandit could not process overdue penalties.",
-  "settings.notifications_processed": "Generated {reminders} reminder notifications and {summaries} daily summaries. Push delivery sent {pushSent} and failed {pushFailed}.",
+  "settings.notifications_processed": "Generated {reminders} reminder notifications and {summaries} daily summaries. Push delivery sent {pushSent} and failed {pushFailed}. Email fallback sent {emailSent}, failed {emailFailed}, and skipped {emailSkipped}.",
   "settings.notifications_process_failed": "TaskBandit could not process notification maintenance.",
   "members.display_name": "Display name",
   "members.role": "Role",
