@@ -37,6 +37,14 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA", "true") === "true";
   }
 
+  get reminderIntervalMs(): number {
+    return Number(this.configService.get("TASKBANDIT_REMINDER_INTERVAL_MS") ?? 300000);
+  }
+
+  get dueSoonReminderWindowHours(): number {
+    return Number(this.configService.get("TASKBANDIT_DUE_SOON_WINDOW_HOURS") ?? 6);
+  }
+
   get storageRootPath(): string {
     const configuredPath = this.configService.get<string>("TASKBANDIT_STORAGE_ROOT", "").trim();
     if (!configuredPath) {

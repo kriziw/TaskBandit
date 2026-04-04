@@ -79,7 +79,7 @@ Manual setup:
 
 1. Copy `.env.example` to `.env`.
 2. Review these values in `.env`:
-   `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`.
+   `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
 3. Start TaskBandit:
    `docker compose up -d`
@@ -97,6 +97,8 @@ Manual setup:
 - `TASKBANDIT_PORT=8080` controls both the port the app listens on inside Docker and the host port published by Docker Compose.
 - `TASKBANDIT_DB_HOST_PORT=5432` controls which host port PostgreSQL is exposed on. The container still uses port `5432` internally.
 - `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` creates the demo household automatically for local evaluation.
+- `TASKBANDIT_REMINDER_INTERVAL_MS=300000` controls how often the backend scans for due-soon and overdue reminder notifications. Set it to `0` to disable the worker.
+- `TASKBANDIT_DUE_SOON_WINDOW_HOURS=6` controls how far ahead TaskBandit creates due-soon reminders.
 - `TASKBANDIT_STORAGE_ROOT` is the server-side path used for uploaded proof photos. In Docker Compose this is mounted to a persistent volume.
 - `TASKBANDIT_REVERSE_PROXY_ENABLED` and `TASKBANDIT_REVERSE_PROXY_PATH_BASE` should be set when TaskBandit is deployed behind Nginx or Traefik.
 - `TASKBANDIT_OIDC_ENABLED=false` keeps OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.

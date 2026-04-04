@@ -284,6 +284,110 @@ export class HouseholdRepository {
     return this.getNotifications(householdId, recipientUserId);
   }
 
+  async processReminderNotifications(options: {
+    now: Date;
+    dueSoonWindowHours: number;
+  }) {
+    const activeHouseholds = await this.prisma.householdSettings.findMany({
+      where: {
+        enablePushNotifications: true
+      },
+      select: {
+        householdId: true
+      }
+    });
+
+    if (activeHouseholds.length === 0) {
+      return {
+        createdCount: 0
+      };
+    }
+
+    const dueSoonThreshold = new Date(
+      options.now.getTime() + Math.max(options.dueSoonWindowHours, 1) * 60 * 60 * 1000
+    );
+
+    const candidateInstances = await this.prisma.choreInstance.findMany({
+      where: {
+        householdId: {
+          in: activeHouseholds.map((household) => household.householdId)
+        },
+        assigneeId: {
+          not: null
+        },
+        state: {
+          in: [
+            ChoreState.OPEN,
+            ChoreState.ASSIGNED,
+            ChoreState.IN_PROGRESS,
+            ChoreState.NEEDS_FIXES,
+            ChoreState.OVERDUE
+          ]
+        },
+        dueAtUtc: {
+          lte: dueSoonThreshold
+        }
+      },
+      select: {
+        id: true,
+        householdId: true,
+        title: true,
+        assigneeId: true,
+        dueAtUtc: true,
+        state: true
+      }
+    });
+
+    let createdCount = 0;
+
+    for (const instance of candidateInstances) {
+      if (!instance.assigneeId) {
+        continue;
+      }
+
+      const type =
+        instance.dueAtUtc.getTime() <= options.now.getTime()
+          ? NotificationType.CHORE_OVERDUE
+          : NotificationType.CHORE_DUE_SOON;
+
+      const existingNotification = await this.prisma.notification.findFirst({
+        where: {
+          householdId: instance.householdId,
+          recipientUserId: instance.assigneeId,
+          entityType: "chore_instance",
+          entityId: instance.id,
+          type
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (existingNotification) {
+        continue;
+      }
+
+      await this.recordNotification(this.prisma, {
+        householdId: instance.householdId,
+        recipientUserId: instance.assigneeId,
+        type,
+        title: type === NotificationType.CHORE_OVERDUE ? "Chore overdue" : "Chore due soon",
+        message:
+          type === NotificationType.CHORE_OVERDUE
+            ? `"${instance.title}" is overdue. Jump back in before more points slip away.`
+            : `"${instance.title}" is due soon. Time for the raccoon crew to make a move.`,
+        entityType: "chore_instance",
+        entityId: instance.id
+      });
+
+      createdCount += 1;
+    }
+
+    return {
+      createdCount
+    };
+  }
+
   async processOverduePenalties(householdId: string, actorUserId?: string) {
     const householdSettings = await this.prisma.householdSettings.findUnique({
       where: {
