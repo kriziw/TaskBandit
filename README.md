@@ -71,6 +71,27 @@ If Android signing secrets are not configured yet, the workflow still builds and
 
 You can also trigger the workflow manually from GitHub Actions to validate the Android release pipeline before creating a public release.
 
+## Release Automation
+
+TaskBandit now uses `release-please` as the main release-preparation workflow.
+
+- Pushes to `main` keep a release PR up to date from conventional commits such as `feat:` and `fix:`.
+- When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned Docker images.
+- The `simple` release strategy tracks the root [CHANGELOG.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/CHANGELOG.md) and [version.txt](C:/Users/krist/Documents/GitHub/Chore%20Manager/version.txt).
+
+Prerelease control:
+
+- Repository variable `PRE_RELEASE_SETTING` controls whether release-please marks releases as prereleases.
+- Truthy values such as `TRUE`, `TRU`, `YES`, `ON`, or `1` make the release a prerelease.
+- `FALSE` turns prerelease mode off for future releases.
+- Stable releases also move the Docker `latest` tag. Prereleases publish version tags plus the mutable `prerelease` Docker tag instead.
+
+Recommended GitHub release secret:
+
+- `RELEASE_PLEASE_TOKEN`
+  Use a fine-grained or classic PAT with repository contents and pull-request write access.
+  The workflow falls back to `GITHUB_TOKEN`, but a PAT is recommended if you want other workflows to run on release-please PRs and release-created events outside the main release workflow.
+
 ## Deployment Notes
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.

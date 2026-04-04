@@ -1,6 +1,9 @@
 name: release-please
 
 on:
+  push:
+    branches:
+      - main
   workflow_dispatch:
 
 permissions:
@@ -9,12 +12,164 @@ permissions:
   issues: write
 
 jobs:
-  release-please:
+  release_please:
     runs-on: ubuntu-latest
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+      version: ${{ steps.release.outputs.version }}
+      sha: ${{ steps.release.outputs.sha }}
+      is_prerelease: ${{ steps.prerelease.outputs.value }}
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Resolve prerelease setting
+        id: prerelease
+        shell: bash
+        run: |
+          raw_value="${{ vars.PRE_RELEASE_SETTING }}"
+          normalized="$(printf '%s' "$raw_value" | tr '[:upper:]' '[:lower:]')"
+
+          if [[ "$normalized" =~ ^(1|true|tru|yes|y|on)$ ]]; then
+            value=true
+          else
+            value=false
+          fi
+
+          echo "value=$value" >> "$GITHUB_OUTPUT"
+
+      - name: Build effective release-please config
+        shell: bash
+        run: |
+          node <<'EOF'
+          const fs = require("node:fs");
+          const prerelease = process.env.PRERELEASE === "true";
+          const basePath = ".github/release-please-config.json";
+          const outputPath = ".github/release-please-config.runtime.json";
+          const config = JSON.parse(fs.readFileSync(basePath, "utf8"));
+          config.prerelease = prerelease;
+          fs.writeFileSync(outputPath, `${JSON.stringify(config, null, 2)}\n`);
+          EOF
+        env:
+          PRERELEASE: ${{ steps.prerelease.outputs.value }}
+
       - name: Run release-please
+        id: release
         uses: googleapis/release-please-action@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          config-file: .github/release-please-config.json
+          token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+          config-file: .github/release-please-config.runtime.json
           manifest-file: .github/.release-please-manifest.json
+
+  release_android:
+    needs: release_please
+    if: ${{ needs.release_please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+      ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+      ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+      ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release_please.outputs.sha }}
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - name: Configure Android signing
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '' }}
+        shell: bash
+        run: |
+          keystore_path="$RUNNER_TEMP/taskbandit-release.keystore"
+          echo "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$keystore_path"
+          {
+            echo "TASKBANDIT_ANDROID_KEYSTORE_PATH=$keystore_path"
+            echo "TASKBANDIT_ANDROID_KEYSTORE_PASSWORD=$ANDROID_KEYSTORE_PASSWORD"
+            echo "TASKBANDIT_ANDROID_KEY_ALIAS=$ANDROID_KEY_ALIAS"
+            echo "TASKBANDIT_ANDROID_KEY_PASSWORD=$ANDROID_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+
+      - name: Build release APK
+        run: gradle :app:assembleRelease
+
+      - name: Collect APK metadata
+        id: apk
+        shell: bash
+        run: |
+          apk_path="$(find "$PWD/app/build/outputs/apk/release" -maxdepth 1 -type f -name '*.apk' | head -n 1)"
+          if [ -z "$apk_path" ]; then
+            echo "No release APK was produced." >&2
+            exit 1
+          fi
+          echo "path=$apk_path" >> "$GITHUB_OUTPUT"
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: taskbandit-release-apk
+          path: ${{ steps.apk.outputs.path }}
+
+      - name: Attach APK to GitHub release
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          gh release upload "${{ needs.release_please.outputs.tag_name }}" "${{ steps.apk.outputs.path }}" --clobber
+
+  release_docker:
+    needs: release_please
+    if: ${{ needs.release_please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.release_please.outputs.sha }}
+
+      - name: Log in to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract Docker metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: kriziw/taskbandit
+          tags: |
+            type=raw,value=${{ needs.release_please.outputs.version }}
+            type=raw,value=v${{ needs.release_please.outputs.version }}
+            type=raw,value=prerelease,enable=${{ needs.release_please.outputs.is_prerelease == 'true' }}
+            type=raw,value=latest,enable=${{ needs.release_please.outputs.is_prerelease != 'true' }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./apps/server
+          file: ./apps/server/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
