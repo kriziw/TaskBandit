@@ -8,7 +8,7 @@
 
 TaskBandit is a self-hosted, heavily gamified household chore manager with:
 
-- a server component that exposes the API and hosts the web UI
+- a server component that exposes the API and serves the production web UI from the same container
 - a native Android application for daily use, offline actions, photo proof, and widgets
 
 ## AI Disclaimer

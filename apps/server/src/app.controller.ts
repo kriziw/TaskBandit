@@ -5,15 +5,6 @@ import { PrismaService } from "./common/prisma/prisma.service";
 export class AppController {
   constructor(private readonly prisma: PrismaService) {}
 
-  @Get()
-  root() {
-    return {
-      name: "TaskBandit API",
-      status: "ok",
-      version: "0.1.0"
-    };
-  }
-
   @Get("health")
   async health() {
     try {

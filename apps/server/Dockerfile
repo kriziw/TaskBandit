@@ -1,34 +1,46 @@
-FROM node:22-bookworm-slim AS build
-WORKDIR /app
+FROM node:22-bookworm-slim AS server-build
+WORKDIR /workspace/apps/server
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
+COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci
 
-COPY tsconfig.json tsconfig.build.json nest-cli.json ./
-COPY prisma ./prisma
+COPY apps/server/tsconfig.json apps/server/tsconfig.build.json apps/server/nest-cli.json ./
+COPY apps/server/prisma ./prisma
 RUN npx prisma generate
 
-COPY src ./src
+COPY apps/server/src ./src
+RUN npm run build
+
+FROM node:22-bookworm-slim AS web-build
+WORKDIR /workspace/apps/web
+
+COPY apps/web/package.json apps/web/package-lock.json ./
+RUN npm ci
+
+COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html ./
+COPY apps/web/public ./public
+COPY apps/web/src ./src
 RUN npm run build
 
 FROM node:22-bookworm-slim AS runtime
-WORKDIR /app
+WORKDIR /workspace/apps/server
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl wget ca-certificates \
     && rm -rf /var/lib/apt/lists/*
 
-COPY package.json package-lock.json ./
+COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci --omit=dev
 
-COPY prisma ./prisma
+COPY apps/server/prisma ./prisma
 RUN npx prisma generate
 
-COPY --from=build /app/dist ./dist
+COPY --from=server-build /workspace/apps/server/dist ./dist
+COPY --from=web-build /workspace/apps/web/dist ./public
 RUN mkdir -p /var/lib/taskbandit/storage
 
 ENV NODE_ENV=production

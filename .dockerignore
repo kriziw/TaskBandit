@@ -1,0 +1,11 @@
+.git
+.github
+data
+node_modules
+apps/server/node_modules
+apps/server/dist
+apps/web/node_modules
+apps/web/dist
+apps/android/.gradle
+apps/android/app/build
+**/*.log
