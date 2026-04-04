@@ -38,6 +38,10 @@ export class SettingsService {
     return this.repository.getNotificationDevices(user.householdId, user.id);
   }
 
+  getHouseholdNotificationHealth(user: AuthenticatedUser) {
+    return this.repository.getHouseholdNotificationHealth(user.householdId);
+  }
+
   async updateSettings(dto: UpdateSettingsDto, user: AuthenticatedUser) {
     const currentHousehold = await this.repository.getHousehold(user.householdId);
     const nextLocalAuthEnabled = dto.localAuthEnabled ?? currentHousehold.settings.localAuthEnabled;

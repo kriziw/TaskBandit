@@ -340,6 +340,75 @@ export class HouseholdRepository {
     return devices.map((device) => this.mapNotificationDevice(device));
   }
 
+  async getHouseholdNotificationHealth(householdId: string) {
+    const [householdSettings, members] = await Promise.all([
+      this.prisma.householdSettings.findUnique({
+        where: {
+          householdId
+        }
+      }),
+      this.prisma.user.findMany({
+        where: {
+          householdId
+        },
+        include: {
+          identities: {
+            where: {
+              email: {
+                not: null
+              }
+            },
+            orderBy: {
+              createdAtUtc: "asc"
+            }
+          },
+          notificationDevices: {
+            orderBy: {
+              updatedAtUtc: "desc"
+            }
+          }
+        },
+        orderBy: {
+          displayName: "asc"
+        }
+      })
+    ]);
+
+    const smtpFallbackAvailable = Boolean(
+      householdSettings?.smtpEnabled &&
+        householdSettings.smtpHost &&
+        householdSettings.smtpPort &&
+        householdSettings.smtpFromEmail
+    );
+
+    return members.map((member) => {
+      const registeredDeviceCount = member.notificationDevices.length;
+      const pushReadyDeviceCount = member.notificationDevices.filter(
+        (device) =>
+          device.notificationsEnabled &&
+          Boolean(device.pushToken) &&
+          device.provider === NotificationDeviceProvider.FCM
+      ).length;
+      const fallbackEmail = member.identities.find((identity) => Boolean(identity.email))?.email ?? null;
+      const emailFallbackEligible = smtpFallbackAvailable && Boolean(fallbackEmail);
+      const latestDeviceSeenAt = member.notificationDevices[0]?.lastSeenAtUtc ?? null;
+      const deliveryMode =
+        pushReadyDeviceCount > 0 ? "push" : emailFallbackEligible ? "email_fallback" : "none";
+
+      return {
+        userId: member.id,
+        displayName: member.displayName,
+        role: member.role.toLowerCase(),
+        email: fallbackEmail,
+        registeredDeviceCount,
+        pushReadyDeviceCount,
+        latestDeviceSeenAt,
+        emailFallbackEligible,
+        deliveryMode
+      };
+    });
+  }
+
   async registerNotificationDevice(
     dto: RegisterNotificationDeviceDto,
     householdId: string,

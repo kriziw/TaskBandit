@@ -177,6 +177,18 @@ export type NotificationDevice = {
   updatedAt: string;
 };
 
+export type HouseholdNotificationHealthEntry = {
+  userId: string;
+  displayName: string;
+  role: HouseholdRole;
+  email: string | null;
+  registeredDeviceCount: number;
+  pushReadyDeviceCount: number;
+  latestDeviceSeenAt: string | null;
+  emailFallbackEligible: boolean;
+  deliveryMode: "push" | "email_fallback" | "none";
+};
+
 export type Household = {
   householdId: string;
   name: string;

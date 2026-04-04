@@ -715,8 +715,13 @@ h4,
 }
 
 .delivery-not_configured,
-.delivery-skipped {
+.delivery-skipped,
+.delivery-none {
   background: rgba(36, 48, 67, 0.1);
+}
+
+.delivery-email_fallback {
+  background: rgba(115, 201, 244, 0.18);
 }
 
 .delivery-pending {

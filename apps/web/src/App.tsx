@@ -18,6 +18,7 @@ import type {
   CreateHouseholdMemberInput,
   DashboardSummary,
   Household,
+  HouseholdNotificationHealthEntry,
   HouseholdSettings,
   NotificationDevice,
   NotificationPreferences,
@@ -37,6 +38,7 @@ type DashboardPayload = {
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
   notificationDevices: NotificationDevice[];
+  householdNotificationHealth: HouseholdNotificationHealthEntry[];
   notificationPreferences: NotificationPreferences;
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
@@ -304,6 +306,12 @@ export function App() {
     [payload]
   );
 
+  const householdPushReadyCount = useMemo(
+    () =>
+      payload?.householdNotificationHealth.filter((entry) => entry.deliveryMode === "push").length ?? 0,
+    [payload]
+  );
+
   const restrictHouseholdDetails = Boolean(
     payload &&
       !payload.household.settings.membersCanSeeFullHouseholdChoreDetails &&
@@ -494,6 +502,7 @@ export function App() {
         auditLog,
         notifications,
         notificationDevices,
+        householdNotificationHealth,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -508,6 +517,9 @@ export function App() {
           : taskBanditApi.getAuditLog(accessToken, language),
         taskBanditApi.getNotifications(accessToken, language),
         taskBanditApi.getNotificationDevices(accessToken, language),
+        currentUser.role === "admin"
+          ? taskBanditApi.getHouseholdNotificationHealth(accessToken, language)
+          : Promise.resolve([]),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
@@ -526,6 +538,7 @@ export function App() {
         auditLog,
         notifications,
         notificationDevices,
+        householdNotificationHealth,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -2613,6 +2626,56 @@ export function App() {
                             {t("settings.notification_device_remove")}
                           </button>
                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </article>
+            ) : null}
+
+            {payload.currentUser.role === "admin" ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.household_notification_health")}</h2>
+                  <span className="section-kicker">{formatNumber(householdPushReadyCount)}</span>
+                </div>
+                <p>{t("settings.household_notification_health_hint")}</p>
+                {payload.householdNotificationHealth.length === 0 ? (
+                  <p className="inline-message">{t("settings.household_notification_health_empty")}</p>
+                ) : (
+                  <div className="stack-list">
+                    {payload.householdNotificationHealth.map((entry) => (
+                      <div className="task-row compact" key={entry.userId}>
+                        <div className="task-row-header">
+                          <strong>{entry.displayName}</strong>
+                          <span className={`status-pill delivery-${entry.deliveryMode}`}>
+                            {t(`settings.delivery_mode_${entry.deliveryMode}`)}
+                          </span>
+                        </div>
+                        <p>
+                          {t("members.role")}: {t(`role.${entry.role}`)}
+                        </p>
+                        <p>
+                          {t("settings.notification_device_count")}: {entry.registeredDeviceCount}
+                        </p>
+                        <p>
+                          {t("settings.notification_push_ready_count")}: {entry.pushReadyDeviceCount}
+                        </p>
+                        <p>
+                          {t("settings.notification_email_fallback")}:{" "}
+                          {entry.emailFallbackEligible ? t("common.enabled") : t("common.disabled")}
+                        </p>
+                        {entry.email ? (
+                          <p>
+                            {t("members.email")}: {entry.email}
+                          </p>
+                        ) : null}
+                        {entry.latestDeviceSeenAt ? (
+                          <p>
+                            {t("settings.notification_device_last_seen")}:{" "}
+                            {formatDate(entry.latestDeviceSeenAt)}
+                          </p>
+                        ) : null}
                       </div>
                     ))}
                   </div>

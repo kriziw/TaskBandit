@@ -43,6 +43,12 @@ export class SettingsController {
     return this.settingsService.getNotificationDevices(user);
   }
 
+  @Get("notification-health")
+  @Roles("admin")
+  getHouseholdNotificationHealth(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.getHouseholdNotificationHealth(user);
+  }
+
   @Put("household")
   @Roles("admin")
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {

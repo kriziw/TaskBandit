@@ -15,6 +15,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  HouseholdNotificationHealthEntry,
   NotificationDevice,
   NotificationPreferences,
   NotificationEntry,
@@ -257,6 +258,12 @@ export const taskBanditApi = {
   },
   getNotificationDevices(token: string, language: AppLanguage) {
     return request<NotificationDevice[]>("/api/settings/notification-devices", {
+      token,
+      language
+    });
+  },
+  getHouseholdNotificationHealth(token: string, language: AppLanguage) {
+    return request<HouseholdNotificationHealthEntry[]>("/api/settings/notification-health", {
       token,
       language
     });
