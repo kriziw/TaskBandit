@@ -1,0 +1,31 @@
+name: conventional-pr-title
+
+on:
+  pull_request:
+    branches:
+      - main
+    types:
+      - opened
+      - edited
+      - synchronize
+      - reopened
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Validate PR title for release-please
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          title="${{ github.event.pull_request.title }}"
+
+          if [[ "$title" =~ ^(feat|fix|perf|refactor|build|ci|docs|style|test|chore|revert)(\([^)]+\))?:\ .+ ]]; then
+            echo "PR title is release-please compatible: $title"
+            exit 0
+          fi
+
+          echo "Pull request titles targeting main must use a conventional prefix for squash-safe release-please behavior." >&2
+          echo "Examples: 'feat: add onboarding guide', 'fix(web): tighten settings layout', 'chore: refresh workflow docs'" >&2
+          exit 1

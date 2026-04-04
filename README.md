@@ -80,7 +80,9 @@ TaskBandit now uses `release-please` as the main release-preparation workflow.
 - Pushes to `main` automatically run `release-please`.
 - The intended workflow is to do day-to-day work on branches and merge via PRs, with `main` treated as the release branch.
 - If you keep pushing feature work directly to `main`, `release-please` will quite reasonably keep preparing the next release PR after releasable commits such as `feat:` and `fix:`.
+- PRs targeting `main` now validate their title format so squash merges stay release-please-safe. Use conventional titles such as `feat: ...`, `fix: ...`, or `chore: ...`.
 - When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned Docker images.
+- The workflow now also verifies that the release tag exists after a successful release creation, so future releases do not drift into the old missing-tag state that caused repeated historical release notes.
 - The separate `android-release` workflow is manual-only, so the release APK is not built twice for the same release event.
 - The `simple` release strategy tracks the root [CHANGELOG.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/CHANGELOG.md) and [version.txt](C:/Users/krist/Documents/GitHub/Chore%20Manager/version.txt).
 
@@ -90,6 +92,7 @@ Prerelease control:
 - Truthy values such as `TRUE`, `TRU`, `YES`, `ON`, or `1` make the release a prerelease.
 - `FALSE` turns prerelease mode off for future releases.
 - Stable releases also move the Docker `latest` tag. Prereleases publish version tags plus the mutable `prerelease` Docker tag instead.
+- The manual `backfill-release-tags` workflow exists only to repair already-missed historical tags; it should be run once after merging the fix branch if those tags are still absent.
 
 Recommended GitHub release secret:
 

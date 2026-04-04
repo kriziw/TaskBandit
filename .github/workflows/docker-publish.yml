@@ -50,7 +50,7 @@ jobs:
         with:
           images: kriziw/taskbandit
           tags: |
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest,enable=${{ steps.prerelease.outputs.value != 'true' }}
             type=raw,value=prerelease,enable=${{ steps.prerelease.outputs.value == 'true' }}
             type=sha,format=short
 
