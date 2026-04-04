@@ -1,10 +1,14 @@
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { Injectable } from "@nestjs/common";
+import { AppConfigService } from "../../common/config/app-config.service";
 import { HouseholdRepository } from "../household/household.repository";
 
 @Injectable()
 export class DashboardService {
-  constructor(private readonly repository: HouseholdRepository) {}
+  constructor(
+    private readonly repository: HouseholdRepository,
+    private readonly appConfigService: AppConfigService
+  ) {}
 
   getSummary(user: AuthenticatedUser) {
     return this.repository.getDashboardSummary(user.householdId);
@@ -28,6 +32,26 @@ export class DashboardService {
 
   processOverduePenalties(user: AuthenticatedUser) {
     return this.repository.processOverduePenalties(user.householdId, user.id);
+  }
+
+  async processNotificationMaintenance() {
+    const now = new Date();
+    const [reminderResult, dailySummaryResult] = await Promise.all([
+      this.repository.processReminderNotifications({
+        now,
+        dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours
+      }),
+      this.repository.processDailySummaryNotifications({
+        now,
+        summaryHourUtc: this.appConfigService.dailySummaryHourUtc,
+        force: true
+      })
+    ]);
+
+    return {
+      reminderCount: reminderResult.createdCount,
+      dailySummaryCount: dailySummaryResult.createdCount
+    };
   }
 
   async exportChoresCsv(user: AuthenticatedUser) {

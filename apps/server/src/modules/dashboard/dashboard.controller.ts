@@ -45,6 +45,12 @@ export class DashboardController {
     return this.dashboardService.processOverduePenalties(user);
   }
 
+  @Post("maintenance/process-notifications")
+  @Roles("admin")
+  processNotificationMaintenance() {
+    return this.dashboardService.processNotificationMaintenance();
+  }
+
   @Get("exports/chores.csv")
   async exportChores(@CurrentUser() user: AuthenticatedUser, @Res({ passthrough: true }) response: Response) {
     response.setHeader("Content-Type", "text/csv; charset=utf-8");

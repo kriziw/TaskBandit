@@ -179,6 +179,16 @@ export const taskBanditApi = {
       }
     );
   },
+  processNotificationMaintenance(token: string, language: AppLanguage) {
+    return request<{ reminderCount: number; dailySummaryCount: number }>(
+      "/api/dashboard/maintenance/process-notifications",
+      {
+        method: "POST",
+        token,
+        language
+      }
+    );
+  },
   getHousehold(token: string, language: AppLanguage) {
     return request<Household>("/api/settings/household", {
       token,

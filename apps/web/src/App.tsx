@@ -629,6 +629,28 @@ export function App() {
     }
   }
 
+  async function handleProcessNotificationMaintenance() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("process-notification-maintenance");
+    try {
+      const result = await taskBanditApi.processNotificationMaintenance(token, language);
+      await refreshDashboard(token, { silent: true });
+      setNotice(
+        t("settings.notifications_processed")
+          .replace("{reminders}", String(result.reminderCount))
+          .replace("{summaries}", String(result.dailySummaryCount))
+      );
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("settings.notifications_process_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleMarkNotificationRead(notificationId: string) {
     if (!token || !payload) {
       return;
@@ -1790,15 +1812,23 @@ export function App() {
                   >
                     {t("settings.save")}
                   </button>
-                  <button
-                    className="secondary-button"
-                    type="button"
-                    disabled={busyAction === "process-overdue-penalties"}
-                    onClick={() => void handleProcessOverduePenalties()}
-                  >
-                    {t("settings.process_overdue")}
-                  </button>
-                </article>
+                    <button
+                      className="secondary-button"
+                      type="button"
+                      disabled={busyAction === "process-overdue-penalties"}
+                      onClick={() => void handleProcessOverduePenalties()}
+                    >
+                      {t("settings.process_overdue")}
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "process-notification-maintenance"}
+                      onClick={() => void handleProcessNotificationMaintenance()}
+                    >
+                      {t("settings.process_notifications")}
+                    </button>
+                  </article>
 
                 <article className="panel">
                   <div className="section-heading">

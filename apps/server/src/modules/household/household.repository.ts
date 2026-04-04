@@ -391,8 +391,9 @@ export class HouseholdRepository {
   async processDailySummaryNotifications(options: {
     now: Date;
     summaryHourUtc: number;
+    force?: boolean;
   }) {
-    if (options.now.getUTCHours() !== options.summaryHourUtc) {
+    if (!options.force && options.now.getUTCHours() !== options.summaryHourUtc) {
       return {
         createdCount: 0
       };
