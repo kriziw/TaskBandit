@@ -1,39 +1,56 @@
-package com.taskbandit.app
+﻿package com.taskbandit.app
 
 import android.Manifest
 import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
-import android.net.Uri
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.AddTask
+import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Settings
+import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.FloatingActionButton
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
@@ -46,11 +63,12 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -59,9 +77,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.MobileChore
+import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
+import com.taskbandit.app.mobile.MobileThemeMode
 import com.taskbandit.app.mobile.MobileUploadedProof
 import com.taskbandit.app.mobile.TaskBanditMobileApi
+import com.taskbandit.app.mobile.TaskBanditAppPreferencesStore
 import com.taskbandit.app.mobile.TaskBanditOutboxStore
 import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
 import com.taskbandit.app.mobile.TaskBanditSession
@@ -88,31 +110,44 @@ private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
 private enum class MobileDashboardTab {
     CHORES,
     CREATE,
-    UPDATES
+    SETTINGS
 }
+
+private enum class MobileChoreSection {
+    MINE,
+    UNASSIGNED,
+    OTHERS
+}
+
+private data class MobileDashboardRefresh(
+    val dashboard: MobileDashboard,
+    val latestReleaseInfo: MobileReleaseInfo?,
+    val notificationDevices: List<MobileNotificationDevice>
+)
+
+private data class MobileChoiceOption(
+    val label: String,
+    val selected: Boolean,
+    val onClick: () -> Unit
+)
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
+        val appPreferencesStore = TaskBanditAppPreferencesStore(sharedPreferences)
         val outboxStore = TaskBanditOutboxStore(sharedPreferences)
         val widgetStore = TaskBanditWidgetStore(sharedPreferences)
 
         setContent {
-            TaskBanditTheme {
-                Surface(
-                    modifier = Modifier.fillMaxSize(),
-                    color = MaterialTheme.colorScheme.background
-                ) {
-                    TaskBanditApp(
-                        api = TaskBanditMobileApi(),
-                        sessionStore = sessionStore,
-                        outboxStore = outboxStore,
-                        widgetStore = widgetStore
-                    )
-                }
-            }
+            TaskBanditApp(
+                api = TaskBanditMobileApi(),
+                sessionStore = sessionStore,
+                appPreferencesStore = appPreferencesStore,
+                outboxStore = outboxStore,
+                widgetStore = widgetStore
+            )
         }
     }
 }
@@ -121,6 +156,7 @@ class MainActivity : ComponentActivity() {
 private fun TaskBanditApp(
     api: TaskBanditMobileApi,
     sessionStore: TaskBanditSessionStore,
+    appPreferencesStore: TaskBanditAppPreferencesStore,
     outboxStore: TaskBanditOutboxStore,
     widgetStore: TaskBanditWidgetStore
 ) {
@@ -135,7 +171,10 @@ private fun TaskBanditApp(
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     val choreCreatedMessage = stringResource(R.string.mobile_chore_created)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
+    val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
+    var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
+    var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
     val currentReleaseInfo = remember {
         MobileReleaseInfo(
             releaseVersion = BuildConfig.TASKBANDIT_RELEASE_VERSION,
@@ -151,6 +190,7 @@ private fun TaskBanditApp(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
     var serverReleaseInfo by remember { mutableStateOf<MobileReleaseInfo?>(null) }
+    var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
     var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
     var isBusy by remember { mutableStateOf(session.token != null) }
     var isSyncingQueue by remember { mutableStateOf(false) }
@@ -159,13 +199,34 @@ private fun TaskBanditApp(
     var activeStartAction by remember { mutableStateOf<String?>(null) }
     var activeSubmitAction by remember { mutableStateOf<String?>(null) }
     var activeCreateAction by remember { mutableStateOf<String?>(null) }
+    var activeDeviceAction by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(outboxStore.readQueue().size) }
+    var notificationsPermissionGranted by remember {
+        mutableStateOf(
+            Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.POST_NOTIFICATIONS
+                ) == PackageManager.PERMISSION_GRANTED
+        )
+    }
     val notificationPermissionLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.RequestPermission()
-    ) { }
+    ) { granted ->
+        notificationsPermissionGranted = granted
+    }
+
+    LaunchedEffect(languageTag) {
+        val localeList = if (languageTag == "system") {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(languageTag)
+        }
+        AppCompatDelegate.setApplicationLocales(localeList)
+    }
 
     val proofPicker = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenMultipleDocuments()
@@ -197,6 +258,7 @@ private fun TaskBanditApp(
         serverUrl = baseUrl
         dashboard = null
         serverReleaseInfo = null
+        notificationDevices = emptyList()
         isBusy = false
         errorMessage = null
         noticeMessage = null
@@ -210,7 +272,7 @@ private fun TaskBanditApp(
 
         coroutineScope.launch {
             runCatching {
-                val (loadedDashboard, latestReleaseInfo) = withContext(Dispatchers.IO) {
+                val refreshPayload = withContext(Dispatchers.IO) {
                     val latestReleaseInfo = runCatching { api.getReleaseInfo(baseUrl) }.getOrNull()
                     runCatching {
                         val pushToken = TaskBanditFirebasePushManager.getTokenOrNull(context)
@@ -233,7 +295,13 @@ private fun TaskBanditApp(
                         )
                     }
 
-                    Pair(api.loadDashboard(baseUrl, token), latestReleaseInfo)
+                    MobileDashboardRefresh(
+                        dashboard = api.loadDashboard(baseUrl, token),
+                        latestReleaseInfo = latestReleaseInfo,
+                        notificationDevices = runCatching {
+                            api.getNotificationDevices(baseUrl, token)
+                        }.getOrDefault(emptyList())
+                    )
                 }
                 val flushedCount = flushQueuedSubmissions(
                     api = api,
@@ -245,24 +313,24 @@ private fun TaskBanditApp(
                 )
 
                 if (flushedCount > 0) {
-                    Triple(
+                    Pair(
                         withContext(Dispatchers.IO) {
-                            api.loadDashboard(baseUrl, token)
+                            refreshPayload.copy(dashboard = api.loadDashboard(baseUrl, token))
                         },
-                        flushedCount,
-                        latestReleaseInfo
+                        flushedCount
                     )
                 } else {
-                    Triple(loadedDashboard, 0, latestReleaseInfo)
+                    Pair(refreshPayload, 0)
                 }
-            }.onSuccess { (loadedDashboard, flushedCount, latestReleaseInfo) ->
-                dashboard = loadedDashboard
-                serverReleaseInfo = latestReleaseInfo
+            }.onSuccess { (loadedPayload, flushedCount) ->
+                dashboard = loadedPayload.dashboard
+                serverReleaseInfo = loadedPayload.latestReleaseInfo
+                notificationDevices = loadedPayload.notificationDevices
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, token)
                 val currentQueuedSubmissionCount = outboxStore.readQueue().size
                 queuedSubmissionCount = currentQueuedSubmissionCount
-                widgetStore.saveDashboard(loadedDashboard, currentQueuedSubmissionCount)
+                widgetStore.saveDashboard(loadedPayload.dashboard, currentQueuedSubmissionCount)
                 TaskBanditWidgetProvider.refreshAllWidgets(context)
                 if (flushedCount > 0) {
                     noticeMessage = syncedNoticeTemplate.format(flushedCount)
@@ -476,6 +544,41 @@ private fun TaskBanditApp(
         }
     }
 
+    fun removeNotificationDevice(deviceId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeDeviceAction = "remove:$deviceId"
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.deleteNotificationDevice(baseUrl, token, deviceId)
+                }
+            }.onSuccess { devices ->
+                notificationDevices = devices
+                noticeMessage = deviceRemovedMessage
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            activeDeviceAction = null
+        }
+    }
+
+    fun updateThemeMode(nextThemeMode: MobileThemeMode) {
+        appPreferencesStore.saveThemeMode(nextThemeMode)
+        themeMode = nextThemeMode
+    }
+
+    fun updateLanguageTag(nextLanguageTag: String) {
+        appPreferencesStore.saveLanguageTag(nextLanguageTag)
+        languageTag = nextLanguageTag
+    }
+
     LaunchedEffect(session.token) {
         if (session.token != null) {
             if (
@@ -519,74 +622,99 @@ private fun TaskBanditApp(
         dismissedUpdateKey = updateKey
     }
 
-    if (session.token == null) {
-        LoginScreen(
-            serverUrl = serverUrl,
-            currentReleaseLabel = currentReleaseLabel,
-            serverReleaseLabel = serverReleaseLabel,
-            availableUpdate = visibleUpdate,
-            email = email,
-            password = password,
-            isBusy = isBusy,
-            errorMessage = errorMessage,
-            onDismissUpdate = ::dismissUpdateNotice,
-            onServerUrlChange = {
-                serverUrl = it
-                sessionStore.saveBaseUrl(it)
-            },
-            onEmailChange = { email = it },
-            onPasswordChange = { password = it },
-            onLogin = {
-                isBusy = true
-                errorMessage = null
-                coroutineScope.launch {
-                    val baseUrl = normalizedServerUrl()
-                    runCatching {
-                        withContext(Dispatchers.IO) {
-                            api.login(baseUrl, email, password)
+    val isDarkTheme = when (themeMode) {
+        MobileThemeMode.SYSTEM -> androidx.compose.foundation.isSystemInDarkTheme()
+        MobileThemeMode.LIGHT -> false
+        MobileThemeMode.DARK -> true
+    }
+
+    TaskBanditTheme(darkTheme = isDarkTheme) {
+        Surface(
+            modifier = Modifier.fillMaxSize(),
+            color = MaterialTheme.colorScheme.background
+        ) {
+            if (session.token == null) {
+                LoginScreen(
+                    serverUrl = serverUrl,
+                    currentReleaseLabel = currentReleaseLabel,
+                    serverReleaseLabel = serverReleaseLabel,
+                    availableUpdate = visibleUpdate,
+                    email = email,
+                    password = password,
+                    isBusy = isBusy,
+                    errorMessage = errorMessage,
+                    onDismissUpdate = ::dismissUpdateNotice,
+                    onServerUrlChange = {
+                        serverUrl = it
+                        sessionStore.saveBaseUrl(it)
+                    },
+                    onEmailChange = { email = it },
+                    onPasswordChange = { password = it },
+                    onLogin = {
+                        isBusy = true
+                        errorMessage = null
+                        coroutineScope.launch {
+                            val baseUrl = normalizedServerUrl()
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    api.login(baseUrl, email, password)
+                                }
+                            }.onSuccess { token ->
+                                serverUrl = baseUrl
+                                sessionStore.saveSession(baseUrl, token)
+                                session = TaskBanditSession(baseUrl = baseUrl, token = token)
+                            }.onFailure { throwable ->
+                                errorMessage = throwable.message ?: loginFailedMessage
+                            }
+                            isBusy = false
                         }
-                    }.onSuccess { token ->
-                        serverUrl = baseUrl
-                        sessionStore.saveSession(baseUrl, token)
-                        session = TaskBanditSession(baseUrl = baseUrl, token = token)
-                    }.onFailure { throwable ->
-                        errorMessage = throwable.message ?: loginFailedMessage
                     }
-                    isBusy = false
-                }
+                )
+            } else {
+                DashboardScreen(
+                    dashboard = dashboard,
+                    serverUrl = serverUrl,
+                    currentReleaseLabel = currentReleaseLabel,
+                    serverReleaseLabel = serverReleaseLabel,
+                    availableUpdate = visibleUpdate,
+                    notificationDevices = notificationDevices,
+                    installationId = installationId,
+                    languageTag = languageTag,
+                    themeMode = themeMode,
+                    notificationsPermissionGranted = notificationsPermissionGranted,
+                    isBusy = isBusy,
+                    isSyncingQueue = isSyncingQueue,
+                    activeReviewAction = activeReviewAction,
+                    activeStartAction = activeStartAction,
+                    activeSubmitAction = activeSubmitAction,
+                    activeCreateAction = activeCreateAction,
+                    activeDeviceAction = activeDeviceAction,
+                    errorMessage = errorMessage,
+                    noticeMessage = noticeMessage,
+                    queuedSubmissionCount = queuedSubmissionCount,
+                    onDismissUpdate = ::dismissUpdateNotice,
+                    onRefresh = ::refreshDashboard,
+                    onLogout = ::logout,
+                    onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
+                    onReject = { instanceId -> reviewPendingChore(instanceId, false) },
+                    onToggleChecklistItem = ::toggleChecklistItem,
+                    submitSelections = submitSelections,
+                    selectedProofUris = selectedProofUris,
+                    onPickProofs = ::openProofPicker,
+                    onStartChore = ::startChore,
+                    onSubmitChore = ::submitChore,
+                    onCreateChore = ::createChore,
+                    onRemoveNotificationDevice = ::removeNotificationDevice,
+                    onThemeModeChange = ::updateThemeMode,
+                    onLanguageTagChange = ::updateLanguageTag,
+                    onRequestNotificationPermission = {
+                        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                            notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+                        }
+                    }
+                )
             }
-        )
-    } else {
-        DashboardScreen(
-            dashboard = dashboard,
-            serverUrl = serverUrl,
-            currentReleaseLabel = currentReleaseLabel,
-            serverReleaseLabel = serverReleaseLabel,
-            availableUpdate = visibleUpdate,
-            isBusy = isBusy,
-            isSyncingQueue = isSyncingQueue,
-            activeReviewAction = activeReviewAction,
-            activeNotificationAction = activeNotificationAction,
-            activeStartAction = activeStartAction,
-            activeSubmitAction = activeSubmitAction,
-            activeCreateAction = activeCreateAction,
-            errorMessage = errorMessage,
-            noticeMessage = noticeMessage,
-            queuedSubmissionCount = queuedSubmissionCount,
-            onDismissUpdate = ::dismissUpdateNotice,
-            onRefresh = ::refreshDashboard,
-            onLogout = ::logout,
-            onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
-            onReject = { instanceId -> reviewPendingChore(instanceId, false) },
-            onNotificationRead = ::markNotificationRead,
-            onToggleChecklistItem = ::toggleChecklistItem,
-            submitSelections = submitSelections,
-            selectedProofUris = selectedProofUris,
-            onPickProofs = ::openProofPicker,
-            onStartChore = ::startChore,
-            onSubmitChore = ::submitChore,
-            onCreateChore = ::createChore
-        )
+        }
     }
 }
 
@@ -777,59 +905,24 @@ private fun LoginScreen(
 }
 
 @Composable
-private fun DashboardActionCard(
-    badge: String,
-    title: String,
-    body: String,
-    actionLabel: String,
-    enabled: Boolean,
-    onClick: () -> Unit
-) {
-    Card(
-        shape = RoundedCornerShape(20.dp)
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Text(
-                text = badge,
-                style = MaterialTheme.typography.labelLarge,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium
-            )
-            Text(
-                text = body,
-                style = MaterialTheme.typography.bodySmall
-            )
-            Button(
-                onClick = onClick,
-                enabled = enabled,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(actionLabel)
-            }
-        }
-    }
-}
-
-@Composable
 private fun DashboardScreen(
     dashboard: MobileDashboard?,
     serverUrl: String,
     currentReleaseLabel: String,
     serverReleaseLabel: String?,
     availableUpdate: MobileReleaseInfo?,
+    notificationDevices: List<MobileNotificationDevice>,
+    installationId: String,
+    languageTag: String,
+    themeMode: MobileThemeMode,
+    notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
-    activeNotificationAction: String?,
     activeStartAction: String?,
     activeSubmitAction: String?,
     activeCreateAction: String?,
+    activeDeviceAction: String?,
     errorMessage: String?,
     noticeMessage: String?,
     queuedSubmissionCount: Int,
@@ -838,483 +931,121 @@ private fun DashboardScreen(
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
-    onNotificationRead: (String) -> Unit,
     onToggleChecklistItem: (String, String, List<String>) -> Unit,
     submitSelections: Map<String, Set<String>>,
     selectedProofUris: Map<String, List<String>>,
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
-    onCreateChore: (String, Int) -> Unit
+    onCreateChore: (String, Int) -> Unit,
+    onRemoveNotificationDevice: (String) -> Unit,
+    onThemeModeChange: (MobileThemeMode) -> Unit,
+    onLanguageTagChange: (String) -> Unit,
+    onRequestNotificationPermission: () -> Unit
 ) {
-    val pendingApprovals = dashboard?.chores.orEmpty().filter { it.state == "pending_approval" }
-    val visibleChores = dashboard?.chores.orEmpty().filter { it.state != "pending_approval" }
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
+    val currentUserId = dashboard?.user?.id
+    val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
     var createDelayHours by rememberSaveable { mutableStateOf(4) }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val createDelayOptions = listOf(2, 4, 8, 24, 48)
-
-    LaunchedEffect(isCreatorRole) {
-        if (!isCreatorRole && activeTab == MobileDashboardTab.CREATE) {
-            activeTab = MobileDashboardTab.CHORES
-        }
+    val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
+    val sortedChores = remember(dashboard?.chores, currentUserId) {
+        dashboard?.chores.orEmpty().sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
     }
+    val myChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.MINE } }
+    val unassignedChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.UNASSIGNED } }
+    val otherChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.OTHERS } }
+    val choresMineLabel = stringResource(R.string.mobile_chores_mine)
+    val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
+    val choresOthersLabel = stringResource(R.string.mobile_chores_others)
 
     Scaffold(
+        floatingActionButton = {
+            FloatingActionButton(onClick = { activeTab = MobileDashboardTab.CREATE }, shape = CircleShape, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
+                Icon(imageVector = Icons.Rounded.AddTask, contentDescription = stringResource(R.string.mobile_tab_create))
+            }
+        },
         bottomBar = {
-            NavigationBar {
-                NavigationBarItem(
-                    selected = activeTab == MobileDashboardTab.CHORES,
-                    onClick = { activeTab = MobileDashboardTab.CHORES },
-                    icon = { Text("✓") },
-                    label = { Text(stringResource(R.string.mobile_tab_chores)) }
-                )
-                if (isCreatorRole) {
-                    NavigationBarItem(
-                        selected = activeTab == MobileDashboardTab.CREATE,
-                        onClick = { activeTab = MobileDashboardTab.CREATE },
-                        icon = { Text("+") },
-                        label = { Text(stringResource(R.string.mobile_tab_create)) }
-                    )
+            Card(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
+                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                    MobileTabButton(selected = activeTab == MobileDashboardTab.CHORES, label = stringResource(R.string.mobile_tab_chores), icon = Icons.Rounded.Checklist, onClick = { activeTab = MobileDashboardTab.CHORES; expandedChoreIds = emptySet() })
+                    Spacer(modifier = Modifier.size(72.dp))
+                    MobileTabButton(selected = activeTab == MobileDashboardTab.SETTINGS, label = stringResource(R.string.mobile_tab_settings), icon = Icons.Rounded.Settings, onClick = { activeTab = MobileDashboardTab.SETTINGS })
                 }
-                NavigationBarItem(
-                    selected = activeTab == MobileDashboardTab.UPDATES,
-                    onClick = { activeTab = MobileDashboardTab.UPDATES },
-                    icon = { Text("!") },
-                    label = { Text(stringResource(R.string.mobile_tab_updates)) }
-                )
             }
         }
     ) { padding ->
         LazyColumn(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
-                            MaterialTheme.colorScheme.background
-                        )
-                    )
-                )
-                .padding(padding)
-                .padding(20.dp),
+            modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background))).padding(padding).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             item {
-                Card {
-                    Column(
-                        modifier = Modifier.padding(20.dp),
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        Text(
-                            text = dashboard?.user?.displayName ?: stringResource(R.string.common_loading_short),
-                            style = MaterialTheme.typography.headlineMedium
-                        )
-                        Text(
-                            text = stringResource(R.string.mobile_app_release, currentReleaseLabel),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        if (serverReleaseLabel != null) {
-                            Text(
-                                text = stringResource(R.string.mobile_server_release, serverReleaseLabel),
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                        Text(
-                            text = serverUrl,
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                        Text(
-                            text = stringResource(
-                                R.string.mobile_dashboard_summary,
-                                dashboard?.pendingApprovals ?: 0,
-                                dashboard?.activeChores ?: 0,
-                                dashboard?.user?.currentStreak ?: 0
-                            ),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                        Text(
-                            text = stringResource(R.string.mobile_dashboard_start_here),
-                            style = MaterialTheme.typography.titleSmall
-                        )
-                        DashboardActionCard(
-                            badge = stringResource(R.string.mobile_dashboard_primary_badge),
-                            title = stringResource(R.string.mobile_dashboard_primary_title),
-                            body = stringResource(R.string.mobile_dashboard_primary_body),
-                            actionLabel = stringResource(
-                                if (activeTab == MobileDashboardTab.CHORES) {
-                                    R.string.mobile_dashboard_here
-                                } else {
-                                    R.string.mobile_dashboard_open_chores
-                                }
-                            ),
-                            enabled = activeTab != MobileDashboardTab.CHORES,
-                            onClick = {
-                                activeTab = MobileDashboardTab.CHORES
-                                expandedChoreIds = emptySet()
-                            }
-                        )
-                        DashboardActionCard(
-                            badge = stringResource(R.string.mobile_dashboard_secondary_badge),
-                            title = stringResource(R.string.mobile_dashboard_secondary_title),
-                            body = stringResource(
-                                if (isCreatorRole) {
-                                    R.string.mobile_dashboard_secondary_body
-                                } else {
-                                    R.string.mobile_dashboard_secondary_body_locked
-                                }
-                            ),
-                            actionLabel = stringResource(
-                                when {
-                                    !isCreatorRole -> R.string.mobile_dashboard_admin_only
-                                    activeTab == MobileDashboardTab.CREATE -> R.string.mobile_dashboard_here
-                                    else -> R.string.mobile_dashboard_open_create
-                                }
-                            ),
-                            enabled = isCreatorRole && activeTab != MobileDashboardTab.CREATE,
-                            onClick = { activeTab = MobileDashboardTab.CREATE }
-                        )
+                Card(shape = RoundedCornerShape(24.dp)) {
+                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Text(text = dashboard?.user?.displayName ?: stringResource(R.string.common_loading_short), style = MaterialTheme.typography.headlineMedium)
+                        Text(text = stringResource(R.string.mobile_dashboard_summary, dashboard?.pendingApprovals ?: 0, dashboard?.activeChores ?: 0, dashboard?.user?.currentStreak ?: 0), style = MaterialTheme.typography.bodyMedium)
                         Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Button(onClick = onRefresh, enabled = !isBusy) {
-                                Text(
-                                    stringResource(
-                                        if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh
-                                    )
-                                )
-                            }
-                            Button(onClick = onLogout) {
-                                Text(stringResource(R.string.mobile_logout))
+                                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                                Spacer(modifier = Modifier.size(6.dp))
+                                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
                             }
                         }
                         if (queuedSubmissionCount > 0 || isSyncingQueue) {
-                            Text(
-                                text = if (isSyncingQueue) {
-                                    stringResource(R.string.mobile_syncing_queue)
-                                } else {
-                                    stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount)
-                                },
-                                style = MaterialTheme.typography.bodyMedium
-                            )
+                            Text(text = if (isSyncingQueue) stringResource(R.string.mobile_syncing_queue) else stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount), style = MaterialTheme.typography.bodyMedium)
                         }
                         if (!noticeMessage.isNullOrBlank()) {
-                            Text(
-                                text = noticeMessage,
-                                color = MaterialTheme.colorScheme.primary
-                            )
+                            Text(text = noticeMessage, color = MaterialTheme.colorScheme.primary)
                         }
                         if (!errorMessage.isNullOrBlank()) {
-                            Text(
-                                text = errorMessage,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        if (availableUpdate != null) {
-                            Card {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.mobile_update_available_title),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Text(
-                                        text = stringResource(
-                                            R.string.mobile_update_available_body,
-                                            currentReleaseLabel,
-                                            formatReleaseLabel(availableUpdate)
-                                        ),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Button(onClick = onDismissUpdate) {
-                                        Text(stringResource(R.string.mobile_update_dismiss))
-                                    }
-                                }
-                            }
+                            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
                         }
                     }
                 }
             }
 
             if (activeTab == MobileDashboardTab.CHORES) {
-                item {
-                    Text(
-                        text = stringResource(R.string.mobile_my_chores),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
+                item { SectionIntro(title = stringResource(R.string.mobile_chores_title), body = stringResource(R.string.mobile_chores_hint)) }
+                if (sortedChores.isEmpty()) {
+                    item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
-
-                if (pendingApprovals.isNotEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.mobile_pending_approvals),
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.SemiBold
-                        )
-                    }
-
-                    items(pendingApprovals) { chore ->
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    text = stringResource(
-                                        R.string.mobile_due_at,
-                                        formatApiTimestamp(chore.dueAt)
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    Button(
-                                        onClick = { onApprove(chore.id) },
-                                        enabled = activeReviewAction == null
-                                    ) {
-                                        Text(
-                                            stringResource(
-                                                if (activeReviewAction == "approve:${chore.id}") {
-                                                    R.string.mobile_approving
-                                                } else {
-                                                    R.string.mobile_approve
-                                                }
-                                            )
-                                        )
-                                    }
-                                    Button(
-                                        onClick = { onReject(chore.id) },
-                                        enabled = activeReviewAction == null
-                                    ) {
-                                        Text(
-                                            stringResource(
-                                                if (activeReviewAction == "reject:${chore.id}") {
-                                                    R.string.mobile_rejecting
-                                                } else {
-                                                    R.string.mobile_reject
-                                                }
-                                            )
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                if (visibleChores.isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.mobile_no_chores),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else {
-                    items(visibleChores) { chore ->
-                        val selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet()
-                        val selectedProofCount = selectedProofUris[chore.id]?.size ?: 0
-                        val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
-                        val showDetails = expandedChoreIds.contains(chore.id)
-
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(6.dp)
-                            ) {
-                                Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
-                                Text(
-                                    text = stringResource(
-                                        R.string.mobile_due_at,
-                                        formatApiTimestamp(chore.dueAt)
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Text(
-                                    text = if (chore.isOverdue) {
-                                        stringResource(R.string.mobile_state_overdue)
-                                    } else {
-                                        chore.state.replace('_', ' ')
-                                    },
-                                    style = MaterialTheme.typography.labelLarge
-                                )
-                                if (isSubmittableState) {
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(
-                                            onClick = { onStartChore(chore.id) },
-                                            enabled = activeStartAction == null && chore.state != "in_progress"
-                                        ) {
-                                            Text(
-                                                stringResource(
-                                                    if (activeStartAction == "start:${chore.id}") {
-                                                        R.string.mobile_starting
-                                                    } else if (chore.state == "in_progress") {
-                                                        R.string.mobile_started
-                                                    } else {
-                                                        R.string.mobile_start
-                                                    }
-                                                )
-                                            )
-                                        }
-                                        Button(
-                                            onClick = { onSubmitChore(chore.id) },
-                                            enabled = activeSubmitAction == null
-                                        ) {
-                                            Text(
-                                                stringResource(
-                                                    if (activeSubmitAction == "submit:${chore.id}") {
-                                                        R.string.mobile_submitting
-                                                    } else {
-                                                        R.string.mobile_submit
-                                                    }
-                                                )
-                                            )
-                                        }
-                                    }
-                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                        Button(
-                                            onClick = { onPickProofs(chore.id) },
-                                            enabled = activeSubmitAction == null
-                                        ) {
-                                            Text(stringResource(R.string.mobile_pick_photos))
-                                        }
-                                        TextButton(
-                                            onClick = {
-                                                expandedChoreIds = if (showDetails) {
-                                                    expandedChoreIds - chore.id
-                                                } else {
-                                                    expandedChoreIds + chore.id
-                                                }
-                                            }
-                                        ) {
-                                            Text(
-                                                stringResource(
-                                                    if (showDetails) {
-                                                        R.string.mobile_hide_details
-                                                    } else {
-                                                        R.string.mobile_show_details
-                                                    }
-                                                )
-                                            )
-                                        }
-                                    }
-                                }
-                                if (showDetails && chore.checklist.isNotEmpty()) {
-                                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        chore.checklist.forEach { item ->
-                                            Row(
-                                                verticalAlignment = Alignment.CenterVertically,
-                                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                            ) {
-                                                Checkbox(
-                                                    checked = selectedChecklistIds.contains(item.id),
-                                                    onCheckedChange = {
-                                                        onToggleChecklistItem(
-                                                            chore.id,
-                                                            item.id,
-                                                            chore.completedChecklistIds
-                                                        )
-                                                    },
-                                                    enabled = isSubmittableState
-                                                )
-                                                Text(
-                                                    text = item.title,
-                                                    style = MaterialTheme.typography.bodyMedium
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                                if (showDetails) {
-                                    if (selectedProofCount > 0) {
-                                        Text(
-                                            text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    } else if (chore.requirePhotoProof) {
-                                        Text(
-                                            text = stringResource(R.string.mobile_photo_required_hint),
-                                            style = MaterialTheme.typography.bodySmall
-                                        )
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
+                choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
             }
 
             if (activeTab == MobileDashboardTab.CREATE) {
+                item { SectionIntro(title = stringResource(R.string.mobile_create_title), body = stringResource(R.string.mobile_create_hint)) }
                 item {
-                    Text(
-                        text = stringResource(R.string.mobile_create_title),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-                item {
-                    Text(
-                        text = stringResource(R.string.mobile_create_hint),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                }
-                item {
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        createDelayOptions.forEach { delay ->
-                            Button(
-                                onClick = { createDelayHours = delay },
-                                enabled = createDelayHours != delay
-                            ) {
-                                Text(stringResource(R.string.mobile_create_delay_option, delay))
+                    Card(shape = RoundedCornerShape(24.dp)) {
+                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                            Text(text = if (isCreatorRole) stringResource(R.string.mobile_create_ready) else stringResource(R.string.mobile_create_no_permission), style = MaterialTheme.typography.titleMedium)
+                            createDelayOptions.chunked(3).forEach { rowOptions ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    rowOptions.forEach { delay ->
+                                        OutlinedButton(onClick = { createDelayHours = delay }, enabled = createDelayHours != delay) {
+                                            Text(stringResource(R.string.mobile_create_delay_option, delay))
+                                        }
+                                    }
+                                }
                             }
                         }
                     }
                 }
-
-                if (!isCreatorRole) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.mobile_create_no_permission),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else if (dashboard?.templates.orEmpty().isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.mobile_create_no_templates),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-                    }
-                } else {
+                if (isCreatorRole && dashboard?.templates.orEmpty().isEmpty()) {
+                    item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
+                } else if (isCreatorRole) {
                     items(dashboard?.templates.orEmpty()) { template ->
-                        Card {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = template.title,
-                                    style = MaterialTheme.typography.titleMedium,
-                                    modifier = Modifier.weight(1f)
-                                )
-                                Button(
-                                    onClick = { onCreateChore(template.id, createDelayHours) },
-                                    enabled = activeCreateAction == null
-                                ) {
+                        Card(shape = RoundedCornerShape(22.dp)) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(text = template.title, style = MaterialTheme.typography.titleMedium)
+                                Button(onClick = { onCreateChore(template.id, createDelayHours) }, enabled = activeCreateAction == null) {
                                     if (activeCreateAction == "create:${template.id}") {
                                         Text(stringResource(R.string.mobile_create_creating))
                                     } else {
-                                        Text(
-                                            stringResource(
-                                                R.string.mobile_create_action,
-                                                createDelayHours
-                                            )
-                                        )
+                                        Text(stringResource(R.string.mobile_create_action, createDelayHours))
                                     }
                                 }
                             }
@@ -1323,92 +1054,245 @@ private fun DashboardScreen(
                 }
             }
 
-            if (activeTab == MobileDashboardTab.UPDATES) {
+            if (activeTab == MobileDashboardTab.SETTINGS) {
+                item { SectionIntro(title = stringResource(R.string.mobile_settings_title), body = stringResource(R.string.mobile_settings_hint)) }
                 item {
-                    Text(
-                        text = stringResource(R.string.mobile_notifications),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                if (dashboard?.notifications.orEmpty().isEmpty()) {
-                    item {
-                        Text(
-                            text = stringResource(R.string.mobile_notifications_empty),
-                            style = MaterialTheme.typography.bodyMedium
-                        )
+                    SettingsSectionCard(icon = Icons.Rounded.Settings, title = stringResource(R.string.mobile_settings_appearance)) {
+                        Text(text = stringResource(R.string.mobile_settings_theme), style = MaterialTheme.typography.titleMedium)
+                        MobileChoiceRow(options = listOf(
+                            MobileChoiceOption(label = stringResource(R.string.mobile_theme_system), selected = themeMode == MobileThemeMode.SYSTEM, onClick = { onThemeModeChange(MobileThemeMode.SYSTEM) }),
+                            MobileChoiceOption(label = stringResource(R.string.mobile_theme_light), selected = themeMode == MobileThemeMode.LIGHT, onClick = { onThemeModeChange(MobileThemeMode.LIGHT) }),
+                            MobileChoiceOption(label = stringResource(R.string.mobile_theme_dark), selected = themeMode == MobileThemeMode.DARK, onClick = { onThemeModeChange(MobileThemeMode.DARK) })
+                        ))
+                        Text(text = stringResource(R.string.mobile_settings_language), style = MaterialTheme.typography.titleMedium)
+                        MobileChoiceRow(options = listOf(
+                            MobileChoiceOption(label = stringResource(R.string.mobile_language_system), selected = languageTag == "system", onClick = { onLanguageTagChange("system") }),
+                            MobileChoiceOption(label = stringResource(R.string.mobile_language_en), selected = languageTag == "en", onClick = { onLanguageTagChange("en") }),
+                            MobileChoiceOption(label = stringResource(R.string.mobile_language_de), selected = languageTag == "de", onClick = { onLanguageTagChange("de") }),
+                            MobileChoiceOption(label = stringResource(R.string.mobile_language_hu), selected = languageTag == "hu", onClick = { onLanguageTagChange("hu") })
+                        ))
                     }
-                } else {
-                    items(dashboard?.notifications.orEmpty().take(5)) { notification ->
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(16.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(text = notification.title, style = MaterialTheme.typography.titleMedium)
-                                Text(text = notification.message, style = MaterialTheme.typography.bodyMedium)
-                                Text(
-                                    text = formatApiTimestamp(notification.createdAt),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                if (!notification.isRead) {
-                                    Button(
-                                        onClick = { onNotificationRead(notification.id) },
-                                        enabled = activeNotificationAction == null
-                                    ) {
-                                        Text(
-                                            stringResource(
-                                                if (activeNotificationAction == "notification:${notification.id}") {
-                                                    R.string.mobile_marking_read
-                                                } else {
-                                                    R.string.mobile_mark_read
-                                                }
-                                            )
-                                        )
-                                    }
+                }
+                item {
+                    SettingsSectionCard(icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
+                        Text(text = if (currentDevice == null) stringResource(R.string.mobile_device_status_missing) else stringResource(R.string.mobile_device_status_ready), style = MaterialTheme.typography.bodyMedium)
+                        SettingsValueLine(label = stringResource(R.string.mobile_settings_notifications_permission), value = stringResource(if (notificationsPermissionGranted) R.string.mobile_settings_notifications_allowed else R.string.mobile_settings_notifications_needed))
+                        SettingsValueLine(label = stringResource(R.string.mobile_settings_installation_id), value = installationId)
+                        currentDevice?.let { device ->
+                            SettingsValueLine(label = stringResource(R.string.mobile_settings_provider), value = device.provider)
+                            SettingsValueLine(label = stringResource(R.string.mobile_settings_device_name), value = device.deviceName ?: stringResource(R.string.mobile_settings_unknown))
+                            SettingsValueLine(label = stringResource(R.string.mobile_settings_last_seen), value = formatApiTimestamp(device.lastSeenAt))
+                            device.appVersion?.let { version -> SettingsValueLine(label = stringResource(R.string.mobile_settings_app_version), value = version) }
+                            device.locale?.let { locale -> SettingsValueLine(label = stringResource(R.string.mobile_settings_locale), value = locale) }
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_device_refresh)) }
+                            if (!notificationsPermissionGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                                OutlinedButton(onClick = onRequestNotificationPermission) {
+                                    Icon(imageVector = Icons.Rounded.NotificationsActive, contentDescription = null, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.size(6.dp))
+                                    Text(stringResource(R.string.mobile_device_allow_notifications))
+                                }
+                            }
+                        }
+                        if (currentDevice != null) {
+                            OutlinedButton(onClick = { onRemoveNotificationDevice(currentDevice.id) }, enabled = activeDeviceAction == null) {
+                                Text(stringResource(if (activeDeviceAction == "remove:${currentDevice.id}") R.string.mobile_device_removing else R.string.mobile_device_remove))
+                            }
+                        }
+                    }
+                }
+                item {
+                    SettingsSectionCard(icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
+                        SettingsValueLine(label = stringResource(R.string.mobile_settings_app_release), value = currentReleaseLabel)
+                        SettingsValueLine(label = stringResource(R.string.mobile_settings_server_release), value = serverReleaseLabel ?: stringResource(R.string.mobile_settings_unknown))
+                        SettingsValueLine(label = stringResource(R.string.mobile_settings_server_url), value = serverUrl)
+                        SettingsValueLine(label = stringResource(R.string.mobile_settings_commit), value = BuildConfig.TASKBANDIT_COMMIT_SHA)
+                        if (availableUpdate != null) {
+                            Card {
+                                Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Text(text = stringResource(R.string.mobile_update_available_title), style = MaterialTheme.typography.titleMedium)
+                                    Text(text = stringResource(R.string.mobile_update_available_body, currentReleaseLabel, formatReleaseLabel(availableUpdate)), style = MaterialTheme.typography.bodySmall)
+                                    Button(onClick = onDismissUpdate) { Text(stringResource(R.string.mobile_update_dismiss)) }
                                 }
                             }
                         }
                     }
                 }
-
                 item {
-                    Text(
-                        text = stringResource(R.string.mobile_leaderboard),
-                        style = MaterialTheme.typography.titleLarge,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                }
-
-                items(dashboard?.leaderboard.orEmpty().take(5)) { entry ->
-                    Card {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(16.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
-                            Column {
-                                Text(text = entry.displayName, style = MaterialTheme.typography.titleMedium)
-                                Text(text = entry.role, style = MaterialTheme.typography.bodySmall)
-                            }
-                            Column(horizontalAlignment = Alignment.End) {
-                                Text(
-                                    text = stringResource(R.string.mobile_points_value, entry.points),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = stringResource(R.string.mobile_streak_value, entry.currentStreak),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                            }
+                    SettingsSectionCard(icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                            Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_refresh)) }
+                            OutlinedButton(onClick = onLogout) { Text(stringResource(R.string.mobile_logout)) }
                         }
                     }
                 }
             }
         }
     }
+}
+
+@Composable
+private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+    val iconTint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val chipColor = if (selected) {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+    }
+    TextButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
+    ) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(
+                modifier = Modifier.size(34.dp).background(chipColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = iconTint,
+                style = MaterialTheme.typography.labelSmall,
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionIntro(title: String, body: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+        Text(text = body, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun LazyListScope.choreSection(
+    chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
+    activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onSubmitChore: (String) -> Unit
+) {
+    if (chores.isEmpty()) return
+    item { Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+    items(chores, key = { it.id }) { chore ->
+        ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+    }
+}
+@Composable
+private fun ChoreCard(
+    chore: MobileChore, currentUserId: String?, currentUserRole: String?, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?,
+    selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onSubmitChore: (String) -> Unit
+) {
+    val isPendingApproval = chore.state == "pending_approval"
+    val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+    val canManageTask = currentUserRole != "child" || chore.assigneeId == null || chore.assigneeId == currentUserId
+    Card(shape = RoundedCornerShape(22.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
+            Text(text = stringResource(R.string.mobile_due_at, formatApiTimestamp(chore.dueAt)), style = MaterialTheme.typography.bodySmall)
+            Text(text = describeChoreAssignment(chore, currentUserId), style = MaterialTheme.typography.bodySmall)
+            Text(text = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' '), style = MaterialTheme.typography.labelLarge)
+            if (isPendingApproval) {
+                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Button(onClick = { onApprove(chore.id) }, enabled = activeReviewAction == null) { Text(stringResource(if (activeReviewAction == "approve:${chore.id}") R.string.mobile_approving else R.string.mobile_approve)) }
+                    OutlinedButton(onClick = { onReject(chore.id) }, enabled = activeReviewAction == null) { Text(stringResource(if (activeReviewAction == "reject:${chore.id}") R.string.mobile_rejecting else R.string.mobile_reject)) }
+                }
+                return@Column
+            }
+            if (isSubmittableState) {
+                Button(onClick = onExpandedChange) { Text(stringResource(if (!canManageTask) R.string.mobile_view_task else if (expanded) R.string.mobile_hide_task_tools else R.string.mobile_work_task)) }
+            }
+            if (expanded) {
+                if (!canManageTask) {
+                    Text(text = stringResource(R.string.mobile_chore_read_only_hint), style = MaterialTheme.typography.bodySmall)
+                }
+                if (chore.checklist.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        chore.checklist.forEach { item ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Checkbox(checked = selectedChecklistIds.contains(item.id), onCheckedChange = { onToggleChecklistItem(chore.id, item.id, chore.completedChecklistIds) }, enabled = canManageTask && isSubmittableState)
+                                Text(text = item.title, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+                if (selectedProofCount > 0) {
+                    Text(text = stringResource(R.string.mobile_selected_photos, selectedProofCount), style = MaterialTheme.typography.bodySmall)
+                } else if (chore.requirePhotoProof) {
+                    Text(text = stringResource(R.string.mobile_photo_required_hint), style = MaterialTheme.typography.bodySmall)
+                }
+                if (canManageTask && isSubmittableState) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                        Button(onClick = { onStartChore(chore.id) }, enabled = activeStartAction == null && chore.state != "in_progress") { Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start)) }
+                        OutlinedButton(onClick = { onPickProofs(chore.id) }, enabled = activeSubmitAction == null) { Text(stringResource(R.string.mobile_pick_photos)) }
+                    }
+                    Button(onClick = { onSubmitChore(chore.id) }, enabled = activeSubmitAction == null) { Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit)) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MobileChoiceRow(options: List<MobileChoiceOption>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.chunked(2).forEach { rowOptions ->
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                rowOptions.forEach { option -> if (option.selected) Button(onClick = option.onClick) { Text(option.label) } else OutlinedButton(onClick = option.onClick) { Text(option.label) } }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(icon: ImageVector, title: String, content: @Composable () -> Unit) {
+    Card(shape = RoundedCornerShape(24.dp)) {
+        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = icon, contentDescription = null)
+                Text(text = title, style = MaterialTheme.typography.titleMedium)
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsValueLine(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(text = label, style = MaterialTheme.typography.bodySmall)
+        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+private fun resolveChoreSection(chore: MobileChore, currentUserId: String?): MobileChoreSection = when {
+    chore.assigneeId != null && chore.assigneeId == currentUserId -> MobileChoreSection.MINE
+    chore.assigneeId.isNullOrBlank() -> MobileChoreSection.UNASSIGNED
+    else -> MobileChoreSection.OTHERS
+}
+
+private fun choreSectionRank(section: MobileChoreSection): Int = when (section) {
+    MobileChoreSection.MINE -> 0
+    MobileChoreSection.UNASSIGNED -> 1
+    MobileChoreSection.OTHERS -> 2
+}
+
+private fun parseInstantForSort(value: String): Instant = runCatching { Instant.parse(value) }.getOrDefault(Instant.MAX)
+
+@Composable
+private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?): String = when (resolveChoreSection(chore, currentUserId)) {
+    MobileChoreSection.MINE -> stringResource(R.string.mobile_chore_assigned_to_you)
+    MobileChoreSection.UNASSIGNED -> stringResource(R.string.mobile_chore_unassigned)
+    MobileChoreSection.OTHERS -> stringResource(R.string.mobile_chore_assigned_elsewhere)
 }
 
 private fun formatApiTimestamp(value: String): String {

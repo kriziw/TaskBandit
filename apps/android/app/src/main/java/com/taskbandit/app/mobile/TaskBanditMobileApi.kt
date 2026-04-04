@@ -48,6 +48,7 @@ class TaskBanditMobileApi {
         val notificationsJson = requestJsonArray(baseUrl, "/api/dashboard/notifications", token = token)
 
         val user = MobileUser(
+            id = userJson.optString("id"),
             displayName = userJson.optString("displayName"),
             role = userJson.optString("role"),
             points = userJson.optInt("points"),
@@ -77,6 +78,7 @@ class TaskBanditMobileApi {
                         id = entry.optString("id"),
                         title = entry.optString("title"),
                         state = entry.optString("state"),
+                        assigneeId = entry.optString("assigneeId").ifBlank { null },
                         dueAt = entry.optString("dueAt"),
                         isOverdue = entry.optBoolean("isOverdue"),
                         requirePhotoProof = entry.optBoolean("requirePhotoProof"),
@@ -171,6 +173,27 @@ class TaskBanditMobileApi {
             token = token,
             method = "POST",
             body = JSONObject()
+        )
+    }
+
+    fun getNotificationDevices(baseUrl: String, token: String): List<MobileNotificationDevice> {
+        return parseNotificationDevices(
+            requestJsonArray(
+                baseUrl = baseUrl,
+                path = "/api/settings/notification-devices",
+                token = token
+            )
+        )
+    }
+
+    fun deleteNotificationDevice(baseUrl: String, token: String, deviceId: String): List<MobileNotificationDevice> {
+        return parseNotificationDevices(
+            requestJsonArray(
+                baseUrl = baseUrl,
+                path = "/api/settings/notification-devices/$deviceId",
+                token = token,
+                method = "DELETE"
+            )
         )
     }
 
@@ -297,9 +320,10 @@ class TaskBanditMobileApi {
     private fun requestJsonArray(
         baseUrl: String,
         path: String,
-        token: String? = null
+        token: String? = null,
+        method: String = "GET"
     ): JSONArray {
-        val parsed = JSONTokener(executeRequest(baseUrl, path, token, "GET", null)).nextValue()
+        val parsed = JSONTokener(executeRequest(baseUrl, path, token, method, null)).nextValue()
         return parsed as? JSONArray ?: throw IllegalStateException("Unexpected response shape.")
     }
 
@@ -322,6 +346,7 @@ class TaskBanditMobileApi {
         when (method) {
             "POST" -> requestBuilder.post(requestBody ?: ByteArray(0).toRequestBody(null))
             "PUT" -> requestBuilder.put(requestBody ?: ByteArray(0).toRequestBody(null))
+            "DELETE" -> requestBuilder.delete(requestBody ?: ByteArray(0).toRequestBody(null))
             else -> requestBuilder.get()
         }
 
@@ -429,6 +454,31 @@ class TaskBanditMobileApi {
                     MobileChoreTemplate(
                         id = id,
                         title = title
+                    )
+                )
+            }
+        }
+    }
+
+    private fun parseNotificationDevices(entries: JSONArray?): List<MobileNotificationDevice> {
+        if (entries == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until entries.length()) {
+                val item = entries.optJSONObject(index) ?: continue
+                add(
+                    MobileNotificationDevice(
+                        id = item.optString("id"),
+                        installationId = item.optString("installationId"),
+                        provider = item.optString("provider"),
+                        pushTokenConfigured = item.optBoolean("pushTokenConfigured"),
+                        deviceName = item.optString("deviceName").ifBlank { null },
+                        appVersion = item.optString("appVersion").ifBlank { null },
+                        locale = item.optString("locale").ifBlank { null },
+                        notificationsEnabled = item.optBoolean("notificationsEnabled"),
+                        lastSeenAt = item.optString("lastSeenAt")
                     )
                 )
             }

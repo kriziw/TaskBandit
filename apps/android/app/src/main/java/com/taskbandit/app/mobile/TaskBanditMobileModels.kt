@@ -6,6 +6,7 @@ data class TaskBanditSession(
 )
 
 data class MobileUser(
+    val id: String,
     val displayName: String,
     val role: String,
     val points: Int,
@@ -23,6 +24,7 @@ data class MobileChore(
     val id: String,
     val title: String,
     val state: String,
+    val assigneeId: String? = null,
     val dueAt: String,
     val isOverdue: Boolean,
     val requirePhotoProof: Boolean,
@@ -68,6 +70,18 @@ data class MobileNotification(
     val message: String,
     val isRead: Boolean,
     val createdAt: String
+)
+
+data class MobileNotificationDevice(
+    val id: String,
+    val installationId: String,
+    val provider: String,
+    val pushTokenConfigured: Boolean,
+    val deviceName: String?,
+    val appVersion: String?,
+    val locale: String?,
+    val notificationsEnabled: Boolean,
+    val lastSeenAt: String
 )
 
 data class MobileReleaseInfo(
