@@ -77,7 +77,8 @@ You can also trigger the manual Android workflow from GitHub Actions to validate
 
 TaskBandit now uses `release-please` as the main release-preparation workflow.
 
-- Pushes to `main` keep a release PR up to date from conventional commits such as `feat:` and `fix:`.
+- Releases are prepared deliberately by running the `release-please` workflow manually from GitHub Actions.
+- This avoids the repo constantly opening the next release PR while we are still actively iterating on `main`.
 - When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned Docker images.
 - The separate `android-release` workflow is manual-only, so the release APK is not built twice for the same release event.
 - The `simple` release strategy tracks the root [CHANGELOG.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/CHANGELOG.md) and [version.txt](C:/Users/krist/Documents/GitHub/Chore%20Manager/version.txt).
