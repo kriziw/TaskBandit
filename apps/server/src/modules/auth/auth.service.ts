@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -7,13 +8,16 @@ import {
 import { AuthProvider, HouseholdRole } from "@prisma/client";
 import { compare, hash } from "bcryptjs";
 import { Secret, sign, SignOptions, verify } from "jsonwebtoken";
-import { randomUUID } from "node:crypto";
+import { createHash, randomBytes, randomUUID } from "node:crypto";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { SmtpService, type SmtpSettings } from "../settings/smtp.service";
+import { CompletePasswordResetDto } from "./dto/complete-password-reset.dto";
 import { LoginDto } from "./dto/login.dto";
+import { RequestPasswordResetDto } from "./dto/request-password-reset.dto";
 import { SignupDto } from "./dto/signup.dto";
 
 type AuthTokenPayload = {
@@ -60,7 +64,8 @@ export class AuthService {
   constructor(
     private readonly prisma: PrismaService,
     private readonly appConfigService: AppConfigService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
+    private readonly smtpService: SmtpService
   ) {}
 
   async hashPassword(password: string) {
@@ -159,6 +164,149 @@ export class AuthService {
     });
 
     return this.buildAuthResponse(user.id, user.householdId, user.role, normalizedEmail);
+  }
+
+  async requestPasswordReset(
+    dto: RequestPasswordResetDto,
+    resetLinkTemplate: string,
+    language: SupportedLanguage
+  ) {
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig();
+    if (!localAuthConfig.enabled) {
+      throw new ForbiddenException({
+        message: this.i18nService.translate("auth.local_disabled", language)
+      });
+    }
+
+    const smtpSettings = await this.getPrimaryHouseholdSmtpSettings();
+    if (!smtpSettings || !smtpSettings.enabled) {
+      throw new BadRequestException({
+        message: this.i18nService.translate("auth.password_reset_unavailable", language)
+      });
+    }
+
+    const normalizedEmail = this.normalizeEmail(dto.email);
+    const identity = await this.prisma.authIdentity.findUnique({
+      where: {
+        email: normalizedEmail
+      },
+      include: {
+        user: true
+      }
+    });
+
+    if (!identity || identity.provider !== AuthProvider.LOCAL || !identity.passwordHash) {
+      return {
+        ok: true,
+        message: this.i18nService.translate("auth.password_reset_requested", language)
+      };
+    }
+
+    const rawToken = randomBytes(32).toString("hex");
+    const tokenHash = this.hashResetToken(rawToken);
+    const expiresAtUtc = new Date(Date.now() + 60 * 60 * 1000);
+
+    await this.prisma.passwordResetToken.create({
+      data: {
+        authIdentityId: identity.id,
+        tokenHash,
+        expiresAtUtc
+      }
+    });
+
+    const resetLink = resetLinkTemplate.replace("__TASKBANDIT_RESET_TOKEN__", encodeURIComponent(rawToken));
+    const subject = this.i18nService.translate("auth.password_reset_email_subject", language);
+    const text = [
+      this.i18nService.translate("auth.password_reset_email_intro", language),
+      "",
+      resetLink,
+      "",
+      this.i18nService.translate("auth.password_reset_email_expiry", language)
+    ].join("\n");
+
+    await this.smtpService.sendMail(smtpSettings, {
+      to: normalizedEmail,
+      subject,
+      text,
+      html: `<p>${this.escapeHtml(
+        this.i18nService.translate("auth.password_reset_email_intro", language)
+      )}</p><p><a href="${this.escapeHtml(resetLink)}">${this.escapeHtml(resetLink)}</a></p><p>${this.escapeHtml(
+        this.i18nService.translate("auth.password_reset_email_expiry", language)
+      )}</p>`
+    });
+
+    return {
+      ok: true,
+      message: this.i18nService.translate("auth.password_reset_requested", language)
+    };
+  }
+
+  async completePasswordReset(dto: CompletePasswordResetDto, language: SupportedLanguage) {
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig();
+    if (!localAuthConfig.enabled) {
+      throw new ForbiddenException({
+        message: this.i18nService.translate("auth.local_disabled", language)
+      });
+    }
+
+    const tokenHash = this.hashResetToken(dto.token);
+    const resetToken = await this.prisma.passwordResetToken.findUnique({
+      where: {
+        tokenHash
+      },
+      include: {
+        authIdentity: true
+      }
+    });
+
+    if (!resetToken || resetToken.usedAtUtc || resetToken.expiresAtUtc.getTime() < Date.now()) {
+      throw new BadRequestException({
+        message: this.i18nService.translate("auth.password_reset_invalid", language)
+      });
+    }
+
+    if (resetToken.authIdentity.provider !== AuthProvider.LOCAL) {
+      throw new BadRequestException({
+        message: this.i18nService.translate("auth.password_reset_invalid", language)
+      });
+    }
+
+    const passwordHash = await this.hashPassword(dto.password);
+    await this.prisma.$transaction([
+      this.prisma.authIdentity.update({
+        where: {
+          id: resetToken.authIdentity.id
+        },
+        data: {
+          passwordHash
+        }
+      }),
+      this.prisma.passwordResetToken.update({
+        where: {
+          id: resetToken.id
+        },
+        data: {
+          usedAtUtc: new Date()
+        }
+      }),
+      this.prisma.passwordResetToken.updateMany({
+        where: {
+          authIdentityId: resetToken.authIdentity.id,
+          id: {
+            not: resetToken.id
+          },
+          usedAtUtc: null
+        },
+        data: {
+          usedAtUtc: new Date()
+        }
+      })
+    ]);
+
+    return {
+      ok: true,
+      message: this.i18nService.translate("auth.password_reset_completed", language)
+    };
   }
 
   async getCurrentUser(
@@ -528,6 +676,43 @@ export class AuthService {
       oidcClientSecret: household.settings?.oidcClientSecret?.trim() ?? "",
       oidcScope: household.settings?.oidcScope?.trim() || "openid profile email"
     };
+  }
+
+  private async getPrimaryHouseholdSmtpSettings(): Promise<SmtpSettings | null> {
+    const household = await this.prisma.household.findFirst({
+      include: {
+        settings: true
+      }
+    });
+
+    if (!household?.settings) {
+      return null;
+    }
+
+    return {
+      enabled: household.settings.smtpEnabled,
+      host: household.settings.smtpHost ?? "",
+      port: household.settings.smtpPort ?? 587,
+      secure: household.settings.smtpSecure,
+      username: household.settings.smtpUsername ?? "",
+      password: household.settings.smtpPassword ?? "",
+      fromEmail: household.settings.smtpFromEmail ?? "",
+      fromName: household.settings.smtpFromName ?? "",
+      passwordConfigured: Boolean(household.settings.smtpPassword)
+    };
+  }
+
+  private hashResetToken(token: string) {
+    return createHash("sha256").update(token).digest("hex");
+  }
+
+  private escapeHtml(value: string) {
+    return value
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#39;");
   }
 
   private async getEffectiveLocalAuthConfig(

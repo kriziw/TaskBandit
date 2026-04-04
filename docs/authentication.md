@@ -7,6 +7,7 @@ TaskBandit now includes local auth plus an optional OIDC login flow in the NestJ
 - Bootstrap can create the first household owner as a real local account.
 - Local login returns a JWT bearer token.
 - Self-signup can create `parent` accounts when household settings allow it.
+- Password reset emails are available for local accounts when SMTP is configured.
 - Auth provider discovery exposes local auth plus current OIDC configuration status.
 - Optional OIDC sign-in is available through a server-managed authorization-code flow.
 - Admins can manage household auth settings from the web UI.
@@ -20,6 +21,8 @@ TaskBandit now includes local auth plus an optional OIDC login flow in the NestJ
 - `GET /api/auth/oidc/callback`
 - `POST /api/auth/login`
 - `POST /api/auth/signup`
+- `POST /api/auth/password-reset/request`
+- `POST /api/auth/password-reset/complete`
 - `GET /api/auth/me`
 - `GET /api/bootstrap/status`
 - `POST /api/bootstrap/household`
@@ -48,4 +51,6 @@ TaskBandit now includes local auth plus an optional OIDC login flow in the NestJ
 - If an OIDC identity already matches an existing TaskBandit email address, TaskBandit links that OIDC identity to the existing user.
 - If no linked account exists yet, TaskBandit can create a new `parent` account only when household self-signup is enabled.
 - Current local auth is intended as the project foundation; role-aware authorization guards and password reset flows still need to be added.
+- Password reset is intentionally generic on the request step: if an email does not match a local account, TaskBandit still returns the same success response.
+- Password reset email delivery depends on household SMTP settings from the admin UI.
 - For demo-seeded environments, the seeded users share the password `TaskBandit123!`.

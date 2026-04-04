@@ -141,9 +141,22 @@ model AuthIdentity {
   createdAtUtc    DateTime     @default(now())
   updatedAtUtc    DateTime     @updatedAt
   user            User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordResetTokens PasswordResetToken[]
 
   @@unique([provider, providerSubject])
   @@unique([email], map: "auth_identity_email_unique")
+}
+
+model PasswordResetToken {
+  id              String       @id @default(uuid()) @db.Uuid
+  authIdentityId  String       @db.Uuid
+  tokenHash       String       @unique
+  expiresAtUtc    DateTime
+  usedAtUtc       DateTime?
+  createdAtUtc    DateTime     @default(now())
+  authIdentity    AuthIdentity @relation(fields: [authIdentityId], references: [id], onDelete: Cascade)
+
+  @@index([authIdentityId, expiresAtUtc])
 }
 
 model ChoreTemplate {

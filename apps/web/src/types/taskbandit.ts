@@ -41,6 +41,11 @@ export type AuthResponse = {
   };
 };
 
+export type ApiStatusResponse = {
+  ok: boolean;
+  message: string;
+};
+
 export type DashboardSummary = {
   pendingApprovals: number;
   activeChores: number;

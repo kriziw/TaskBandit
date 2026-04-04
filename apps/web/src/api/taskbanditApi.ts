@@ -1,5 +1,6 @@
 import type {
   AuditLogEntry,
+  ApiStatusResponse,
   AuthenticatedUser,
   AuthProviders,
   AuthResponse,
@@ -145,6 +146,20 @@ export const taskBanditApi = {
       method: "POST",
       language,
       body: input
+    });
+  },
+  requestPasswordReset(email: string, language: AppLanguage) {
+    return request<ApiStatusResponse>("/api/auth/password-reset/request", {
+      method: "POST",
+      language,
+      body: { email }
+    });
+  },
+  completePasswordReset(token: string, password: string, language: AppLanguage) {
+    return request<ApiStatusResponse>("/api/auth/password-reset/complete", {
+      method: "POST",
+      language,
+      body: { token, password }
     });
   },
   getCurrentUser(token: string, language: AppLanguage) {

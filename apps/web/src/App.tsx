@@ -46,6 +46,12 @@ type LoginFormState = {
   password: string;
 };
 type SignupFormState = SignupInput;
+type PasswordResetRequestFormState = {
+  email: string;
+};
+type PasswordResetCompleteFormState = {
+  password: string;
+};
 
 type MemberFormState = CreateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
@@ -98,6 +104,15 @@ export function App() {
     email: "",
     password: ""
   });
+  const [passwordResetRequestForm, setPasswordResetRequestForm] =
+    useState<PasswordResetRequestFormState>({
+      email: ""
+    });
+  const [passwordResetCompleteForm, setPasswordResetCompleteForm] =
+    useState<PasswordResetCompleteFormState>({
+      password: ""
+    });
+  const [passwordResetToken, setPasswordResetToken] = useState<string | null>(null);
   const [bootstrapForm, setBootstrapForm] = useState<BootstrapFormState>({
     householdName: "",
     ownerDisplayName: "",
@@ -173,9 +188,16 @@ export function App() {
     const currentUrl = new URL(window.location.href);
     const oidcToken = currentUrl.searchParams.get("oidcToken");
     const oidcError = currentUrl.searchParams.get("oidcError");
+    const resetToken = currentUrl.searchParams.get("resetToken");
 
-    if (!oidcToken && !oidcError) {
+    if (!oidcToken && !oidcError && !resetToken) {
       return;
+    }
+
+    if (resetToken) {
+      setPasswordResetToken(resetToken);
+      setLoginError(null);
+      setNotice(t("auth.password_reset_token_ready"));
     }
 
     if (oidcToken) {
@@ -190,6 +212,7 @@ export function App() {
 
     currentUrl.searchParams.delete("oidcToken");
     currentUrl.searchParams.delete("oidcError");
+    currentUrl.searchParams.delete("resetToken");
     window.history.replaceState({}, document.title, currentUrl.toString());
   }, [t]);
 
@@ -757,6 +780,47 @@ export function App() {
       setNotice(t("auth.signup_success"));
     } catch (error) {
       setLoginError(readErrorMessage(error, t("auth.signup_failed")));
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
+  async function handlePasswordResetRequestSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    setIsAuthenticating(true);
+    setLoginError(null);
+
+    try {
+      const response = await taskBanditApi.requestPasswordReset(passwordResetRequestForm.email, language);
+      setPasswordResetRequestForm({ email: "" });
+      setNotice(response.message);
+    } catch (error) {
+      setLoginError(readErrorMessage(error, t("auth.password_reset_request_failed")));
+    } finally {
+      setIsAuthenticating(false);
+    }
+  }
+
+  async function handlePasswordResetCompleteSubmit(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    if (!passwordResetToken) {
+      return;
+    }
+
+    setIsAuthenticating(true);
+    setLoginError(null);
+
+    try {
+      const response = await taskBanditApi.completePasswordReset(
+        passwordResetToken,
+        passwordResetCompleteForm.password,
+        language
+      );
+      setPasswordResetCompleteForm({ password: "" });
+      setPasswordResetToken(null);
+      setNotice(response.message);
+    } catch (error) {
+      setLoginError(readErrorMessage(error, t("auth.password_reset_complete_failed")));
     } finally {
       setIsAuthenticating(false);
     }
@@ -1653,6 +1717,18 @@ export function App() {
                         autoComplete="current-password"
                       />
                     </label>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={isAuthenticating}
+                      onClick={() =>
+                        setPasswordResetRequestForm({
+                          email: passwordResetRequestForm.email || loginForm.email
+                        })
+                      }
+                    >
+                      {t("auth.forgot_password")}
+                    </button>
                   </>
                 ) : (
                   <p className="inline-message">{t("auth.local_disabled_notice")}</p>
@@ -1679,6 +1755,76 @@ export function App() {
               </form>
             </article>
           )}
+
+          {bootstrapStatus?.isBootstrapped !== false && providers?.local.enabled ? (
+            <article className="panel login-panel">
+              <div className="section-heading">
+                <h2>
+                  {passwordResetToken
+                    ? t("auth.password_reset_complete_title")
+                    : t("auth.password_reset_request_title")}
+                </h2>
+                <span className="section-kicker">
+                  {passwordResetToken
+                    ? t("auth.password_reset_complete_kicker")
+                    : t("auth.password_reset_request_kicker")}
+                </span>
+              </div>
+              {passwordResetToken ? (
+                <form className="login-form" onSubmit={handlePasswordResetCompleteSubmit}>
+                  <label>
+                    <span>{t("auth.password")}</span>
+                    <input
+                      type="password"
+                      value={passwordResetCompleteForm.password}
+                      onChange={(event) =>
+                        setPasswordResetCompleteForm({ password: event.target.value })
+                      }
+                      autoComplete="new-password"
+                    />
+                  </label>
+                  {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
+                  <button className="primary-button" type="submit" disabled={isAuthenticating}>
+                    {isAuthenticating
+                      ? t("auth.password_reset_completing")
+                      : t("auth.password_reset_complete_action")}
+                  </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={isAuthenticating}
+                    onClick={() => {
+                      setPasswordResetToken(null);
+                      setPasswordResetCompleteForm({ password: "" });
+                    }}
+                  >
+                    {t("common.cancel")}
+                  </button>
+                </form>
+              ) : (
+                <form className="login-form" onSubmit={handlePasswordResetRequestSubmit}>
+                  <label>
+                    <span>{t("auth.email")}</span>
+                    <input
+                      type="email"
+                      value={passwordResetRequestForm.email}
+                      onChange={(event) =>
+                        setPasswordResetRequestForm({ email: event.target.value })
+                      }
+                      autoComplete="email"
+                    />
+                  </label>
+                  <p className="inline-message">{t("auth.password_reset_request_hint")}</p>
+                  {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
+                  <button className="secondary-button" type="submit" disabled={isAuthenticating}>
+                    {isAuthenticating
+                      ? t("auth.password_reset_requesting")
+                      : t("auth.password_reset_request_action")}
+                  </button>
+                </form>
+              )}
+            </article>
+          ) : null}
 
           {bootstrapStatus?.isBootstrapped !== false &&
           providers?.local.enabled &&

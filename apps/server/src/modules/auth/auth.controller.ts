@@ -13,7 +13,9 @@ import { ApiTags } from "@nestjs/swagger";
 import type { Request, Response } from "express";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { AuthService } from "./auth.service";
+import { CompletePasswordResetDto } from "./dto/complete-password-reset.dto";
 import { LoginDto } from "./dto/login.dto";
+import { RequestPasswordResetDto } from "./dto/request-password-reset.dto";
 import { SignupDto } from "./dto/signup.dto";
 
 @ApiTags("auth")
@@ -114,6 +116,29 @@ export class AuthController {
     return this.authService.signup(dto, language);
   }
 
+  @Post("password-reset/request")
+  requestPasswordReset(
+    @Body() dto: RequestPasswordResetDto,
+    @Req() request: Request,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    const language = this.i18nService.resolveLanguage(acceptLanguage);
+    return this.authService.requestPasswordReset(
+      dto,
+      this.buildPasswordResetUrl(request),
+      language
+    );
+  }
+
+  @Post("password-reset/complete")
+  completePasswordReset(
+    @Body() dto: CompletePasswordResetDto,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    const language = this.i18nService.resolveLanguage(acceptLanguage);
+    return this.authService.completePasswordReset(dto, language);
+  }
+
   @Get("me")
   me(
     @Headers("authorization") authorizationHeader: string | undefined,
@@ -165,9 +190,15 @@ export class AuthController {
     return url.toString();
   }
 
+  private buildPasswordResetUrl(request: Request) {
+    const url = new URL(this.resolveAppPath(request), this.buildRequestOrigin(request));
+    url.searchParams.set("resetToken", "__TASKBANDIT_RESET_TOKEN__");
+    return url.toString();
+  }
+
   private resolveAppPath(request: Request) {
     const originalUrl = request.originalUrl || request.url;
-    const apiRouteIndex = originalUrl.indexOf("/api/auth/oidc/");
+    const apiRouteIndex = originalUrl.indexOf("/api/auth/");
     if (apiRouteIndex < 0) {
       return "/";
     }

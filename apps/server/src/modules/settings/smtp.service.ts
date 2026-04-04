@@ -15,6 +15,29 @@ export type SmtpSettings = {
 
 @Injectable()
 export class SmtpService {
+  async sendMail(
+    settings: SmtpSettings,
+    input: {
+      to: string;
+      subject: string;
+      text: string;
+      html?: string;
+    }
+  ) {
+    const transporter = this.createTransporter(settings);
+    await transporter.sendMail({
+      from: settings.fromName ? `"${settings.fromName}" <${settings.fromEmail}>` : settings.fromEmail,
+      to: input.to,
+      subject: input.subject,
+      text: input.text,
+      html: input.html
+    });
+
+    return {
+      ok: true
+    };
+  }
+
   async verify(settings: SmtpSettings) {
     if (!settings.enabled) {
       throw new BadRequestException("SMTP must be enabled before testing the connection.");
@@ -26,7 +49,27 @@ export class SmtpService {
       );
     }
 
-    const transporter = nodemailer.createTransport({
+    const transporter = this.createTransporter(settings);
+
+    await transporter.verify();
+
+    return {
+      ok: true
+    };
+  }
+
+  private createTransporter(settings: SmtpSettings) {
+    if (!settings.enabled) {
+      throw new BadRequestException("SMTP must be enabled before email delivery can be used.");
+    }
+
+    if (!settings.host || !settings.port || !settings.fromEmail) {
+      throw new BadRequestException(
+        "SMTP host, port, and from email are required before email delivery can be used."
+      );
+    }
+
+    return nodemailer.createTransport({
       host: settings.host,
       port: settings.port,
       secure: settings.secure,
@@ -37,11 +80,5 @@ export class SmtpService {
           }
         : undefined
     });
-
-    await transporter.verify();
-
-    return {
-      ok: true
-    };
   }
 }
