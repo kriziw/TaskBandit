@@ -1,27 +1,41 @@
 <svg width="860" height="260" viewBox="0 0 860 260" fill="none" xmlns="http://www.w3.org/2000/svg">
-  <rect width="860" height="260" rx="36" fill="#FFF7E8"/>
-  <g transform="translate(36 30)">
-    <circle cx="100" cy="100" r="92" fill="#73C7F4"/>
-    <ellipse cx="100" cy="112" rx="64" ry="58" fill="#E9EEF5"/>
-    <path d="M52 54L76 20L94 64C79 63 65 60 52 54Z" fill="#243043"/>
-    <path d="M148 54L124 20L106 64C121 63 135 60 148 54Z" fill="#243043"/>
-    <path d="M64 73C77 64 91 60 100 60C109 60 123 64 136 73L126 97C117 92 109 89 100 89C91 89 83 92 74 97L64 73Z" fill="#243043"/>
-    <ellipse cx="76" cy="105" rx="11" ry="14" fill="#243043"/>
-    <ellipse cx="124" cy="105" rx="11" ry="14" fill="#243043"/>
-    <circle cx="79" cy="101" r="3.5" fill="#FFF7E8"/>
-    <circle cx="127" cy="101" r="3.5" fill="#FFF7E8"/>
-    <ellipse cx="100" cy="130" rx="16" ry="12" fill="#243043"/>
-    <path d="M90 145C93 151 97 154 100 154C103 154 107 151 110 145" stroke="#243043" stroke-width="6" stroke-linecap="round"/>
-    <path d="M42 146C42 180 68 204 100 204C132 204 158 180 158 146C158 142 158 138 157 134C146 151 125 163 100 163C75 163 54 151 43 134C42 138 42 142 42 146Z" fill="#FFC94A"/>
-    <path d="M53 169C68 178 84 183 100 183C116 183 132 178 147 169" stroke="#FF7A6B" stroke-width="12" stroke-linecap="round"/>
-    <path d="M166 96C180 88 190 87 198 90C184 100 175 112 171 128" stroke="#243043" stroke-width="10" stroke-linecap="round"/>
-    <path d="M170 133C182 129 191 131 198 137C185 143 177 151 173 161" stroke="#243043" stroke-width="10" stroke-linecap="round"/>
+  <rect width="860" height="260" rx="34" fill="#FFF7E8"/>
+
+  <g transform="translate(40 26)">
+    <circle cx="102" cy="104" r="92" fill="#73C7F4"/>
+    <path d="M170 148C192 154 204 170 204 193C182 188 165 175 154 155" fill="#243043"/>
+    <path d="M160 156C178 160 188 171 191 188" stroke="#FFF7E8" stroke-width="10" stroke-linecap="round"/>
+    <path d="M151 164C166 168 175 176 178 190" stroke="#FFC94A" stroke-width="10" stroke-linecap="round"/>
+
+    <path d="M54 53L74 16L96 63C81 62 67 59 54 53Z" fill="#243043"/>
+    <path d="M150 53L130 16L108 63C123 62 137 59 150 53Z" fill="#243043"/>
+    <path d="M64 49L76 28L87 55C79 55 71 53 64 49Z" fill="#FF7A6B"/>
+    <path d="M140 49L128 28L117 55C125 55 133 53 140 49Z" fill="#FF7A6B"/>
+
+    <path d="M102 48C139 48 168 78 168 117C168 156 138 186 102 186C66 186 36 156 36 117C36 78 65 48 102 48Z" fill="#DCE3EC"/>
+    <path d="M47 90C61 71 81 62 102 62C123 62 143 71 157 90L145 123C133 113 118 108 102 108C86 108 71 113 59 123L47 90Z" fill="#243043"/>
+    <ellipse cx="74" cy="108" rx="11" ry="14" fill="#243043"/>
+    <ellipse cx="130" cy="108" rx="11" ry="14" fill="#243043"/>
+    <circle cx="77" cy="104" r="3.5" fill="#FFF7E8"/>
+    <circle cx="133" cy="104" r="3.5" fill="#FFF7E8"/>
+    <ellipse cx="102" cy="130" rx="15" ry="11" fill="#243043"/>
+    <path d="M93 144C96 149 99 152 102 152C105 152 108 149 111 144" stroke="#243043" stroke-width="5.5" stroke-linecap="round"/>
+    <path d="M70 136L48 141" stroke="#243043" stroke-width="4" stroke-linecap="round"/>
+    <path d="M69 144L45 151" stroke="#243043" stroke-width="4" stroke-linecap="round"/>
+    <path d="M134 136L156 141" stroke="#243043" stroke-width="4" stroke-linecap="round"/>
+    <path d="M135 144L159 151" stroke="#243043" stroke-width="4" stroke-linecap="round"/>
+
+    <path d="M49 147C57 174 77 192 102 192C127 192 147 174 155 147C140 159 122 165 102 165C82 165 64 159 49 147Z" fill="#FFC94A"/>
+    <path d="M56 167C69 176 85 181 102 181C119 181 135 176 148 167" stroke="#FF7A6B" stroke-width="10" stroke-linecap="round"/>
+    <circle cx="173" cy="63" r="10" fill="#FFC94A"/>
+    <circle cx="187" cy="78" r="6" fill="#FF7A6B"/>
   </g>
-  <g transform="translate(255 58)">
-    <text x="0" y="78" fill="#243043" font-family="'Trebuchet MS', 'Avenir Next', sans-serif" font-size="72" font-weight="800" letter-spacing="1.2">TaskBandit</text>
-    <text x="4" y="126" fill="#FF7A6B" font-family="'Trebuchet MS', 'Avenir Next', sans-serif" font-size="24" font-weight="700" letter-spacing="2.8">PLAYFUL HOUSEHOLD CHORE CREW</text>
-    <rect x="0" y="148" width="440" height="14" rx="7" fill="#73D9B3"/>
-    <rect x="0" y="148" width="286" height="14" rx="7" fill="#FFC94A"/>
-    <text x="2" y="198" fill="#243043" font-family="'Trebuchet MS', 'Avenir Next', sans-serif" font-size="25" font-weight="500">Self-hosted chores, approvals, streaks, and proof photos.</text>
+
+  <g transform="translate(278 54)">
+    <text x="0" y="78" fill="#243043" font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-size="74" font-weight="800" letter-spacing="1">TaskBandit</text>
+    <text x="2" y="117" fill="#FF7A6B" font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-size="19" font-weight="700" letter-spacing="2.2">PLAYFUL CHORE CREW FOR SELF-HOSTED HOMES</text>
+    <rect x="0" y="141" width="414" height="14" rx="7" fill="#73D9B3"/>
+    <rect x="0" y="141" width="252" height="14" rx="7" fill="#FFC94A"/>
+    <text x="0" y="186" fill="#243043" font-family="'Trebuchet MS', 'Segoe UI', sans-serif" font-size="22" font-weight="600">Approvals, streaks, proof photos, and cheerful household momentum.</text>
   </g>
 </svg>
