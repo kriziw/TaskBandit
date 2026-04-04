@@ -248,6 +248,12 @@ export type CreateHouseholdMemberInput = {
   role: "parent" | "child";
   email: string;
   password: string;
+  sendInviteEmail?: boolean;
+};
+
+export type CreateHouseholdMemberResult = {
+  household: Household;
+  inviteEmailSent: boolean;
 };
 
 export type CreateChoreTemplateInput = {

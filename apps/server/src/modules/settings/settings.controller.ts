@@ -1,5 +1,6 @@
-import { Body, Controller, Delete, Get, Headers, Param, Post, Put, UseGuards } from "@nestjs/common";
+import { Body, Controller, Delete, Get, Headers, Param, Post, Put, Req, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import type { Request } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
@@ -83,12 +84,35 @@ export class SettingsController {
   createHouseholdMember(
     @Body() dto: CreateHouseholdMemberDto,
     @CurrentUser() user: AuthenticatedUser,
+    @Req() request: Request,
     @Headers("accept-language") acceptLanguage?: string
   ) {
     return this.settingsService.createHouseholdMember(
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
+      this.buildSignInUrl(request)
     );
+  }
+
+  private buildSignInUrl(request: Request) {
+    const origin = this.buildRequestOrigin(request);
+    const originalUrl = request.originalUrl || request.url;
+    const apiRouteIndex = originalUrl.indexOf("/api/settings/");
+    const appPath = apiRouteIndex < 0 ? "/" : originalUrl.slice(0, apiRouteIndex) || "/";
+    return new URL(appPath, origin).toString();
+  }
+
+  private buildRequestOrigin(request: Request) {
+    const forwardedProtocol = request.headers["x-forwarded-proto"];
+    const forwardedHost = request.headers["x-forwarded-host"];
+    const protocol =
+      (Array.isArray(forwardedProtocol) ? forwardedProtocol[0] : forwardedProtocol)?.split(",")[0]?.trim() ||
+      request.protocol;
+    const host =
+      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() ||
+      request.get("host");
+
+    return `${protocol}://${host}`;
   }
 }

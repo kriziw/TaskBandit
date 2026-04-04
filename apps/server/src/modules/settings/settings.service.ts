@@ -84,16 +84,62 @@ export class SettingsService {
   async createHouseholdMember(
     dto: CreateHouseholdMemberDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
+    signInUrl?: string
   ) {
+    if (dto.sendInviteEmail && !signInUrl) {
+      throw new BadRequestException("A sign-in URL is required before an invite email can be sent.");
+    }
+
+    const household = await this.repository.getHousehold(user.householdId);
+    const smtpSettings = {
+      enabled: household.settings.smtpEnabled,
+      host: household.settings.smtpHost,
+      port: household.settings.smtpPort,
+      secure: household.settings.smtpSecure,
+      username: household.settings.smtpUsername,
+      password: household.settings.smtpPassword,
+      fromEmail: household.settings.smtpFromEmail,
+      fromName: household.settings.smtpFromName,
+      passwordConfigured: household.settings.smtpPasswordConfigured
+    };
+
+    if (dto.sendInviteEmail && !smtpSettings.enabled) {
+      throw new BadRequestException(this.i18nService.translate("members.invite_unavailable", language));
+    }
+
     const passwordHash = await this.authService.hashPassword(dto.password);
-    return this.repository.createHouseholdMember(
+    const created = await this.repository.createHouseholdMember(
       dto,
       user.householdId,
       passwordHash,
       this.i18nService.translate("auth.email_in_use", language),
       user.id
     );
+
+    if (dto.sendInviteEmail && created.createdMember && signInUrl) {
+      await this.smtpService.sendMail(smtpSettings, {
+        to: created.createdMember.email,
+        subject: this.i18nService.translate("members.invite_email_subject", language),
+        text: [
+          this.i18nService.translate("members.invite_email_intro", language).replace(
+            "{name}",
+            created.createdMember.displayName
+          ),
+          "",
+          `${this.i18nService.translate("members.invite_email_sign_in", language)}: ${signInUrl}`,
+          `${this.i18nService.translate("members.invite_email_email", language)}: ${created.createdMember.email}`,
+          `${this.i18nService.translate("members.invite_email_password", language)}: ${dto.password}`,
+          "",
+          this.i18nService.translate("members.invite_email_footer", language)
+        ].join("\n")
+      });
+    }
+
+    return {
+      household: created.household,
+      inviteEmailSent: Boolean(dto.sendInviteEmail)
+    };
   }
 
   async testSmtp(user: AuthenticatedUser) {

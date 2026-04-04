@@ -895,7 +895,15 @@ export class HouseholdRepository {
     passwordHash: string,
     emailInUseMessage: string,
     actorUserId?: string
-  ) {
+  ): Promise<{
+    household: Awaited<ReturnType<HouseholdRepository["getHousehold"]>>;
+    createdMember: {
+      id: string;
+      displayName: string;
+      role: "parent" | "child";
+      email: string;
+    } | null;
+  }> {
     const normalizedEmail = dto.email.trim().toLowerCase();
     const existingIdentity = await this.prisma.authIdentity.findUnique({
       where: {
@@ -908,6 +916,13 @@ export class HouseholdRepository {
         message: emailInUseMessage
       });
     }
+
+    let createdMember: {
+      id: string;
+      displayName: string;
+      role: "parent" | "child";
+      email: string;
+    } | null = null;
 
     await this.prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
@@ -926,6 +941,13 @@ export class HouseholdRepository {
         }
       });
 
+      createdMember = {
+        id: createdUser.id,
+        displayName: dto.displayName.trim(),
+        role: dto.role,
+        email: normalizedEmail
+      };
+
       await this.recordAuditLog(tx, {
         householdId,
         actorUserId,
@@ -936,7 +958,10 @@ export class HouseholdRepository {
       });
     });
 
-    return this.getHousehold(householdId);
+    return {
+      household: await this.getHousehold(householdId),
+      createdMember
+    };
   }
 
   async getDashboardSummary(householdId: string) {

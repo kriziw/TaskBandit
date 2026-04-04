@@ -11,6 +11,7 @@ import type {
   CreateChoreInstanceInput,
   CreateChoreTemplateInput,
   CreateHouseholdMemberInput,
+  CreateHouseholdMemberResult,
   DashboardSummary,
   Household,
   HouseholdSettings,
@@ -272,7 +273,7 @@ export const taskBanditApi = {
     });
   },
   createHouseholdMember(token: string, language: AppLanguage, input: CreateHouseholdMemberInput) {
-    return request<Household>("/api/settings/household/members", {
+    return request<CreateHouseholdMemberResult>("/api/settings/household/members", {
       method: "POST",
       token,
       language,

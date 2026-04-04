@@ -133,7 +133,8 @@ export function App() {
     displayName: "",
     role: "child",
     email: "",
-    password: ""
+    password: "",
+    sendInviteEmail: false
   });
   const [templateForm, setTemplateForm] = useState<TemplateFormState>({
     title: "",
@@ -1126,15 +1127,16 @@ export function App() {
 
     setBusyAction("create-member");
     try {
-      const household = await taskBanditApi.createHouseholdMember(token, language, memberForm);
-      setPayload((current) => (current ? { ...current, household } : current));
+      const result = await taskBanditApi.createHouseholdMember(token, language, memberForm);
+      setPayload((current) => (current ? { ...current, household: result.household } : current));
       setMemberForm({
         displayName: "",
         role: "child",
         email: "",
-        password: ""
+        password: "",
+        sendInviteEmail: false
       });
-      setNotice(t("members.created"));
+      setNotice(result.inviteEmailSent ? t("members.created_invited") : t("members.created"));
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("members.create_failed")));
@@ -2837,6 +2839,19 @@ export function App() {
                           setMemberForm((current) => ({ ...current, password: event.target.value }))
                         }
                         autoComplete="new-password"
+                      />
+                    </label>
+                    <label className="toggle-row">
+                      <span>{t("members.send_invite_email")}</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(memberForm.sendInviteEmail)}
+                        onChange={(event) =>
+                          setMemberForm((current) => ({
+                            ...current,
+                            sendInviteEmail: event.target.checked
+                          }))
+                        }
                       />
                     </label>
                     <button className="primary-button" type="submit" disabled={busyAction === "create-member"}>

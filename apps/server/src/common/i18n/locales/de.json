@@ -30,5 +30,12 @@
   "chores.photo_upload_invalid_type": "Fuer Aufgabennachweise werden nur Bilddateien unterstuetzt.",
   "chores.photo_upload_missing": "Waehle vor dem Hochladen zuerst ein Beweisfoto aus.",
   "chores.required_checklist_missing": "Erledige alle Pflichtpunkte der Checkliste, bevor du diese Aufgabe einreichst.",
-  "i18n.language_name": "Deutsch"
+  "i18n.language_name": "Deutsch",
+  "members.invite_email_subject": "Deine TaskBandit-Haushaltseinladung",
+  "members.invite_email_intro": "Hallo {name}, dein TaskBandit-Haushaltskonto ist bereit.",
+  "members.invite_email_sign_in": "Hier anmelden",
+  "members.invite_email_email": "E-Mail",
+  "members.invite_email_password": "Temporaeres Passwort",
+  "members.invite_email_footer": "Nach der Anmeldung kannst du dein Passwort ueber den Zuruecksetzen-Ablauf aendern, wenn du ein eigenes moechtest.",
+  "members.invite_unavailable": "Die Einladungs-E-Mail kann erst gesendet werden, wenn SMTP fuer diesen Haushalt eingerichtet wurde."
 }

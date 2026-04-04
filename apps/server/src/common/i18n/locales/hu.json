@@ -30,5 +30,12 @@
   "chores.photo_upload_invalid_type": "Feladatbizonyiteknak csak kepfajl toltheto fel.",
   "chores.photo_upload_missing": "Feltoltes elott valassz ki egy bizonyitek kepet.",
   "chores.required_checklist_missing": "A feladat bekuldese elott teljesits minden kotelezo ellenorzo lista elemet.",
-  "i18n.language_name": "Magyar"
+  "i18n.language_name": "Magyar",
+  "members.invite_email_subject": "TaskBandit haztartasi meghivo",
+  "members.invite_email_intro": "Szia {name}, keszen all a TaskBandit haztartasi fiokod.",
+  "members.invite_email_sign_in": "Bejelentkezes itt",
+  "members.invite_email_email": "Email",
+  "members.invite_email_password": "Ideiglenes jelszo",
+  "members.invite_email_footer": "Bejelentkezes utan a jelszo-visszaallitas folyamattal lecserelheted a jelszavadat egy sajatra, ha szeretned.",
+  "members.invite_unavailable": "Meghivo email csak akkor kuldheto, ha az SMTP be van allitva ehhez a haztartashoz."
 }

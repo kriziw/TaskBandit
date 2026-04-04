@@ -30,5 +30,12 @@
   "chores.photo_upload_invalid_type": "Only image uploads are supported for chore proof.",
   "chores.photo_upload_missing": "Select a proof image before uploading.",
   "chores.required_checklist_missing": "Complete all required checklist items before submitting this chore.",
-  "i18n.language_name": "English"
+  "i18n.language_name": "English",
+  "members.invite_email_subject": "Your TaskBandit household invite",
+  "members.invite_email_intro": "Hi {name}, your TaskBandit household account is ready.",
+  "members.invite_email_sign_in": "Sign in here",
+  "members.invite_email_email": "Email",
+  "members.invite_email_password": "Temporary password",
+  "members.invite_email_footer": "After signing in, you can change your password from the password reset flow if you want a private one.",
+  "members.invite_unavailable": "Invite email cannot be sent until SMTP is configured for this household."
 }
