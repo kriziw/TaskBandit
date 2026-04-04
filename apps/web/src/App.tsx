@@ -233,6 +233,21 @@ export function App() {
     });
   }, [payload]);
 
+  const myNeedsFixesChores = useMemo(
+    () => myChores.filter((instance) => instance.state === "needs_fixes"),
+    [myChores]
+  );
+
+  const myInProgressChores = useMemo(
+    () => myChores.filter((instance) => instance.state === "in_progress"),
+    [myChores]
+  );
+
+  const myReadyToStartChores = useMemo(
+    () => myChores.filter((instance) => ["open", "assigned", "overdue"].includes(instance.state)),
+    [myChores]
+  );
+
   const featuredMetrics = useMemo(
     () => [
       {
@@ -426,6 +441,116 @@ export function App() {
           </div>
         ) : null}
       </div>
+    );
+  }
+
+  function renderMyChoreCard(instance: ChoreInstance) {
+    const selectedChecklistIds = getSelectedChecklistIds(instance);
+    const selectedFiles = selectedProofFiles[instance.id] ?? [];
+
+    return (
+      <div className="task-row" key={instance.id}>
+        <div className="task-row-header">
+          <strong>{instance.title}</strong>
+          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+        </div>
+        <p>
+          {t("task.due")}: {formatDate(instance.dueAt)}
+        </p>
+        <p>
+          {t("task.points")}: {instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints}
+        </p>
+        {instance.requirePhotoProof ? (
+          <p className="inline-message">{t("submission.photo_hint_required")}</p>
+        ) : (
+          <p className="inline-message">{t("submission.photo_hint_optional")}</p>
+        )}
+        {instance.attachments.length > 0
+          ? renderAttachmentList(t("submission.previous_uploads"), instance.attachments)
+          : null}
+        {instance.checklist.length ? (
+          <div className="checklist">
+            {instance.checklist.map((item) => (
+              <label key={item.id} className="checklist-item">
+                <input
+                  type="checkbox"
+                  checked={selectedChecklistIds.includes(item.id)}
+                  onChange={() =>
+                    toggleChecklistItem(instance.id, item.id, instance.checklistCompletionIds)
+                  }
+                />
+                <span>
+                  {item.title}
+                  {item.required ? ` - ${t("task.required")}` : ""}
+                </span>
+              </label>
+            ))}
+          </div>
+        ) : (
+          <p className="inline-message">{t("submission.one_tap")}</p>
+        )}
+        <label className="inline-field">
+          <span>{t("task.attachments")}</span>
+          <input
+            type="file"
+            accept="image/*"
+            multiple
+            onChange={(event) => handleProofFilesSelected(instance.id, event.target.files)}
+          />
+        </label>
+        {selectedFiles.length > 0 ? (
+          <p className="inline-message">
+            {t("submission.selected_files")}: {selectedFiles.length}
+          </p>
+        ) : null}
+        <label className="inline-field">
+          <span>{t("task.note")}</span>
+          <textarea
+            value={submitNotes[instance.id] ?? ""}
+            onChange={(event) =>
+              setSubmitNotes((current) => ({
+                ...current,
+                [instance.id]: event.target.value
+              }))
+            }
+            rows={3}
+          />
+        </label>
+        <div className="button-row">
+          <button
+            className="secondary-button"
+            type="button"
+            disabled={busyAction === `start:${instance.id}` || instance.state === "in_progress"}
+            onClick={() => void handleStartInstance(instance.id)}
+          >
+            {instance.state === "in_progress" ? t("state.in_progress") : t("instances.start")}
+          </button>
+          <button
+            className="primary-button"
+            type="button"
+            disabled={busyAction === `submit:${instance.id}`}
+            onClick={() => void handleSubmitChore(instance.id)}
+          >
+            {t("submission.submit")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  function renderMyChoreSection(title: string, items: ChoreInstance[], emptyMessage: string) {
+    return (
+      <section className="my-chore-section">
+        <div className="section-heading section-heading-compact">
+          <h3>{title}</h3>
+          <span className="section-kicker">{items.length}</span>
+        </div>
+        {items.length === 0 ? (
+          <p className="empty-state">{emptyMessage}</p>
+        ) : (
+          <div className="stack-list">{items.map((instance) => renderMyChoreCard(instance))}</div>
+        )}
+      </section>
     );
   }
 
@@ -1447,97 +1572,23 @@ export function App() {
               {myChores.length === 0 ? (
                 <p className="empty-state">{t("submission.empty")}</p>
               ) : (
-                <div className="stack-list">
-                  {myChores.map((instance) => {
-                    const selectedChecklistIds = getSelectedChecklistIds(instance);
-                    const selectedFiles = selectedProofFiles[instance.id] ?? [];
-                    return (
-                      <div className="task-row" key={instance.id}>
-                        <div className="task-row-header">
-                          <strong>{instance.title}</strong>
-                          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
-                        </div>
-                        <p>
-                          {t("task.due")}: {formatDate(instance.dueAt)}
-                        </p>
-                        <p>
-                          {t("task.points")}: {instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints}
-                        </p>
-                        {instance.requirePhotoProof ? (
-                          <p className="inline-message">{t("submission.photo_hint_required")}</p>
-                        ) : (
-                          <p className="inline-message">{t("submission.photo_hint_optional")}</p>
-                        )}
-                          {instance.attachments.length > 0 ? (
-                            renderAttachmentList(t("submission.previous_uploads"), instance.attachments)
-                          ) : null}
-                        {instance.checklist.length ? (
-                          <div className="checklist">
-                            {instance.checklist.map((item) => (
-                              <label key={item.id} className="checklist-item">
-                                <input
-                                  type="checkbox"
-                                  checked={selectedChecklistIds.includes(item.id)}
-                                  onChange={() =>
-                                    toggleChecklistItem(instance.id, item.id, instance.checklistCompletionIds)
-                                  }
-                                />
-                                <span>
-                                  {item.title}
-                                  {item.required ? ` - ${t("task.required")}` : ""}
-                                </span>
-                              </label>
-                            ))}
-                          </div>
-                        ) : (
-                          <p className="inline-message">{t("submission.one_tap")}</p>
-                        )}
-                        <label className="inline-field">
-                          <span>{t("task.attachments")}</span>
-                          <input
-                            type="file"
-                            accept="image/*"
-                            multiple
-                            onChange={(event) => handleProofFilesSelected(instance.id, event.target.files)}
-                          />
-                        </label>
-                        {selectedFiles.length > 0 ? (
-                          <p className="inline-message">
-                            {t("submission.selected_files")}: {selectedFiles.length}
-                          </p>
-                        ) : null}
-                        <label className="inline-field">
-                          <span>{t("task.note")}</span>
-                          <textarea
-                            value={submitNotes[instance.id] ?? ""}
-                            onChange={(event) =>
-                              setSubmitNotes((current) => ({
-                                ...current,
-                                [instance.id]: event.target.value
-                              }))
-                            }
-                            rows={3}
-                          />
-                        </label>
-                          <button
-                            className="secondary-button"
-                            type="button"
-                            disabled={busyAction === `start:${instance.id}` || instance.state === "in_progress"}
-                            onClick={() => void handleStartInstance(instance.id)}
-                          >
-                            {instance.state === "in_progress" ? t("state.in_progress") : t("instances.start")}
-                          </button>
-                          <button
-                            className="primary-button"
-                            type="button"
-                            disabled={busyAction === `submit:${instance.id}`}
-                            onClick={() => void handleSubmitChore(instance.id)}
-                          >
-                          {t("submission.submit")}
-                        </button>
-                      </div>
-                    );
-                  })}
+                <div className="stack-list my-chore-groups">
+                  <p className="inline-message">{t("submission.priority_hint")}</p>
+                  {renderMyChoreSection(
+                    t("panel.needs_fixes"),
+                    myNeedsFixesChores,
+                    t("submission.empty_needs_fixes")
+                  )}
+                  {renderMyChoreSection(
+                    t("panel.in_progress"),
+                    myInProgressChores,
+                    t("submission.empty_in_progress")
+                  )}
+                  {renderMyChoreSection(
+                    t("panel.ready_to_start"),
+                    myReadyToStartChores,
+                    t("submission.empty_ready_to_start")
+                  )}
                 </div>
               )}
             </article>

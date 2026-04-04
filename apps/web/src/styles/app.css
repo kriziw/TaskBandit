@@ -446,6 +446,27 @@ select {
   grid-template-columns: 1fr;
 }
 
+.my-chore-groups {
+  gap: 18px;
+}
+
+.my-chore-section {
+  display: grid;
+  gap: 12px;
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.42);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.section-heading-compact {
+  margin-bottom: 0;
+}
+
+.section-heading-compact h3 {
+  margin: 0;
+}
+
 .board-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
