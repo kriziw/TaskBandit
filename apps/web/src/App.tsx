@@ -72,6 +72,7 @@ type BootstrapFormState = BootstrapHouseholdInput;
 type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
+type WorkspacePage = "overview" | "chores" | "templates" | "household" | "notifications" | "settings" | "admin";
 
 const householdBoardStateOrder: ChoreState[] = [
   "open",
@@ -186,6 +187,7 @@ export function App() {
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
+  const [activePage, setActivePage] = useState<WorkspacePage>("overview");
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -395,6 +397,40 @@ export function App() {
       !onboardingDismissed
   );
 
+  const availablePages = useMemo(() => {
+    if (!payload) {
+      return [];
+    }
+
+    const pages: Array<{ key: WorkspacePage; label: string }> = [
+      { key: "overview", label: t("nav.overview") },
+      { key: "chores", label: t("nav.chores") },
+      { key: "notifications", label: t("nav.notifications") }
+    ];
+
+    if (payload.currentUser.role === "admin") {
+      pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
+      pages.splice(3, 0, { key: "household", label: t("nav.household") });
+      pages.push({ key: "settings", label: t("nav.settings") });
+      pages.push({ key: "admin", label: t("nav.admin") });
+    }
+
+    return pages;
+  }, [payload, t]);
+
+  useEffect(() => {
+    if (!availablePages.length) {
+      return;
+    }
+
+    if (!availablePages.some((page) => page.key === activePage)) {
+      setActivePage(availablePages[0].key);
+    }
+  }, [activePage, availablePages]);
+
+  const activePageLabel =
+    availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
+
   const onboardingSteps = useMemo(
     () => [
       {
@@ -409,28 +445,28 @@ export function App() {
         title: t("onboarding.settings_title"),
         description: t("onboarding.settings_body"),
         actionLabel: t("onboarding.go_settings"),
-        action: () => scrollToSection(householdSettingsRef)
+        action: () => openWorkspacePage("settings", householdSettingsRef)
       },
       {
         key: "members" as const,
         title: t("onboarding.members_title"),
         description: t("onboarding.members_body"),
         actionLabel: t("onboarding.go_members"),
-        action: () => scrollToSection(membersRef)
+        action: () => openWorkspacePage("household", membersRef)
       },
       {
         key: "chores" as const,
         title: t("onboarding.chores_title"),
         description: t("onboarding.chores_body"),
         actionLabel: t("onboarding.go_templates"),
-        action: () => scrollToSection(templatesRef)
+        action: () => openWorkspacePage("templates", templatesRef)
       },
       {
         key: "overview" as const,
         title: t("onboarding.overview_title"),
         description: t("onboarding.overview_body"),
         actionLabel: t("onboarding.go_schedule"),
-        action: () => scrollToSection(scheduleRef)
+        action: () => openWorkspacePage("templates", scheduleRef)
       }
     ],
     [t]
@@ -1836,6 +1872,15 @@ export function App() {
     t("roadmap.leaderboard")
   ];
 
+  function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
+    setActivePage(page);
+    if (targetRef) {
+      window.setTimeout(() => {
+        scrollToSection(targetRef);
+      }, 60);
+    }
+  }
+
   return (
     <main className="app-shell">
       <section className="toolbar">
@@ -1888,14 +1933,7 @@ export function App() {
           ) : null}
         </div>
         <div className="mascot-card" aria-label="TaskBandit mascot placeholder">
-          <div className="mascot-face">
-            <span className="ear left" />
-            <span className="ear right" />
-            <span className="eye left" />
-            <span className="eye right" />
-            <span className="mask" />
-            <span className="nose" />
-          </div>
+          <img className="mascot-art" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
           <p>{payload ? t("hero.mascot_ready") : t("hero.mascot")}</p>
         </div>
       </section>
@@ -2206,8 +2244,43 @@ export function App() {
           </article>
         </section>
       ) : (
-        <>
-          {showOnboarding ? (
+        <div className="workspace-shell">
+          <aside className="workspace-sidebar">
+            <div className="panel workspace-sidebar-panel">
+              <p className="workspace-nav-kicker">{t("nav.workspace")}</p>
+              <div className="workspace-nav">
+                {availablePages.map((page) => (
+                  <button
+                    key={page.key}
+                    className={`workspace-nav-button ${page.key === activePage ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setActivePage(page.key)}
+                  >
+                    {page.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+          <div className="workspace-main" data-page={activePage}>
+            <section className="panel workspace-page-header">
+              <div>
+                <p className="workspace-nav-kicker">{payload.household.name}</p>
+                <h2>{activePageLabel}</h2>
+                <p className="workspace-page-copy">{t("hero.authenticated_lede")}</p>
+              </div>
+              <div className="workspace-page-meta">
+                <span className="status-pill">{t(`role.${payload.currentUser.role}`)}</span>
+                <span className="status-pill">
+                  {formatNumber(payload.currentUser.points)} {t("user.points")}
+                </span>
+                <span className="status-pill">
+                  {formatNumber(payload.currentUser.currentStreak)} {t("user.streak")}
+                </span>
+              </div>
+            </section>
+
+          {showOnboarding && activePage === "overview" ? (
             <section className="onboarding-shell">
               <article className="panel onboarding-panel">
                 <div className="section-heading">
@@ -2279,17 +2352,19 @@ export function App() {
             </section>
           ) : null}
 
+          {activePage === "overview" ? (
           <section className="metrics">
             {featuredMetrics.map((metric) => (
               <DashboardCard key={metric.label} label={metric.label} value={metric.value} />
             ))}
           </section>
+          ) : null}
 
           {isLoading ? <div className="notice-banner info">{t("common.loading")}</div> : null}
 
           <section className="content-grid dashboard-grid">
             {payload.currentUser.role !== "child" ? (
-              <article className="panel">
+              <article className="panel page-panel page-overview">
                 <div className="section-heading">
                   <h2>{t("panel.approval_queue")}</h2>
                   <span className="section-kicker">{pendingApprovals.length}</span>
@@ -2359,7 +2434,7 @@ export function App() {
               </article>
             ) : null}
 
-            <article className="panel">
+            <article className="panel page-panel page-chores">
               <div className="section-heading">
                 <h2>{t("panel.my_chores")}</h2>
                 <span className="section-kicker">{myChores.length}</span>
@@ -2388,7 +2463,7 @@ export function App() {
               )}
             </article>
 
-            <article className="panel">
+            <article className="panel page-panel page-overview">
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
@@ -2412,7 +2487,7 @@ export function App() {
               </div>
             </article>
 
-            <article className="panel">
+            <article className="panel page-panel page-notifications">
               <div className="section-heading">
                 <h2>{t("panel.notifications")}</h2>
                 <div className="toolbar-group">
@@ -2500,7 +2575,7 @@ export function App() {
               </div>
             </article>
 
-            <article className="panel">
+            <article className="panel page-panel page-overview">
               <div className="section-heading">
                 <h2>{t("panel.points_feed")}</h2>
                 <span className="section-kicker">{payload.pointsLedger.length}</span>
@@ -2528,7 +2603,7 @@ export function App() {
             </article>
 
             {payload.currentUser.role !== "child" ? (
-              <article className="panel">
+              <article className="panel page-panel page-overview">
                 <div className="section-heading">
                   <h2>{t("panel.audit_log")}</h2>
                   <span className="section-kicker">{payload.auditLog.length}</span>
@@ -2560,7 +2635,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel">
+              <article className="panel page-panel page-admin">
                 <div className="section-heading">
                   <h2>{t("panel.runtime_logs")}</h2>
                   <div className="toolbar-group">
@@ -2613,7 +2688,7 @@ export function App() {
               </article>
             ) : null}
 
-            <article className="panel panel-wide">
+            <article className="panel panel-wide page-panel page-chores">
               <div className="section-heading">
                 <h2>{t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
@@ -2735,7 +2810,7 @@ export function App() {
             </article>
 
             {notificationPreferencesDraft ? (
-              <article className="panel">
+              <article className="panel page-panel page-notifications">
                 <div className="section-heading">
                   <h2>{t("panel.notification_preferences")}</h2>
                   <span className="section-kicker">{t("settings.member_level")}</span>
@@ -2816,7 +2891,7 @@ export function App() {
             ) : null}
 
             {payload.notificationDevices ? (
-              <article className="panel">
+              <article className="panel page-panel page-notifications">
                 <div className="section-heading">
                   <h2>{t("panel.mobile_push_devices")}</h2>
                   <span className="section-kicker">{formatNumber(pushReadyDeviceCount)}</span>
@@ -2878,7 +2953,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel">
+              <article className="panel page-panel page-notifications">
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
                   <span className="section-kicker">{formatNumber(householdPushReadyCount)}</span>
@@ -2938,7 +3013,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel">
+              <article className="panel page-panel page-admin">
                 <div className="section-heading">
                   <h2>{t("panel.backup_readiness")}</h2>
                   <div className="toolbar-group">
@@ -3079,7 +3154,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel">
+              <article className="panel page-panel page-admin">
                 <div className="section-heading">
                   <h2>{t("panel.system_status")}</h2>
                   <div className="toolbar-group">
@@ -3260,7 +3335,7 @@ export function App() {
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel">
+              <article className="panel page-panel page-admin">
                 <div className="section-heading">
                   <h2>{t("panel.notification_recovery")}</h2>
                   <span className="section-kicker">
@@ -3372,7 +3447,7 @@ export function App() {
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
               <>
-                <article className="panel" ref={householdSettingsRef}>
+                <article className="panel page-panel page-settings" ref={householdSettingsRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_settings")}</h2>
                     <span className="section-kicker">{t("settings.admin_only")}</span>
@@ -3658,7 +3733,7 @@ export function App() {
                   </button>
                   </article>
 
-                <article className="panel" ref={membersRef}>
+                <article className="panel page-panel page-household" ref={membersRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_members")}</h2>
                     <span className="section-kicker">{payload.household.members.length}</span>
@@ -3848,7 +3923,7 @@ export function App() {
                   </form>
                 </article>
 
-                <article className="panel panel-wide" ref={templatesRef}>
+                <article className="panel panel-wide page-panel page-templates" ref={templatesRef}>
                   <div className="section-heading">
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
@@ -4136,7 +4211,7 @@ export function App() {
                   </form>
                 </article>
 
-                <article className="panel" ref={scheduleRef}>
+                <article className="panel page-panel page-templates" ref={scheduleRef}>
                   <div className="section-heading">
                     <h2>{t("panel.schedule_chore")}</h2>
                     <span className="section-kicker">{visibleHouseholdChores.length}</span>
@@ -4211,7 +4286,7 @@ export function App() {
               </>
             ) : null}
 
-            <article className="panel">
+            <article className="panel page-panel page-overview">
               <div className="section-heading">
                 <h2>{t("panel.assignment_logic")}</h2>
                 <span className="section-kicker">{t("panel.strategy_live")}</span>
@@ -4224,7 +4299,8 @@ export function App() {
               </ul>
             </article>
           </section>
-        </>
+          </div>
+        </div>
       )}
     </main>
   );
