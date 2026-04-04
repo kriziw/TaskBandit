@@ -9,8 +9,10 @@ import androidx.compose.ui.unit.sp
 import com.taskbandit.app.R
 
 val TaskBanditBrandFont = FontFamily(
-    Font(R.font.bubblegumsans, FontWeight.Normal),
-    Font(R.font.bubblegumsans, FontWeight.Bold)
+    Font(R.font.fredoka, FontWeight.Normal),
+    Font(R.font.fredoka, FontWeight.Medium),
+    Font(R.font.fredoka, FontWeight.SemiBold),
+    Font(R.font.fredoka, FontWeight.Bold)
 )
 
 val TaskBanditBodyFont = FontFamily(

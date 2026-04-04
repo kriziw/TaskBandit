@@ -1,5 +1,5 @@
 :root {
-  --font-brand: "Bubblegum Sans", "Trebuchet MS", "Segoe UI", sans-serif;
+  --font-brand: "Fredoka", "Trebuchet MS", "Segoe UI", sans-serif;
   --font-body: "Nunito", "Segoe UI", sans-serif;
   --ink: #243043;
   --cream: #fff7e8;
@@ -14,16 +14,16 @@
 }
 
 @font-face {
-  font-family: "Bubblegum Sans";
-  src: url("/fonts/bubblegumsans.ttf") format("truetype");
-  font-weight: 400;
+  font-family: "Nunito";
+  src: url("/fonts/nunito.ttf") format("truetype");
+  font-weight: 200 900;
   font-style: normal;
 }
 
 @font-face {
-  font-family: "Nunito";
-  src: url("/fonts/nunito.ttf") format("truetype");
-  font-weight: 200 900;
+  font-family: "Fredoka";
+  src: url("/fonts/fredoka.ttf") format("truetype");
+  font-weight: 300 700;
   font-style: normal;
 }
 

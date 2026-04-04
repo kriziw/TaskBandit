@@ -1,8 +1,8 @@
 <svg width="860" height="260" viewBox="0 0 860 260" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
     @font-face {
-      font-family: "Bubblegum Sans";
-      src: url("./fonts/bubblegumsans.ttf") format("truetype");
+      font-family: "Fredoka";
+      src: url("./fonts/fredoka.ttf") format("truetype");
     }
 
     @font-face {
@@ -74,9 +74,9 @@
   </g>
 
   <g transform="translate(304 56)">
-    <text x="0" y="76" fill="#FFC94A" stroke="#243043" stroke-width="2.4" paint-order="stroke fill" font-family="'Bubblegum Sans', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="62" font-weight="800">Task</text>
-    <text x="132" y="78" fill="#FF8E7D" stroke="#243043" stroke-width="2.4" paint-order="stroke fill" font-family="'Bubblegum Sans', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="62" font-weight="800">Bandit</text>
-    <text x="2" y="110" fill="#243043" font-family="'Bubblegum Sans', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="17" font-weight="700" letter-spacing="0.8">PLAYFUL CHORE CREW FOR HOME</text>
+    <text x="0" y="76" fill="#FFC94A" stroke="#243043" stroke-width="2.4" paint-order="stroke fill" font-family="'Fredoka', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="62" font-weight="800">Task</text>
+    <text x="132" y="78" fill="#FF8E7D" stroke="#243043" stroke-width="2.4" paint-order="stroke fill" font-family="'Fredoka', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="62" font-weight="800">Bandit</text>
+    <text x="2" y="110" fill="#243043" font-family="'Fredoka', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="17" font-weight="700" letter-spacing="0.8">PLAYFUL CHORE CREW FOR HOME</text>
     <rect x="0" y="132" width="332" height="12" rx="6" fill="#73D9B3"/>
     <rect x="0" y="132" width="204" height="12" rx="6" fill="#FFC94A"/>
     <text x="0" y="174" fill="#243043" font-family="'Nunito', 'Segoe UI', sans-serif" font-size="21" font-weight="800">Cute raccoon energy. Chore-board confidence.</text>
