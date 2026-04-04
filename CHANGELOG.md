@@ -2,6 +2,20 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.10.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.9.2...taskbandit-v0.10.0) (2026-04-04)
+
+
+### Features
+
+* **web:** section settings into OIDC, SMTP, and General ([5cf7c3f](https://github.com/kriziw/TaskBandit/commit/5cf7c3fc49e728044f49bd6bf78e8fe462ed88b3))
+* **web:** split settings into oidc smtp and general sections ([a3cbb95](https://github.com/kriziw/TaskBandit/commit/a3cbb95eb8789c1ff3bed1ac33914811ffba3d63))
+
+
+### Bug Fixes
+
+* **web:** add spacing above smtp action row ([4afe442](https://github.com/kriziw/TaskBandit/commit/4afe4423de9a41387f9fe6faf3a73a75c0d628ae))
+* **web:** move release metadata into subtle footer ([6b9140b](https://github.com/kriziw/TaskBandit/commit/6b9140b1191216cdd74229b3ee224462b47a176c))
+
 ## [0.9.2](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.9.1...taskbandit-v0.9.2) (2026-04-04)
 
 
