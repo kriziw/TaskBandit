@@ -74,11 +74,6 @@ type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
 type WorkspacePage = "overview" | "chores" | "templates" | "household" | "notifications" | "settings" | "admin";
-type WorkspaceSectionLink = {
-  key: string;
-  label: string;
-  ref: RefObject<HTMLElement | null>;
-};
 
 const workspacePageOrder: WorkspacePage[] = [
   "overview",
@@ -234,7 +229,6 @@ export function App() {
   const membersRef = useRef<HTMLElement | null>(null);
   const templatesRef = useRef<HTMLElement | null>(null);
   const scheduleRef = useRef<HTMLElement | null>(null);
-  const overviewLaunchpadRef = useRef<HTMLElement | null>(null);
   const approvalQueueRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
@@ -1955,71 +1949,6 @@ export function App() {
     t("roadmap.leaderboard")
   ];
 
-  const overviewQuickLinks = availablePages.filter((page) => page.key !== "overview");
-
-  const pageSectionLinks = useMemo<WorkspaceSectionLink[]>(() => {
-    switch (activePage) {
-      case "overview":
-        return [
-          { key: "overview-launchpad", label: t("panel.quick_actions"), ref: overviewLaunchpadRef },
-          ...(payload?.currentUser.role !== "child"
-            ? [{ key: "overview-approvals", label: t("panel.approval_queue"), ref: approvalQueueRef }]
-            : []),
-          { key: "overview-notifications", label: t("panel.notifications"), ref: notificationsRef }
-        ];
-      case "chores":
-        return [
-          { key: "chores-mine", label: t("panel.my_chores"), ref: myChoresRef },
-          { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef }
-        ];
-      case "templates":
-        return [
-          { key: "templates-list", label: t("panel.chore_templates"), ref: templatesRef },
-          { key: "templates-schedule", label: t("panel.schedule_chore"), ref: scheduleRef }
-        ];
-      case "household":
-        return [{ key: "household-members", label: t("panel.household_members"), ref: membersRef }];
-      case "notifications":
-        return [
-          { key: "notifications-inbox", label: t("panel.notifications"), ref: notificationsRef },
-          {
-            key: "notifications-preferences",
-            label: t("panel.notification_preferences"),
-            ref: notificationPreferencesRef
-          },
-          {
-            key: "notifications-devices",
-            label: t("panel.mobile_push_devices"),
-            ref: notificationDevicesRef
-          },
-          ...(payload?.currentUser.role === "admin"
-            ? [
-                {
-                  key: "notifications-health",
-                  label: t("panel.household_notification_health"),
-                  ref: notificationHealthRef
-                }
-              ]
-            : [])
-        ];
-      case "settings":
-        return [{ key: "settings-household", label: t("panel.household_settings"), ref: householdSettingsRef }];
-      case "admin":
-        return [
-          { key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef },
-          { key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef },
-          { key: "admin-logs", label: t("panel.runtime_logs"), ref: runtimeLogsRef },
-          {
-            key: "admin-recovery",
-            label: t("panel.notification_recovery"),
-            ref: notificationRecoveryRef
-          }
-        ];
-      default:
-        return [];
-    }
-  }, [activePage, payload?.currentUser.role, t]);
-
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
     setActivePage(page);
     if (targetRef) {
@@ -2428,24 +2357,6 @@ export function App() {
               </div>
             </section>
 
-            {pageSectionLinks.length > 0 ? (
-              <section className="panel workspace-subnav-panel">
-                <span className="section-kicker">{t("nav.jump_to")}</span>
-                <div className="workspace-subnav">
-                  {pageSectionLinks.map((link) => (
-                    <button
-                      key={link.key}
-                      className="workspace-subnav-button"
-                      type="button"
-                      onClick={() => scrollToSection(link.ref)}
-                    >
-                      {link.label}
-                    </button>
-                  ))}
-                </div>
-              </section>
-            ) : null}
-
           {showOnboarding && activePage === "overview" ? (
             <section className="onboarding-shell">
               <article className="panel onboarding-panel">
@@ -2516,28 +2427,6 @@ export function App() {
                 </div>
               </article>
             </section>
-          ) : null}
-
-          {activePage === "overview" ? (
-          <section className="panel workspace-launchpad" ref={overviewLaunchpadRef}>
-            <div className="section-heading">
-              <h2>{t("panel.quick_actions")}</h2>
-              <span className="section-kicker">{t("overview.quick_actions_hint")}</span>
-            </div>
-            <div className="launchpad-grid">
-              {overviewQuickLinks.map((page) => (
-                <button
-                  key={page.key}
-                  className="launchpad-card"
-                  type="button"
-                  onClick={() => openWorkspacePage(page.key)}
-                >
-                  <strong>{page.label}</strong>
-                  <span>{pageDescriptions[page.key]}</span>
-                </button>
-              ))}
-            </div>
-          </section>
           ) : null}
 
           {activePage === "overview" ? (
