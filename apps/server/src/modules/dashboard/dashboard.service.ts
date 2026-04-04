@@ -2,9 +2,13 @@ import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { Injectable } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { AppLogService } from "../../common/logging/app-log.service";
+import { PrismaService } from "../../common/prisma/prisma.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { EmailDeliveryWorkerService } from "./email-delivery-worker.service";
 import { PushDeliveryWorkerService } from "./push-delivery-worker.service";
+import { access, mkdir } from "node:fs/promises";
+import { constants } from "node:fs";
+import path from "node:path";
 
 @Injectable()
 export class DashboardService {
@@ -12,6 +16,7 @@ export class DashboardService {
     private readonly repository: HouseholdRepository,
     private readonly appConfigService: AppConfigService,
     private readonly appLogService: AppLogService,
+    private readonly prisma: PrismaService,
     private readonly emailDeliveryWorkerService: EmailDeliveryWorkerService,
     private readonly pushDeliveryWorkerService: PushDeliveryWorkerService
   ) {}
@@ -168,8 +173,175 @@ export class DashboardService {
     return this.appLogService.exportJson(limit);
   }
 
+  async getSystemStatus(user: AuthenticatedUser) {
+    const checkedAt = new Date().toISOString();
+    const [household, notificationHealth, databaseStatus, storageStatus] = await Promise.all([
+      this.repository.getHousehold(user.householdId),
+      this.repository.getHouseholdNotificationHealth(user.householdId),
+      this.getDatabaseStatus(),
+      this.getStorageStatus()
+    ]);
+
+    const localAuthForcedByConfig = this.appConfigService.forceLocalAuthEnabled;
+    const localAuthEffective = localAuthForcedByConfig || household.settings.localAuthEnabled;
+    const oidcSource =
+      household.settings.oidcEnabled && household.settings.oidcAuthority && household.settings.oidcClientId
+        ? "ui"
+        : this.appConfigService.oidcFallbackConfig.enabled
+          ? "env"
+          : "none";
+    const oidcEffective = oidcSource !== "none";
+    const authStatus =
+      localAuthEffective || oidcEffective
+        ? "ready"
+        : "error";
+    const smtpConfigured = Boolean(
+      household.settings.smtpEnabled &&
+        household.settings.smtpHost &&
+        household.settings.smtpPort &&
+        household.settings.smtpFromEmail &&
+        (!household.settings.smtpUsername || household.settings.smtpPasswordConfigured)
+    );
+    const smtpStatus = household.settings.smtpEnabled
+      ? smtpConfigured
+        ? "ready"
+        : "warning"
+      : "warning";
+    const registeredDeviceCount = notificationHealth.reduce(
+      (sum, entry) => sum + entry.registeredDeviceCount,
+      0
+    );
+    const pushReadyDeviceCount = notificationHealth.reduce(
+      (sum, entry) => sum + entry.pushReadyDeviceCount,
+      0
+    );
+    const membersWithPushReadyDevices = notificationHealth.filter(
+      (entry) => entry.deliveryMode === "push"
+    ).length;
+    const membersUsingEmailFallback = notificationHealth.filter(
+      (entry) => entry.deliveryMode === "email_fallback"
+    ).length;
+    const membersWithoutDeliveryPath = notificationHealth.filter(
+      (entry) => entry.deliveryMode === "none"
+    ).length;
+    const serviceAccountConfigured = Boolean(this.appConfigService.fcmServiceAccount);
+    const pushStatus =
+      household.settings.enablePushNotifications &&
+      this.appConfigService.fcmEnabled &&
+      serviceAccountConfigured &&
+      pushReadyDeviceCount > 0
+        ? "ready"
+        : household.settings.enablePushNotifications
+          ? "warning"
+          : "warning";
+    const emailFallbackStatus =
+      smtpConfigured && membersUsingEmailFallback > 0
+        ? "ready"
+        : "warning";
+
+    return {
+      checkedAt,
+      application: {
+        status: "ready",
+        port: this.appConfigService.port,
+        reverseProxyEnabled: this.appConfigService.reverseProxyEnabled,
+        reverseProxyPathBase: this.appConfigService.reverseProxyPathBase || null
+      },
+      database: databaseStatus,
+      storage: storageStatus,
+      auth: {
+        status: authStatus,
+        localAuthEnabled: household.settings.localAuthEnabled,
+        localAuthForcedByConfig,
+        localAuthEffective,
+        oidcEnabled: household.settings.oidcEnabled,
+        oidcEffective,
+        oidcSource,
+        oidcAuthority:
+          oidcSource === "ui"
+            ? household.settings.oidcAuthority
+            : this.appConfigService.oidcFallbackConfig.authority,
+        oidcClientId:
+          oidcSource === "ui"
+            ? household.settings.oidcClientId
+            : this.appConfigService.oidcFallbackConfig.clientId
+      },
+      smtp: {
+        status: smtpStatus,
+        enabled: household.settings.smtpEnabled,
+        configured: smtpConfigured,
+        host: household.settings.smtpHost || null,
+        port: household.settings.smtpPort || null,
+        secure: household.settings.smtpSecure,
+        fromEmail: household.settings.smtpFromEmail || null
+      },
+      push: {
+        status: pushStatus,
+        householdPushEnabled: household.settings.enablePushNotifications,
+        serverFcmEnabled: this.appConfigService.fcmEnabled,
+        serviceAccountConfigured,
+        registeredDeviceCount,
+        pushReadyDeviceCount,
+        membersWithPushReadyDevices,
+        membersUsingEmailFallback,
+        membersWithoutDeliveryPath,
+        deliveryWorkerIntervalMs: this.appConfigService.pushDeliveryIntervalMs
+      },
+      emailFallback: {
+        status: emailFallbackStatus,
+        smtpReady: smtpConfigured,
+        eligibleMemberCount: notificationHealth.filter((entry) => entry.emailFallbackEligible).length,
+        activeFallbackMemberCount: membersUsingEmailFallback,
+        workerIntervalMs: this.appConfigService.emailDeliveryIntervalMs
+      }
+    };
+  }
+
   private escapeCsv(value: string) {
     const normalized = value.replace(/"/g, '""');
     return `"${normalized}"`;
+  }
+
+  private async getDatabaseStatus() {
+    try {
+      await this.prisma.$queryRaw`SELECT 1`;
+      return {
+        status: "ready" as const,
+        error: null
+      };
+    } catch (error) {
+      return {
+        status: "error" as const,
+        error: error instanceof Error ? error.message : "Database connection failed."
+      };
+    }
+  }
+
+  private async getStorageStatus() {
+    const rootPath = this.appConfigService.storageRootPath;
+    const runtimeLogFilePath = this.appConfigService.runtimeLogFilePath;
+
+    try {
+      await mkdir(rootPath, { recursive: true });
+      await mkdir(path.dirname(runtimeLogFilePath), { recursive: true });
+      await Promise.all([
+        access(rootPath, constants.R_OK | constants.W_OK),
+        access(path.dirname(runtimeLogFilePath), constants.R_OK | constants.W_OK)
+      ]);
+
+      return {
+        status: "ready" as const,
+        rootPath,
+        runtimeLogFilePath,
+        error: null
+      };
+    } catch (error) {
+      return {
+        status: "error" as const,
+        rootPath,
+        runtimeLogFilePath,
+        error: error instanceof Error ? error.message : "Storage path is not writable."
+      };
+    }
   }
 }

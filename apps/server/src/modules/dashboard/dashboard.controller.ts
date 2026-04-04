@@ -67,6 +67,12 @@ export class DashboardController {
     return this.dashboardService.getRuntimeLogs(Number(limit) || 200);
   }
 
+  @Get("admin/system-status")
+  @Roles("admin")
+  getSystemStatus(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.getSystemStatus(user);
+  }
+
   @Get("admin/logs/export.txt")
   @Roles("admin")
   async exportRuntimeLogsText(@Res({ passthrough: true }) response: Response) {

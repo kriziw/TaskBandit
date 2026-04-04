@@ -189,6 +189,65 @@ export type HouseholdNotificationHealthEntry = {
   deliveryMode: "push" | "email_fallback" | "none";
 };
 
+export type AdminSystemStatus = {
+  checkedAt: string;
+  application: {
+    status: "ready";
+    port: number;
+    reverseProxyEnabled: boolean;
+    reverseProxyPathBase: string | null;
+  };
+  database: {
+    status: "ready" | "error";
+    error: string | null;
+  };
+  storage: {
+    status: "ready" | "error";
+    rootPath: string;
+    runtimeLogFilePath: string;
+    error: string | null;
+  };
+  auth: {
+    status: "ready" | "error";
+    localAuthEnabled: boolean;
+    localAuthForcedByConfig: boolean;
+    localAuthEffective: boolean;
+    oidcEnabled: boolean;
+    oidcEffective: boolean;
+    oidcSource: "ui" | "env" | "none";
+    oidcAuthority: string;
+    oidcClientId: string;
+  };
+  smtp: {
+    status: "ready" | "warning";
+    enabled: boolean;
+    configured: boolean;
+    host: string | null;
+    port: number | null;
+    secure: boolean;
+    fromEmail: string | null;
+  };
+  push: {
+    status: "ready" | "warning";
+    householdPushEnabled: boolean;
+    serverFcmEnabled: boolean;
+    serviceAccountConfigured: boolean;
+    registeredDeviceCount: number;
+    pushReadyDeviceCount: number;
+    membersWithPushReadyDevices: number;
+    membersUsingEmailFallback: number;
+    membersWithoutDeliveryPath: number;
+    deliveryWorkerIntervalMs: number;
+  };
+  emailFallback: {
+    status: "ready" | "warning";
+    smtpReady: boolean;
+    eligibleMemberCount: number;
+    activeFallbackMemberCount: number;
+    workerIntervalMs: number;
+  };
+};
+
 export type Household = {
   householdId: string;
   name: string;

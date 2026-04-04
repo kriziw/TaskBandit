@@ -4,6 +4,7 @@ import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import type {
+  AdminSystemStatus,
   AuditLogEntry,
   ChoreAttachment,
   AuthProviders,
@@ -39,6 +40,7 @@ type DashboardPayload = {
   notifications: NotificationEntry[];
   notificationDevices: NotificationDevice[];
   householdNotificationHealth: HouseholdNotificationHealthEntry[];
+  systemStatus: AdminSystemStatus | null;
   notificationPreferences: NotificationPreferences;
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
@@ -503,6 +505,7 @@ export function App() {
         notifications,
         notificationDevices,
         householdNotificationHealth,
+        systemStatus,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -520,6 +523,9 @@ export function App() {
         currentUser.role === "admin"
           ? taskBanditApi.getHouseholdNotificationHealth(accessToken, language)
           : Promise.resolve([]),
+        currentUser.role === "admin"
+          ? taskBanditApi.getSystemStatus(accessToken, language)
+          : Promise.resolve(null),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
@@ -539,6 +545,7 @@ export function App() {
         notifications,
         notificationDevices,
         householdNotificationHealth,
+        systemStatus,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -570,6 +577,29 @@ export function App() {
 
       if (options.reportErrors) {
         setPageError(readErrorMessage(error, t("logs.load_failed")));
+      }
+    }
+  }
+
+  async function refreshSystemStatus(accessToken: string, options: { reportErrors: boolean }) {
+    try {
+      const nextSystemStatus = await taskBanditApi.getSystemStatus(accessToken, language);
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              systemStatus: nextSystemStatus
+            }
+          : current
+      );
+    } catch (error) {
+      if (error instanceof TaskBanditApiError && error.status === 401) {
+        handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (options.reportErrors) {
+        setPageError(readErrorMessage(error, t("system_status.load_failed")));
       }
     }
   }
@@ -1399,6 +1429,21 @@ export function App() {
     }
   }
 
+  async function handleRefreshSystemStatus() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("refresh-system-status");
+    try {
+      await refreshSystemStatus(token, { reportErrors: true });
+      setNotice(t("system_status.refreshed"));
+      setPageError(null);
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleCancelInstance(instanceId: string) {
     if (!token) {
       return;
@@ -1637,6 +1682,10 @@ export function App() {
     const pad = (part: number) => part.toString().padStart(2, "0");
 
     return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+  }
+
+  function formatStatusChip(status: "ready" | "warning" | "error") {
+    return t(`system_status.status_${status}`);
   }
 
   const roadmap = [
@@ -2743,6 +2792,187 @@ export function App() {
                       </div>
                     ))}
                   </div>
+                )}
+              </article>
+            ) : null}
+
+            {payload.currentUser.role === "admin" ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.system_status")}</h2>
+                  <div className="toolbar-group">
+                    <span className="section-kicker">
+                      {payload.systemStatus
+                        ? formatDate(payload.systemStatus.checkedAt)
+                        : t("common.none")}
+                    </span>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "refresh-system-status"}
+                      onClick={() => void handleRefreshSystemStatus()}
+                    >
+                      {t("system_status.refresh")}
+                    </button>
+                  </div>
+                </div>
+                <p>{t("system_status.hint")}</p>
+                {payload.systemStatus ? (
+                  <div className="system-status-grid">
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("system_status.application")}</strong>
+                        <span className={`status-pill system-${payload.systemStatus.application.status}`}>
+                          {formatStatusChip(payload.systemStatus.application.status)}
+                        </span>
+                      </div>
+                      <p>
+                        {t("system_status.listen_port")}: {payload.systemStatus.application.port}
+                      </p>
+                      <p>
+                        {t("system_status.reverse_proxy")}:{" "}
+                        {payload.systemStatus.application.reverseProxyEnabled
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.path_base")}:{" "}
+                        {payload.systemStatus.application.reverseProxyPathBase ?? t("common.none")}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("system_status.database")}</strong>
+                        <span className={`status-pill system-${payload.systemStatus.database.status}`}>
+                          {formatStatusChip(payload.systemStatus.database.status)}
+                        </span>
+                      </div>
+                      <p>
+                        {t("system_status.database_hint")}:{" "}
+                        {payload.systemStatus.database.error ?? t("system_status.ok")}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("system_status.storage")}</strong>
+                        <span className={`status-pill system-${payload.systemStatus.storage.status}`}>
+                          {formatStatusChip(payload.systemStatus.storage.status)}
+                        </span>
+                      </div>
+                      <p>
+                        {t("system_status.storage_root")}: {payload.systemStatus.storage.rootPath}
+                      </p>
+                      <p>
+                        {t("system_status.runtime_log_path")}:{" "}
+                        {payload.systemStatus.storage.runtimeLogFilePath}
+                      </p>
+                      <p>
+                        {t("system_status.storage_hint")}:{" "}
+                        {payload.systemStatus.storage.error ?? t("system_status.ok")}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("system_status.auth")}</strong>
+                        <span className={`status-pill system-${payload.systemStatus.auth.status}`}>
+                          {formatStatusChip(payload.systemStatus.auth.status)}
+                        </span>
+                      </div>
+                      <p>
+                        {t("system_status.local_auth_effective")}:{" "}
+                        {payload.systemStatus.auth.localAuthEffective
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.local_auth_forced")}:{" "}
+                        {payload.systemStatus.auth.localAuthForcedByConfig
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.oidc_effective")}:{" "}
+                        {payload.systemStatus.auth.oidcEffective
+                          ? t("common.enabled")
+                          : t("common.disabled")}{" "}
+                        ({t(`auth.oidc_source_${payload.systemStatus.auth.oidcSource}`)})
+                      </p>
+                      {payload.systemStatus.auth.oidcEffective ? (
+                        <p>
+                          {t("system_status.oidc_authority")}:{" "}
+                          {payload.systemStatus.auth.oidcAuthority || t("common.none")}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("system_status.push")}</strong>
+                        <span className={`status-pill system-${payload.systemStatus.push.status}`}>
+                          {formatStatusChip(payload.systemStatus.push.status)}
+                        </span>
+                      </div>
+                      <p>
+                        {t("system_status.push_household_enabled")}:{" "}
+                        {payload.systemStatus.push.householdPushEnabled
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.fcm_server_enabled")}:{" "}
+                        {payload.systemStatus.push.serverFcmEnabled
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.service_account")}:{" "}
+                        {payload.systemStatus.push.serviceAccountConfigured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.push_devices")}:{" "}
+                        {payload.systemStatus.push.pushReadyDeviceCount} /{" "}
+                        {payload.systemStatus.push.registeredDeviceCount}
+                      </p>
+                      <p>
+                        {t("system_status.member_delivery_breakdown")}{" "}
+                        {payload.systemStatus.push.membersWithPushReadyDevices} /{" "}
+                        {payload.systemStatus.push.membersUsingEmailFallback} /{" "}
+                        {payload.systemStatus.push.membersWithoutDeliveryPath}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
+                        <strong>{t("system_status.email_fallback")}</strong>
+                        <span className={`status-pill system-${payload.systemStatus.emailFallback.status}`}>
+                          {formatStatusChip(payload.systemStatus.emailFallback.status)}
+                        </span>
+                      </div>
+                      <p>
+                        {t("system_status.smtp_ready")}:{" "}
+                        {payload.systemStatus.emailFallback.smtpReady
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.smtp_configured")}:{" "}
+                        {payload.systemStatus.smtp.configured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.smtp_host")}:{" "}
+                        {payload.systemStatus.smtp.host ?? t("common.none")}
+                      </p>
+                      <p>
+                        {t("system_status.email_fallback_members")}:{" "}
+                        {payload.systemStatus.emailFallback.activeFallbackMemberCount} /{" "}
+                        {payload.systemStatus.emailFallback.eligibleMemberCount}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="inline-message">{t("system_status.empty")}</p>
                 )}
               </article>
             ) : null}

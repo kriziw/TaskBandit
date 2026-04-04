@@ -641,6 +641,13 @@ h4,
   margin-top: 10px;
 }
 
+.system-status-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .notification-delivery-block {
   padding: 12px;
   border-radius: 18px;
@@ -733,6 +740,18 @@ h4,
 }
 
 .delivery-failed {
+  background: rgba(255, 122, 107, 0.18);
+}
+
+.system-ready {
+  background: rgba(115, 217, 179, 0.22);
+}
+
+.system-warning {
+  background: rgba(255, 201, 74, 0.22);
+}
+
+.system-error {
   background: rgba(255, 122, 107, 0.18);
 }
 

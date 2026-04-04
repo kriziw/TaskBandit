@@ -45,6 +45,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - a first-time admin onboarding flow for setup guidance and feature overview
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
 - admin snapshot export of the live household state for backup/support use
+- an admin system-status panel for checking runtime readiness across database, storage, auth, push, and email fallback
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
 - reverse-proxy aware server configuration for Nginx or Traefik deployments
@@ -164,6 +165,7 @@ SMTP can now also be configured from the admin UI as an optional instance capabi
 Notification-device registration is now live for signed-in Android clients, and the backend logs push-delivery fan-out groundwork in the admin runtime log even before a full FCM provider pipeline is enabled.
 The backend now also queues provider-backed push deliveries in PostgreSQL and can send them through Firebase Admin when FCM is enabled in the environment.
 Admins can also export a household snapshot JSON from the web UI. This is meant as a support/backup snapshot of the current live state, not as a full restore/import feature.
+Admins can now also inspect a live system-status panel from the web UI to verify that the instance is ready across database connectivity, storage writability, auth recovery path, push delivery, and email fallback.
 
 ## Android Push Notes
 

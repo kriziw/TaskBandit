@@ -1,4 +1,5 @@
 import type {
+  AdminSystemStatus,
   AuditLogEntry,
   ApiStatusResponse,
   AuthenticatedUser,
@@ -258,6 +259,12 @@ export const taskBanditApi = {
   },
   getRuntimeLogs(token: string, language: AppLanguage, limit = 200) {
     return request<RuntimeLogEntry[]>(`/api/dashboard/admin/logs?limit=${limit}`, {
+      token,
+      language
+    });
+  },
+  getSystemStatus(token: string, language: AppLanguage) {
+    return request<AdminSystemStatus>("/api/dashboard/admin/system-status", {
       token,
       language
     });
