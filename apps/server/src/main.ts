@@ -3,10 +3,16 @@ import { NestFactory } from "@nestjs/core";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
 import { AppModule } from "./app.module";
 import { AppConfigService } from "./common/config/app-config.service";
+import { AppLogService } from "./common/logging/app-log.service";
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule);
+  const app = await NestFactory.create(AppModule, {
+    bufferLogs: true
+  });
   const config = app.get(AppConfigService);
+  const logger = app.get(AppLogService);
+
+  app.useLogger(logger);
 
   app.enableCors();
   app.enableShutdownHooks();
@@ -38,6 +44,7 @@ async function bootstrap() {
   SwaggerModule.setup(config.withBasePath("docs"), app, swaggerDocument);
 
   await app.listen(config.port);
+  logger.log(`TaskBandit API listening on port ${config.port}.`, "Bootstrap");
 }
 
 void bootstrap();

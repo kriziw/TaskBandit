@@ -88,6 +88,15 @@ export type NotificationEntry = {
   readAt: string | null;
 };
 
+export type RuntimeLogEntry = {
+  id: string;
+  timestamp: string;
+  level: "log" | "warn" | "error" | "debug" | "verbose";
+  context: string | null;
+  message: string;
+  stack: string | null;
+};
+
 export type HouseholdMember = {
   id: string;
   displayName: string;

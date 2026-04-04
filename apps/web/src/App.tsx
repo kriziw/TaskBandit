@@ -21,6 +21,7 @@ import type {
   NotificationEntry,
   PointsLedgerEntry,
   RecurrenceType,
+  RuntimeLogEntry,
   SignupInput
 } from "./types/taskbandit";
 
@@ -101,6 +102,7 @@ export function App() {
     selfSignupEnabled: false
   });
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
+  const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLogEntry[]>([]);
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
   const [submitSelections, setSubmitSelections] = useState<Record<string, string[]>>({});
   const [selectedProofFiles, setSelectedProofFiles] = useState<Record<string, File[]>>({});
@@ -169,6 +171,7 @@ export function App() {
   useEffect(() => {
     if (!token) {
       setPayload(null);
+      setRuntimeLogs([]);
       setSettingsDraft(null);
       setIsLoading(false);
       return;
@@ -197,6 +200,18 @@ export function App() {
           }
     );
   }, [payload]);
+
+  useEffect(() => {
+    if (!token || payload?.currentUser.role !== "admin") {
+      return;
+    }
+
+    const intervalId = window.setInterval(() => {
+      void refreshRuntimeLogs(token, { reportErrors: false });
+    }, 10000);
+
+    return () => window.clearInterval(intervalId);
+  }, [language, payload?.currentUser.role, token]);
 
   const memberLookup = useMemo(() => {
     const members = payload?.household.members ?? [];
@@ -346,7 +361,7 @@ export function App() {
 
     try {
       const currentUser = await taskBanditApi.getCurrentUser(accessToken, language);
-      const [dashboard, household, auditLog, notifications, pointsLedger, templates, instances] =
+      const [dashboard, household, auditLog, notifications, pointsLedger, templates, instances, nextRuntimeLogs] =
         await Promise.all([
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
@@ -358,7 +373,10 @@ export function App() {
         currentUser.role === "child"
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
-        taskBanditApi.getInstances(accessToken, language)
+        taskBanditApi.getInstances(accessToken, language),
+        currentUser.role === "admin"
+          ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
+          : Promise.resolve([])
         ]);
 
       setPayload({
@@ -371,6 +389,7 @@ export function App() {
         templates,
         instances
       });
+      setRuntimeLogs(nextRuntimeLogs);
       setPageError(null);
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
@@ -381,6 +400,22 @@ export function App() {
       setPageError(readErrorMessage(error, t("error.load_dashboard")));
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function refreshRuntimeLogs(accessToken: string, options: { reportErrors: boolean }) {
+    try {
+      const nextRuntimeLogs = await taskBanditApi.getRuntimeLogs(accessToken, language, 250);
+      setRuntimeLogs(nextRuntimeLogs);
+    } catch (error) {
+      if (error instanceof TaskBanditApiError && error.status === 401) {
+        handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (options.reportErrors) {
+        setPageError(readErrorMessage(error, t("logs.load_failed")));
+      }
     }
   }
 
@@ -576,6 +611,7 @@ export function App() {
     window.localStorage.removeItem(tokenStorageKey);
     setToken(null);
     setPayload(null);
+    setRuntimeLogs([]);
     setSettingsDraft(null);
     setLoginError(message ?? null);
     setNotice(null);
@@ -962,17 +998,49 @@ export function App() {
     setBusyAction("download-chores-export");
     try {
       const blob = await taskBanditApi.downloadChoresCsv(token, language);
-      const objectUrl = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = objectUrl;
-      link.download = "taskbandit-chores.csv";
-      document.body.append(link);
-      link.click();
-      link.remove();
-      window.URL.revokeObjectURL(objectUrl);
+      downloadBlob(blob, "taskbandit-chores.csv");
       setNotice(t("exports.chores_downloaded"));
     } catch (error) {
       setPageError(readErrorMessage(error, t("exports.chores_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleRefreshRuntimeLogs() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("refresh-runtime-logs");
+    try {
+      await refreshRuntimeLogs(token, { reportErrors: true });
+      setNotice(t("logs.refreshed"));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleDownloadRuntimeLogs(format: "txt" | "json") {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`download-runtime-logs-${format}`);
+    try {
+      const blob =
+        format === "txt"
+          ? await taskBanditApi.downloadRuntimeLogsText(token, language)
+          : await taskBanditApi.downloadRuntimeLogsJson(token, language);
+      downloadBlob(
+        blob,
+        format === "txt" ? "taskbandit-runtime.log" : "taskbandit-runtime-logs.json"
+      );
+      setNotice(
+        format === "txt" ? t("logs.exported_text") : t("logs.exported_json")
+      );
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("logs.export_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -1727,6 +1795,60 @@ export function App() {
               </article>
             ) : null}
 
+            {payload.currentUser.role === "admin" ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.runtime_logs")}</h2>
+                  <div className="toolbar-group">
+                    <span className="section-kicker">{runtimeLogs.length}</span>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "refresh-runtime-logs"}
+                      onClick={() => void handleRefreshRuntimeLogs()}
+                    >
+                      {t("logs.refresh")}
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "download-runtime-logs-txt"}
+                      onClick={() => void handleDownloadRuntimeLogs("txt")}
+                    >
+                      {t("logs.export_text")}
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={busyAction === "download-runtime-logs-json"}
+                      onClick={() => void handleDownloadRuntimeLogs("json")}
+                    >
+                      {t("logs.export_json")}
+                    </button>
+                  </div>
+                </div>
+                <div className="log-viewer">
+                  {runtimeLogs.length === 0 ? (
+                    <p className="inline-message">{t("logs.empty")}</p>
+                  ) : (
+                    runtimeLogs.map((entry) => (
+                      <div className={`log-entry log-level-${entry.level}`} key={entry.id}>
+                        <div className="log-meta">
+                          <span className={`status-pill log-pill log-pill-${entry.level}`}>
+                            {t(`logs.level.${entry.level}`)}
+                          </span>
+                          <span>{formatDate(entry.timestamp)}</span>
+                          {entry.context ? <span>{entry.context}</span> : null}
+                        </div>
+                        <p className="log-message">{entry.message}</p>
+                        {entry.stack ? <pre className="log-stack">{entry.stack}</pre> : null}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </article>
+            ) : null}
+
             <article className="panel panel-wide">
               <div className="section-heading">
                 <h2>{t("panel.household_chores")}</h2>
@@ -2380,6 +2502,17 @@ export function App() {
       )}
     </main>
   );
+}
+
+function downloadBlob(blob: Blob, filename: string) {
+  const objectUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement("a");
+  link.href = objectUrl;
+  link.download = filename;
+  document.body.append(link);
+  link.click();
+  link.remove();
+  window.URL.revokeObjectURL(objectUrl);
 }
 
 function readErrorMessage(error: unknown, fallbackMessage: string) {

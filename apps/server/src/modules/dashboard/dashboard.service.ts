@@ -1,13 +1,15 @@
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { Injectable } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
+import { AppLogService } from "../../common/logging/app-log.service";
 import { HouseholdRepository } from "../household/household.repository";
 
 @Injectable()
 export class DashboardService {
   constructor(
     private readonly repository: HouseholdRepository,
-    private readonly appConfigService: AppConfigService
+    private readonly appConfigService: AppConfigService,
+    private readonly appLogService: AppLogService
   ) {}
 
   getSummary(user: AuthenticatedUser) {
@@ -94,6 +96,18 @@ export class DashboardService {
     return [header, ...rows]
       .map((row) => row.map((value) => this.escapeCsv(String(value))).join(","))
       .join("\n");
+  }
+
+  getRuntimeLogs(limit = 200) {
+    return this.appLogService.getRecentEntries(limit);
+  }
+
+  async exportRuntimeLogsText() {
+    return this.appLogService.exportText();
+  }
+
+  exportRuntimeLogsJson(limit = 1000) {
+    return this.appLogService.exportJson(limit);
   }
 
   private escapeCsv(value: string) {

@@ -15,6 +15,7 @@ import type {
   HouseholdSettings,
   NotificationEntry,
   PointsLedgerEntry,
+  RuntimeLogEntry,
   SignupInput,
   UploadedProof
 } from "../types/taskbandit";
@@ -189,6 +190,12 @@ export const taskBanditApi = {
       }
     );
   },
+  getRuntimeLogs(token: string, language: AppLanguage, limit = 200) {
+    return request<RuntimeLogEntry[]>(`/api/dashboard/admin/logs?limit=${limit}`, {
+      token,
+      language
+    });
+  },
   getHousehold(token: string, language: AppLanguage) {
     return request<Household>("/api/settings/household", {
       token,
@@ -271,6 +278,32 @@ export const taskBanditApi = {
   },
   async downloadChoresCsv(token: string, language: AppLanguage) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/exports/chores.csv`, {
+      method: "GET",
+      headers: buildHeaders(token, language)
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new TaskBanditApiError(message, response.status);
+    }
+
+    return response.blob();
+  },
+  async downloadRuntimeLogsText(token: string, language: AppLanguage) {
+    const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/admin/logs/export.txt`, {
+      method: "GET",
+      headers: buildHeaders(token, language)
+    });
+
+    if (!response.ok) {
+      const message = await readErrorMessage(response);
+      throw new TaskBanditApiError(message, response.status);
+    }
+
+    return response.blob();
+  },
+  async downloadRuntimeLogsJson(token: string, language: AppLanguage) {
+    const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/admin/logs/export.json`, {
       method: "GET",
       headers: buildHeaders(token, language)
     });

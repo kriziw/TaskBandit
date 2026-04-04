@@ -112,6 +112,7 @@ Manual setup:
 - `TASKBANDIT_REMINDER_INTERVAL_MS=300000` controls how often the backend scans for due-soon and overdue reminder notifications. Set it to `0` to disable the worker.
 - `TASKBANDIT_DUE_SOON_WINDOW_HOURS=6` controls how far ahead TaskBandit creates due-soon reminders.
 - `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC=6` controls when the once-per-day TaskBandit summary notification is generated for each user.
+- `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
 - `TASKBANDIT_STORAGE_ROOT` is the server-side path used for uploaded proof photos. In Docker Compose this is mounted to a persistent volume.
 - `TASKBANDIT_REVERSE_PROXY_ENABLED` and `TASKBANDIT_REVERSE_PROXY_PATH_BASE` should be set when TaskBandit is deployed behind Nginx or Traefik.
 - `TASKBANDIT_OIDC_ENABLED=false` keeps OIDC off entirely. Set it to `true` only when you also provide valid `TASKBANDIT_OIDC_*` values.

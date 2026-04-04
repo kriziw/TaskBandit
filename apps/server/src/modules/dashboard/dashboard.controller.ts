@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Res, UseGuards } from "@nestjs/common";
+import { Controller, Get, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
@@ -49,6 +49,28 @@ export class DashboardController {
   @Roles("admin")
   processNotificationMaintenance() {
     return this.dashboardService.processNotificationMaintenance();
+  }
+
+  @Get("admin/logs")
+  @Roles("admin")
+  getRuntimeLogs(@Query("limit") limit?: string) {
+    return this.dashboardService.getRuntimeLogs(Number(limit) || 200);
+  }
+
+  @Get("admin/logs/export.txt")
+  @Roles("admin")
+  async exportRuntimeLogsText(@Res({ passthrough: true }) response: Response) {
+    response.setHeader("Content-Type", "text/plain; charset=utf-8");
+    response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-runtime.log"');
+    return this.dashboardService.exportRuntimeLogsText();
+  }
+
+  @Get("admin/logs/export.json")
+  @Roles("admin")
+  async exportRuntimeLogsJson(@Res({ passthrough: true }) response: Response) {
+    response.setHeader("Content-Type", "application/json; charset=utf-8");
+    response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-runtime-logs.json"');
+    return this.dashboardService.exportRuntimeLogsJson();
   }
 
   @Get("exports/chores.csv")

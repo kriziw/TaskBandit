@@ -661,6 +661,62 @@ h4,
   gap: 8px;
 }
 
+.log-viewer {
+  display: grid;
+  gap: 12px;
+}
+
+.log-entry {
+  padding: 14px 16px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.58);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.log-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.log-pill {
+  min-width: 76px;
+  justify-content: center;
+}
+
+.log-pill-log,
+.log-pill-debug,
+.log-pill-verbose {
+  background: rgba(115, 201, 244, 0.18);
+}
+
+.log-pill-warn {
+  background: rgba(255, 201, 74, 0.25);
+}
+
+.log-pill-error {
+  background: rgba(255, 122, 107, 0.22);
+}
+
+.log-message,
+.log-stack {
+  margin: 10px 0 0;
+  font-family: "Courier New", monospace;
+  font-size: 0.92rem;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log-stack {
+  padding: 12px;
+  border-radius: 14px;
+  background: rgba(36, 48, 67, 0.08);
+  overflow-x: auto;
+}
+
 .error-text {
   color: #8f3528;
   margin: 0;

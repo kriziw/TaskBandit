@@ -60,6 +60,14 @@ export class AppConfigService {
       : path.resolve(process.cwd(), configuredPath);
   }
 
+  get runtimeLogFilePath(): string {
+    return path.resolve(this.storageRootPath, "logs", "taskbandit-runtime.log");
+  }
+
+  get runtimeLogBufferSize(): number {
+    return Number(this.configService.get("TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE") ?? 1000);
+  }
+
   get jwtSecret(): string {
     return this.configService.get<string>("TASKBANDIT_JWT_SECRET", "taskbandit-dev-secret-change-me");
   }
