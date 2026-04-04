@@ -23,7 +23,7 @@ TaskBandit uses a cute raccoon mascot with a friendly bandit look. The character
 
 ## Typography
 
-- Brand and headings: `Fredoka`
+- Brand and headings: `Bubblegum Sans`
 - UI body copy: `Nunito`
 - Typography should feel rounded, soft, and cheerful rather than corporate or neutral
 - Headings can lean bolder and tighter for mascot energy, but body text should stay highly readable

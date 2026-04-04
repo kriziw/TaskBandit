@@ -1,8 +1,8 @@
 <svg width="860" height="260" viewBox="0 0 860 260" fill="none" xmlns="http://www.w3.org/2000/svg">
   <style>
     @font-face {
-      font-family: "Fredoka";
-      src: url("./fonts/fredoka.ttf") format("truetype");
+      font-family: "Bubblegum Sans";
+      src: url("./fonts/bubblegumsans.ttf") format("truetype");
     }
 
     @font-face {
@@ -59,8 +59,8 @@
   </g>
 
   <g transform="translate(320 58)">
-    <text x="0" y="78" fill="#243043" font-family="'Fredoka', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="72" font-weight="800" letter-spacing="0.4">TaskBandit</text>
-    <text x="2" y="112" fill="#FF7A6B" font-family="'Fredoka', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1.2">PLAYFUL CHORES FOR SELF-HOSTED HOMES</text>
+    <text x="0" y="80" fill="#243043" font-family="'Bubblegum Sans', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="74" font-weight="800" letter-spacing="0.2">TaskBandit</text>
+    <text x="2" y="112" fill="#FF7A6B" font-family="'Bubblegum Sans', 'Trebuchet MS', 'Segoe UI', sans-serif" font-size="20" font-weight="700" letter-spacing="1">PLAYFUL CHORES FOR SELF-HOSTED HOMES</text>
     <rect x="0" y="137" width="356" height="12" rx="6" fill="#73D9B3"/>
     <rect x="0" y="137" width="214" height="12" rx="6" fill="#FFC94A"/>
     <text x="0" y="182" fill="#243043" font-family="'Nunito', 'Segoe UI', sans-serif" font-size="24" font-weight="700">Cute raccoon energy. Serious household momentum.</text>
