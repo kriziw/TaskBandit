@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.12.1](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.12.0...taskbandit-v0.12.1) (2026-04-04)
+
+
+### Bug Fixes
+
+* **ci:** align android workflows with current build toolchain ([c2f187d](https://github.com/kriziw/TaskBandit/commit/c2f187d14a9eaf620c4b75d7a0dc153ed799a100))
+* **ci:** align android workflows with current build toolchain ([fc0cb5b](https://github.com/kriziw/TaskBandit/commit/fc0cb5beecf01eb30bed5877d40376151d940827))
+
 ## [0.12.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.11.0...taskbandit-v0.12.0) (2026-04-04)
 
 
