@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.12.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.11.0...taskbandit-v0.12.0) (2026-04-04)
+
+
+### Features
+
+* improve mobile core actions and timed follow-up chores ([c3f1470](https://github.com/kriziw/TaskBandit/commit/c3f1470887726023e5b249f8ad4c2327bc45be36))
+
 ## [0.11.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.10.0...taskbandit-v0.11.0) (2026-04-04)
 
 
