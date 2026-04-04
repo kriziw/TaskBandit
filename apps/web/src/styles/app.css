@@ -650,6 +650,15 @@ h4,
   gap: 10px;
 }
 
+.page-settings .settings-list {
+  gap: 12px;
+}
+
+.page-settings label {
+  display: grid;
+  gap: 4px;
+}
+
 .member-form {
   margin-top: 14px;
 }
@@ -718,6 +727,42 @@ h4,
   background: var(--mist-strong);
   color: var(--ink);
   padding: 10px 12px;
+}
+
+.page-settings input:not([type="checkbox"]),
+.page-settings textarea,
+.page-settings select {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.96), rgba(255, 247, 232, 0.9)),
+    var(--mist-strong);
+  color: var(--ink);
+  padding: 10px 12px;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.72),
+    0 10px 18px rgba(36, 48, 67, 0.06);
+  transition:
+    border-color 140ms ease,
+    box-shadow 140ms ease,
+    background 140ms ease;
+}
+
+.page-settings input:not([type="checkbox"]):focus,
+.page-settings textarea:focus,
+.page-settings select:focus {
+  outline: none;
+  border-color: rgba(115, 199, 244, 0.7);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.8),
+    0 0 0 4px rgba(115, 199, 244, 0.16),
+    0 12px 20px rgba(36, 48, 67, 0.08);
+}
+
+.page-settings input::placeholder,
+.page-settings textarea::placeholder {
+  color: rgba(36, 48, 67, 0.44);
 }
 
 .inline-field textarea {
