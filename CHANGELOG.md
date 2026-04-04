@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.4.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.3.0...taskbandit-v0.4.0) (2026-04-04)
+
+
+### Features
+
+* serve web ui from server image ([b0e148c](https://github.com/kriziw/TaskBandit/commit/b0e148c29a0541db9953f00e2639650ccce05e46))
+
 ## [0.3.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.2.1...taskbandit-v0.3.0) (2026-04-04)
 
 
