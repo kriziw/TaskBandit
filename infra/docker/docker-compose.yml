@@ -39,6 +39,16 @@ services:
       TASKBANDIT_STORAGE_ROOT: ${TASKBANDIT_STORAGE_ROOT:-/var/lib/taskbandit/storage}
     ports:
       - "${TASKBANDIT_PORT:-8080}:${TASKBANDIT_PORT:-8080}"
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "wget -q -O /dev/null http://127.0.0.1:${TASKBANDIT_PORT:-8080}/health || exit 1"
+        ]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 40s
     depends_on:
       postgres:
         condition: service_healthy

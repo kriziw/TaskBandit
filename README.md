@@ -68,6 +68,7 @@ Localization structure and language-file locations are documented in `docs/local
 Authentication endpoints and environment variables are documented in `docs/authentication.md`.
 Chore submission and review endpoints are documented in `docs/chore-workflow.md`.
 The container startup now applies Prisma migrations automatically and waits for PostgreSQL health before the app boots.
+The server container now also exposes `/health` and includes a Docker healthcheck, so `docker ps` will report a real healthy/unhealthy state based on both the Nest app and PostgreSQL connectivity.
 
 ## Quick Start
 
@@ -103,6 +104,7 @@ Manual setup:
 
 - `TASKBANDIT_IMAGE_TAG=latest` pulls the latest published Docker image from Docker Hub.
 - `TASKBANDIT_PORT=8080` controls both the port the app listens on inside Docker and the host port published by Docker Compose.
+- The server health endpoint is always available at `/health`, even when `TASKBANDIT_REVERSE_PROXY_PATH_BASE` is set.
 - `TASKBANDIT_DB_HOST_PORT=5432` controls which host port PostgreSQL is exposed on. The container still uses port `5432` internally.
 - `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` creates the demo household automatically for local evaluation.
 - `TASKBANDIT_REMINDER_INTERVAL_MS=300000` controls how often the backend scans for due-soon and overdue reminder notifications. Set it to `0` to disable the worker.

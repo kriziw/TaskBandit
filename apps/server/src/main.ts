@@ -24,7 +24,9 @@ async function bootstrap() {
   }
 
   if (config.reverseProxyPathBase) {
-    app.setGlobalPrefix(config.reverseProxyPathBase);
+    app.setGlobalPrefix(config.reverseProxyPathBase, {
+      exclude: ["health"]
+    });
   }
 
   const swaggerConfig = new DocumentBuilder()
