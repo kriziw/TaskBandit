@@ -19,6 +19,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  NotificationDevice,
   NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
@@ -35,6 +36,7 @@ type DashboardPayload = {
   household: Household;
   auditLog: AuditLogEntry[];
   notifications: NotificationEntry[];
+  notificationDevices: NotificationDevice[];
   notificationPreferences: NotificationPreferences;
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
@@ -294,6 +296,14 @@ export function App() {
     [payload]
   );
 
+  const pushReadyDeviceCount = useMemo(
+    () =>
+      payload?.notificationDevices.filter(
+        (device) => device.notificationsEnabled && device.pushTokenConfigured
+      ).length ?? 0,
+    [payload]
+  );
+
   const restrictHouseholdDetails = Boolean(
     payload &&
       !payload.household.settings.membersCanSeeFullHouseholdChoreDetails &&
@@ -483,6 +493,7 @@ export function App() {
         household,
         auditLog,
         notifications,
+        notificationDevices,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -496,6 +507,7 @@ export function App() {
           ? Promise.resolve([])
           : taskBanditApi.getAuditLog(accessToken, language),
         taskBanditApi.getNotifications(accessToken, language),
+        taskBanditApi.getNotificationDevices(accessToken, language),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
@@ -513,6 +525,7 @@ export function App() {
         household,
         auditLog,
         notifications,
+        notificationDevices,
         notificationPreferences,
         pointsLedger,
         templates,
@@ -1055,6 +1068,8 @@ export function App() {
         t("settings.notifications_processed")
           .replace("{reminders}", String(result.reminderCount))
           .replace("{summaries}", String(result.dailySummaryCount))
+          .replace("{pushSent}", String(result.pushSentCount))
+          .replace("{pushFailed}", String(result.pushFailedCount))
       );
       setPageError(null);
     } catch (error) {
@@ -1076,6 +1091,24 @@ export function App() {
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("settings.smtp_test_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleDeleteNotificationDevice(deviceId: string) {
+    if (!token || !payload) {
+      return;
+    }
+
+    setBusyAction(`delete-device:${deviceId}`);
+    try {
+      const nextDevices = await taskBanditApi.deleteNotificationDevice(token, language, deviceId);
+      setPayload((current) => (current ? { ...current, notificationDevices: nextDevices } : current));
+      setNotice(t("settings.notification_device_removed"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("settings.notification_device_remove_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -2482,6 +2515,68 @@ export function App() {
                 >
                   {t("settings.save_notification_preferences")}
                 </button>
+              </article>
+            ) : null}
+
+            {payload.notificationDevices ? (
+              <article className="panel">
+                <div className="section-heading">
+                  <h2>{t("panel.mobile_push_devices")}</h2>
+                  <span className="section-kicker">{formatNumber(pushReadyDeviceCount)}</span>
+                </div>
+                <p>{t("settings.push_primary_hint")}</p>
+                {!payload.household.settings.enablePushNotifications ? (
+                  <p className="error-text">{t("settings.push_household_disabled")}</p>
+                ) : null}
+                {payload.notificationDevices.length === 0 ? (
+                  <p className="inline-message">{t("settings.no_notification_devices")}</p>
+                ) : (
+                  <div className="stack-list">
+                    {payload.notificationDevices.map((device) => (
+                      <div className="task-row compact" key={device.id}>
+                        <div className="task-row-header">
+                          <strong>{device.deviceName || t("settings.notification_device_android")}</strong>
+                          <span
+                            className={`status-pill ${device.pushTokenConfigured ? "state-completed" : "state-open"}`}
+                          >
+                            {device.pushTokenConfigured
+                              ? t("settings.notification_device_push_ready")
+                              : t("settings.notification_device_waiting")}
+                          </span>
+                        </div>
+                        <p>
+                          {t("settings.notification_device_provider")}:{" "}
+                          {device.provider === "fcm"
+                            ? t("settings.notification_device_provider_fcm")
+                            : t("settings.notification_device_provider_generic")}
+                        </p>
+                        <p>
+                          {t("settings.notification_device_last_seen")}: {formatDate(device.lastSeenAt)}
+                        </p>
+                        {device.appVersion ? (
+                          <p>
+                            {t("settings.notification_device_app_version")}: {device.appVersion}
+                          </p>
+                        ) : null}
+                        {device.locale ? (
+                          <p>
+                            {t("settings.notification_device_locale")}: {device.locale}
+                          </p>
+                        ) : null}
+                        <div className="button-row">
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            disabled={busyAction === `delete-device:${device.id}`}
+                            onClick={() => void handleDeleteNotificationDevice(device.id)}
+                          >
+                            {t("settings.notification_device_remove")}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </article>
             ) : null}
 

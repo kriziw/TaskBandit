@@ -15,6 +15,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdSettings,
+  NotificationDevice,
   NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
@@ -25,7 +26,7 @@ import type {
 import type { AppLanguage } from "../i18n/I18nProvider";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT";
+  method?: "GET" | "POST" | "PUT" | "DELETE";
   token?: string | null;
   language: AppLanguage;
   body?: unknown;
@@ -212,7 +213,12 @@ export const taskBanditApi = {
     );
   },
   processNotificationMaintenance(token: string, language: AppLanguage) {
-    return request<{ reminderCount: number; dailySummaryCount: number }>(
+    return request<{
+      reminderCount: number;
+      dailySummaryCount: number;
+      pushSentCount: number;
+      pushFailedCount: number;
+    }>(
       "/api/dashboard/maintenance/process-notifications",
       {
         method: "POST",
@@ -246,6 +252,12 @@ export const taskBanditApi = {
       language
     });
   },
+  getNotificationDevices(token: string, language: AppLanguage) {
+    return request<NotificationDevice[]>("/api/settings/notification-devices", {
+      token,
+      language
+    });
+  },
   getAuditLog(token: string, language: AppLanguage) {
     return request<AuditLogEntry[]>("/api/settings/audit-log", {
       token,
@@ -270,6 +282,13 @@ export const taskBanditApi = {
       token,
       language,
       body: preferences
+    });
+  },
+  deleteNotificationDevice(token: string, language: AppLanguage, deviceId: string) {
+    return request<NotificationDevice[]>(`/api/settings/notification-devices/${deviceId}`, {
+      method: "DELETE",
+      token,
+      language
     });
   },
   createHouseholdMember(token: string, language: AppLanguage, input: CreateHouseholdMemberInput) {

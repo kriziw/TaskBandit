@@ -147,6 +147,21 @@ export type NotificationPreferences = {
   receiveDailySummary: boolean;
 };
 
+export type NotificationDevice = {
+  id: string;
+  installationId: string;
+  platform: "android";
+  provider: "generic" | "fcm";
+  pushTokenConfigured: boolean;
+  deviceName: string | null;
+  appVersion: string | null;
+  locale: string | null;
+  notificationsEnabled: boolean;
+  lastSeenAt: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
 export type Household = {
   householdId: string;
   name: string;
