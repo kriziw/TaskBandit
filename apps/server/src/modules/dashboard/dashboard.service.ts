@@ -6,6 +6,7 @@ import { PrismaService } from "../../common/prisma/prisma.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { EmailDeliveryWorkerService } from "./email-delivery-worker.service";
 import { PushDeliveryWorkerService } from "./push-delivery-worker.service";
+import { ReminderWorkerService } from "./reminder-worker.service";
 import { access, mkdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
@@ -17,6 +18,7 @@ export class DashboardService {
     private readonly appConfigService: AppConfigService,
     private readonly appLogService: AppLogService,
     private readonly prisma: PrismaService,
+    private readonly reminderWorkerService: ReminderWorkerService,
     private readonly emailDeliveryWorkerService: EmailDeliveryWorkerService,
     private readonly pushDeliveryWorkerService: PushDeliveryWorkerService
   ) {}
@@ -46,29 +48,19 @@ export class DashboardService {
   }
 
   async processNotificationMaintenance() {
-    const now = new Date();
-    const [reminderResult, dailySummaryResult, pushDeliveryResult, emailDeliveryResult] = await Promise.all([
-      this.repository.processReminderNotifications({
-        now,
-        dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours
-      }),
-      this.repository.processDailySummaryNotifications({
-        now,
-        summaryHourUtc: this.appConfigService.dailySummaryHourUtc,
-        force: true
-      }),
-      this.pushDeliveryWorkerService.runOnce(50),
-      this.emailDeliveryWorkerService.runOnce(50)
+    const [reminderResult, deliveryResult] = await Promise.all([
+      this.reminderWorkerService.runOnce(),
+      this.processNotificationDeliveries()
     ]);
 
     return {
-      reminderCount: reminderResult.createdCount,
-      dailySummaryCount: dailySummaryResult.createdCount,
-      pushSentCount: pushDeliveryResult.sentCount,
-      pushFailedCount: pushDeliveryResult.failedCount,
-      emailSentCount: emailDeliveryResult.sentCount,
-      emailFailedCount: emailDeliveryResult.failedCount,
-      emailSkippedCount: emailDeliveryResult.skippedCount
+      reminderCount: reminderResult.reminderCount,
+      dailySummaryCount: reminderResult.dailySummaryCount,
+      pushSentCount: deliveryResult.pushSentCount,
+      pushFailedCount: deliveryResult.pushFailedCount,
+      emailSentCount: deliveryResult.emailSentCount,
+      emailFailedCount: deliveryResult.emailFailedCount,
+      emailSkippedCount: deliveryResult.emailSkippedCount
     };
   }
 
@@ -80,17 +72,34 @@ export class DashboardService {
       recipientUserId: recipientUserId ?? user.id
     });
 
-    const deliveryResult = await this.processNotificationMaintenance();
+    const deliveryResult = await this.processNotificationDeliveries();
 
     return {
       recipientUserId: notificationResult.recipientUserId,
       recipientDisplayName: notificationResult.recipientDisplayName,
+      reminderCount: 0,
+      dailySummaryCount: 0,
       ...deliveryResult
     };
   }
 
   getNotificationRecovery(user: AuthenticatedUser) {
     return this.repository.getNotificationRecovery(user.householdId);
+  }
+
+  private async processNotificationDeliveries() {
+    const [pushDeliveryResult, emailDeliveryResult] = await Promise.all([
+      this.pushDeliveryWorkerService.runOnce(50),
+      this.emailDeliveryWorkerService.runOnce(50)
+    ]);
+
+    return {
+      pushSentCount: pushDeliveryResult.sentCount,
+      pushFailedCount: pushDeliveryResult.failedCount,
+      emailSentCount: emailDeliveryResult.sentCount,
+      emailFailedCount: emailDeliveryResult.failedCount,
+      emailSkippedCount: emailDeliveryResult.skippedCount
+    };
   }
 
   async retryPushDelivery(user: AuthenticatedUser, deliveryId: string) {

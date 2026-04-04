@@ -54,11 +54,13 @@ This repository is in the initial implementation phase. The current scaffold inc
 
 ## Local Tooling Note
 
-This workspace currently has Node.js available, but does not have Gradle installed. The NestJS server can be developed with Node.js, while Android build verification will require a full Android/Gradle toolchain.
+Local server and web development only require Node.js. Local Android verification requires a full Android toolchain with JDK 17+, Android SDK, and Gradle or Android Studio.
 
 ## Android Releases
 
-The repository now includes a GitHub Actions workflow that builds a release APK for Android phones when a GitHub release is published. Because the current app does not bundle native NDK libraries, the generated APK is a standard universal Android package and is suitable for ARM smartphones.
+The repository now includes a GitHub Actions workflow that builds a release APK for Android phones. The main release pipeline is driven by `release-please`, which builds and attaches the Android APK when a release is cut. A separate manual `android-release` workflow remains available for ad-hoc validation or rebuilds without creating a new release.
+
+Because the current app does not bundle native NDK libraries, the generated APK is a standard universal Android package and is suitable for ARM smartphones.
 
 The Android app also now includes a home-screen widget that shows the latest cached chore snapshot and can trigger a lightweight refresh using the signed-in session.
 
@@ -69,7 +71,7 @@ If Android signing secrets are not configured yet, the workflow still builds and
 - `ANDROID_KEY_ALIAS`
 - `ANDROID_KEY_PASSWORD`
 
-You can also trigger the workflow manually from GitHub Actions to validate the Android release pipeline before creating a public release.
+You can also trigger the manual Android workflow from GitHub Actions to validate the Android release pipeline before creating a public release.
 
 ## Release Automation
 
@@ -77,6 +79,7 @@ TaskBandit now uses `release-please` as the main release-preparation workflow.
 
 - Pushes to `main` keep a release PR up to date from conventional commits such as `feat:` and `fix:`.
 - When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned Docker images.
+- The separate `android-release` workflow is manual-only, so the release APK is not built twice for the same release event.
 - The `simple` release strategy tracks the root [CHANGELOG.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/CHANGELOG.md) and [version.txt](C:/Users/krist/Documents/GitHub/Chore%20Manager/version.txt).
 
 Prerelease control:

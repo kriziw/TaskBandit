@@ -1,8 +1,6 @@
 name: android-release
 
 on:
-  release:
-    types: [published, prereleased, released]
   workflow_dispatch:
     inputs:
       ref:
@@ -79,17 +77,11 @@ jobs:
           path: ${{ steps.apk.outputs.path }}
 
       - name: Note unsigned release build
-        if: ${{ github.event_name == 'release' && !(env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '') }}
+        if: ${{ !(env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '') }}
         shell: bash
         run: |
           {
             echo "## Android release signing not configured"
             echo
-            echo "A release APK artifact was built, but it was not attached to the GitHub release because Android signing secrets are missing."
+            echo "A release APK artifact was built, but it is unsigned because Android signing secrets are missing."
           } >> "$GITHUB_STEP_SUMMARY"
-
-      - name: Attach APK to GitHub release
-        if: ${{ github.event_name == 'release' && env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '' }}
-        uses: softprops/action-gh-release@v2
-        with:
-          files: ${{ steps.apk.outputs.path }}

@@ -7,6 +7,12 @@ import { SmtpService } from "../settings/smtp.service";
 export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(EmailDeliveryWorkerService.name);
   private timer: NodeJS.Timeout | null = null;
+  private activeRun: Promise<{
+    sentCount: number;
+    failedCount: number;
+    skippedCount: number;
+  }> | null = null;
+  private rerunRequested = false;
 
   constructor(
     private readonly repository: HouseholdRepository,
@@ -33,7 +39,49 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
     }
   }
 
-  async runOnce(limit = 25) {
+  async runOnce(
+    limit = 25
+  ): Promise<{ sentCount: number; failedCount: number; skippedCount: number }> {
+    if (this.activeRun) {
+      this.rerunRequested = true;
+      return this.activeRun.then(() => this.runOnce(limit));
+    }
+
+    const runPromise = this.runLoop(limit);
+    this.activeRun = runPromise;
+
+    try {
+      return await runPromise;
+    } finally {
+      if (this.activeRun === runPromise) {
+        this.activeRun = null;
+      }
+    }
+  }
+
+  private async runLoop(
+    limit: number
+  ): Promise<{ sentCount: number; failedCount: number; skippedCount: number }> {
+    const aggregate = {
+      sentCount: 0,
+      failedCount: 0,
+      skippedCount: 0
+    };
+
+    do {
+      this.rerunRequested = false;
+      const result = await this.runInternal(limit);
+      aggregate.sentCount += result.sentCount;
+      aggregate.failedCount += result.failedCount;
+      aggregate.skippedCount += result.skippedCount;
+    } while (this.rerunRequested);
+
+    return aggregate;
+  }
+
+  private async runInternal(
+    limit = 25
+  ): Promise<{ sentCount: number; failedCount: number; skippedCount: number }> {
     const pendingNotifications = await this.repository.getPendingEmailNotifications(limit);
     if (pendingNotifications.length === 0) {
       return {

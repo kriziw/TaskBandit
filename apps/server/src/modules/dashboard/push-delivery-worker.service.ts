@@ -7,6 +7,8 @@ import { HouseholdRepository } from "../household/household.repository";
 export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
   private readonly logger = new Logger(PushDeliveryWorkerService.name);
   private timer: NodeJS.Timeout | null = null;
+  private activeRun: Promise<{ sentCount: number; failedCount: number }> | null = null;
+  private rerunRequested = false;
 
   constructor(
     private readonly repository: HouseholdRepository,
@@ -33,7 +35,41 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     }
   }
 
-  async runOnce(limit = 25) {
+  async runOnce(limit = 25): Promise<{ sentCount: number; failedCount: number }> {
+    if (this.activeRun) {
+      this.rerunRequested = true;
+      return this.activeRun.then(() => this.runOnce(limit));
+    }
+
+    const runPromise = this.runLoop(limit);
+    this.activeRun = runPromise;
+
+    try {
+      return await runPromise;
+    } finally {
+      if (this.activeRun === runPromise) {
+        this.activeRun = null;
+      }
+    }
+  }
+
+  private async runLoop(limit: number): Promise<{ sentCount: number; failedCount: number }> {
+    const aggregate = {
+      sentCount: 0,
+      failedCount: 0
+    };
+
+    do {
+      this.rerunRequested = false;
+      const result = await this.runInternal(limit);
+      aggregate.sentCount += result.sentCount;
+      aggregate.failedCount += result.failedCount;
+    } while (this.rerunRequested);
+
+    return aggregate;
+  }
+
+  private async runInternal(limit = 25): Promise<{ sentCount: number; failedCount: number }> {
     const pendingDeliveries = await this.repository.getPendingPushDeliveries(limit);
     if (pendingDeliveries.length === 0) {
       return {
