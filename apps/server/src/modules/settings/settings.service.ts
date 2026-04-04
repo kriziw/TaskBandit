@@ -6,6 +6,7 @@ import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
+import { SmtpService } from "./smtp.service";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
 
@@ -15,7 +16,8 @@ export class SettingsService {
     private readonly repository: HouseholdRepository,
     private readonly authService: AuthService,
     private readonly i18nService: I18nService,
-    private readonly appConfigService: AppConfigService
+    private readonly appConfigService: AppConfigService,
+    private readonly smtpService: SmtpService
   ) {}
 
   async getHousehold(user: AuthenticatedUser) {
@@ -79,6 +81,21 @@ export class SettingsService {
       this.i18nService.translate("auth.email_in_use", language),
       user.id
     );
+  }
+
+  async testSmtp(user: AuthenticatedUser) {
+    const household = await this.repository.getHousehold(user.householdId);
+    return this.smtpService.verify({
+      enabled: household.settings.smtpEnabled,
+      host: household.settings.smtpHost,
+      port: household.settings.smtpPort,
+      secure: household.settings.smtpSecure,
+      username: household.settings.smtpUsername,
+      password: household.settings.smtpPassword,
+      fromEmail: household.settings.smtpFromEmail,
+      fromName: household.settings.smtpFromName,
+      passwordConfigured: household.settings.smtpPasswordConfigured
+    });
   }
 
   private applyRuntimeAuthSettings(

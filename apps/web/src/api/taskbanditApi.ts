@@ -205,6 +205,13 @@ export const taskBanditApi = {
       }
     );
   },
+  testSmtp(token: string, language: AppLanguage) {
+    return request<{ ok: boolean }>("/api/settings/smtp/test", {
+      method: "POST",
+      token,
+      language
+    });
+  },
   getRuntimeLogs(token: string, language: AppLanguage, limit = 200) {
     return request<RuntimeLogEntry[]>(`/api/dashboard/admin/logs?limit=${limit}`, {
       token,

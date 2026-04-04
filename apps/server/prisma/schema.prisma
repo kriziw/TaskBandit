@@ -87,6 +87,14 @@ model HouseholdSettings {
   oidcClientId                           String?
   oidcClientSecret                       String?
   oidcScope                              String    @default("openid profile email")
+  smtpEnabled                            Boolean   @default(false)
+  smtpHost                               String?
+  smtpPort                               Int?
+  smtpSecure                             Boolean   @default(false)
+  smtpUsername                           String?
+  smtpPassword                           String?
+  smtpFromEmail                          String?
+  smtpFromName                           String?
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 

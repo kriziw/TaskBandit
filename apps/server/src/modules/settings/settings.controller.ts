@@ -50,6 +50,12 @@ export class SettingsController {
     return this.settingsService.updateNotificationPreferences(dto, user);
   }
 
+  @Post("smtp/test")
+  @Roles("admin")
+  testSmtp(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.testSmtp(user);
+  }
+
   @Post("household/members")
   @Roles("admin")
   createHouseholdMember(

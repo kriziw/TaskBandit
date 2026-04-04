@@ -122,6 +122,15 @@ export type HouseholdSettings = {
   oidcScope: string;
   oidcEffective: boolean;
   oidcSource: "ui" | "env" | "none";
+  smtpEnabled: boolean;
+  smtpHost: string;
+  smtpPort: number;
+  smtpSecure: boolean;
+  smtpUsername: string;
+  smtpPassword: string;
+  smtpPasswordConfigured: boolean;
+  smtpFromEmail: string;
+  smtpFromName: string;
 };
 
 export type NotificationPreferences = {

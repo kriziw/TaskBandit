@@ -58,7 +58,9 @@ export class HouseholdRepository {
             enableOverduePenalties: true,
             localAuthEnabled: true,
             oidcEnabled: false,
-            oidcScope: "openid profile email"
+            oidcScope: "openid profile email",
+            smtpEnabled: false,
+            smtpSecure: false
           }
         },
         members: {
@@ -197,7 +199,28 @@ export class HouseholdRepository {
         oidcScope:
           dto.oidcScope !== undefined
             ? dto.oidcScope.trim() || "openid profile email"
-            : household.settings?.oidcScope ?? "openid profile email"
+            : household.settings?.oidcScope ?? "openid profile email",
+        smtpEnabled: dto.smtpEnabled ?? household.settings?.smtpEnabled ?? false,
+        smtpHost:
+          dto.smtpHost !== undefined ? dto.smtpHost.trim() || null : household.settings?.smtpHost ?? null,
+        smtpPort: dto.smtpPort ?? household.settings?.smtpPort ?? null,
+        smtpSecure: dto.smtpSecure ?? household.settings?.smtpSecure ?? false,
+        smtpUsername:
+          dto.smtpUsername !== undefined
+            ? dto.smtpUsername.trim() || null
+            : household.settings?.smtpUsername ?? null,
+        smtpPassword:
+          dto.smtpPassword !== undefined
+            ? dto.smtpPassword.trim() || null
+            : household.settings?.smtpPassword ?? null,
+        smtpFromEmail:
+          dto.smtpFromEmail !== undefined
+            ? dto.smtpFromEmail.trim() || null
+            : household.settings?.smtpFromEmail ?? null,
+        smtpFromName:
+          dto.smtpFromName !== undefined
+            ? dto.smtpFromName.trim() || null
+            : household.settings?.smtpFromName ?? null
       }
     });
 
@@ -1626,7 +1649,9 @@ export class HouseholdRepository {
             enableOverduePenalties: true,
             localAuthEnabled: true,
             oidcEnabled: false,
-            oidcScope: "openid profile email"
+            oidcScope: "openid profile email",
+            smtpEnabled: false,
+            smtpSecure: false
           }
         },
         members: {
@@ -2108,7 +2133,16 @@ export class HouseholdRepository {
         oidcClientSecretConfigured: Boolean(household.settings?.oidcClientSecret),
         oidcScope: household.settings?.oidcScope ?? "openid profile email",
         oidcEffective: household.settings?.oidcEnabled ?? false,
-        oidcSource: "ui"
+        oidcSource: "ui",
+        smtpEnabled: household.settings?.smtpEnabled ?? false,
+        smtpHost: household.settings?.smtpHost ?? "",
+        smtpPort: household.settings?.smtpPort ?? 587,
+        smtpSecure: household.settings?.smtpSecure ?? false,
+        smtpUsername: household.settings?.smtpUsername ?? "",
+        smtpPassword: household.settings?.smtpPassword ?? "",
+        smtpPasswordConfigured: Boolean(household.settings?.smtpPassword),
+        smtpFromEmail: household.settings?.smtpFromEmail ?? "",
+        smtpFromName: household.settings?.smtpFromName ?? ""
       },
       members: household.members
         .map((member) => this.mapMember(member, options?.redactMemberEmails ?? false))

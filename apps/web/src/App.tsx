@@ -901,6 +901,23 @@ export function App() {
     }
   }
 
+  async function handleTestSmtp() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("test-smtp");
+    try {
+      await taskBanditApi.testSmtp(token, language);
+      setNotice(t("settings.smtp_test_success"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("settings.smtp_test_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   async function handleMarkNotificationRead(notificationId: string) {
     if (!token || !payload) {
       return;
@@ -2297,6 +2314,112 @@ export function App() {
                         .replace("{effective}", settingsDraft.oidcEffective ? t("common.enabled") : t("common.disabled"))
                         .replace("{source}", t(`auth.oidc_source_${settingsDraft.oidcSource}`))}
                     </p>
+                    <label className="toggle-row">
+                      <span>{t("settings.smtp_enabled")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.smtpEnabled}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpEnabled: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.smtp_host")}</span>
+                      <input
+                        type="text"
+                        value={settingsDraft.smtpHost}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpHost: event.target.value } : current
+                          )
+                        }
+                        placeholder="smtp.example.com"
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.smtp_port")}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        max={65535}
+                        value={settingsDraft.smtpPort}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current
+                              ? { ...current, smtpPort: Number(event.target.value || 0) }
+                              : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label className="toggle-row">
+                      <span>{t("settings.smtp_secure")}</span>
+                      <input
+                        type="checkbox"
+                        checked={settingsDraft.smtpSecure}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpSecure: event.target.checked } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.smtp_username")}</span>
+                      <input
+                        type="text"
+                        value={settingsDraft.smtpUsername}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpUsername: event.target.value } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.smtp_password")}</span>
+                      <input
+                        type="password"
+                        value={settingsDraft.smtpPassword}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpPassword: event.target.value } : current
+                          )
+                        }
+                        placeholder={
+                          settingsDraft.smtpPasswordConfigured
+                            ? t("settings.smtp_password_saved")
+                            : ""
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.smtp_from_email")}</span>
+                      <input
+                        type="email"
+                        value={settingsDraft.smtpFromEmail}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpFromEmail: event.target.value } : current
+                          )
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("settings.smtp_from_name")}</span>
+                      <input
+                        type="text"
+                        value={settingsDraft.smtpFromName}
+                        onChange={(event) =>
+                          setSettingsDraft((current) =>
+                            current ? { ...current, smtpFromName: event.target.value } : current
+                          )
+                        }
+                      />
+                    </label>
                   </div>
                   <button
                     className="primary-button"
@@ -2314,14 +2437,22 @@ export function App() {
                     >
                       {t("settings.process_overdue")}
                     </button>
-                    <button
-                      className="ghost-button"
-                      type="button"
-                      disabled={busyAction === "process-notification-maintenance"}
-                      onClick={() => void handleProcessNotificationMaintenance()}
-                    >
-                      {t("settings.process_notifications")}
-                    </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={busyAction === "process-notification-maintenance"}
+                    onClick={() => void handleProcessNotificationMaintenance()}
+                  >
+                    {t("settings.process_notifications")}
+                  </button>
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={busyAction === "test-smtp"}
+                    onClick={() => void handleTestSmtp()}
+                  >
+                    {t("settings.smtp_test")}
+                  </button>
                   </article>
 
                 <article className="panel">

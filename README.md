@@ -37,6 +37,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - an initial NestJS + Prisma backend with PostgreSQL schema, starter endpoints, bootstrap flow, and local-auth foundations
 - a live React web dashboard with local login, language files, approvals, household settings, and chore views
 - per-member notification preferences respected by reminder and activity notifications
+- optional SMTP settings configurable from the admin UI, with built-in connection testing
 - an Android app shell with live login, chore actions, offline queueing, proof-photo upload, and a home-screen widget foundation
 - Docker-based local infrastructure for PostgreSQL
 - a bootstrap path for initializing the first household
@@ -137,6 +138,7 @@ The web UI now connects to the live API for:
 - parent/admin approval actions
 - admin household settings
 - member notification preference controls
+- admin-managed auth and SMTP provider controls
 - admin member creation for parent and child accounts
 
 For local development, copy `apps/web/.env.example` to `apps/web/.env` if you want to override the API base URL used by the Vite app.
@@ -144,6 +146,7 @@ For local development, copy `apps/web/.env.example` to `apps/web/.env` if you wa
 ## Backend Notes
 
 The backend now uses NestJS with Prisma and PostgreSQL, plus a seed/bootstrap path for the initial single-household dataset. Local account login is live, optional Authentik-focused OIDC sign-in is available through the server-managed authorization-code flow, and auth provider settings can now be managed from the admin UI.
+SMTP can now also be configured from the admin UI as an optional instance capability, with a connection test for validating host, port, and credentials before future email-based features use it.
 
 Auth precedence:
 - Local auth follows the household UI setting unless `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true`, which force-keeps it available as a recovery path.
