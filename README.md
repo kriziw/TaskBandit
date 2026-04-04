@@ -17,7 +17,9 @@ This repository is being developed with AI assistance. Code, documentation, copy
 
 ## License
 
-TaskBandit is currently licensed under [PolyForm Noncommercial 1.0.0](C:/Users/krist/Documents/GitHub/Chore%20Manager/LICENSE.md). This matches the goal of allowing source visibility while disallowing commercial use, but it is source-available rather than FOSS/open-source in the strict OSI sense.
+TaskBandit is licensed under the [GNU Affero General Public License v3.0](LICENSE.md).
+
+This is a FOSS copyleft license. Commercial use is allowed, but redistributed or network-hosted modified versions must remain available under the AGPLv3 terms.
 
 ## Repository Layout
 
