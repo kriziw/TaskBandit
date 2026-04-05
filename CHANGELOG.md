@@ -2,6 +2,20 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.13.1](https://github.com/kriziw/TaskBandit/compare/v0.13.0...v0.13.1) (2026-04-05)
+
+
+### Bug Fixes
+
+* **ci:** avoid remote legacy tag backfill ([88da858](https://github.com/kriziw/TaskBandit/commit/88da858b536055ab829339193e7723c79bb3393d))
+* **ci:** avoid remote legacy tag backfill ([74f23ad](https://github.com/kriziw/TaskBandit/commit/74f23adeda7712b12e3be2ec2d989e63a6670273))
+* **ci:** restore release tag lineage ([a4e7dfa](https://github.com/kriziw/TaskBandit/commit/a4e7dfaa4c9af33c56aaddbee5ce9759f591430c))
+* **ci:** restore release tag lineage ([af55cad](https://github.com/kriziw/TaskBandit/commit/af55cad3ec22e2ad01f59a1e1034125d86794085))
+* **ci:** set git identity for compatibility tags ([9fcb783](https://github.com/kriziw/TaskBandit/commit/9fcb783108dcb570c3889db3bd2897ff50218a4c))
+* **ci:** set git identity for compatibility tags ([8c92d4b](https://github.com/kriziw/TaskBandit/commit/8c92d4b5d5b77c2a19ee4e3493b9812795ca1249))
+* **ci:** use plain version release tags ([018c2e2](https://github.com/kriziw/TaskBandit/commit/018c2e281374a405a39e2bf05c55533003eba28a))
+* **ci:** use plain version release tags ([da1a25c](https://github.com/kriziw/TaskBandit/commit/da1a25c01ebdf394a9a7d8f127902fa432c9ba70))
+
 ## [0.13.0](https://github.com/kriziw/TaskBandit/compare/taskbandit-v0.12.1...taskbandit-v0.13.0) (2026-04-04)
 
 
