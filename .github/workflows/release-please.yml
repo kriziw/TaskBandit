@@ -27,6 +27,43 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Backfill plain version tags from legacy release tags
+        env:
+          GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --tags origin
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          created_refs=()
+
+          while IFS= read -r legacy_tag; do
+            [[ -n "$legacy_tag" ]] || continue
+            plain_tag="${legacy_tag#taskbandit-}"
+
+            if git ls-remote --exit-code --tags origin "refs/tags/$plain_tag" >/dev/null 2>&1; then
+              continue
+            fi
+
+            release_sha="$(git rev-list -n 1 "$legacy_tag")"
+
+            if git rev-parse -q --verify "refs/tags/$plain_tag" >/dev/null; then
+              git tag -d "$plain_tag"
+            fi
+
+            git tag -a "$plain_tag" "$release_sha" -m "Compatibility release tag $plain_tag"
+            created_refs+=("refs/tags/$plain_tag:refs/tags/$plain_tag")
+          done < <(git tag -l 'taskbandit-v*' | sort -V)
+
+          if [[ "${#created_refs[@]}" -gt 0 ]]; then
+            git push "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "${created_refs[@]}"
+          else
+            echo "No legacy release tags needed backfilling."
+          fi
+
       - name: Resolve prerelease setting
         id: prerelease
         shell: bash
