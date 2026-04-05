@@ -10,55 +10,16 @@ jobs:
   backfill:
     runs-on: ubuntu-latest
     steps:
-      - name: Check out repository
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Backfill plain version tags from legacy release tags
+      - name: Explain replacement workflow
         shell: bash
         run: |
           set -euo pipefail
 
-          git fetch --tags origin
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           {
-            echo "## Plain tag backfill"
+            echo "## Legacy workflow retired"
             echo
+            echo "Remote historical plain-version tag backfill is no longer required."
+            echo
+            echo "- `release-please.yml` now prepares local compatibility tags before generating release notes."
+            echo "- If you want to clean up historical GitHub release titles, run `normalize-release-history` instead."
           } >> "$GITHUB_STEP_SUMMARY"
-
-          while IFS= read -r legacy_tag; do
-            [ -n "$legacy_tag" ] || continue
-            tag_name="${legacy_tag#taskbandit-}"
-            full_sha="$(git rev-parse --verify "${legacy_tag}^{commit}")"
-
-            if git ls-remote --exit-code --tags origin "refs/tags/$tag_name" >/dev/null 2>&1; then
-              echo "Tag $tag_name already exists; skipping."
-              echo "- $tag_name already existed" >> "$GITHUB_STEP_SUMMARY"
-              continue
-            fi
-
-            if git rev-parse -q --verify "refs/tags/$tag_name" >/dev/null; then
-              git tag -d "$tag_name"
-            fi
-
-            git tag -a -f "$tag_name" "$full_sha" -m "Release $tag_name"
-
-            if ! git push origin "refs/tags/$tag_name:refs/tags/$tag_name"; then
-              git fetch --tags origin
-
-              if git ls-remote --exit-code --tags origin "refs/tags/$tag_name" >/dev/null 2>&1; then
-                echo "Tag $tag_name appeared on origin during push; treating as success."
-                echo "- $tag_name already existed by push time" >> "$GITHUB_STEP_SUMMARY"
-                continue
-              fi
-
-              echo "Failed to push $tag_name even though it still does not exist on origin." >&2
-              exit 1
-            fi
-
-            echo "Created $tag_name at $full_sha"
-            echo "- Created $tag_name at \`$full_sha\`" >> "$GITHUB_STEP_SUMMARY"
-          done < <(git tag -l 'taskbandit-v*' | sort -V)
