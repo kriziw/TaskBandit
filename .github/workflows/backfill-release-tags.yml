@@ -25,13 +25,13 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           releases=(
-            "taskbandit-v0.2.1 8bef6dd39416b643c62b2715c7a2105a10adfec6"
-            "taskbandit-v0.4.0 ca9b6a599ea451f5a6817e55be3fae2c88557809"
-            "taskbandit-v0.5.0 df010e43b102662d84dc04d891069d61e91ae2bf"
-            "taskbandit-v0.6.0 84d56b9dce9e80c696638a195f558d77e1503bf6"
-            "taskbandit-v0.7.0 46b5e84480d9f8306cf55d85a6dc05ae618b5606"
-            "taskbandit-v0.8.0 3a799e297400b47fc50f8840f4593f7bb44f698d"
-            "taskbandit-v0.9.0 1ae90dffc644c4e1d81ea1df790028dd8f082ea6"
+            "v0.2.1 8bef6dd39416b643c62b2715c7a2105a10adfec6"
+            "v0.4.0 ca9b6a599ea451f5a6817e55be3fae2c88557809"
+            "v0.5.0 df010e43b102662d84dc04d891069d61e91ae2bf"
+            "v0.6.0 84d56b9dce9e80c696638a195f558d77e1503bf6"
+            "v0.7.0 46b5e84480d9f8306cf55d85a6dc05ae618b5606"
+            "v0.8.0 3a799e297400b47fc50f8840f4593f7bb44f698d"
+            "v0.9.0 1ae90dffc644c4e1d81ea1df790028dd8f082ea6"
           )
 
           {
