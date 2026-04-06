@@ -2,6 +2,17 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.14.0](https://github.com/kriziw/TaskBandit/compare/v0.13.1...v0.14.0) (2026-04-06)
+
+
+### Features
+
+* **android:** add recurrence schedule presets ([98f526e](https://github.com/kriziw/TaskBandit/commit/98f526e4364df428ddad7a38a9586924aadf4d06))
+* **android:** improve chore creation flow ([d000ffa](https://github.com/kriziw/TaskBandit/commit/d000ffa9410cb522592f311d3692467e626f768c))
+* **android:** improve mobile sync and chore scheduling ([8aad8b5](https://github.com/kriziw/TaskBandit/commit/8aad8b54b05c6b11379c47e1f62686eef2237909))
+* **android:** improve mobile sync and chore scheduling ([61be6fd](https://github.com/kriziw/TaskBandit/commit/61be6fddf4607552584f347746632bdb05d0332d))
+* **mobile:** sync chore updates live ([0bf7467](https://github.com/kriziw/TaskBandit/commit/0bf74671550e4c063e05d16e19e01431e6290c57))
+
 ## [0.13.1](https://github.com/kriziw/TaskBandit/compare/v0.13.0...v0.13.1) (2026-04-05)
 
 
