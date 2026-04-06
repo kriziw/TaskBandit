@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.16.0](https://github.com/kriziw/TaskBandit/compare/v0.15.0...v0.16.0) (2026-04-06)
+
+
+### Features
+
+* **android:** pastel theme, historic chore viewer, and dropdown-base… ([904f3c6](https://github.com/kriziw/TaskBandit/commit/904f3c6a6a6fab50f0f1e7b98074684029761ed3))
+* **android:** pastel theme, historic chore viewer, and dropdown-based create form ([a14698a](https://github.com/kriziw/TaskBandit/commit/a14698a9af53f930c443a44c4484ca7ff4fb6761))
+
 ## [0.15.0](https://github.com/kriziw/TaskBandit/compare/v0.14.0...v0.15.0) (2026-04-06)
 
 
