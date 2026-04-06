@@ -73,6 +73,9 @@
     <string name="mobile_chore_read_only_hint">This chore is visible here, but only the assignee or a parent/admin can work on it.</string>
     <string name="mobile_my_chores">My chores</string>
     <string name="mobile_no_chores">No active chores right now.</string>
+    <string name="mobile_chores_history">Recent history</string>
+    <string name="mobile_chore_open_history">Open</string>
+    <string name="mobile_chore_close_history">Close</string>
     <string name="mobile_pending_approvals">Pending approvals</string>
     <string name="mobile_due_at">Due %1$s</string>
     <string name="mobile_state_overdue">Overdue</string>
@@ -80,6 +83,9 @@
     <string name="mobile_hide_details">Close task</string>
     <string name="mobile_create_title">Create chores</string>
     <string name="mobile_create_hint">Secondary flow: create a chore from a template with one tap.</string>
+    <string name="mobile_create_select_template_prompt">Select a template…</string>
+    <string name="mobile_create_repeat_every_x_days_option">Every X days</string>
+    <string name="mobile_create_interval_days_label">Interval (days)</string>
     <string name="mobile_create_template">Template</string>
     <string name="mobile_create_select_template">Choose a template below to begin.</string>
     <string name="mobile_create_selected_template">Selected</string>

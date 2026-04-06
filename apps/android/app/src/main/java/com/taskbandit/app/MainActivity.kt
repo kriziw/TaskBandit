@@ -49,8 +49,12 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -997,8 +1001,14 @@ private fun DashboardScreen(
     var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
     var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
     var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
-    var createRecurrencePreset by rememberSaveable { mutableStateOf("template") }
+    var createRecurrenceType by rememberSaveable { mutableStateOf("template") }
+    var createRecurrenceInterval by rememberSaveable { mutableIntStateOf(7) }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var expandedHistoricChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var templateDropdownExpanded by remember { mutableStateOf(false) }
+    var recurrenceTypeDropdownExpanded by remember { mutableStateOf(false) }
+    var assignmentStrategyDropdownExpanded by remember { mutableStateOf(false) }
+    var assigneeDropdownExpanded by remember { mutableStateOf(false) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
     val members = dashboard?.members.orEmpty()
@@ -1006,7 +1016,15 @@ private fun DashboardScreen(
         templates.firstOrNull { it.id == selectedTemplateId } ?: templates.firstOrNull()
     }
     val sortedChores = remember(dashboard?.chores, currentUserId) {
-        dashboard?.chores.orEmpty().sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
+        dashboard?.chores.orEmpty()
+            .filter { it.state !in setOf("completed", "approved", "rejected") }
+            .sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
+    }
+    val historicChores = remember(dashboard?.chores) {
+        dashboard?.chores.orEmpty()
+            .filter { it.state in setOf("completed", "approved", "rejected") }
+            .sortedByDescending { parseInstantForSort(it.dueAt) }
+            .take(2)
     }
     val myChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.MINE } }
     val unassignedChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.UNASSIGNED } }
@@ -1025,7 +1043,9 @@ private fun DashboardScreen(
     LaunchedEffect(selectedTemplate?.id) {
         val template = selectedTemplate ?: return@LaunchedEffect
         createAssignmentStrategy = template.assignmentStrategy
-        createRecurrencePreset = templateRecurrencePreset(template.recurrence)
+        val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
+        createRecurrenceType = defaultType
+        createRecurrenceInterval = defaultInterval
         createAssigneeId = null
     }
 
@@ -1109,12 +1129,21 @@ private fun DashboardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             if (activeTab == MobileDashboardTab.CHORES) {
-                if (sortedChores.isEmpty()) {
+                if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
                 choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                historicChoreSection(
+                    chores = historicChores,
+                    title = stringResource(R.string.mobile_chores_history),
+                    expandedChoreIds = expandedHistoricChoreIds,
+                    onExpandedChange = { choreId ->
+                        expandedHistoricChoreIds = if (expandedHistoricChoreIds.contains(choreId))
+                            expandedHistoricChoreIds - choreId else expandedHistoricChoreIds + choreId
+                    }
+                )
                 if (showStatusCard) {
                     item {
                         DashboardStatusCard(
@@ -1130,147 +1159,190 @@ private fun DashboardScreen(
             }
 
             if (activeTab == MobileDashboardTab.CREATE) {
-                item { SectionIntro(title = stringResource(R.string.mobile_create_title), body = stringResource(R.string.mobile_create_hint)) }
-                if (isCreatorRole && dashboard?.templates.orEmpty().isEmpty()) {
+                if (!isCreatorRole) {
+                    item { Text(text = stringResource(R.string.mobile_create_no_permission), style = MaterialTheme.typography.bodyMedium) }
+                } else if (templates.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
-                } else if (isCreatorRole) {
+                } else {
                     item {
                         Card(shape = RoundedCornerShape(24.dp)) {
-                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                Text(text = stringResource(R.string.mobile_create_ready), style = MaterialTheme.typography.titleMedium)
-                                Text(text = stringResource(R.string.mobile_create_template), style = MaterialTheme.typography.titleSmall)
+                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                 Text(
-                                    text = selectedTemplate?.title ?: stringResource(R.string.mobile_create_select_template),
-                                    style = MaterialTheme.typography.bodyMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    text = stringResource(R.string.mobile_create_title),
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold
                                 )
-                            }
-                        }
-                    }
-                    items(templates) { template ->
-                        Card(shape = RoundedCornerShape(22.dp)) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(text = template.title, style = MaterialTheme.typography.titleMedium)
-                                if (template.description.isNotBlank()) {
-                                    Text(text = template.description, style = MaterialTheme.typography.bodySmall)
-                                }
-                                OutlinedButton(
-                                    onClick = { selectedTemplateId = template.id },
-                                    enabled = selectedTemplateId != template.id
-                                ) {
-                                    Text(
-                                        stringResource(
-                                            if (selectedTemplateId == template.id) {
-                                                R.string.mobile_create_selected_template
-                                            } else {
-                                                R.string.mobile_create_use_template
-                                            }
-                                        )
-                                    )
-                                }
-                            }
-                        }
-                    }
-                    selectedTemplate?.let { template ->
-                        item {
-                            Card(shape = RoundedCornerShape(24.dp)) {
-                                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                                    Text(text = template.title, style = MaterialTheme.typography.titleLarge)
-                                    Text(text = stringResource(R.string.mobile_create_when), style = MaterialTheme.typography.titleSmall)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        Button(onClick = { datePickerDialog.show() }) {
-                                            Text(stringResource(R.string.mobile_create_pick_date))
-                                        }
-                                        OutlinedButton(onClick = { timePickerDialog.show() }) {
-                                            Text(stringResource(R.string.mobile_create_pick_time))
-                                        }
-                                    }
-                                    Text(
-                                        text = formatEpochMillisForDisplay(createDueAtMillis),
-                                        style = MaterialTheme.typography.bodyMedium
-                                    )
 
-                                    Text(text = stringResource(R.string.mobile_create_repeat), style = MaterialTheme.typography.titleSmall)
-                                    MobileChoiceRow(
-                                        options = listOf(
-                                            "none",
-                                            "daily",
-                                            "weekly",
-                                            "every_2_weeks",
-                                            "monthly",
-                                            "template"
-                                        ).map { preset ->
-                                            MobileChoiceOption(
-                                                label = recurrencePresetLabel(preset),
-                                                selected = createRecurrencePreset == preset,
-                                                onClick = { createRecurrencePreset = preset }
+                                // Template
+                                Text(text = stringResource(R.string.mobile_create_template), style = MaterialTheme.typography.titleSmall)
+                                ExposedDropdownMenuBox(
+                                    expanded = templateDropdownExpanded,
+                                    onExpandedChange = { templateDropdownExpanded = it }
+                                ) {
+                                    OutlinedTextField(
+                                        value = selectedTemplate?.title ?: stringResource(R.string.mobile_create_select_template_prompt),
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = templateDropdownExpanded) },
+                                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = templateDropdownExpanded,
+                                        onDismissRequest = { templateDropdownExpanded = false }
+                                    ) {
+                                        templates.forEach { template ->
+                                            DropdownMenuItem(
+                                                text = { Text(template.title) },
+                                                onClick = {
+                                                    selectedTemplateId = template.id
+                                                    templateDropdownExpanded = false
+                                                }
                                             )
                                         }
-                                    )
-                                    Text(
-                                        text = describeSelectedRecurrence(template.recurrence, createRecurrencePreset),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    }
+                                }
 
-                                    Text(text = stringResource(R.string.mobile_create_assignment), style = MaterialTheme.typography.titleSmall)
-                                    MobileChoiceRow(
-                                        options = listOf(
-                                            "round_robin",
-                                            "least_completed_recently",
-                                            "highest_streak",
-                                            "manual_default_assignee"
-                                        ).map { strategy ->
-                                            MobileChoiceOption(
-                                                label = assignmentStrategyLabel(strategy),
-                                                selected = createAssignmentStrategy == strategy,
+                                // Date and time
+                                Text(text = stringResource(R.string.mobile_create_when), style = MaterialTheme.typography.titleSmall)
+                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Button(onClick = { datePickerDialog.show() }) {
+                                        Text(stringResource(R.string.mobile_create_pick_date))
+                                    }
+                                    OutlinedButton(onClick = { timePickerDialog.show() }) {
+                                        Text(stringResource(R.string.mobile_create_pick_time))
+                                    }
+                                }
+                                Text(
+                                    text = formatEpochMillisForDisplay(createDueAtMillis),
+                                    style = MaterialTheme.typography.bodyMedium
+                                )
+
+                                // Recurrence
+                                Text(text = stringResource(R.string.mobile_create_repeat), style = MaterialTheme.typography.titleSmall)
+                                val recurrenceLabel = recurrenceTypeLabel(createRecurrenceType)
+                                ExposedDropdownMenuBox(
+                                    expanded = recurrenceTypeDropdownExpanded,
+                                    onExpandedChange = { recurrenceTypeDropdownExpanded = it }
+                                ) {
+                                    OutlinedTextField(
+                                        value = recurrenceLabel,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceTypeDropdownExpanded) },
+                                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = recurrenceTypeDropdownExpanded,
+                                        onDismissRequest = { recurrenceTypeDropdownExpanded = false }
+                                    ) {
+                                        listOf("none", "daily", "weekly", "every_x_days", "monthly", "template").forEach { type ->
+                                            DropdownMenuItem(
+                                                text = { Text(recurrenceTypeLabel(type)) },
+                                                onClick = {
+                                                    createRecurrenceType = type
+                                                    recurrenceTypeDropdownExpanded = false
+                                                }
+                                            )
+                                        }
+                                    }
+                                }
+                                if (createRecurrenceType == "every_x_days") {
+                                    OutlinedTextField(
+                                        value = createRecurrenceInterval.toString(),
+                                        onValueChange = { v ->
+                                            v.toIntOrNull()?.let { if (it > 0) createRecurrenceInterval = it }
+                                        },
+                                        label = { Text(stringResource(R.string.mobile_create_interval_days_label)) },
+                                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                        singleLine = true,
+                                        modifier = Modifier.fillMaxWidth()
+                                    )
+                                }
+
+                                // Assignment strategy
+                                Text(text = stringResource(R.string.mobile_create_assignment), style = MaterialTheme.typography.titleSmall)
+                                val strategyLabel = assignmentStrategyLabel(createAssignmentStrategy)
+                                ExposedDropdownMenuBox(
+                                    expanded = assignmentStrategyDropdownExpanded,
+                                    onExpandedChange = { assignmentStrategyDropdownExpanded = it }
+                                ) {
+                                    OutlinedTextField(
+                                        value = strategyLabel,
+                                        onValueChange = {},
+                                        readOnly = true,
+                                        trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assignmentStrategyDropdownExpanded) },
+                                        modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                    )
+                                    ExposedDropdownMenu(
+                                        expanded = assignmentStrategyDropdownExpanded,
+                                        onDismissRequest = { assignmentStrategyDropdownExpanded = false }
+                                    ) {
+                                        listOf("round_robin", "least_completed_recently", "highest_streak", "manual_default_assignee").forEach { strategy ->
+                                            DropdownMenuItem(
+                                                text = { Text(assignmentStrategyLabel(strategy)) },
                                                 onClick = {
                                                     createAssignmentStrategy = strategy
-                                                    if (strategy != "manual_default_assignee") {
-                                                        createAssigneeId = null
-                                                    }
+                                                    if (strategy != "manual_default_assignee") createAssigneeId = null
+                                                    assignmentStrategyDropdownExpanded = false
                                                 }
                                             )
                                         }
-                                    )
-                                    if (createAssignmentStrategy == "manual_default_assignee") {
-                                        Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
-                                        MobileChoiceRow(
-                                            options = buildList {
-                                                add(
-                                                    MobileChoiceOption(
-                                                        label = stringResource(R.string.mobile_create_unassigned),
-                                                        selected = createAssigneeId == null,
-                                                        onClick = { createAssigneeId = null }
-                                                    )
-                                                )
-                                                members.forEach { member ->
-                                                    add(
-                                                        MobileChoiceOption(
-                                                            label = member.displayName,
-                                                            selected = createAssigneeId == member.id,
-                                                            onClick = { createAssigneeId = member.id }
-                                                        )
-                                                    )
-                                                }
-                                            }
-                                        )
                                     }
+                                }
 
+                                // Manual assignee
+                                if (createAssignmentStrategy == "manual_default_assignee") {
+                                    Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
+                                    val unassignedLabel = stringResource(R.string.mobile_create_unassigned)
+                                    val selectedMemberName = members.firstOrNull { it.id == createAssigneeId }?.displayName ?: unassignedLabel
+                                    ExposedDropdownMenuBox(
+                                        expanded = assigneeDropdownExpanded,
+                                        onExpandedChange = { assigneeDropdownExpanded = it }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = selectedMemberName,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeDropdownExpanded) },
+                                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                        )
+                                        ExposedDropdownMenu(
+                                            expanded = assigneeDropdownExpanded,
+                                            onDismissRequest = { assigneeDropdownExpanded = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(unassignedLabel) },
+                                                onClick = { createAssigneeId = null; assigneeDropdownExpanded = false }
+                                            )
+                                            members.forEach { member ->
+                                                DropdownMenuItem(
+                                                    text = { Text(member.displayName) },
+                                                    onClick = { createAssigneeId = member.id; assigneeDropdownExpanded = false }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
+                                // Create button
+                                selectedTemplate?.let { template ->
                                     Button(
                                         onClick = {
+                                            val recType = if (createRecurrenceType == "template") null else createRecurrenceType
+                                            val recInterval = if (createRecurrenceType == "every_x_days") createRecurrenceInterval else null
                                             onCreateChore(
                                                 template.id,
                                                 Instant.ofEpochMilli(createDueAtMillis).toString(),
                                                 createAssigneeId,
                                                 createAssignmentStrategy,
-                                                selectedRecurrenceType(createRecurrencePreset),
-                                                selectedRecurrenceIntervalDays(createRecurrencePreset)
+                                                recType,
+                                                recInterval
                                             )
                                         },
-                                        enabled = activeCreateAction == null
+                                        enabled = activeCreateAction == null,
+                                        modifier = Modifier.fillMaxWidth()
                                     ) {
-                                        if (activeCreateAction == "create:${template.id}") {
+                                        if (activeCreateAction != null) {
                                             Text(stringResource(R.string.mobile_create_creating))
                                         } else {
                                             Text(stringResource(R.string.mobile_create_action))
@@ -1489,6 +1561,73 @@ private fun LazyListScope.choreSection(
         ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
     }
 }
+private fun LazyListScope.historicChoreSection(
+    chores: List<MobileChore>,
+    title: String,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit
+) {
+    if (chores.isEmpty()) return
+    item { Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+    items(chores, key = { "historic_${it.id}" }) { chore ->
+        HistoricChoreCard(
+            chore = chore,
+            expanded = expandedChoreIds.contains(chore.id),
+            onExpandedChange = { onExpandedChange(chore.id) }
+        )
+    }
+}
+
+@Composable
+private fun HistoricChoreCard(
+    chore: MobileChore,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit
+) {
+    Card(shape = RoundedCornerShape(22.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = chore.title, style = MaterialTheme.typography.titleMedium)
+            Text(
+                text = stringResource(R.string.mobile_due_at, formatApiTimestamp(chore.dueAt)),
+                style = MaterialTheme.typography.bodySmall
+            )
+            Text(
+                text = chore.state.replace('_', ' '),
+                style = MaterialTheme.typography.labelLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            OutlinedButton(onClick = onExpandedChange) {
+                Text(stringResource(if (expanded) R.string.mobile_chore_close_history else R.string.mobile_chore_open_history))
+            }
+            if (expanded) {
+                if (chore.checklist.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        chore.checklist.forEach { item ->
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                Checkbox(
+                                    checked = chore.completedChecklistIds.contains(item.id),
+                                    onCheckedChange = null
+                                )
+                                Text(text = item.title, style = MaterialTheme.typography.bodyMedium)
+                            }
+                        }
+                    }
+                }
+                if (chore.requirePhotoProof) {
+                    Text(
+                        text = stringResource(R.string.mobile_photo_required_hint),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+    }
+}
+
 @Composable
 private fun ChoreCard(
     chore: MobileChore, currentUserId: String?, currentUserRole: String?, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?,
@@ -1618,61 +1757,22 @@ private fun assignmentStrategyLabel(value: String): String = when (value) {
 }
 
 @Composable
-private fun recurrencePresetLabel(value: String): String = when (value) {
+private fun recurrenceTypeLabel(value: String): String = when (value) {
+    "none" -> stringResource(R.string.mobile_create_repeat_no)
     "daily" -> stringResource(R.string.mobile_create_repeat_daily_short)
     "weekly" -> stringResource(R.string.mobile_create_repeat_weekly_short)
-    "every_2_weeks" -> stringResource(R.string.mobile_create_repeat_every_2_weeks_short)
+    "every_x_days" -> stringResource(R.string.mobile_create_repeat_every_x_days_option)
     "monthly" -> stringResource(R.string.mobile_create_repeat_monthly_short)
-    "template" -> stringResource(R.string.mobile_create_repeat_template_short)
-    else -> stringResource(R.string.mobile_create_repeat_no)
+    else -> stringResource(R.string.mobile_create_repeat_template_short)
 }
 
-private fun templateRecurrencePreset(recurrence: MobileTemplateRecurrence): String = when (recurrence.type) {
-    "daily" -> "daily"
-    "weekly" -> "weekly"
-    "monthly" -> "monthly"
-    "every_x_days" -> if ((recurrence.intervalDays ?: 1) == 14) "every_2_weeks" else "template"
-    "custom_weekly" -> "template"
-    else -> "none"
-}
-
-private fun selectedRecurrenceType(preset: String): String? = when (preset) {
-    "daily" -> "daily"
-    "weekly" -> "weekly"
-    "every_2_weeks" -> "every_x_days"
-    "monthly" -> "monthly"
-    "none" -> "none"
-    else -> null
-}
-
-private fun selectedRecurrenceIntervalDays(preset: String): Int? = when (preset) {
-    "every_2_weeks" -> 14
-    else -> null
-}
-
-@Composable
-private fun describeSelectedRecurrence(recurrence: MobileTemplateRecurrence, preset: String): String {
-    return when (preset) {
-        "none" -> stringResource(R.string.mobile_create_repeat_no)
-        "daily" -> stringResource(R.string.mobile_create_repeat_daily)
-        "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
-        "every_2_weeks" -> stringResource(R.string.mobile_create_repeat_every_2_weeks)
-        "monthly" -> stringResource(R.string.mobile_create_repeat_monthly)
-        else -> when (recurrence.type) {
-        "daily" -> stringResource(R.string.mobile_create_repeat_daily)
-        "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
-        "monthly" -> stringResource(R.string.mobile_create_repeat_monthly)
-        "every_x_days" -> stringResource(
-            R.string.mobile_create_repeat_every_x_days,
-            recurrence.intervalDays ?: 1
-        )
-        "custom_weekly" -> stringResource(
-            R.string.mobile_create_repeat_custom_weekly,
-            recurrence.weekdays.joinToString(", ")
-        )
-        else -> stringResource(R.string.mobile_create_repeat_template_none)
-        }
-    }
+private fun templateRecurrenceDefaults(recurrence: MobileTemplateRecurrence): Pair<String, Int> = when (recurrence.type) {
+    "daily" -> "daily" to 1
+    "weekly" -> "weekly" to 7
+    "monthly" -> "monthly" to 30
+    "every_x_days" -> "every_x_days" to (recurrence.intervalDays ?: 7)
+    "custom_weekly" -> "template" to 7
+    else -> "none" to 1
 }
 
 private fun formatApiTimestamp(value: String): String {
