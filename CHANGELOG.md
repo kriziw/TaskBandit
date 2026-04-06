@@ -2,6 +2,15 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.14.1](https://github.com/kriziw/TaskBandit/compare/v0.14.0...v0.14.1) (2026-04-06)
+
+
+### Bug Fixes
+
+* **android:** refresh dashboard when app resumes from background ([af3656b](https://github.com/kriziw/TaskBandit/commit/af3656b3e23c13b5403d24f9680bf8edc517ccbf))
+* **android:** refresh dashboard when app resumes from background ([8378ec4](https://github.com/kriziw/TaskBandit/commit/8378ec4d2a8083fdc3a11ca38f73daf8c977633b))
+* **android:** refresh dashboard when app resumes from background ([27a1b0a](https://github.com/kriziw/TaskBandit/commit/27a1b0ab88a0c32f7b730c6589c71f8fc3958527))
+
 ## [0.14.0](https://github.com/kriziw/TaskBandit/compare/v0.13.1...v0.14.0) (2026-04-06)
 
 
