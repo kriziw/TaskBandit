@@ -1739,13 +1739,14 @@ export class HouseholdRepository {
       }
     });
 
+    const effectiveAssignmentStrategy = dto.assignmentStrategy ?? template.assignmentStrategy;
     const resolvedAssigneeId = dto.assigneeId
       ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
       : await this.resolveAssigneeForTemplate(
           this.prisma,
           householdId,
           template.id,
-          template.assignmentStrategy
+          effectiveAssignmentStrategy
         );
 
     const instance = await this.prisma.$transaction(async (tx) => {
@@ -1756,7 +1757,8 @@ export class HouseholdRepository {
           title: dto.title?.trim() || template.title,
           state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId: resolvedAssigneeId,
-          dueAtUtc: dto.dueAt
+          dueAtUtc: dto.dueAt,
+          suppressRecurrence: dto.suppressRecurrence ?? false
         },
         include: {
           template: {
@@ -2740,6 +2742,10 @@ export class HouseholdRepository {
       };
     }>
   ) {
+    if (instance.suppressRecurrence) {
+      return;
+    }
+
     const template = await this.prisma.choreTemplate.findFirst({
       where: {
         id: instance.templateId,

@@ -1,6 +1,8 @@
 ﻿package com.taskbandit.app
 
 import android.Manifest
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -80,6 +82,7 @@ import com.taskbandit.app.mobile.MobileDashboardSyncSignal
 import com.taskbandit.app.mobile.MobileChore
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
+import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
 import com.taskbandit.app.mobile.MobileUploadedProof
 import com.taskbandit.app.mobile.TaskBanditDashboardSyncClient
@@ -531,10 +534,15 @@ private fun TaskBanditApp(
         }
     }
 
-    fun createChore(templateId: String, delayHours: Int) {
+    fun createChore(
+        templateId: String,
+        dueAtIsoUtc: String,
+        assigneeId: String?,
+        assignmentStrategy: String,
+        repeats: Boolean
+    ) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
-        val resolvedDelayHours = delayHours.coerceAtLeast(1)
         activeCreateAction = "create:$templateId"
         errorMessage = null
         noticeMessage = null
@@ -542,14 +550,14 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val dueAt = Instant.now()
-                        .plus(resolvedDelayHours.toLong(), ChronoUnit.HOURS)
-                        .toString()
                     api.createChoreInstance(
                         baseUrl = baseUrl,
                         token = token,
                         templateId = templateId,
-                        dueAtIsoUtc = dueAt
+                        dueAtIsoUtc = dueAtIsoUtc,
+                        assigneeId = assigneeId,
+                        assignmentStrategy = assignmentStrategy,
+                        suppressRecurrence = !repeats
                     )
                 }
             }.onSuccess {
@@ -971,20 +979,29 @@ private fun DashboardScreen(
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
-    onCreateChore: (String, Int) -> Unit,
+    onCreateChore: (String, String, String?, String, Boolean) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
     onRequestNotificationPermission: () -> Unit
 ) {
+    val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
-    var createDelayHours by rememberSaveable { mutableStateOf(4) }
+    var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
+    var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
+    var createRepeats by rememberSaveable { mutableStateOf(false) }
+    var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
+    var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val createDelayOptions = listOf(2, 4, 8, 24, 48)
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
+    val templates = dashboard?.templates.orEmpty()
+    val members = dashboard?.members.orEmpty()
+    val selectedTemplate = remember(templates, selectedTemplateId) {
+        templates.firstOrNull { it.id == selectedTemplateId } ?: templates.firstOrNull()
+    }
     val sortedChores = remember(dashboard?.chores, currentUserId) {
         dashboard?.chores.orEmpty().sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
     }
@@ -995,6 +1012,58 @@ private fun DashboardScreen(
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
     val showStatusCard = queuedSubmissionCount > 0 || isSyncingQueue || !noticeMessage.isNullOrBlank() || !errorMessage.isNullOrBlank()
+
+    LaunchedEffect(templates) {
+        if (templates.isNotEmpty() && templates.none { it.id == selectedTemplateId }) {
+            selectedTemplateId = templates.first().id
+        }
+    }
+
+    LaunchedEffect(selectedTemplate?.id) {
+        val template = selectedTemplate ?: return@LaunchedEffect
+        createAssignmentStrategy = template.assignmentStrategy
+        createRepeats = template.recurrence.type != "none"
+        createAssigneeId = null
+    }
+
+    val datePickerDialog = remember(context, createDueAtMillis) {
+        val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val current = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+                createDueAtMillis = current
+                    .withYear(year)
+                    .withMonth(month + 1)
+                    .withDayOfMonth(dayOfMonth)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.year,
+            zoned.monthValue - 1,
+            zoned.dayOfMonth
+        )
+    }
+
+    val timePickerDialog = remember(context, createDueAtMillis) {
+        val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val current = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+                createDueAtMillis = current
+                    .withHour(hourOfDay)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .withNano(0)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.hour,
+            zoned.minute,
+            true
+        )
+    }
 
     Scaffold(
         bottomBar = {
@@ -1059,34 +1128,156 @@ private fun DashboardScreen(
 
             if (activeTab == MobileDashboardTab.CREATE) {
                 item { SectionIntro(title = stringResource(R.string.mobile_create_title), body = stringResource(R.string.mobile_create_hint)) }
-                item {
-                    Card(shape = RoundedCornerShape(24.dp)) {
-                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(text = if (isCreatorRole) stringResource(R.string.mobile_create_ready) else stringResource(R.string.mobile_create_no_permission), style = MaterialTheme.typography.titleMedium)
-                            createDelayOptions.chunked(3).forEach { rowOptions ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    rowOptions.forEach { delay ->
-                                        OutlinedButton(onClick = { createDelayHours = delay }, enabled = createDelayHours != delay) {
-                                            Text(stringResource(R.string.mobile_create_delay_option, delay))
-                                        }
-                                    }
+                if (isCreatorRole && dashboard?.templates.orEmpty().isEmpty()) {
+                    item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
+                } else if (isCreatorRole) {
+                    item {
+                        Card(shape = RoundedCornerShape(24.dp)) {
+                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(text = stringResource(R.string.mobile_create_ready), style = MaterialTheme.typography.titleMedium)
+                                Text(text = stringResource(R.string.mobile_create_template), style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    text = selectedTemplate?.title ?: stringResource(R.string.mobile_create_select_template),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    items(templates) { template ->
+                        Card(shape = RoundedCornerShape(22.dp)) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(text = template.title, style = MaterialTheme.typography.titleMedium)
+                                if (template.description.isNotBlank()) {
+                                    Text(text = template.description, style = MaterialTheme.typography.bodySmall)
+                                }
+                                OutlinedButton(
+                                    onClick = { selectedTemplateId = template.id },
+                                    enabled = selectedTemplateId != template.id
+                                ) {
+                                    Text(
+                                        stringResource(
+                                            if (selectedTemplateId == template.id) {
+                                                R.string.mobile_create_selected_template
+                                            } else {
+                                                R.string.mobile_create_use_template
+                                            }
+                                        )
+                                    )
                                 }
                             }
                         }
                     }
-                }
-                if (isCreatorRole && dashboard?.templates.orEmpty().isEmpty()) {
-                    item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
-                } else if (isCreatorRole) {
-                    items(dashboard?.templates.orEmpty()) { template ->
-                        Card(shape = RoundedCornerShape(22.dp)) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(text = template.title, style = MaterialTheme.typography.titleMedium)
-                                Button(onClick = { onCreateChore(template.id, createDelayHours) }, enabled = activeCreateAction == null) {
-                                    if (activeCreateAction == "create:${template.id}") {
-                                        Text(stringResource(R.string.mobile_create_creating))
-                                    } else {
-                                        Text(stringResource(R.string.mobile_create_action, createDelayHours))
+                    selectedTemplate?.let { template ->
+                        item {
+                            Card(shape = RoundedCornerShape(24.dp)) {
+                                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    Text(text = template.title, style = MaterialTheme.typography.titleLarge)
+                                    Text(text = stringResource(R.string.mobile_create_when), style = MaterialTheme.typography.titleSmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Button(onClick = { datePickerDialog.show() }) {
+                                            Text(stringResource(R.string.mobile_create_pick_date))
+                                        }
+                                        OutlinedButton(onClick = { timePickerDialog.show() }) {
+                                            Text(stringResource(R.string.mobile_create_pick_time))
+                                        }
+                                    }
+                                    Text(
+                                        text = formatEpochMillisForDisplay(createDueAtMillis),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+
+                                    Text(text = stringResource(R.string.mobile_create_repeat), style = MaterialTheme.typography.titleSmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        if (createRepeats) {
+                                            Button(onClick = { createRepeats = true }) {
+                                                Text(stringResource(R.string.mobile_create_repeat_yes))
+                                            }
+                                        } else {
+                                            OutlinedButton(
+                                                onClick = { createRepeats = true },
+                                                enabled = template.recurrence.type != "none"
+                                            ) {
+                                                Text(stringResource(R.string.mobile_create_repeat_yes))
+                                            }
+                                        }
+                                        if (!createRepeats) {
+                                            Button(onClick = { createRepeats = false }) {
+                                                Text(stringResource(R.string.mobile_create_repeat_no))
+                                            }
+                                        } else {
+                                            OutlinedButton(onClick = { createRepeats = false }) {
+                                                Text(stringResource(R.string.mobile_create_repeat_no))
+                                            }
+                                        }
+                                    }
+                                    Text(
+                                        text = describeTemplateRecurrence(template.recurrence, createRepeats),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(text = stringResource(R.string.mobile_create_assignment), style = MaterialTheme.typography.titleSmall)
+                                    MobileChoiceRow(
+                                        options = listOf(
+                                            "round_robin",
+                                            "least_completed_recently",
+                                            "highest_streak",
+                                            "manual_default_assignee"
+                                        ).map { strategy ->
+                                            MobileChoiceOption(
+                                                label = assignmentStrategyLabel(strategy),
+                                                selected = createAssignmentStrategy == strategy,
+                                                onClick = {
+                                                    createAssignmentStrategy = strategy
+                                                    if (strategy != "manual_default_assignee") {
+                                                        createAssigneeId = null
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    )
+                                    if (createAssignmentStrategy == "manual_default_assignee") {
+                                        Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
+                                        MobileChoiceRow(
+                                            options = buildList {
+                                                add(
+                                                    MobileChoiceOption(
+                                                        label = stringResource(R.string.mobile_create_unassigned),
+                                                        selected = createAssigneeId == null,
+                                                        onClick = { createAssigneeId = null }
+                                                    )
+                                                )
+                                                members.forEach { member ->
+                                                    add(
+                                                        MobileChoiceOption(
+                                                            label = member.displayName,
+                                                            selected = createAssigneeId == member.id,
+                                                            onClick = { createAssigneeId = member.id }
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            onCreateChore(
+                                                template.id,
+                                                Instant.ofEpochMilli(createDueAtMillis).toString(),
+                                                createAssigneeId,
+                                                createAssignmentStrategy,
+                                                createRepeats
+                                            )
+                                        },
+                                        enabled = activeCreateAction == null
+                                    ) {
+                                        if (activeCreateAction == "create:${template.id}") {
+                                            Text(stringResource(R.string.mobile_create_creating))
+                                        } else {
+                                            Text(stringResource(R.string.mobile_create_action))
+                                        }
                                     }
                                 }
                             }
@@ -1408,6 +1599,46 @@ private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?):
     MobileChoreSection.MINE -> stringResource(R.string.mobile_chore_assigned_to_you)
     MobileChoreSection.UNASSIGNED -> stringResource(R.string.mobile_chore_unassigned)
     MobileChoreSection.OTHERS -> stringResource(R.string.mobile_chore_assigned_elsewhere)
+}
+
+private fun defaultCreateDueAtMillis(): Long =
+    Instant.now()
+        .plus(4, ChronoUnit.HOURS)
+        .truncatedTo(ChronoUnit.MINUTES)
+        .toEpochMilli()
+
+private fun formatEpochMillisForDisplay(value: Long): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.ofEpochMilli(value))
+
+@Composable
+private fun assignmentStrategyLabel(value: String): String = when (value) {
+    "least_completed_recently" -> stringResource(R.string.mobile_create_assignment_least_completed)
+    "highest_streak" -> stringResource(R.string.mobile_create_assignment_highest_streak)
+    "manual_default_assignee" -> stringResource(R.string.mobile_create_assignment_manual)
+    else -> stringResource(R.string.mobile_create_assignment_round_robin)
+}
+
+@Composable
+private fun describeTemplateRecurrence(recurrence: MobileTemplateRecurrence, repeats: Boolean): String {
+    if (!repeats) {
+        return stringResource(R.string.mobile_create_repeat_no)
+    }
+
+    return when (recurrence.type) {
+        "daily" -> stringResource(R.string.mobile_create_repeat_daily)
+        "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
+        "every_x_days" -> stringResource(
+            R.string.mobile_create_repeat_every_x_days,
+            recurrence.intervalDays ?: 1
+        )
+        "custom_weekly" -> stringResource(
+            R.string.mobile_create_repeat_custom_weekly,
+            recurrence.weekdays.joinToString(", ")
+        )
+        else -> stringResource(R.string.mobile_create_repeat_template_none)
+    }
 }
 
 private fun formatApiTimestamp(value: String): String {

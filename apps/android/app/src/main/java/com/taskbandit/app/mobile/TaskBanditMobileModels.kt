@@ -90,9 +90,25 @@ data class MobileReleaseInfo(
     val commitSha: String
 )
 
+data class MobileHouseholdMember(
+    val id: String,
+    val displayName: String,
+    val role: String
+)
+
+data class MobileTemplateRecurrence(
+    val type: String,
+    val intervalDays: Int?,
+    val weekdays: List<String>
+)
+
 data class MobileChoreTemplate(
     val id: String,
-    val title: String
+    val title: String,
+    val description: String,
+    val assignmentStrategy: String,
+    val recurrence: MobileTemplateRecurrence,
+    val requirePhotoProof: Boolean
 )
 
 data class MobileDashboard(
@@ -103,5 +119,6 @@ data class MobileDashboard(
     val leaderboard: List<MobileLeaderboardEntry>,
     val chores: List<MobileChore>,
     val notifications: List<MobileNotification>,
+    val members: List<MobileHouseholdMember>,
     val templates: List<MobileChoreTemplate>
 )
