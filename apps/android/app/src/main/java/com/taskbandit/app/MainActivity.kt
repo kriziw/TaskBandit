@@ -34,20 +34,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AddTask
-import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -77,11 +76,13 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.MobileDashboardSyncSignal
 import com.taskbandit.app.mobile.MobileChore
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
 import com.taskbandit.app.mobile.MobileThemeMode
 import com.taskbandit.app.mobile.MobileUploadedProof
+import com.taskbandit.app.mobile.TaskBanditDashboardSyncClient
 import com.taskbandit.app.mobile.TaskBanditMobileApi
 import com.taskbandit.app.mobile.TaskBanditAppPreferencesStore
 import com.taskbandit.app.mobile.TaskBanditOutboxStore
@@ -183,6 +184,7 @@ private fun TaskBanditApp(
         )
     }
     val installationId = remember { sessionStore.getOrCreateInstallationId() }
+    val dashboardSyncClient = remember { TaskBanditDashboardSyncClient() }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
     var password by remember { mutableStateOf("TaskBandit123!") }
@@ -193,6 +195,7 @@ private fun TaskBanditApp(
     var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
     var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
     var isBusy by remember { mutableStateOf(session.token != null) }
+    var refreshQueued by remember { mutableStateOf(false) }
     var isSyncingQueue by remember { mutableStateOf(false) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
     var activeNotificationAction by remember { mutableStateOf<String?>(null) }
@@ -260,6 +263,7 @@ private fun TaskBanditApp(
         serverReleaseInfo = null
         notificationDevices = emptyList()
         isBusy = false
+        refreshQueued = false
         errorMessage = null
         noticeMessage = null
     }
@@ -268,6 +272,7 @@ private fun TaskBanditApp(
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
         isBusy = true
+        refreshQueued = false
         errorMessage = null
 
         coroutineScope.launch {
@@ -344,7 +349,24 @@ private fun TaskBanditApp(
             }
             isBusy = false
             isSyncingQueue = false
+            if (refreshQueued && session.token != null) {
+                refreshQueued = false
+                refreshDashboard()
+            }
         }
+    }
+
+    fun requestDashboardRefresh() {
+        if (session.token == null) {
+            return
+        }
+
+        if (isBusy) {
+            refreshQueued = true
+            return
+        }
+
+        refreshDashboard()
     }
 
     fun reviewPendingChore(instanceId: String, approve: Boolean) {
@@ -363,7 +385,7 @@ private fun TaskBanditApp(
                     }
                 }
             }.onSuccess {
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -387,7 +409,7 @@ private fun TaskBanditApp(
                     api.markNotificationRead(baseUrl, token, notificationId)
                 }
             }.onSuccess {
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -427,7 +449,7 @@ private fun TaskBanditApp(
                 }
             }.onSuccess {
                 noticeMessage = choreStartedMessage
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -484,7 +506,7 @@ private fun TaskBanditApp(
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
                 noticeMessage = submissionSentMessage
-                refreshDashboard()
+                requestDashboardRefresh()
             } catch (throwable: Throwable) {
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -532,7 +554,7 @@ private fun TaskBanditApp(
                 }
             }.onSuccess {
                 noticeMessage = choreCreatedMessage
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -588,19 +610,31 @@ private fun TaskBanditApp(
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            refreshDashboard()
+            requestDashboardRefresh()
         }
     }
 
-    LaunchedEffect(serverUrl, session.token) {
+    val activeBaseUrl = normalizedServerUrl()
+
+    LaunchedEffect(activeBaseUrl, session.token) {
+        val token = session.token ?: return@LaunchedEffect
+
+        dashboardSyncClient.connect(activeBaseUrl, token).collect { signal ->
+            when (signal) {
+                MobileDashboardSyncSignal.RefreshRequested -> requestDashboardRefresh()
+                MobileDashboardSyncSignal.Unauthorized -> logout()
+            }
+        }
+    }
+
+    LaunchedEffect(activeBaseUrl, session.token) {
         if (session.token != null) {
             return@LaunchedEffect
         }
 
-        val baseUrl = normalizedServerUrl()
         runCatching {
             withContext(Dispatchers.IO) {
-                api.getReleaseInfo(baseUrl)
+                api.getReleaseInfo(activeBaseUrl)
             }
         }.onSuccess { latestReleaseInfo ->
             serverReleaseInfo = latestReleaseInfo
@@ -693,7 +727,7 @@ private fun TaskBanditApp(
                     noticeMessage = noticeMessage,
                     queuedSubmissionCount = queuedSubmissionCount,
                     onDismissUpdate = ::dismissUpdateNotice,
-                    onRefresh = ::refreshDashboard,
+                    onRefresh = ::requestDashboardRefresh,
                     onLogout = ::logout,
                     onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
                     onReject = { instanceId -> reviewPendingChore(instanceId, false) },
@@ -960,19 +994,40 @@ private fun DashboardScreen(
     val choresMineLabel = stringResource(R.string.mobile_chores_mine)
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
+    val showStatusCard = queuedSubmissionCount > 0 || isSyncingQueue || !noticeMessage.isNullOrBlank() || !errorMessage.isNullOrBlank()
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(onClick = { activeTab = MobileDashboardTab.CREATE }, shape = CircleShape, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
-                Icon(imageVector = Icons.Rounded.AddTask, contentDescription = stringResource(R.string.mobile_tab_create))
-            }
-        },
         bottomBar = {
             Card(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    MobileTabButton(selected = activeTab == MobileDashboardTab.CHORES, label = stringResource(R.string.mobile_tab_chores), icon = Icons.Rounded.Checklist, onClick = { activeTab = MobileDashboardTab.CHORES; expandedChoreIds = emptySet() })
-                    Spacer(modifier = Modifier.size(72.dp))
-                    MobileTabButton(selected = activeTab == MobileDashboardTab.SETTINGS, label = stringResource(R.string.mobile_tab_settings), icon = Icons.Rounded.Settings, onClick = { activeTab = MobileDashboardTab.SETTINGS })
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MobileTabButton(
+                        selected = activeTab == MobileDashboardTab.CHORES,
+                        label = stringResource(R.string.mobile_tab_chores),
+                        icon = Icons.Rounded.AssignmentTurnedIn,
+                        onClick = {
+                            activeTab = MobileDashboardTab.CHORES
+                            expandedChoreIds = emptySet()
+                        }
+                    )
+                    MobileCenterTabButton(
+                        selected = activeTab == MobileDashboardTab.CREATE,
+                        label = stringResource(R.string.mobile_tab_create),
+                        icon = Icons.Rounded.AddCircle,
+                        onClick = {
+                            activeTab = MobileDashboardTab.CREATE
+                            expandedChoreIds = emptySet()
+                        }
+                    )
+                    MobileTabButton(
+                        selected = activeTab == MobileDashboardTab.SETTINGS,
+                        label = stringResource(R.string.mobile_tab_settings),
+                        icon = Icons.Rounded.Tune,
+                        onClick = { activeTab = MobileDashboardTab.SETTINGS }
+                    )
                 }
             }
         }
@@ -981,39 +1036,25 @@ private fun DashboardScreen(
             modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background))).padding(padding).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Card(shape = RoundedCornerShape(24.dp)) {
-                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(text = dashboard?.user?.displayName ?: stringResource(R.string.common_loading_short), style = MaterialTheme.typography.headlineMedium)
-                        Text(text = stringResource(R.string.mobile_dashboard_summary, dashboard?.pendingApprovals ?: 0, dashboard?.activeChores ?: 0, dashboard?.user?.currentStreak ?: 0), style = MaterialTheme.typography.bodyMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = onRefresh, enabled = !isBusy) {
-                                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.size(6.dp))
-                                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
-                            }
-                        }
-                        if (queuedSubmissionCount > 0 || isSyncingQueue) {
-                            Text(text = if (isSyncingQueue) stringResource(R.string.mobile_syncing_queue) else stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount), style = MaterialTheme.typography.bodyMedium)
-                        }
-                        if (!noticeMessage.isNullOrBlank()) {
-                            Text(text = noticeMessage, color = MaterialTheme.colorScheme.primary)
-                        }
-                        if (!errorMessage.isNullOrBlank()) {
-                            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-            }
-
             if (activeTab == MobileDashboardTab.CHORES) {
-                item { SectionIntro(title = stringResource(R.string.mobile_chores_title), body = stringResource(R.string.mobile_chores_hint)) }
                 if (sortedChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
                 choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                if (showStatusCard) {
+                    item {
+                        DashboardStatusCard(
+                            isBusy = isBusy,
+                            isSyncingQueue = isSyncingQueue,
+                            errorMessage = errorMessage,
+                            noticeMessage = noticeMessage,
+                            queuedSubmissionCount = queuedSubmissionCount,
+                            onRefresh = onRefresh
+                        )
+                    }
+                }
             }
 
             if (activeTab == MobileDashboardTab.CREATE) {
@@ -1057,7 +1098,7 @@ private fun DashboardScreen(
             if (activeTab == MobileDashboardTab.SETTINGS) {
                 item { SectionIntro(title = stringResource(R.string.mobile_settings_title), body = stringResource(R.string.mobile_settings_hint)) }
                 item {
-                    SettingsSectionCard(icon = Icons.Rounded.Settings, title = stringResource(R.string.mobile_settings_appearance)) {
+                    SettingsSectionCard(icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
                         Text(text = stringResource(R.string.mobile_settings_theme), style = MaterialTheme.typography.titleMedium)
                         MobileChoiceRow(options = listOf(
                             MobileChoiceOption(label = stringResource(R.string.mobile_theme_system), selected = themeMode == MobileThemeMode.SYSTEM, onClick = { onThemeModeChange(MobileThemeMode.SYSTEM) }),
@@ -1163,6 +1204,80 @@ private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+    }
+    val iconTint = MaterialTheme.colorScheme.onPrimary
+
+    TextButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(52.dp).background(containerColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardStatusCard(
+    isBusy: Boolean,
+    isSyncingQueue: Boolean,
+    errorMessage: String?,
+    noticeMessage: String?,
+    queuedSubmissionCount: Int,
+    onRefresh: () -> Unit
+) {
+    Card(shape = RoundedCornerShape(22.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = onRefresh, enabled = !isBusy) {
+                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
+            }
+            if (queuedSubmissionCount > 0 || isSyncingQueue) {
+                Text(
+                    text = if (isSyncingQueue) {
+                        stringResource(R.string.mobile_syncing_queue)
+                    } else {
+                        stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount)
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            if (!noticeMessage.isNullOrBlank()) {
+                Text(text = noticeMessage, color = MaterialTheme.colorScheme.primary)
+            }
+            if (!errorMessage.isNullOrBlank()) {
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }
