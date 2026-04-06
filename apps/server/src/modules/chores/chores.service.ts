@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { DashboardSyncService } from "../dashboard/dashboard-sync.service";
 import { PointsService } from "../gamification/points.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
@@ -16,15 +17,18 @@ export class ChoresService {
     private readonly repository: HouseholdRepository,
     private readonly pointsService: PointsService,
     private readonly i18nService: I18nService,
-    private readonly proofStorageService: ProofStorageService
+    private readonly proofStorageService: ProofStorageService,
+    private readonly dashboardSyncService: DashboardSyncService
   ) {}
 
   getTemplates(user: AuthenticatedUser) {
     return this.repository.getTemplates(user.householdId);
   }
 
-  createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser) {
-    return this.repository.createTemplate(dto, user.householdId, user.id);
+  async createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser) {
+    const template = await this.repository.createTemplate(dto, user.householdId, user.id);
+    this.publishSyncEvent(user, "template.created", "template", template.id);
+    return template;
   }
 
   async updateTemplate(
@@ -38,11 +42,15 @@ export class ChoresService {
       return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
     }
 
-    return this.repository.updateTemplate(templateId, dto, user.householdId, user.id);
+    const updatedTemplate = await this.repository.updateTemplate(templateId, dto, user.householdId, user.id);
+    this.publishSyncEvent(user, "template.updated", "template", templateId);
+    return updatedTemplate;
   }
 
-  createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser) {
-    return this.repository.createInstance(dto, user.householdId, user.id);
+  async createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser) {
+    const instance = await this.repository.createInstance(dto, user.householdId, user.id);
+    this.publishSyncEvent(user, "instance.created", "instance", instance.id);
+    return instance;
   }
 
   async updateInstance(
@@ -62,7 +70,9 @@ export class ChoresService {
       );
     }
 
-    return this.repository.updateInstance(instanceId, dto, user.householdId, user.id);
+    const updatedInstance = await this.repository.updateInstance(instanceId, dto, user.householdId, user.id);
+    this.publishSyncEvent(user, "instance.updated", "instance", instanceId);
+    return updatedInstance;
   }
 
   async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
@@ -77,7 +87,9 @@ export class ChoresService {
       );
     }
 
-    return this.repository.cancelInstance(instanceId, user.householdId, user.id);
+    const cancelledInstance = await this.repository.cancelInstance(instanceId, user.householdId, user.id);
+    this.publishSyncEvent(user, "instance.cancelled", "instance", instanceId);
+    return cancelledInstance;
   }
 
   async startInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
@@ -98,7 +110,9 @@ export class ChoresService {
       );
     }
 
-    return this.repository.startInstance(instanceId, user.householdId, user.id);
+    const startedInstance = await this.repository.startInstance(instanceId, user.householdId, user.id);
+    this.publishSyncEvent(user, "instance.started", "instance", instanceId);
+    return startedInstance;
   }
 
   getInstances(user: AuthenticatedUser) {
@@ -206,7 +220,7 @@ export class ChoresService {
           instance.isOverdue
         ).finalAwardedPoints;
 
-    return this.repository.submitInstance({
+    const submittedInstance = await this.repository.submitInstance({
       instanceId,
       actingUserId: user.id,
       householdId: user.householdId,
@@ -216,6 +230,13 @@ export class ChoresService {
       awardedPoints,
       nextState: shouldRequireApproval ? "pending_approval" : "completed"
     });
+    this.publishSyncEvent(
+      user,
+      shouldRequireApproval ? "instance.submitted" : "instance.completed",
+      "instance",
+      instanceId
+    );
+    return submittedInstance;
   }
 
   async approveInstance(
@@ -241,7 +262,7 @@ export class ChoresService {
       instance.isOverdue
     ).finalAwardedPoints;
 
-    return this.repository.reviewInstance({
+    const reviewedInstance = await this.repository.reviewInstance({
       instanceId,
       actingUserId: user.id,
       householdId: user.householdId,
@@ -249,6 +270,8 @@ export class ChoresService {
       note: dto.note,
       awardedPoints
     });
+    this.publishSyncEvent(user, "instance.approved", "instance", instanceId);
+    return reviewedInstance;
   }
 
   async rejectInstance(
@@ -268,13 +291,30 @@ export class ChoresService {
       );
     }
 
-    return this.repository.reviewInstance({
+    const reviewedInstance = await this.repository.reviewInstance({
       instanceId,
       actingUserId: user.id,
       householdId: user.householdId,
       approved: false,
       note: dto.note,
       awardedPoints: 0
+    });
+    this.publishSyncEvent(user, "instance.rejected", "instance", instanceId);
+    return reviewedInstance;
+  }
+
+  private publishSyncEvent(
+    user: AuthenticatedUser,
+    action: string,
+    entityType: "instance" | "template",
+    entityId?: string
+  ) {
+    this.dashboardSyncService.publishChoreUpdate({
+      householdId: user.householdId,
+      actorUserId: user.id,
+      action,
+      entityType,
+      entityId
     });
   }
 }

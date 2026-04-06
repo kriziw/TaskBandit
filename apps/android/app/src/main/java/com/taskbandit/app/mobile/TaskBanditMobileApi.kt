@@ -112,6 +112,14 @@ class TaskBanditMobileApi {
             emptyList()
         }
 
+        val members = if (user.role == "admin" || user.role == "parent") {
+            runCatching {
+                requestJson(baseUrl, "/api/settings/household", token = token)
+            }.getOrNull()?.optJSONArray("members")?.let(::parseMembers).orEmpty()
+        } else {
+            emptyList()
+        }
+
         return MobileDashboard(
             user = user,
             pendingApprovals = summaryJson.optInt("pendingApprovals"),
@@ -120,6 +128,7 @@ class TaskBanditMobileApi {
             leaderboard = leaderboard,
             chores = chores,
             notifications = notifications,
+            members = members,
             templates = templates
         )
     }
@@ -202,14 +211,31 @@ class TaskBanditMobileApi {
         token: String,
         templateId: String,
         dueAtIsoUtc: String,
-        assigneeId: String? = null
+        assigneeId: String? = null,
+        assignmentStrategy: String? = null,
+        recurrenceType: String? = null,
+        recurrenceIntervalDays: Int? = null,
+        suppressRecurrence: Boolean = false
     ) {
         val payload = JSONObject()
             .put("templateId", templateId)
             .put("dueAt", dueAtIsoUtc)
+            .put("suppressRecurrence", suppressRecurrence)
 
         if (!assigneeId.isNullOrBlank()) {
             payload.put("assigneeId", assigneeId)
+        }
+
+        if (!assignmentStrategy.isNullOrBlank()) {
+            payload.put("assignmentStrategy", assignmentStrategy)
+        }
+
+        if (!recurrenceType.isNullOrBlank()) {
+            payload.put("recurrenceType", recurrenceType)
+        }
+
+        if (recurrenceIntervalDays != null) {
+            payload.put("recurrenceIntervalDays", recurrenceIntervalDays)
         }
 
         requestJson(
@@ -453,7 +479,42 @@ class TaskBanditMobileApi {
                 add(
                     MobileChoreTemplate(
                         id = id,
-                        title = title
+                        title = title,
+                        description = item.optString("description"),
+                        assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },
+                        recurrence = (item.optJSONObject("recurrence") ?: JSONObject()).let { recurrence ->
+                            MobileTemplateRecurrence(
+                                type = recurrence.optString("type").ifBlank { "none" },
+                                intervalDays = recurrence.takeIf { !it.isNull("intervalDays") }?.optInt("intervalDays"),
+                                weekdays = parseStringList(recurrence.optJSONArray("weekdays"))
+                            )
+                        },
+                        requirePhotoProof = item.optBoolean("requirePhotoProof")
+                    )
+                )
+            }
+        }
+    }
+
+    private fun parseMembers(entries: JSONArray?): List<MobileHouseholdMember> {
+        if (entries == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until entries.length()) {
+                val item = entries.optJSONObject(index) ?: continue
+                val id = item.optString("id")
+                val displayName = item.optString("displayName")
+                if (id.isBlank() || displayName.isBlank()) {
+                    continue
+                }
+
+                add(
+                    MobileHouseholdMember(
+                        id = id,
+                        displayName = displayName,
+                        role = item.optString("role")
                     )
                 )
             }

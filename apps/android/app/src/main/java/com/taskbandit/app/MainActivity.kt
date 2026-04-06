@@ -1,6 +1,8 @@
 ﻿package com.taskbandit.app
 
 import android.Manifest
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
 import android.content.ContentResolver
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -34,20 +36,19 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.rounded.AddTask
-import androidx.compose.material.icons.rounded.Checklist
+import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Refresh
-import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
@@ -77,11 +78,14 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.MobileDashboardSyncSignal
 import com.taskbandit.app.mobile.MobileChore
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
+import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
 import com.taskbandit.app.mobile.MobileUploadedProof
+import com.taskbandit.app.mobile.TaskBanditDashboardSyncClient
 import com.taskbandit.app.mobile.TaskBanditMobileApi
 import com.taskbandit.app.mobile.TaskBanditAppPreferencesStore
 import com.taskbandit.app.mobile.TaskBanditOutboxStore
@@ -183,6 +187,7 @@ private fun TaskBanditApp(
         )
     }
     val installationId = remember { sessionStore.getOrCreateInstallationId() }
+    val dashboardSyncClient = remember { TaskBanditDashboardSyncClient() }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("alex@taskbandit.local") }
     var password by remember { mutableStateOf("TaskBandit123!") }
@@ -193,6 +198,7 @@ private fun TaskBanditApp(
     var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
     var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
     var isBusy by remember { mutableStateOf(session.token != null) }
+    var refreshQueued by remember { mutableStateOf(false) }
     var isSyncingQueue by remember { mutableStateOf(false) }
     var activeReviewAction by remember { mutableStateOf<String?>(null) }
     var activeNotificationAction by remember { mutableStateOf<String?>(null) }
@@ -260,6 +266,7 @@ private fun TaskBanditApp(
         serverReleaseInfo = null
         notificationDevices = emptyList()
         isBusy = false
+        refreshQueued = false
         errorMessage = null
         noticeMessage = null
     }
@@ -268,6 +275,7 @@ private fun TaskBanditApp(
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
         isBusy = true
+        refreshQueued = false
         errorMessage = null
 
         coroutineScope.launch {
@@ -344,7 +352,24 @@ private fun TaskBanditApp(
             }
             isBusy = false
             isSyncingQueue = false
+            if (refreshQueued && session.token != null) {
+                refreshQueued = false
+                refreshDashboard()
+            }
         }
+    }
+
+    fun requestDashboardRefresh() {
+        if (session.token == null) {
+            return
+        }
+
+        if (isBusy) {
+            refreshQueued = true
+            return
+        }
+
+        refreshDashboard()
     }
 
     fun reviewPendingChore(instanceId: String, approve: Boolean) {
@@ -363,7 +388,7 @@ private fun TaskBanditApp(
                     }
                 }
             }.onSuccess {
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -387,7 +412,7 @@ private fun TaskBanditApp(
                     api.markNotificationRead(baseUrl, token, notificationId)
                 }
             }.onSuccess {
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -427,7 +452,7 @@ private fun TaskBanditApp(
                 }
             }.onSuccess {
                 noticeMessage = choreStartedMessage
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -484,7 +509,7 @@ private fun TaskBanditApp(
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
                 noticeMessage = submissionSentMessage
-                refreshDashboard()
+                requestDashboardRefresh()
             } catch (throwable: Throwable) {
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -509,10 +534,16 @@ private fun TaskBanditApp(
         }
     }
 
-    fun createChore(templateId: String, delayHours: Int) {
+    fun createChore(
+        templateId: String,
+        dueAtIsoUtc: String,
+        assigneeId: String?,
+        assignmentStrategy: String,
+        recurrenceType: String?,
+        recurrenceIntervalDays: Int?
+    ) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
-        val resolvedDelayHours = delayHours.coerceAtLeast(1)
         activeCreateAction = "create:$templateId"
         errorMessage = null
         noticeMessage = null
@@ -520,19 +551,21 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    val dueAt = Instant.now()
-                        .plus(resolvedDelayHours.toLong(), ChronoUnit.HOURS)
-                        .toString()
                     api.createChoreInstance(
                         baseUrl = baseUrl,
                         token = token,
                         templateId = templateId,
-                        dueAtIsoUtc = dueAt
+                        dueAtIsoUtc = dueAtIsoUtc,
+                        assigneeId = assigneeId,
+                        assignmentStrategy = assignmentStrategy,
+                        recurrenceType = recurrenceType,
+                        recurrenceIntervalDays = recurrenceIntervalDays,
+                        suppressRecurrence = recurrenceType == "none"
                     )
                 }
             }.onSuccess {
                 noticeMessage = choreCreatedMessage
-                refreshDashboard()
+                requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -588,19 +621,31 @@ private fun TaskBanditApp(
             ) {
                 notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
             }
-            refreshDashboard()
+            requestDashboardRefresh()
         }
     }
 
-    LaunchedEffect(serverUrl, session.token) {
+    val activeBaseUrl = normalizedServerUrl()
+
+    LaunchedEffect(activeBaseUrl, session.token) {
+        val token = session.token ?: return@LaunchedEffect
+
+        dashboardSyncClient.connect(activeBaseUrl, token).collect { signal ->
+            when (signal) {
+                MobileDashboardSyncSignal.RefreshRequested -> requestDashboardRefresh()
+                MobileDashboardSyncSignal.Unauthorized -> logout()
+            }
+        }
+    }
+
+    LaunchedEffect(activeBaseUrl, session.token) {
         if (session.token != null) {
             return@LaunchedEffect
         }
 
-        val baseUrl = normalizedServerUrl()
         runCatching {
             withContext(Dispatchers.IO) {
-                api.getReleaseInfo(baseUrl)
+                api.getReleaseInfo(activeBaseUrl)
             }
         }.onSuccess { latestReleaseInfo ->
             serverReleaseInfo = latestReleaseInfo
@@ -693,7 +738,7 @@ private fun TaskBanditApp(
                     noticeMessage = noticeMessage,
                     queuedSubmissionCount = queuedSubmissionCount,
                     onDismissUpdate = ::dismissUpdateNotice,
-                    onRefresh = ::refreshDashboard,
+                    onRefresh = ::requestDashboardRefresh,
                     onLogout = ::logout,
                     onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
                     onReject = { instanceId -> reviewPendingChore(instanceId, false) },
@@ -937,20 +982,29 @@ private fun DashboardScreen(
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
-    onCreateChore: (String, Int) -> Unit,
+    onCreateChore: (String, String, String?, String, String?, Int?) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
     onRequestNotificationPermission: () -> Unit
 ) {
+    val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
-    var createDelayHours by rememberSaveable { mutableStateOf(4) }
+    var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
+    var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
+    var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
+    var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var createRecurrencePreset by rememberSaveable { mutableStateOf("template") }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
-    val createDelayOptions = listOf(2, 4, 8, 24, 48)
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
+    val templates = dashboard?.templates.orEmpty()
+    val members = dashboard?.members.orEmpty()
+    val selectedTemplate = remember(templates, selectedTemplateId) {
+        templates.firstOrNull { it.id == selectedTemplateId } ?: templates.firstOrNull()
+    }
     val sortedChores = remember(dashboard?.chores, currentUserId) {
         dashboard?.chores.orEmpty().sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
     }
@@ -960,19 +1014,92 @@ private fun DashboardScreen(
     val choresMineLabel = stringResource(R.string.mobile_chores_mine)
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
+    val showStatusCard = queuedSubmissionCount > 0 || isSyncingQueue || !noticeMessage.isNullOrBlank() || !errorMessage.isNullOrBlank()
+
+    LaunchedEffect(templates) {
+        if (templates.isNotEmpty() && templates.none { it.id == selectedTemplateId }) {
+            selectedTemplateId = templates.first().id
+        }
+    }
+
+    LaunchedEffect(selectedTemplate?.id) {
+        val template = selectedTemplate ?: return@LaunchedEffect
+        createAssignmentStrategy = template.assignmentStrategy
+        createRecurrencePreset = templateRecurrencePreset(template.recurrence)
+        createAssigneeId = null
+    }
+
+    val datePickerDialog = remember(context, createDueAtMillis) {
+        val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val current = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+                createDueAtMillis = current
+                    .withYear(year)
+                    .withMonth(month + 1)
+                    .withDayOfMonth(dayOfMonth)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.year,
+            zoned.monthValue - 1,
+            zoned.dayOfMonth
+        )
+    }
+
+    val timePickerDialog = remember(context, createDueAtMillis) {
+        val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val current = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+                createDueAtMillis = current
+                    .withHour(hourOfDay)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .withNano(0)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.hour,
+            zoned.minute,
+            true
+        )
+    }
 
     Scaffold(
-        floatingActionButton = {
-            FloatingActionButton(onClick = { activeTab = MobileDashboardTab.CREATE }, shape = CircleShape, containerColor = MaterialTheme.colorScheme.primary, contentColor = MaterialTheme.colorScheme.onPrimary) {
-                Icon(imageVector = Icons.Rounded.AddTask, contentDescription = stringResource(R.string.mobile_tab_create))
-            }
-        },
         bottomBar = {
             Card(shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)) {
-                Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
-                    MobileTabButton(selected = activeTab == MobileDashboardTab.CHORES, label = stringResource(R.string.mobile_tab_chores), icon = Icons.Rounded.Checklist, onClick = { activeTab = MobileDashboardTab.CHORES; expandedChoreIds = emptySet() })
-                    Spacer(modifier = Modifier.size(72.dp))
-                    MobileTabButton(selected = activeTab == MobileDashboardTab.SETTINGS, label = stringResource(R.string.mobile_tab_settings), icon = Icons.Rounded.Settings, onClick = { activeTab = MobileDashboardTab.SETTINGS })
+                Row(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    MobileTabButton(
+                        selected = activeTab == MobileDashboardTab.CHORES,
+                        label = stringResource(R.string.mobile_tab_chores),
+                        icon = Icons.Rounded.AssignmentTurnedIn,
+                        onClick = {
+                            activeTab = MobileDashboardTab.CHORES
+                            expandedChoreIds = emptySet()
+                        }
+                    )
+                    MobileCenterTabButton(
+                        selected = activeTab == MobileDashboardTab.CREATE,
+                        label = stringResource(R.string.mobile_tab_create),
+                        icon = Icons.Rounded.AddCircle,
+                        onClick = {
+                            activeTab = MobileDashboardTab.CREATE
+                            expandedChoreIds = emptySet()
+                        }
+                    )
+                    MobileTabButton(
+                        selected = activeTab == MobileDashboardTab.SETTINGS,
+                        label = stringResource(R.string.mobile_tab_settings),
+                        icon = Icons.Rounded.Tune,
+                        onClick = { activeTab = MobileDashboardTab.SETTINGS }
+                    )
                 }
             }
         }
@@ -981,71 +1108,173 @@ private fun DashboardScreen(
             modifier = Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.colorScheme.background))).padding(padding).padding(horizontal = 20.dp, vertical = 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            item {
-                Card(shape = RoundedCornerShape(24.dp)) {
-                    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(text = dashboard?.user?.displayName ?: stringResource(R.string.common_loading_short), style = MaterialTheme.typography.headlineMedium)
-                        Text(text = stringResource(R.string.mobile_dashboard_summary, dashboard?.pendingApprovals ?: 0, dashboard?.activeChores ?: 0, dashboard?.user?.currentStreak ?: 0), style = MaterialTheme.typography.bodyMedium)
-                        Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Button(onClick = onRefresh, enabled = !isBusy) {
-                                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                                Spacer(modifier = Modifier.size(6.dp))
-                                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
-                            }
-                        }
-                        if (queuedSubmissionCount > 0 || isSyncingQueue) {
-                            Text(text = if (isSyncingQueue) stringResource(R.string.mobile_syncing_queue) else stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount), style = MaterialTheme.typography.bodyMedium)
-                        }
-                        if (!noticeMessage.isNullOrBlank()) {
-                            Text(text = noticeMessage, color = MaterialTheme.colorScheme.primary)
-                        }
-                        if (!errorMessage.isNullOrBlank()) {
-                            Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
-                        }
-                    }
-                }
-            }
-
             if (activeTab == MobileDashboardTab.CHORES) {
-                item { SectionIntro(title = stringResource(R.string.mobile_chores_title), body = stringResource(R.string.mobile_chores_hint)) }
                 if (sortedChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
                 choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                if (showStatusCard) {
+                    item {
+                        DashboardStatusCard(
+                            isBusy = isBusy,
+                            isSyncingQueue = isSyncingQueue,
+                            errorMessage = errorMessage,
+                            noticeMessage = noticeMessage,
+                            queuedSubmissionCount = queuedSubmissionCount,
+                            onRefresh = onRefresh
+                        )
+                    }
+                }
             }
 
             if (activeTab == MobileDashboardTab.CREATE) {
                 item { SectionIntro(title = stringResource(R.string.mobile_create_title), body = stringResource(R.string.mobile_create_hint)) }
-                item {
-                    Card(shape = RoundedCornerShape(24.dp)) {
-                        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Text(text = if (isCreatorRole) stringResource(R.string.mobile_create_ready) else stringResource(R.string.mobile_create_no_permission), style = MaterialTheme.typography.titleMedium)
-                            createDelayOptions.chunked(3).forEach { rowOptions ->
-                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                                    rowOptions.forEach { delay ->
-                                        OutlinedButton(onClick = { createDelayHours = delay }, enabled = createDelayHours != delay) {
-                                            Text(stringResource(R.string.mobile_create_delay_option, delay))
-                                        }
-                                    }
+                if (isCreatorRole && dashboard?.templates.orEmpty().isEmpty()) {
+                    item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
+                } else if (isCreatorRole) {
+                    item {
+                        Card(shape = RoundedCornerShape(24.dp)) {
+                            Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                Text(text = stringResource(R.string.mobile_create_ready), style = MaterialTheme.typography.titleMedium)
+                                Text(text = stringResource(R.string.mobile_create_template), style = MaterialTheme.typography.titleSmall)
+                                Text(
+                                    text = selectedTemplate?.title ?: stringResource(R.string.mobile_create_select_template),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                    }
+                    items(templates) { template ->
+                        Card(shape = RoundedCornerShape(22.dp)) {
+                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                Text(text = template.title, style = MaterialTheme.typography.titleMedium)
+                                if (template.description.isNotBlank()) {
+                                    Text(text = template.description, style = MaterialTheme.typography.bodySmall)
+                                }
+                                OutlinedButton(
+                                    onClick = { selectedTemplateId = template.id },
+                                    enabled = selectedTemplateId != template.id
+                                ) {
+                                    Text(
+                                        stringResource(
+                                            if (selectedTemplateId == template.id) {
+                                                R.string.mobile_create_selected_template
+                                            } else {
+                                                R.string.mobile_create_use_template
+                                            }
+                                        )
+                                    )
                                 }
                             }
                         }
                     }
-                }
-                if (isCreatorRole && dashboard?.templates.orEmpty().isEmpty()) {
-                    item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
-                } else if (isCreatorRole) {
-                    items(dashboard?.templates.orEmpty()) { template ->
-                        Card(shape = RoundedCornerShape(22.dp)) {
-                            Column(modifier = Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Text(text = template.title, style = MaterialTheme.typography.titleMedium)
-                                Button(onClick = { onCreateChore(template.id, createDelayHours) }, enabled = activeCreateAction == null) {
-                                    if (activeCreateAction == "create:${template.id}") {
-                                        Text(stringResource(R.string.mobile_create_creating))
-                                    } else {
-                                        Text(stringResource(R.string.mobile_create_action, createDelayHours))
+                    selectedTemplate?.let { template ->
+                        item {
+                            Card(shape = RoundedCornerShape(24.dp)) {
+                                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                                    Text(text = template.title, style = MaterialTheme.typography.titleLarge)
+                                    Text(text = stringResource(R.string.mobile_create_when), style = MaterialTheme.typography.titleSmall)
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        Button(onClick = { datePickerDialog.show() }) {
+                                            Text(stringResource(R.string.mobile_create_pick_date))
+                                        }
+                                        OutlinedButton(onClick = { timePickerDialog.show() }) {
+                                            Text(stringResource(R.string.mobile_create_pick_time))
+                                        }
+                                    }
+                                    Text(
+                                        text = formatEpochMillisForDisplay(createDueAtMillis),
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+
+                                    Text(text = stringResource(R.string.mobile_create_repeat), style = MaterialTheme.typography.titleSmall)
+                                    MobileChoiceRow(
+                                        options = listOf(
+                                            "none",
+                                            "daily",
+                                            "weekly",
+                                            "every_2_weeks",
+                                            "monthly",
+                                            "template"
+                                        ).map { preset ->
+                                            MobileChoiceOption(
+                                                label = recurrencePresetLabel(preset),
+                                                selected = createRecurrencePreset == preset,
+                                                onClick = { createRecurrencePreset = preset }
+                                            )
+                                        }
+                                    )
+                                    Text(
+                                        text = describeSelectedRecurrence(template.recurrence, createRecurrencePreset),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+
+                                    Text(text = stringResource(R.string.mobile_create_assignment), style = MaterialTheme.typography.titleSmall)
+                                    MobileChoiceRow(
+                                        options = listOf(
+                                            "round_robin",
+                                            "least_completed_recently",
+                                            "highest_streak",
+                                            "manual_default_assignee"
+                                        ).map { strategy ->
+                                            MobileChoiceOption(
+                                                label = assignmentStrategyLabel(strategy),
+                                                selected = createAssignmentStrategy == strategy,
+                                                onClick = {
+                                                    createAssignmentStrategy = strategy
+                                                    if (strategy != "manual_default_assignee") {
+                                                        createAssigneeId = null
+                                                    }
+                                                }
+                                            )
+                                        }
+                                    )
+                                    if (createAssignmentStrategy == "manual_default_assignee") {
+                                        Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
+                                        MobileChoiceRow(
+                                            options = buildList {
+                                                add(
+                                                    MobileChoiceOption(
+                                                        label = stringResource(R.string.mobile_create_unassigned),
+                                                        selected = createAssigneeId == null,
+                                                        onClick = { createAssigneeId = null }
+                                                    )
+                                                )
+                                                members.forEach { member ->
+                                                    add(
+                                                        MobileChoiceOption(
+                                                            label = member.displayName,
+                                                            selected = createAssigneeId == member.id,
+                                                            onClick = { createAssigneeId = member.id }
+                                                        )
+                                                    )
+                                                }
+                                            }
+                                        )
+                                    }
+
+                                    Button(
+                                        onClick = {
+                                            onCreateChore(
+                                                template.id,
+                                                Instant.ofEpochMilli(createDueAtMillis).toString(),
+                                                createAssigneeId,
+                                                createAssignmentStrategy,
+                                                selectedRecurrenceType(createRecurrencePreset),
+                                                selectedRecurrenceIntervalDays(createRecurrencePreset)
+                                            )
+                                        },
+                                        enabled = activeCreateAction == null
+                                    ) {
+                                        if (activeCreateAction == "create:${template.id}") {
+                                            Text(stringResource(R.string.mobile_create_creating))
+                                        } else {
+                                            Text(stringResource(R.string.mobile_create_action))
+                                        }
                                     }
                                 }
                             }
@@ -1057,7 +1286,7 @@ private fun DashboardScreen(
             if (activeTab == MobileDashboardTab.SETTINGS) {
                 item { SectionIntro(title = stringResource(R.string.mobile_settings_title), body = stringResource(R.string.mobile_settings_hint)) }
                 item {
-                    SettingsSectionCard(icon = Icons.Rounded.Settings, title = stringResource(R.string.mobile_settings_appearance)) {
+                    SettingsSectionCard(icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
                         Text(text = stringResource(R.string.mobile_settings_theme), style = MaterialTheme.typography.titleMedium)
                         MobileChoiceRow(options = listOf(
                             MobileChoiceOption(label = stringResource(R.string.mobile_theme_system), selected = themeMode == MobileThemeMode.SYSTEM, onClick = { onThemeModeChange(MobileThemeMode.SYSTEM) }),
@@ -1163,6 +1392,80 @@ private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
             )
+        }
+    }
+}
+
+@Composable
+private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+    val containerColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+    }
+    val iconTint = MaterialTheme.colorScheme.onPrimary
+
+    TextButton(
+        onClick = onClick,
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(52.dp).background(containerColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = MaterialTheme.colorScheme.primary,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardStatusCard(
+    isBusy: Boolean,
+    isSyncingQueue: Boolean,
+    errorMessage: String?,
+    noticeMessage: String?,
+    queuedSubmissionCount: Int,
+    onRefresh: () -> Unit
+) {
+    Card(shape = RoundedCornerShape(22.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = onRefresh, enabled = !isBusy) {
+                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
+            }
+            if (queuedSubmissionCount > 0 || isSyncingQueue) {
+                Text(
+                    text = if (isSyncingQueue) {
+                        stringResource(R.string.mobile_syncing_queue)
+                    } else {
+                        stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount)
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            if (!noticeMessage.isNullOrBlank()) {
+                Text(text = noticeMessage, color = MaterialTheme.colorScheme.primary)
+            }
+            if (!errorMessage.isNullOrBlank()) {
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+            }
         }
     }
 }
@@ -1293,6 +1596,83 @@ private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?):
     MobileChoreSection.MINE -> stringResource(R.string.mobile_chore_assigned_to_you)
     MobileChoreSection.UNASSIGNED -> stringResource(R.string.mobile_chore_unassigned)
     MobileChoreSection.OTHERS -> stringResource(R.string.mobile_chore_assigned_elsewhere)
+}
+
+private fun defaultCreateDueAtMillis(): Long =
+    Instant.now()
+        .plus(4, ChronoUnit.HOURS)
+        .truncatedTo(ChronoUnit.MINUTES)
+        .toEpochMilli()
+
+private fun formatEpochMillisForDisplay(value: Long): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.ofEpochMilli(value))
+
+@Composable
+private fun assignmentStrategyLabel(value: String): String = when (value) {
+    "least_completed_recently" -> stringResource(R.string.mobile_create_assignment_least_completed)
+    "highest_streak" -> stringResource(R.string.mobile_create_assignment_highest_streak)
+    "manual_default_assignee" -> stringResource(R.string.mobile_create_assignment_manual)
+    else -> stringResource(R.string.mobile_create_assignment_round_robin)
+}
+
+@Composable
+private fun recurrencePresetLabel(value: String): String = when (value) {
+    "daily" -> stringResource(R.string.mobile_create_repeat_daily_short)
+    "weekly" -> stringResource(R.string.mobile_create_repeat_weekly_short)
+    "every_2_weeks" -> stringResource(R.string.mobile_create_repeat_every_2_weeks_short)
+    "monthly" -> stringResource(R.string.mobile_create_repeat_monthly_short)
+    "template" -> stringResource(R.string.mobile_create_repeat_template_short)
+    else -> stringResource(R.string.mobile_create_repeat_no)
+}
+
+private fun templateRecurrencePreset(recurrence: MobileTemplateRecurrence): String = when (recurrence.type) {
+    "daily" -> "daily"
+    "weekly" -> "weekly"
+    "monthly" -> "monthly"
+    "every_x_days" -> if ((recurrence.intervalDays ?: 1) == 14) "every_2_weeks" else "template"
+    "custom_weekly" -> "template"
+    else -> "none"
+}
+
+private fun selectedRecurrenceType(preset: String): String? = when (preset) {
+    "daily" -> "daily"
+    "weekly" -> "weekly"
+    "every_2_weeks" -> "every_x_days"
+    "monthly" -> "monthly"
+    "none" -> "none"
+    else -> null
+}
+
+private fun selectedRecurrenceIntervalDays(preset: String): Int? = when (preset) {
+    "every_2_weeks" -> 14
+    else -> null
+}
+
+@Composable
+private fun describeSelectedRecurrence(recurrence: MobileTemplateRecurrence, preset: String): String {
+    return when (preset) {
+        "none" -> stringResource(R.string.mobile_create_repeat_no)
+        "daily" -> stringResource(R.string.mobile_create_repeat_daily)
+        "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
+        "every_2_weeks" -> stringResource(R.string.mobile_create_repeat_every_2_weeks)
+        "monthly" -> stringResource(R.string.mobile_create_repeat_monthly)
+        else -> when (recurrence.type) {
+        "daily" -> stringResource(R.string.mobile_create_repeat_daily)
+        "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
+        "monthly" -> stringResource(R.string.mobile_create_repeat_monthly)
+        "every_x_days" -> stringResource(
+            R.string.mobile_create_repeat_every_x_days,
+            recurrence.intervalDays ?: 1
+        )
+        "custom_weekly" -> stringResource(
+            R.string.mobile_create_repeat_custom_weekly,
+            recurrence.weekdays.joinToString(", ")
+        )
+        else -> stringResource(R.string.mobile_create_repeat_template_none)
+        }
+    }
 }
 
 private fun formatApiTimestamp(value: String): String {

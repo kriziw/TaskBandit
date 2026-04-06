@@ -1,11 +1,13 @@
-import { Body, Controller, Get, Param, Post, Query, Res, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Header, MessageEvent, Param, Post, Query, Res, Sse, UseGuards } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import { Response } from "express";
+import { Observable } from "rxjs";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { Roles } from "../../common/auth/roles.decorator";
 import { RolesGuard } from "../../common/auth/roles.guard";
+import { DashboardSyncService } from "./dashboard-sync.service";
 import { SendTestNotificationDto } from "./dto/send-test-notification.dto";
 import { DashboardService } from "./dashboard.service";
 
@@ -13,7 +15,10 @@ import { DashboardService } from "./dashboard.service";
 @Controller("api/dashboard")
 @UseGuards(JwtAuthGuard, RolesGuard)
 export class DashboardController {
-  constructor(private readonly dashboardService: DashboardService) {}
+  constructor(
+    private readonly dashboardService: DashboardService,
+    private readonly dashboardSyncService: DashboardSyncService
+  ) {}
 
   @Get("summary")
   getSummary(@CurrentUser() user: AuthenticatedUser) {
@@ -28,6 +33,13 @@ export class DashboardController {
   @Get("notifications")
   getNotifications(@CurrentUser() user: AuthenticatedUser) {
     return this.dashboardService.getNotifications(user);
+  }
+
+  @Sse("sync/stream")
+  @Header("Cache-Control", "no-cache")
+  @Header("X-Accel-Buffering", "no")
+  streamSync(@CurrentUser() user: AuthenticatedUser): Observable<MessageEvent> {
+    return this.dashboardSyncService.streamForHousehold(user.householdId);
   }
 
   @Post("notifications/:id/read")

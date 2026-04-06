@@ -1739,13 +1739,26 @@ export class HouseholdRepository {
       }
     });
 
+    const effectiveAssignmentStrategy = dto.assignmentStrategy ?? template.assignmentStrategy;
+    const effectiveRecurrenceType =
+      dto.suppressRecurrence === true
+        ? RecurrenceType.NONE
+        : dto.recurrenceType ?? template.recurrenceType;
+    const effectiveRecurrenceIntervalDays =
+      effectiveRecurrenceType === RecurrenceType.EVERY_X_DAYS
+        ? dto.recurrenceIntervalDays ?? template.recurrenceIntervalDays ?? 1
+        : null;
+    const effectiveRecurrenceWeekdays =
+      effectiveRecurrenceType === RecurrenceType.CUSTOM_WEEKLY
+        ? dto.recurrenceWeekdays ?? template.recurrenceWeekdays
+        : [];
     const resolvedAssigneeId = dto.assigneeId
       ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
       : await this.resolveAssigneeForTemplate(
           this.prisma,
           householdId,
           template.id,
-          template.assignmentStrategy
+          effectiveAssignmentStrategy
         );
 
     const instance = await this.prisma.$transaction(async (tx) => {
@@ -1756,7 +1769,22 @@ export class HouseholdRepository {
           title: dto.title?.trim() || template.title,
           state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId: resolvedAssigneeId,
-          dueAtUtc: dto.dueAt
+          dueAtUtc: dto.dueAt,
+          suppressRecurrence: effectiveRecurrenceType === RecurrenceType.NONE,
+          assignmentStrategyOverride:
+            effectiveAssignmentStrategy !== template.assignmentStrategy ? effectiveAssignmentStrategy : null,
+          recurrenceTypeOverride:
+            effectiveRecurrenceType !== template.recurrenceType ? effectiveRecurrenceType : null,
+          recurrenceIntervalDaysOverride:
+            effectiveRecurrenceType === RecurrenceType.EVERY_X_DAYS &&
+            effectiveRecurrenceIntervalDays !== template.recurrenceIntervalDays
+              ? effectiveRecurrenceIntervalDays
+              : null,
+          recurrenceWeekdaysOverride:
+            effectiveRecurrenceType === RecurrenceType.CUSTOM_WEEKLY &&
+            JSON.stringify(effectiveRecurrenceWeekdays) !== JSON.stringify(template.recurrenceWeekdays)
+              ? effectiveRecurrenceWeekdays
+              : []
         },
         include: {
           template: {
@@ -2740,6 +2768,10 @@ export class HouseholdRepository {
       };
     }>
   ) {
+    if (instance.suppressRecurrence) {
+      return;
+    }
+
     const template = await this.prisma.choreTemplate.findFirst({
       where: {
         id: instance.templateId,
@@ -2751,11 +2783,22 @@ export class HouseholdRepository {
       return;
     }
 
+    const effectiveAssignmentStrategy = instance.assignmentStrategyOverride ?? template.assignmentStrategy;
+    const effectiveRecurrenceType = instance.recurrenceTypeOverride ?? template.recurrenceType;
+    const effectiveRecurrenceIntervalDays =
+      instance.recurrenceTypeOverride === RecurrenceType.EVERY_X_DAYS
+        ? instance.recurrenceIntervalDaysOverride
+        : template.recurrenceIntervalDays;
+    const effectiveRecurrenceWeekdays =
+      instance.recurrenceTypeOverride === RecurrenceType.CUSTOM_WEEKLY
+        ? instance.recurrenceWeekdaysOverride
+        : template.recurrenceWeekdays;
+
     const nextDueAt = this.calculateRecurringDueAt(
       instance.dueAtUtc,
-      template.recurrenceType,
-      template.recurrenceIntervalDays,
-      template.recurrenceWeekdays
+      effectiveRecurrenceType,
+      effectiveRecurrenceIntervalDays,
+      effectiveRecurrenceWeekdays
     );
 
     if (!nextDueAt) {
@@ -2767,7 +2810,7 @@ export class HouseholdRepository {
         tx,
         instance.householdId,
         template.id,
-        template.assignmentStrategy
+        effectiveAssignmentStrategy
       );
 
       await tx.choreInstance.create({
@@ -2777,7 +2820,12 @@ export class HouseholdRepository {
           title: template.title,
           state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId,
-          dueAtUtc: nextDueAt
+          dueAtUtc: nextDueAt,
+          suppressRecurrence: false,
+          assignmentStrategyOverride: instance.assignmentStrategyOverride,
+          recurrenceTypeOverride: instance.recurrenceTypeOverride,
+          recurrenceIntervalDaysOverride: instance.recurrenceIntervalDaysOverride,
+          recurrenceWeekdaysOverride: instance.recurrenceWeekdaysOverride
         }
       });
 
@@ -2824,6 +2872,11 @@ export class HouseholdRepository {
         return new Date(currentDueAtUtc.getTime() + 24 * 60 * 60 * 1000);
       case RecurrenceType.WEEKLY:
         return new Date(currentDueAtUtc.getTime() + 7 * 24 * 60 * 60 * 1000);
+      case RecurrenceType.MONTHLY: {
+        const nextDueAt = new Date(currentDueAtUtc);
+        nextDueAt.setUTCMonth(nextDueAt.getUTCMonth() + 1);
+        return nextDueAt;
+      }
       case RecurrenceType.EVERY_X_DAYS:
         return new Date(currentDueAtUtc.getTime() + (recurrenceIntervalDays ?? 1) * 24 * 60 * 60 * 1000);
       case RecurrenceType.CUSTOM_WEEKLY: {
@@ -3506,6 +3559,8 @@ export class HouseholdRepository {
         return "daily";
       case RecurrenceType.WEEKLY:
         return "weekly";
+      case RecurrenceType.MONTHLY:
+        return "monthly";
       case RecurrenceType.EVERY_X_DAYS:
         return "every_x_days";
       case RecurrenceType.CUSTOM_WEEKLY:
