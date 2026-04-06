@@ -46,6 +46,7 @@ enum RecurrenceType {
   NONE
   DAILY
   WEEKLY
+  MONTHLY
   EVERY_X_DAYS
   CUSTOM_WEEKLY
 }
@@ -217,6 +218,11 @@ model ChoreInstance {
   state           ChoreState
   assigneeId      String?       @db.Uuid
   dueAtUtc        DateTime
+  suppressRecurrence Boolean    @default(false)
+  assignmentStrategyOverride AssignmentStrategyType?
+  recurrenceTypeOverride RecurrenceType?
+  recurrenceIntervalDaysOverride Int?
+  recurrenceWeekdaysOverride String[] @default([])
   awardedPoints   Int           @default(0)
   overduePenaltyPoints Int      @default(0)
   attachmentCount Int           @default(0)
