@@ -9,3 +9,9 @@ val Mint = Color(0xFF73D9B3)
 val Gold = Color(0xFFFFC94A)
 val Coral = Color(0xFFFF7A6B)
 
+// Pastel tints — used for container backgrounds and gradients
+val MintPastel = Color(0xFFD9F5EC)
+val SkyPastel = Color(0xFFDBF1FC)
+val CoralPastel = Color(0xFFFFE5E1)
+val CreamDeep = Color(0xFFF5EDD9)
+
