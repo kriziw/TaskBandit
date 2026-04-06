@@ -2,7 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
-## [0.14.1](https://github.com/kriziw/TaskBandit/compare/v0.14.0...v0.14.1) (2026-04-06)
+## [0.15.0](https://github.com/kriziw/TaskBandit/compare/v0.14.0...v0.15.0) (2026-04-06)
+
+
+### Features
+
+* **ci:** add beta release channel for dev branch ([891726a](https://github.com/kriziw/TaskBandit/commit/891726ace07e29b9a57cfd28cdbb172414b6a16c))
+* **ci:** add beta release channel for dev branch ([5570e2f](https://github.com/kriziw/TaskBandit/commit/5570e2f68473c1d30d1c51ffd660c9da3080cff3))
 
 
 ### Bug Fixes
