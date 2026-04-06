@@ -90,8 +90,15 @@
     <string name="mobile_create_repeat">Repeating</string>
     <string name="mobile_create_repeat_yes">Repeating</string>
     <string name="mobile_create_repeat_no">One-off</string>
+    <string name="mobile_create_repeat_daily_short">Daily</string>
+    <string name="mobile_create_repeat_weekly_short">Weekly</string>
+    <string name="mobile_create_repeat_every_2_weeks_short">Every 2 weeks</string>
+    <string name="mobile_create_repeat_monthly_short">Monthly</string>
+    <string name="mobile_create_repeat_template_short">Template</string>
     <string name="mobile_create_repeat_daily">Repeats daily</string>
     <string name="mobile_create_repeat_weekly">Repeats weekly</string>
+    <string name="mobile_create_repeat_every_2_weeks">Repeats every 2 weeks</string>
+    <string name="mobile_create_repeat_monthly">Repeats monthly</string>
     <string name="mobile_create_repeat_every_x_days">Repeats every %1$d days</string>
     <string name="mobile_create_repeat_custom_weekly">Repeats on %1$s</string>
     <string name="mobile_create_repeat_template_none">This template does not have a repeat schedule yet.</string>

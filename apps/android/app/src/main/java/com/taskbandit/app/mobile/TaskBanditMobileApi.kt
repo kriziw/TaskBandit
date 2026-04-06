@@ -213,6 +213,8 @@ class TaskBanditMobileApi {
         dueAtIsoUtc: String,
         assigneeId: String? = null,
         assignmentStrategy: String? = null,
+        recurrenceType: String? = null,
+        recurrenceIntervalDays: Int? = null,
         suppressRecurrence: Boolean = false
     ) {
         val payload = JSONObject()
@@ -226,6 +228,14 @@ class TaskBanditMobileApi {
 
         if (!assignmentStrategy.isNullOrBlank()) {
             payload.put("assignmentStrategy", assignmentStrategy)
+        }
+
+        if (!recurrenceType.isNullOrBlank()) {
+            payload.put("recurrenceType", recurrenceType)
+        }
+
+        if (recurrenceIntervalDays != null) {
+            payload.put("recurrenceIntervalDays", recurrenceIntervalDays)
         }
 
         requestJson(

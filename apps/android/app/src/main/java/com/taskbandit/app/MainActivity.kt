@@ -539,7 +539,8 @@ private fun TaskBanditApp(
         dueAtIsoUtc: String,
         assigneeId: String?,
         assignmentStrategy: String,
-        repeats: Boolean
+        recurrenceType: String?,
+        recurrenceIntervalDays: Int?
     ) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
@@ -557,7 +558,9 @@ private fun TaskBanditApp(
                         dueAtIsoUtc = dueAtIsoUtc,
                         assigneeId = assigneeId,
                         assignmentStrategy = assignmentStrategy,
-                        suppressRecurrence = !repeats
+                        recurrenceType = recurrenceType,
+                        recurrenceIntervalDays = recurrenceIntervalDays,
+                        suppressRecurrence = recurrenceType == "none"
                     )
                 }
             }.onSuccess {
@@ -979,7 +982,7 @@ private fun DashboardScreen(
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
-    onCreateChore: (String, String, String?, String, Boolean) -> Unit,
+    onCreateChore: (String, String, String?, String, String?, Int?) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
@@ -992,9 +995,9 @@ private fun DashboardScreen(
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
     var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
     var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
-    var createRepeats by rememberSaveable { mutableStateOf(false) }
     var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
     var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var createRecurrencePreset by rememberSaveable { mutableStateOf("template") }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
@@ -1022,7 +1025,7 @@ private fun DashboardScreen(
     LaunchedEffect(selectedTemplate?.id) {
         val template = selectedTemplate ?: return@LaunchedEffect
         createAssignmentStrategy = template.assignmentStrategy
-        createRepeats = template.recurrence.type != "none"
+        createRecurrencePreset = templateRecurrencePreset(template.recurrence)
         createAssigneeId = null
     }
 
@@ -1188,31 +1191,24 @@ private fun DashboardScreen(
                                     )
 
                                     Text(text = stringResource(R.string.mobile_create_repeat), style = MaterialTheme.typography.titleSmall)
-                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                        if (createRepeats) {
-                                            Button(onClick = { createRepeats = true }) {
-                                                Text(stringResource(R.string.mobile_create_repeat_yes))
-                                            }
-                                        } else {
-                                            OutlinedButton(
-                                                onClick = { createRepeats = true },
-                                                enabled = template.recurrence.type != "none"
-                                            ) {
-                                                Text(stringResource(R.string.mobile_create_repeat_yes))
-                                            }
+                                    MobileChoiceRow(
+                                        options = listOf(
+                                            "none",
+                                            "daily",
+                                            "weekly",
+                                            "every_2_weeks",
+                                            "monthly",
+                                            "template"
+                                        ).map { preset ->
+                                            MobileChoiceOption(
+                                                label = recurrencePresetLabel(preset),
+                                                selected = createRecurrencePreset == preset,
+                                                onClick = { createRecurrencePreset = preset }
+                                            )
                                         }
-                                        if (!createRepeats) {
-                                            Button(onClick = { createRepeats = false }) {
-                                                Text(stringResource(R.string.mobile_create_repeat_no))
-                                            }
-                                        } else {
-                                            OutlinedButton(onClick = { createRepeats = false }) {
-                                                Text(stringResource(R.string.mobile_create_repeat_no))
-                                            }
-                                        }
-                                    }
+                                    )
                                     Text(
-                                        text = describeTemplateRecurrence(template.recurrence, createRepeats),
+                                        text = describeSelectedRecurrence(template.recurrence, createRecurrencePreset),
                                         style = MaterialTheme.typography.bodySmall,
                                         color = MaterialTheme.colorScheme.onSurfaceVariant
                                     )
@@ -1268,7 +1264,8 @@ private fun DashboardScreen(
                                                 Instant.ofEpochMilli(createDueAtMillis).toString(),
                                                 createAssigneeId,
                                                 createAssignmentStrategy,
-                                                createRepeats
+                                                selectedRecurrenceType(createRecurrencePreset),
+                                                selectedRecurrenceIntervalDays(createRecurrencePreset)
                                             )
                                         },
                                         enabled = activeCreateAction == null
@@ -1621,14 +1618,50 @@ private fun assignmentStrategyLabel(value: String): String = when (value) {
 }
 
 @Composable
-private fun describeTemplateRecurrence(recurrence: MobileTemplateRecurrence, repeats: Boolean): String {
-    if (!repeats) {
-        return stringResource(R.string.mobile_create_repeat_no)
-    }
+private fun recurrencePresetLabel(value: String): String = when (value) {
+    "daily" -> stringResource(R.string.mobile_create_repeat_daily_short)
+    "weekly" -> stringResource(R.string.mobile_create_repeat_weekly_short)
+    "every_2_weeks" -> stringResource(R.string.mobile_create_repeat_every_2_weeks_short)
+    "monthly" -> stringResource(R.string.mobile_create_repeat_monthly_short)
+    "template" -> stringResource(R.string.mobile_create_repeat_template_short)
+    else -> stringResource(R.string.mobile_create_repeat_no)
+}
 
-    return when (recurrence.type) {
+private fun templateRecurrencePreset(recurrence: MobileTemplateRecurrence): String = when (recurrence.type) {
+    "daily" -> "daily"
+    "weekly" -> "weekly"
+    "monthly" -> "monthly"
+    "every_x_days" -> if ((recurrence.intervalDays ?: 1) == 14) "every_2_weeks" else "template"
+    "custom_weekly" -> "template"
+    else -> "none"
+}
+
+private fun selectedRecurrenceType(preset: String): String? = when (preset) {
+    "daily" -> "daily"
+    "weekly" -> "weekly"
+    "every_2_weeks" -> "every_x_days"
+    "monthly" -> "monthly"
+    "none" -> "none"
+    else -> null
+}
+
+private fun selectedRecurrenceIntervalDays(preset: String): Int? = when (preset) {
+    "every_2_weeks" -> 14
+    else -> null
+}
+
+@Composable
+private fun describeSelectedRecurrence(recurrence: MobileTemplateRecurrence, preset: String): String {
+    return when (preset) {
+        "none" -> stringResource(R.string.mobile_create_repeat_no)
         "daily" -> stringResource(R.string.mobile_create_repeat_daily)
         "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
+        "every_2_weeks" -> stringResource(R.string.mobile_create_repeat_every_2_weeks)
+        "monthly" -> stringResource(R.string.mobile_create_repeat_monthly)
+        else -> when (recurrence.type) {
+        "daily" -> stringResource(R.string.mobile_create_repeat_daily)
+        "weekly" -> stringResource(R.string.mobile_create_repeat_weekly)
+        "monthly" -> stringResource(R.string.mobile_create_repeat_monthly)
         "every_x_days" -> stringResource(
             R.string.mobile_create_repeat_every_x_days,
             recurrence.intervalDays ?: 1
@@ -1638,6 +1671,7 @@ private fun describeTemplateRecurrence(recurrence: MobileTemplateRecurrence, rep
             recurrence.weekdays.joinToString(", ")
         )
         else -> stringResource(R.string.mobile_create_repeat_template_none)
+        }
     }
 }
 
