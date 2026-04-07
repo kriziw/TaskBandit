@@ -83,7 +83,8 @@ class TaskBanditMobileApi {
                         isOverdue = entry.optBoolean("isOverdue"),
                         requirePhotoProof = entry.optBoolean("requirePhotoProof"),
                         checklist = parseChecklist(entry.optJSONArray("checklist")),
-                        completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds"))
+                        completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
+                        variantId = entry.optString("variantId").ifBlank { null }
                     )
                 )
             }
@@ -215,7 +216,8 @@ class TaskBanditMobileApi {
         assignmentStrategy: String? = null,
         recurrenceType: String? = null,
         recurrenceIntervalDays: Int? = null,
-        suppressRecurrence: Boolean = false
+        suppressRecurrence: Boolean = false,
+        variantId: String? = null
     ) {
         val payload = JSONObject()
             .put("templateId", templateId)
@@ -236,6 +238,10 @@ class TaskBanditMobileApi {
 
         if (recurrenceIntervalDays != null) {
             payload.put("recurrenceIntervalDays", recurrenceIntervalDays)
+        }
+
+        if (!variantId.isNullOrBlank()) {
+            payload.put("variantId", variantId)
         }
 
         requestJson(
@@ -462,6 +468,19 @@ class TaskBanditMobileApi {
         }
     }
 
+    private fun parseVariants(entries: JSONArray?): List<MobileTemplateVariant> {
+        if (entries == null) return emptyList()
+        return buildList {
+            for (index in 0 until entries.length()) {
+                val item = entries.optJSONObject(index) ?: continue
+                val id = item.optString("id")
+                val label = item.optString("label")
+                if (id.isBlank() || label.isBlank()) continue
+                add(MobileTemplateVariant(id = id, label = label))
+            }
+        }
+    }
+
     private fun parseTemplates(entries: JSONArray?): List<MobileChoreTemplate> {
         if (entries == null) {
             return emptyList()
@@ -489,7 +508,9 @@ class TaskBanditMobileApi {
                                 weekdays = parseStringList(recurrence.optJSONArray("weekdays"))
                             )
                         },
-                        requirePhotoProof = item.optBoolean("requirePhotoProof")
+                        requirePhotoProof = item.optBoolean("requirePhotoProof"),
+                        recurrenceStartStrategy = item.optString("recurrenceStartStrategy").ifBlank { "due_at" },
+                        variants = parseVariants(item.optJSONArray("variants"))
                     )
                 )
             }

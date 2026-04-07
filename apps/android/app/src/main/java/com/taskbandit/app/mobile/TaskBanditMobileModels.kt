@@ -29,7 +29,8 @@ data class MobileChore(
     val isOverdue: Boolean,
     val requirePhotoProof: Boolean,
     val checklist: List<MobileChecklistItem>,
-    val completedChecklistIds: List<String>
+    val completedChecklistIds: List<String>,
+    val variantId: String? = null
 )
 
 data class MobileChecklistItem(
@@ -102,13 +103,20 @@ data class MobileTemplateRecurrence(
     val weekdays: List<String>
 )
 
+data class MobileTemplateVariant(
+    val id: String,
+    val label: String
+)
+
 data class MobileChoreTemplate(
     val id: String,
     val title: String,
     val description: String,
     val assignmentStrategy: String,
     val recurrence: MobileTemplateRecurrence,
-    val requirePhotoProof: Boolean
+    val requirePhotoProof: Boolean,
+    val recurrenceStartStrategy: String = "due_at",
+    val variants: List<MobileTemplateVariant> = emptyList()
 )
 
 data class MobileDashboard(

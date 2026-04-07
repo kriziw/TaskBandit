@@ -343,6 +343,8 @@ export function App() {
     recurrenceIntervalDays: 2,
     recurrenceWeekdays: [],
     requirePhotoProof: false,
+    recurrenceStartStrategy: "due_at",
+    variants: [],
     dependencyTemplateIds: [],
     dependencyRules: [],
     checklist: []
@@ -1722,7 +1724,8 @@ export function App() {
         templateId: instanceForm.templateId,
         assigneeId: instanceForm.assigneeId || undefined,
         title: instanceForm.title?.trim() || undefined,
-        dueAt: new Date(instanceForm.dueAt).toISOString()
+        dueAt: new Date(instanceForm.dueAt).toISOString(),
+        variantId: instanceForm.variantId || undefined
       };
       const savedInstance = editingInstanceId
         ? await taskBanditApi.updateInstance(token, language, editingInstanceId, instancePayload)
@@ -2127,6 +2130,8 @@ export function App() {
       recurrenceIntervalDays: 2,
       recurrenceWeekdays: [],
       requirePhotoProof: false,
+      recurrenceStartStrategy: "due_at",
+      variants: [],
       dependencyTemplateIds: [],
       dependencyRules: [],
       checklist: []
@@ -2154,6 +2159,8 @@ export function App() {
       recurrenceIntervalDays: template.recurrence.intervalDays ?? 2,
       recurrenceWeekdays: template.recurrence.weekdays,
       requirePhotoProof: template.requirePhotoProof,
+      recurrenceStartStrategy: template.recurrenceStartStrategy ?? "due_at",
+      variants: template.variants?.map((v) => ({ label: v.label })) ?? [],
       dependencyTemplateIds: template.dependencyTemplateIds,
       dependencyRules: normalizeTemplateDependencyRules(
         template.dependencyRules,
@@ -4612,6 +4619,83 @@ export function App() {
                         }
                       />
                     </label>
+                    <label>
+                      <span>Schedule next chore from</span>
+                      <select
+                        value={templateForm.recurrenceStartStrategy ?? "due_at"}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            recurrenceStartStrategy: event.target.value as "due_at" | "completed_at"
+                          }))
+                        }
+                      >
+                        <option value="due_at">Original due date</option>
+                        <option value="completed_at">Completion date</option>
+                      </select>
+                    </label>
+                    <div className="stack-list">
+                      <div className="section-heading">
+                        <h3>Variants</h3>
+                        <span className="section-kicker">{(templateForm.variants ?? []).length}</span>
+                      </div>
+                      <p className="inline-message">Optional: define named subtypes (e.g. "White clothes", "Colour clothes"). When picked, the variant name is appended to the chore title.</p>
+                      {(templateForm.variants ?? []).map((v, index) => (
+                        <div className="task-row compact" key={index}>
+                          <span>{v.label}</span>
+                          <button
+                            type="button"
+                            className="ghost-button"
+                            onClick={() =>
+                              setTemplateForm((current) => ({
+                                ...current,
+                                variants: (current.variants ?? []).filter((_, i) => i !== index)
+                              }))
+                            }
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      ))}
+                      <div style={{ display: "flex", gap: "8px" }}>
+                        <input
+                          type="text"
+                          id="newVariantLabel"
+                          placeholder="Variant name"
+                          maxLength={100}
+                          onKeyDown={(event) => {
+                            if (event.key === "Enter") {
+                              event.preventDefault();
+                              const val = (event.target as HTMLInputElement).value.trim();
+                              if (val) {
+                                setTemplateForm((current) => ({
+                                  ...current,
+                                  variants: [...(current.variants ?? []), { label: val }]
+                                }));
+                                (event.target as HTMLInputElement).value = "";
+                              }
+                            }
+                          }}
+                        />
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() => {
+                            const input = document.getElementById("newVariantLabel") as HTMLInputElement;
+                            const val = input.value.trim();
+                            if (val) {
+                              setTemplateForm((current) => ({
+                                ...current,
+                                variants: [...(current.variants ?? []), { label: val }]
+                              }));
+                              input.value = "";
+                            }
+                          }}
+                        >
+                          Add
+                        </button>
+                      </div>
+                    </div>
                     <div className="stack-list">
                       <div className="section-heading">
                         <h3>{t("templates.follow_ups")}</h3>
@@ -4763,6 +4847,31 @@ export function App() {
                         ))}
                       </select>
                     </label>
+                    {(() => {
+                      const selectedTemplate = payload.templates.find((t) => t.id === instanceForm.templateId);
+                      if ((selectedTemplate?.variants?.length ?? 0) > 0) {
+                        return (
+                          <label>
+                            <span>Variant</span>
+                            <select
+                              value={instanceForm.variantId ?? ""}
+                              onChange={(event) =>
+                                setInstanceForm((current) => ({
+                                  ...current,
+                                  variantId: event.target.value || undefined
+                                }))
+                              }
+                            >
+                              <option value="">— No variant —</option>
+                              {selectedTemplate!.variants.map((v) => (
+                                <option key={v.id} value={v.id}>{v.label}</option>
+                              ))}
+                            </select>
+                          </label>
+                        );
+                      }
+                      return null;
+                    })()}
                     <label>
                       <span>{t("instances.assignee")}</span>
                       <select

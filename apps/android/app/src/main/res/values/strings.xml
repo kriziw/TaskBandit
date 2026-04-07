@@ -121,6 +121,8 @@
     <string name="mobile_create_ready">Choose a template, schedule the chore, and confirm the assignment behavior.</string>
     <string name="mobile_create_no_permission">Only admin or parent roles can create chores.</string>
     <string name="mobile_create_no_templates">No templates available yet. Add templates from web first.</string>
+    <string name="mobile_create_variant">Variant</string>
+    <string name="mobile_create_no_variant">No variant</string>
     <string name="mobile_chore_created">Chore created from Android.</string>
     <string name="mobile_create_chore_failed">Could not create the chore.</string>
     <string name="mobile_settings_title">Settings</string>

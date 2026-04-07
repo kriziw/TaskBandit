@@ -18,6 +18,7 @@ import {
   NotificationDeviceProvider,
   NotificationPushDeliveryStatus,
   NotificationType,
+  RecurrenceStartStrategy,
   RecurrenceType,
   Prisma
 } from "@prisma/client";
@@ -1539,7 +1540,8 @@ export class HouseholdRepository {
       },
       include: {
         checklistItems: true,
-        dependencies: true
+        dependencies: true,
+        variants: true
       },
       orderBy: {
         title: "asc"
@@ -1557,7 +1559,8 @@ export class HouseholdRepository {
       },
       include: {
         checklistItems: true,
-        dependencies: true
+        dependencies: true,
+        variants: true
       }
     });
 
@@ -1603,6 +1606,7 @@ export class HouseholdRepository {
           recurrenceWeekdays:
             dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
           requirePhotoProof: dto.requirePhotoProof,
+          recurrenceStartStrategy: dto.recurrenceStartStrategy ?? RecurrenceStartStrategy.DUE_AT,
           checklistItems: {
             create:
               dto.checklist?.map((item, index) => ({
@@ -1617,11 +1621,18 @@ export class HouseholdRepository {
               followUpDelayValue: dependencyRule.followUpDelayValue,
               followUpDelayUnit: dependencyRule.followUpDelayUnit
             }))
+          },
+          variants: {
+            create: (dto.variants ?? []).map((v, i) => ({
+              label: v.label.trim(),
+              sortOrder: i + 1
+            }))
           }
         },
         include: {
           checklistItems: true,
-          dependencies: true
+          dependencies: true,
+          variants: true
         }
       });
 
@@ -1693,6 +1704,7 @@ export class HouseholdRepository {
           recurrenceWeekdays:
             dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
           requirePhotoProof: dto.requirePhotoProof,
+          recurrenceStartStrategy: dto.recurrenceStartStrategy ?? RecurrenceStartStrategy.DUE_AT,
           checklistItems: {
             create:
               dto.checklist?.map((item, index) => ({
@@ -1707,11 +1719,19 @@ export class HouseholdRepository {
               followUpDelayValue: dependencyRule.followUpDelayValue,
               followUpDelayUnit: dependencyRule.followUpDelayUnit
             }))
+          },
+          variants: {
+            deleteMany: {},
+            create: (dto.variants ?? []).map((v, i) => ({
+              label: v.label.trim(),
+              sortOrder: i + 1
+            }))
           }
         },
         include: {
           checklistItems: true,
-          dependencies: true
+          dependencies: true,
+          variants: true
         }
       });
     });
@@ -1738,6 +1758,12 @@ export class HouseholdRepository {
         checklistItems: true
       }
     });
+
+    const variant = dto.variantId
+      ? await this.prisma.choreTemplateVariant.findFirst({
+          where: { id: dto.variantId, templateId: template.id }
+        })
+      : null;
 
     const effectiveAssignmentStrategy = dto.assignmentStrategy ?? template.assignmentStrategy;
     const effectiveRecurrenceType =
@@ -1766,11 +1792,12 @@ export class HouseholdRepository {
         data: {
           householdId,
           templateId: template.id,
-          title: dto.title?.trim() || template.title,
+          title: dto.title?.trim() || (variant ? `${template.title} — ${variant.label}` : template.title),
           state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId: resolvedAssigneeId,
           dueAtUtc: dto.dueAt,
           suppressRecurrence: effectiveRecurrenceType === RecurrenceType.NONE,
+          variantId: dto.variantId ?? null,
           assignmentStrategyOverride:
             effectiveAssignmentStrategy !== template.assignmentStrategy ? effectiveAssignmentStrategy : null,
           recurrenceTypeOverride:
@@ -2776,7 +2803,8 @@ export class HouseholdRepository {
       where: {
         id: instance.templateId,
         householdId: instance.householdId
-      }
+      },
+      include: { variants: true }
     });
 
     if (!template) {
@@ -2793,9 +2821,16 @@ export class HouseholdRepository {
       instance.recurrenceTypeOverride === RecurrenceType.CUSTOM_WEEKLY
         ? instance.recurrenceWeekdaysOverride
         : template.recurrenceWeekdays;
+    const effectiveStartStrategy = template.recurrenceStartStrategy;
 
-    const nextDueAt = this.calculateRecurringDueAt(
-      instance.dueAtUtc,
+    // Choose base date based on strategy
+    const baseDate =
+      effectiveStartStrategy === RecurrenceStartStrategy.COMPLETED_AT
+        ? (instance.completedAtUtc ?? instance.dueAtUtc)
+        : instance.dueAtUtc;
+
+    let nextDueAt = this.calculateRecurringDueAt(
+      baseDate,
       effectiveRecurrenceType,
       effectiveRecurrenceIntervalDays,
       effectiveRecurrenceWeekdays
@@ -2804,6 +2839,32 @@ export class HouseholdRepository {
     if (!nextDueAt) {
       return;
     }
+
+    // Advance past-dated results forward (can occur with DUE_AT strategy on overdue chores)
+    const now = new Date();
+    if (nextDueAt <= now && effectiveRecurrenceType !== RecurrenceType.NONE) {
+      let attempts = 0;
+      while (nextDueAt <= now && attempts < 1000) {
+        const advanced = this.calculateRecurringDueAt(
+          nextDueAt,
+          effectiveRecurrenceType,
+          effectiveRecurrenceIntervalDays,
+          effectiveRecurrenceWeekdays
+        );
+        if (!advanced || advanced.getTime() === nextDueAt.getTime()) {
+          break;
+        }
+        nextDueAt = advanced;
+        attempts++;
+      }
+    }
+
+    // Look up the variant from the completed instance (if any)
+    const variantId = (instance as any).variantId ?? null;
+    const variant = variantId
+      ? template.variants.find((v) => v.id === variantId) ?? null
+      : null;
+    const instanceTitle = variant ? `${template.title} — ${variant.label}` : template.title;
 
     await this.prisma.$transaction(async (tx) => {
       const assigneeId = await this.resolveAssigneeForTemplate(
@@ -2817,11 +2878,12 @@ export class HouseholdRepository {
         data: {
           householdId: instance.householdId,
           templateId: template.id,
-          title: template.title,
+          title: instanceTitle,
           state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId,
           dueAtUtc: nextDueAt,
           suppressRecurrence: false,
+          variantId: variantId,
           assignmentStrategyOverride: instance.assignmentStrategyOverride,
           recurrenceTypeOverride: instance.recurrenceTypeOverride,
           recurrenceIntervalDaysOverride: instance.recurrenceIntervalDaysOverride,
@@ -2835,7 +2897,7 @@ export class HouseholdRepository {
           recipientUserId: assigneeId,
           type: NotificationType.CHORE_ASSIGNED,
           title: "Recurring chore assigned",
-          message: `"${template.title}" was scheduled again and assigned to you.`,
+          message: `"${instanceTitle}" was scheduled again and assigned to you.`,
           entityType: "chore_template",
           entityId: template.id
         });
@@ -3008,7 +3070,7 @@ export class HouseholdRepository {
 
   private mapTemplate(
     template: Prisma.ChoreTemplateGetPayload<{
-      include: { checklistItems: true; dependencies: true };
+      include: { checklistItems: true; dependencies: true; variants: true };
     }>
   ) {
     const dependencyRules = template.dependencies.map((dependency) => ({
@@ -3030,6 +3092,7 @@ export class HouseholdRepository {
         weekdays: template.recurrenceWeekdays
       },
       requirePhotoProof: template.requirePhotoProof,
+      recurrenceStartStrategy: template.recurrenceStartStrategy.toLowerCase() as "due_at" | "completed_at",
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map((item) => ({
@@ -3038,7 +3101,10 @@ export class HouseholdRepository {
           required: item.required
         })),
       dependencyTemplateIds: dependencyRules.map((dependencyRule) => dependencyRule.templateId),
-      dependencyRules
+      dependencyRules,
+      variants: template.variants
+        .sort((a, b) => a.sortOrder - b.sortOrder)
+        .map((v) => ({ id: v.id, label: v.label }))
     };
   }
 
@@ -3079,6 +3145,7 @@ export class HouseholdRepository {
         reviewedAt: null,
         reviewedById: null,
         reviewNote: null,
+        variantId: (instance as any).variantId ?? null,
         checklist: [],
         checklistCompletionIds: [],
         attachments: []
@@ -3109,6 +3176,7 @@ export class HouseholdRepository {
       reviewedAt: instance.reviewedAtUtc,
       reviewedById: instance.reviewedById,
       reviewNote: instance.reviewNote,
+      variantId: (instance as any).variantId ?? null,
       checklist: instance.template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map((item) => ({

@@ -546,7 +546,8 @@ private fun TaskBanditApp(
         assigneeId: String?,
         assignmentStrategy: String,
         recurrenceType: String?,
-        recurrenceIntervalDays: Int?
+        recurrenceIntervalDays: Int?,
+        variantId: String? = null
     ) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
@@ -566,7 +567,8 @@ private fun TaskBanditApp(
                         assignmentStrategy = assignmentStrategy,
                         recurrenceType = recurrenceType,
                         recurrenceIntervalDays = recurrenceIntervalDays,
-                        suppressRecurrence = recurrenceType == "none"
+                        suppressRecurrence = recurrenceType == "none",
+                        variantId = variantId
                     )
                 }
             }.onSuccess {
@@ -988,7 +990,7 @@ private fun DashboardScreen(
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
-    onCreateChore: (String, String, String?, String, String?, Int?) -> Unit,
+    onCreateChore: (String, String, String?, String, String?, Int?, String?) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
@@ -1011,6 +1013,8 @@ private fun DashboardScreen(
     var recurrenceTypeDropdownExpanded by remember { mutableStateOf(false) }
     var assignmentStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var assigneeDropdownExpanded by remember { mutableStateOf(false) }
+    var createVariantId by rememberSaveable { mutableStateOf<String?>(null) }
+    var variantDropdownExpanded by remember { mutableStateOf(false) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
     val members = dashboard?.members.orEmpty()
@@ -1050,6 +1054,7 @@ private fun DashboardScreen(
         createRecurrenceType = defaultType
         createRecurrenceInterval = defaultInterval
         createAssigneeId = null
+        createVariantId = null
     }
 
     val datePickerDialog = remember(context, createDueAtMillis) {
@@ -1327,6 +1332,42 @@ private fun DashboardScreen(
                                     }
                                 }
 
+                                // Variant dropdown
+                                selectedTemplate?.takeIf { it.variants.isNotEmpty() }?.let { tmpl ->
+                                    val noVariantLabel = stringResource(R.string.mobile_create_no_variant)
+                                    Text(text = stringResource(R.string.mobile_create_variant), style = MaterialTheme.typography.titleSmall)
+                                    val selectedVariantLabel = tmpl.variants
+                                        .firstOrNull { it.id == createVariantId }?.label
+                                        ?: noVariantLabel
+                                    ExposedDropdownMenuBox(
+                                        expanded = variantDropdownExpanded,
+                                        onExpandedChange = { variantDropdownExpanded = it }
+                                    ) {
+                                        OutlinedTextField(
+                                            value = selectedVariantLabel,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = variantDropdownExpanded) },
+                                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                        )
+                                        ExposedDropdownMenu(
+                                            expanded = variantDropdownExpanded,
+                                            onDismissRequest = { variantDropdownExpanded = false }
+                                        ) {
+                                            DropdownMenuItem(
+                                                text = { Text(noVariantLabel) },
+                                                onClick = { createVariantId = null; variantDropdownExpanded = false }
+                                            )
+                                            tmpl.variants.forEach { variant ->
+                                                DropdownMenuItem(
+                                                    text = { Text(variant.label) },
+                                                    onClick = { createVariantId = variant.id; variantDropdownExpanded = false }
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+
                                 // Create button
                                 selectedTemplate?.let { template ->
                                     Button(
@@ -1339,7 +1380,8 @@ private fun DashboardScreen(
                                                 createAssigneeId,
                                                 createAssignmentStrategy,
                                                 recType,
-                                                recInterval
+                                                recInterval,
+                                                createVariantId
                                             )
                                         },
                                         enabled = activeCreateAction == null,
