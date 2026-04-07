@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.18.0](https://github.com/kriziw/TaskBandit/compare/v0.17.1...v0.18.0) (2026-04-07)
+
+
+### Features
+
+* recurrence start strategy, follow-up bug fix, and template vari… ([84597d9](https://github.com/kriziw/TaskBandit/commit/84597d99842323a85ded77de4462f2405cf5a6ec))
+* recurrence start strategy, follow-up bug fix, and template variants ([10f4aad](https://github.com/kriziw/TaskBandit/commit/10f4aad340025e8fbcc9d39d89a8807673b40a9f))
+
 ## [0.17.1](https://github.com/kriziw/TaskBandit/compare/v0.17.0...v0.17.1) (2026-04-07)
 
 
