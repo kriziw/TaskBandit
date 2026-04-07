@@ -56,6 +56,11 @@ enum FollowUpDelayUnit {
   DAYS
 }
 
+enum RecurrenceStartStrategy {
+  DUE_AT
+  COMPLETED_AT
+}
+
 enum NotificationType {
   CHORE_ASSIGNED
   CHORE_SUBMITTED
@@ -184,11 +189,13 @@ model ChoreTemplate {
   recurrenceIntervalDays Int?
   recurrenceWeekdays String[]                     @default([])
   requirePhotoProof  Boolean                      @default(false)
+  recurrenceStartStrategy RecurrenceStartStrategy @default(DUE_AT)
   createdAtUtc       DateTime                     @default(now())
   household          Household                    @relation(fields: [householdId], references: [id], onDelete: Cascade)
   checklistItems     ChoreTemplateChecklistItem[]
   dependencies       ChoreTemplateDependency[]
   choreInstances     ChoreInstance[]
+  variants           ChoreTemplateVariant[]
 }
 
 model ChoreTemplateChecklistItem {
@@ -223,6 +230,9 @@ model ChoreInstance {
   recurrenceTypeOverride RecurrenceType?
   recurrenceIntervalDaysOverride Int?
   recurrenceWeekdaysOverride String[] @default([])
+  recurrenceStartStrategyOverride RecurrenceStartStrategy?
+  variantId              String?       @db.Uuid
+  variant                ChoreTemplateVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   awardedPoints   Int           @default(0)
   overduePenaltyPoints Int      @default(0)
   attachmentCount Int           @default(0)
@@ -241,6 +251,15 @@ model ChoreInstance {
   template        ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
   checklistCompletions ChoreChecklistCompletion[]
   attachments     ChoreAttachment[]
+}
+
+model ChoreTemplateVariant {
+  id         String        @id @default(uuid()) @db.Uuid
+  templateId String        @db.Uuid
+  label      String        @db.VarChar(100)
+  sortOrder  Int           @default(0)
+  template   ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  instances  ChoreInstance[]
 }
 
 model ChoreChecklistCompletion {

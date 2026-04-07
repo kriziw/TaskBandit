@@ -63,6 +63,11 @@ export class CreateChoreInstanceDto {
   @IsBoolean()
   suppressRecurrence?: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID("4")
+  variantId?: string;
+
   @ApiProperty()
   @Type(() => Date)
   @IsDate()

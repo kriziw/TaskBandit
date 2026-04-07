@@ -1,3 +1,5 @@
+export type RecurrenceStartStrategy = "due_at" | "completed_at";
+
 export type HouseholdRole = "admin" | "parent" | "child";
 
 export type Difficulty = "easy" | "medium" | "hard";
@@ -347,6 +349,8 @@ export type ChoreTemplate = {
     weekdays: string[];
   };
   requirePhotoProof: boolean;
+  recurrenceStartStrategy: RecurrenceStartStrategy;
+  variants: Array<{ id: string; label: string }>;
   checklist: ChoreTemplateChecklistItem[];
   dependencyTemplateIds: string[];
   dependencyRules: ChoreTemplateDependencyRule[];
@@ -380,6 +384,7 @@ export type ChoreInstance = {
   reviewedAt: string | null;
   reviewedById: string | null;
   reviewNote: string | null;
+  variantId: string | null;
   checklist: ChoreTemplateChecklistItem[];
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
@@ -441,6 +446,8 @@ export type CreateChoreTemplateInput = {
   recurrenceIntervalDays?: number;
   recurrenceWeekdays?: string[];
   requirePhotoProof: boolean;
+  recurrenceStartStrategy?: RecurrenceStartStrategy;
+  variants?: Array<{ label: string }>;
   dependencyTemplateIds?: string[];
   dependencyRules?: ChoreTemplateDependencyRule[];
   checklist?: Array<{
@@ -454,6 +461,7 @@ export type CreateChoreInstanceInput = {
   assigneeId?: string;
   title?: string;
   dueAt: string;
+  variantId?: string;
 };
 
 export type BootstrapStatus = {

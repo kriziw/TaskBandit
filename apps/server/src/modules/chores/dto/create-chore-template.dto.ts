@@ -1,4 +1,4 @@
-import { AssignmentStrategyType, Difficulty, FollowUpDelayUnit, RecurrenceType } from "@prisma/client";
+import { AssignmentStrategyType, Difficulty, FollowUpDelayUnit, RecurrenceStartStrategy, RecurrenceType } from "@prisma/client";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Transform, Type } from "class-transformer";
 import {
@@ -29,6 +29,14 @@ export class CreateChecklistItemDto {
   @ApiProperty()
   @IsBoolean()
   required!: boolean;
+}
+
+export class CreateChoreTemplateVariantDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(100)
+  label!: string;
 }
 
 export class CreateChoreDependencyRuleDto {
@@ -136,4 +144,20 @@ export class CreateChoreTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => CreateChoreDependencyRuleDto)
   dependencyRules?: CreateChoreDependencyRuleDto[];
+
+  @ApiPropertyOptional({ enum: RecurrenceStartStrategy, enumName: "RecurrenceStartStrategy" })
+  @Transform(({ value }) =>
+    typeof value === "string" ? value.trim().toUpperCase().replace(/[\s-]+/g, "_") : value
+  )
+  @IsOptional()
+  @IsEnum(RecurrenceStartStrategy)
+  recurrenceStartStrategy?: RecurrenceStartStrategy;
+
+  @ApiPropertyOptional({ type: [CreateChoreTemplateVariantDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(20)
+  @ValidateNested({ each: true })
+  @Type(() => CreateChoreTemplateVariantDto)
+  variants?: CreateChoreTemplateVariantDto[];
 }
