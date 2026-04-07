@@ -2,6 +2,40 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.16.0](https://github.com/kriziw/TaskBandit/compare/v0.15.0...v0.16.0) (2026-04-06)
+
+
+### Features
+
+* **android:** pastel theme, historic chore viewer, and dropdown-base… ([904f3c6](https://github.com/kriziw/TaskBandit/commit/904f3c6a6a6fab50f0f1e7b98074684029761ed3))
+* **android:** pastel theme, historic chore viewer, and dropdown-based create form ([a14698a](https://github.com/kriziw/TaskBandit/commit/a14698a9af53f930c443a44c4484ca7ff4fb6761))
+
+## [0.15.0](https://github.com/kriziw/TaskBandit/compare/v0.14.0...v0.15.0) (2026-04-06)
+
+
+### Features
+
+* **ci:** add beta release channel for dev branch ([891726a](https://github.com/kriziw/TaskBandit/commit/891726ace07e29b9a57cfd28cdbb172414b6a16c))
+* **ci:** add beta release channel for dev branch ([5570e2f](https://github.com/kriziw/TaskBandit/commit/5570e2f68473c1d30d1c51ffd660c9da3080cff3))
+
+
+### Bug Fixes
+
+* **android:** refresh dashboard when app resumes from background ([af3656b](https://github.com/kriziw/TaskBandit/commit/af3656b3e23c13b5403d24f9680bf8edc517ccbf))
+* **android:** refresh dashboard when app resumes from background ([8378ec4](https://github.com/kriziw/TaskBandit/commit/8378ec4d2a8083fdc3a11ca38f73daf8c977633b))
+* **android:** refresh dashboard when app resumes from background ([27a1b0a](https://github.com/kriziw/TaskBandit/commit/27a1b0ab88a0c32f7b730c6589c71f8fc3958527))
+
+## [0.14.0](https://github.com/kriziw/TaskBandit/compare/v0.13.1...v0.14.0) (2026-04-06)
+
+
+### Features
+
+* **android:** add recurrence schedule presets ([98f526e](https://github.com/kriziw/TaskBandit/commit/98f526e4364df428ddad7a38a9586924aadf4d06))
+* **android:** improve chore creation flow ([d000ffa](https://github.com/kriziw/TaskBandit/commit/d000ffa9410cb522592f311d3692467e626f768c))
+* **android:** improve mobile sync and chore scheduling ([8aad8b5](https://github.com/kriziw/TaskBandit/commit/8aad8b54b05c6b11379c47e1f62686eef2237909))
+* **android:** improve mobile sync and chore scheduling ([61be6fd](https://github.com/kriziw/TaskBandit/commit/61be6fddf4607552584f347746632bdb05d0332d))
+* **mobile:** sync chore updates live ([0bf7467](https://github.com/kriziw/TaskBandit/commit/0bf74671550e4c063e05d16e19e01431e6290c57))
+
 ## [0.13.1](https://github.com/kriziw/TaskBandit/compare/v0.13.0...v0.13.1) (2026-04-05)
 
 
