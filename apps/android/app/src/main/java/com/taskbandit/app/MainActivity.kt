@@ -1034,6 +1034,7 @@ private fun DashboardScreen(
     val choresMineLabel = stringResource(R.string.mobile_chores_mine)
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
+    val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
     val showStatusCard = queuedSubmissionCount > 0 || isSyncingQueue || !noticeMessage.isNullOrBlank() || !errorMessage.isNullOrBlank()
 
     LaunchedEffect(templates) {
@@ -1139,7 +1140,7 @@ private fun DashboardScreen(
                 choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
                 historicChoreSection(
                     chores = historicChores,
-                    title = stringResource(R.string.mobile_chores_history),
+                    title = choresHistoryLabel,
                     expandedChoreIds = expandedHistoricChoreIds,
                     onExpandedChange = { choreId ->
                         expandedHistoricChoreIds = if (expandedHistoricChoreIds.contains(choreId))
