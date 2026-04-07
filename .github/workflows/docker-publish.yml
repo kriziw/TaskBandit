@@ -2,7 +2,7 @@ name: docker-publish
 
 on:
   push:
-    branches: ["main"]
+    branches: ["main", "dev"]
     paths:
       - "apps/server/**"
       - "apps/web/**"
@@ -16,7 +16,8 @@ jobs:
     if: >-
       ${{
         github.event_name == 'workflow_dispatch' ||
-        startsWith(github.event.head_commit.message, 'chore(main): release') == false
+        (github.ref_name == 'main' && startsWith(github.event.head_commit.message, 'chore(main): release') == false) ||
+        (github.ref_name == 'dev' && startsWith(github.event.head_commit.message, 'chore(dev): release') == false)
       }}
     runs-on: ubuntu-latest
     permissions:
@@ -55,8 +56,9 @@ jobs:
         with:
           images: kriziw/taskbandit
           tags: |
-            type=raw,value=latest,enable=${{ steps.prerelease.outputs.value != 'true' }}
-            type=raw,value=prerelease,enable=${{ steps.prerelease.outputs.value == 'true' }}
+            type=raw,value=latest,enable=${{ github.ref_name == 'main' && steps.prerelease.outputs.value != 'true' }}
+            type=raw,value=prerelease,enable=${{ github.ref_name == 'main' && steps.prerelease.outputs.value == 'true' }}
+            type=raw,value=beta,enable=${{ github.ref_name == 'dev' }}
 
       - name: Build and push image
         uses: docker/build-push-action@v6
