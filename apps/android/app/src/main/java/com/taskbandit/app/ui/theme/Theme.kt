@@ -8,12 +8,20 @@ import androidx.compose.foundation.isSystemInDarkTheme
 
 private val LightColors = lightColorScheme(
     primary = Ink,
+    onPrimary = Cream,
     secondary = Sky,
     tertiary = Gold,
     background = Cream,
+    onBackground = Ink,
     surface = Cream,
-    primaryContainer = Mint,
-    secondaryContainer = Coral
+    onSurface = Ink,
+    // Pastel containers give a soft, warm feel while staying on-brand
+    primaryContainer = MintPastel,
+    onPrimaryContainer = Ink,
+    secondaryContainer = CoralPastel,
+    onSecondaryContainer = Ink,
+    surfaceVariant = CreamDeep,
+    onSurfaceVariant = Ink
 )
 
 private val DarkColors = darkColorScheme(
