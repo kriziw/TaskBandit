@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.17.1](https://github.com/kriziw/TaskBandit/compare/v0.17.0...v0.17.1) (2026-04-07)
+
+
+### Bug Fixes
+
+* **android:** neutralise Material3 purple tint on surfaces and cards ([1e11eab](https://github.com/kriziw/TaskBandit/commit/1e11eab75c6ac2e046613471eda105fe480db5ef))
+* **android:** neutralise Material3 purple tint on surfaces and cards ([cb14be4](https://github.com/kriziw/TaskBandit/commit/cb14be47d952c0ec1b7a164bc58b991057548153))
+
 ## [0.17.0](https://github.com/kriziw/TaskBandit/compare/v0.16.0...v0.17.0) (2026-04-07)
 
 
