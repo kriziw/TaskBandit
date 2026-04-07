@@ -2,6 +2,21 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.17.0](https://github.com/kriziw/TaskBandit/compare/v0.16.0...v0.17.0) (2026-04-07)
+
+
+### Features
+
+* **android:** pastel theme, historic chore viewer, and dropdown-based create form ([b6585f5](https://github.com/kriziw/TaskBandit/commit/b6585f5d092b1211fd0975d841afe24a4c3cc257))
+* **android:** pastel theme, historic chore viewer, and dropdown-based create form ([eef6e16](https://github.com/kriziw/TaskBandit/commit/eef6e16d90ba2a885709d459d9ac5cc62c5f3b10))
+
+
+### Bug Fixes
+
+* **android:** add missing ExposedDropdownMenu import ([9eb4422](https://github.com/kriziw/TaskBandit/commit/9eb442259bc82752447d2efaef8834b4ee5a9ad4))
+* **android:** opt in to experimental Material3 APIs, remove bad ExposedDropdownMenu import ([8583659](https://github.com/kriziw/TaskBandit/commit/85836596600b1ed0212de040152b888dec878731))
+* **android:** resolve stringResource called outside composable context ([c2afe43](https://github.com/kriziw/TaskBandit/commit/c2afe43ae6fb14bb4a9640d822c57fa192045c79))
+
 ## [0.16.0](https://github.com/kriziw/TaskBandit/compare/v0.15.0...v0.16.0) (2026-04-06)
 
 
