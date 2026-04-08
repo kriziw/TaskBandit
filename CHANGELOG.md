@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.19.0](https://github.com/kriziw/TaskBandit/compare/v0.18.0...v0.19.0) (2026-04-08)
+
+
+### Features
+
+* **android:** confirm chore creation ([0f8d667](https://github.com/kriziw/TaskBandit/commit/0f8d667d9af882b5358a414df43bf12041d28c77))
+* **android:** confirm chore creation ([bff6060](https://github.com/kriziw/TaskBandit/commit/bff60607271cd5dbc9e7f6cc8c5100ccde491355))
+
 ## [0.18.0](https://github.com/kriziw/TaskBandit/compare/v0.17.1...v0.18.0) (2026-04-07)
 
 
