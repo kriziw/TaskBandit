@@ -51,6 +51,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -183,7 +184,6 @@ private fun TaskBanditApp(
     val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
-    val choreCreatedMessage = stringResource(R.string.mobile_chore_created)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
@@ -215,6 +215,7 @@ private fun TaskBanditApp(
     var activeStartAction by remember { mutableStateOf<String?>(null) }
     var activeSubmitAction by remember { mutableStateOf<String?>(null) }
     var activeCreateAction by remember { mutableStateOf<String?>(null) }
+    var createSuccessCounter by remember { mutableIntStateOf(0) }
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
@@ -574,7 +575,7 @@ private fun TaskBanditApp(
                     )
                 }
             }.onSuccess {
-                noticeMessage = choreCreatedMessage
+                createSuccessCounter += 1
                 requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
@@ -760,6 +761,7 @@ private fun TaskBanditApp(
                     activeStartAction = activeStartAction,
                     activeSubmitAction = activeSubmitAction,
                     activeCreateAction = activeCreateAction,
+                    createSuccessCounter = createSuccessCounter,
                     activeDeviceAction = activeDeviceAction,
                     errorMessage = errorMessage,
                     noticeMessage = noticeMessage,
@@ -994,6 +996,7 @@ private fun DashboardScreen(
     activeStartAction: String?,
     activeSubmitAction: String?,
     activeCreateAction: String?,
+    createSuccessCounter: Int,
     activeDeviceAction: String?,
     errorMessage: String?,
     noticeMessage: String?,
@@ -1032,6 +1035,7 @@ private fun DashboardScreen(
     var recurrenceTypeDropdownExpanded by remember { mutableStateOf(false) }
     var assignmentStrategyDropdownExpanded by remember { mutableStateOf(false) }
     var assigneeDropdownExpanded by remember { mutableStateOf(false) }
+    var showCreateSuccessDialog by remember { mutableStateOf(false) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
     val members = dashboard?.members.orEmpty()
@@ -1073,6 +1077,32 @@ private fun DashboardScreen(
         createAssigneeId = null
     }
 
+    fun resetCreateForm() {
+        createDueAtMillis = defaultCreateDueAtMillis()
+        val template = selectedTemplate
+        if (template != null) {
+            createAssignmentStrategy = template.assignmentStrategy
+            val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
+            createRecurrenceType = defaultType
+            createRecurrenceInterval = defaultInterval
+        } else {
+            createAssignmentStrategy = "round_robin"
+            createRecurrenceType = "template"
+            createRecurrenceInterval = 7
+        }
+        createAssigneeId = null
+        templateDropdownExpanded = false
+        recurrenceTypeDropdownExpanded = false
+        assignmentStrategyDropdownExpanded = false
+        assigneeDropdownExpanded = false
+    }
+
+    LaunchedEffect(createSuccessCounter) {
+        if (createSuccessCounter > 0) {
+            showCreateSuccessDialog = true
+        }
+    }
+
     val datePickerDialog = remember(context, createDueAtMillis) {
         val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
         DatePickerDialog(
@@ -1109,6 +1139,34 @@ private fun DashboardScreen(
             zoned.hour,
             zoned.minute,
             true
+        )
+    }
+
+    if (showCreateSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCreateSuccessDialog = false
+                activeTab = MobileDashboardTab.CHORES
+            },
+            title = { Text(stringResource(R.string.mobile_create_success_title)) },
+            text = { Text(stringResource(R.string.mobile_create_success_body)) },
+            confirmButton = {
+                Button(onClick = {
+                    showCreateSuccessDialog = false
+                    activeTab = MobileDashboardTab.CHORES
+                }) {
+                    Text(stringResource(R.string.mobile_create_success_done))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showCreateSuccessDialog = false
+                    activeTab = MobileDashboardTab.CREATE
+                    resetCreateForm()
+                }) {
+                    Text(stringResource(R.string.mobile_create_success_create_another))
+                }
+            }
         )
     }
 
