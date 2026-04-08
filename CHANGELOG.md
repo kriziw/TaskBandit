@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.19.1](https://github.com/kriziw/TaskBandit/compare/v0.19.0...v0.19.1) (2026-04-08)
+
+
+### Bug Fixes
+
+* **ci:** disable dev branch automation ([ea7597f](https://github.com/kriziw/TaskBandit/commit/ea7597f1c03777c61577bf27363496b2e5bc7fe2))
+
 ## [0.19.0](https://github.com/kriziw/TaskBandit/compare/v0.18.0...v0.19.0) (2026-04-08)
 
 
