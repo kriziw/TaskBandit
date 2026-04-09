@@ -55,6 +55,9 @@
     <string name="mobile_refresh">Refresh</string>
     <string name="mobile_refreshing">Refreshing...</string>
     <string name="mobile_sync_disconnected">Live sync is temporarily offline. Reconnecting...</string>
+    <string name="mobile_sync_reconnecting_action">Trying to restore the live connection...</string>
+    <string name="mobile_sync_reconnecting_action_status">%1$s. Restoring connection...</string>
+    <string name="mobile_connection_restore_failed">The live connection did not come back in time. Please try again.</string>
     <string name="mobile_logout">Log out</string>
     <string name="mobile_tab_chores">Chores</string>
     <string name="mobile_tab_create">Create</string>
@@ -181,6 +184,8 @@
     <string name="mobile_submit_confirm_title">Finish this chore?</string>
     <string name="mobile_submit_confirm_body">Submit \"%1$s\" now?</string>
     <string name="mobile_submit_confirm_action">Yes, finish</string>
+    <string name="mobile_action_required_title">Action needed</string>
+    <string name="mobile_validation_confirm">Got it</string>
     <string name="mobile_start">Start chore</string>
     <string name="mobile_starting">Starting...</string>
     <string name="mobile_started">In progress</string>

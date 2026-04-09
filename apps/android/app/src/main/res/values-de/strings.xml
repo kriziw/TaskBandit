@@ -55,6 +55,9 @@
     <string name="mobile_refresh">Aktualisieren</string>
     <string name="mobile_refreshing">Aktualisiert...</string>
     <string name="mobile_sync_disconnected">Die Live-Synchronisierung ist gerade offline. Verbindung wird wiederhergestellt...</string>
+    <string name="mobile_sync_reconnecting_action">Die Live-Verbindung wird wiederhergestellt...</string>
+    <string name="mobile_sync_reconnecting_action_status">%1$s. Verbindung wird wiederhergestellt...</string>
+    <string name="mobile_connection_restore_failed">Die Live-Verbindung konnte nicht rechtzeitig wiederhergestellt werden. Bitte versuche es erneut.</string>
     <string name="mobile_logout">Abmelden</string>
     <string name="mobile_tab_chores">Aufgaben</string>
     <string name="mobile_tab_create">Erstellen</string>
@@ -181,6 +184,8 @@
     <string name="mobile_submit_confirm_title">Diese Aufgabe abschließen?</string>
     <string name="mobile_submit_confirm_body">„%1$s“ jetzt einreichen?</string>
     <string name="mobile_submit_confirm_action">Ja, abschließen</string>
+    <string name="mobile_action_required_title">Aktion erforderlich</string>
+    <string name="mobile_validation_confirm">Verstanden</string>
     <string name="mobile_start">Aufgabe starten</string>
     <string name="mobile_starting">Startet...</string>
     <string name="mobile_started">In Bearbeitung</string>

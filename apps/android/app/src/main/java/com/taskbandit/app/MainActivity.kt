@@ -98,6 +98,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -125,6 +126,7 @@ import com.taskbandit.app.push.TaskBanditFirebasePushManager
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import com.taskbandit.app.widget.TaskBanditWidgetProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -136,6 +138,9 @@ import java.util.Locale
 import java.util.UUID
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
+private const val syncDisconnectNoticeDelayMs = 3500L
+private const val mutationReconnectWindowMs = 5000L
+private const val mutationReconnectRetryDelayMs = 750L
 
 private enum class MobileDashboardTab {
     CHORES,
@@ -212,9 +217,18 @@ private fun TaskBanditApp(
     val loginFailedMessage = stringResource(R.string.mobile_login_failed)
     val checklistRequiredMessage = stringResource(R.string.mobile_checklist_required)
     val photoRequiredMessage = stringResource(R.string.mobile_photo_required_missing)
-    val queuedNoticeMessage = stringResource(R.string.mobile_submission_queued)
-    val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
+    val submittingMessage = stringResource(R.string.mobile_submitting)
+    val approvingMessage = stringResource(R.string.mobile_approving)
+    val rejectingMessage = stringResource(R.string.mobile_rejecting)
+    val markingReadMessage = stringResource(R.string.mobile_marking_read)
+    val startingMessage = stringResource(R.string.mobile_starting)
+    val takingOverMessage = stringResource(R.string.mobile_taking_over_task)
+    val takeoverRequestSendingMessage = stringResource(R.string.mobile_request_takeover_sending)
+    val takeoverRequestApprovingMessage = stringResource(R.string.mobile_takeover_request_approving)
+    val takeoverRequestDecliningMessage = stringResource(R.string.mobile_takeover_request_declining)
+    val creatingChoreMessage = stringResource(R.string.mobile_create_creating)
+    val deviceRemovingMessage = stringResource(R.string.mobile_device_removing)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     val choreTakenOverMessage = stringResource(R.string.mobile_chore_taken_over)
     val takeoverRequestSentMessage = stringResource(R.string.mobile_takeover_request_sent)
@@ -222,6 +236,8 @@ private fun TaskBanditApp(
     val takeoverDeclinedMessage = stringResource(R.string.mobile_takeover_request_declined_notice)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
+    val reconnectFailedMessage = stringResource(R.string.mobile_connection_restore_failed)
+    val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
@@ -255,13 +271,16 @@ private fun TaskBanditApp(
     var createSuccessCounter by remember { mutableIntStateOf(0) }
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
     var isDashboardSyncConnected by remember { mutableStateOf(true) }
+    var showDashboardSyncNotice by remember { mutableStateOf(false) }
+    var pendingReconnectActionLabel by remember { mutableStateOf<String?>(null) }
+    var validationDialogMessage by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureChoreId by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureUriString by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
-    var queuedSubmissionCount by remember { mutableIntStateOf(outboxStore.readQueue().size) }
+    var queuedSubmissionCount by remember { mutableIntStateOf(0) }
     var notificationsPermissionGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -327,6 +346,17 @@ private fun TaskBanditApp(
         pendingPhotoCaptureFilePath = null
     }
 
+    LaunchedEffect(isDashboardSyncConnected) {
+        if (isDashboardSyncConnected) {
+            showDashboardSyncNotice = false
+        } else {
+            delay(syncDisconnectNoticeDelayMs)
+            if (!isDashboardSyncConnected) {
+                showDashboardSyncNotice = true
+            }
+        }
+    }
+
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
     fun logout() {
@@ -340,10 +370,46 @@ private fun TaskBanditApp(
         serverReleaseInfo = null
         notificationDevices = emptyList()
         isDashboardSyncConnected = true
+        showDashboardSyncNotice = false
         isBusy = false
         refreshQueued = false
         errorMessage = null
         noticeMessage = null
+        pendingReconnectActionLabel = null
+        validationDialogMessage = null
+    }
+
+    suspend fun <T> runMutationWithReconnectWindow(
+        actionLabel: String,
+        block: suspend () -> T
+    ): T {
+        val deadline = System.currentTimeMillis() + mutationReconnectWindowMs
+        var reconnecting = false
+        try {
+            while (true) {
+                try {
+                    return block()
+                } catch (throwable: Throwable) {
+                    if (throwable !is TaskBanditTransportException) {
+                        throw throwable
+                    }
+
+                    val now = System.currentTimeMillis()
+                    if (now >= deadline) {
+                        throw IllegalStateException(reconnectFailedMessage)
+                    }
+
+                    if (!reconnecting) {
+                        reconnecting = true
+                        pendingReconnectActionLabel = actionLabel
+                    }
+
+                    delay(minOf(mutationReconnectRetryDelayMs, deadline - now))
+                }
+            }
+        } finally {
+            pendingReconnectActionLabel = null
+        }
     }
 
     fun refreshDashboard() {
@@ -386,38 +452,16 @@ private fun TaskBanditApp(
                         }.getOrDefault(emptyList())
                     )
                 }
-                val flushedCount = flushQueuedSubmissions(
-                    api = api,
-                    outboxStore = outboxStore,
-                    baseUrl = baseUrl,
-                    token = token,
-                    contentResolver = context.contentResolver,
-                    onSyncingChange = { isSyncing -> isSyncingQueue = isSyncing }
-                )
-
-                if (flushedCount > 0) {
-                    Pair(
-                        withContext(Dispatchers.IO) {
-                            refreshPayload.copy(dashboard = api.loadDashboard(baseUrl, token))
-                        },
-                        flushedCount
-                    )
-                } else {
-                    Pair(refreshPayload, 0)
-                }
-            }.onSuccess { (loadedPayload, flushedCount) ->
+                refreshPayload
+            }.onSuccess { loadedPayload ->
                 dashboard = loadedPayload.dashboard
                 serverReleaseInfo = loadedPayload.latestReleaseInfo
                 notificationDevices = loadedPayload.notificationDevices
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, token)
-                val currentQueuedSubmissionCount = outboxStore.readQueue().size
-                queuedSubmissionCount = currentQueuedSubmissionCount
-                widgetStore.saveDashboard(loadedPayload.dashboard, currentQueuedSubmissionCount)
+                queuedSubmissionCount = 0
+                widgetStore.saveDashboard(loadedPayload.dashboard, 0)
                 TaskBanditWidgetProvider.refreshAllWidgets(context)
-                if (flushedCount > 0) {
-                    noticeMessage = syncedNoticeTemplate.format(flushedCount)
-                }
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -456,10 +500,12 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    if (approve) {
-                        api.approveChore(baseUrl, token, instanceId)
-                    } else {
-                        api.rejectChore(baseUrl, token, instanceId)
+                    runMutationWithReconnectWindow(approvingMessage.takeIf { approve } ?: rejectingMessage) {
+                        if (approve) {
+                            api.approveChore(baseUrl, token, instanceId)
+                        } else {
+                            api.rejectChore(baseUrl, token, instanceId)
+                        }
                     }
                 }
             }.onSuccess {
@@ -484,7 +530,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.markNotificationRead(baseUrl, token, notificationId)
+                    runMutationWithReconnectWindow(markingReadMessage) {
+                        api.markNotificationRead(baseUrl, token, notificationId)
+                    }
                 }
             }.onSuccess {
                 requestDashboardRefresh()
@@ -537,7 +585,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.startChore(baseUrl, token, choreId)
+                    runMutationWithReconnectWindow(startingMessage) {
+                        api.startChore(baseUrl, token, choreId)
+                    }
                 }
             }.onSuccess {
                 noticeMessage = choreStartedMessage
@@ -562,7 +612,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.takeOverChore(baseUrl, token, choreId)
+                    runMutationWithReconnectWindow(takingOverMessage) {
+                        api.takeOverChore(baseUrl, token, choreId)
+                    }
                 }
             }.onSuccess {
                 noticeMessage = choreTakenOverMessage
@@ -587,7 +639,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.requestTakeover(baseUrl, token, choreId, requestedUserId)
+                    runMutationWithReconnectWindow(takeoverRequestSendingMessage) {
+                        api.requestTakeover(baseUrl, token, choreId, requestedUserId)
+                    }
                 }
             }.onSuccess {
                 noticeMessage = takeoverRequestSentMessage
@@ -612,10 +666,14 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    if (approve) {
-                        api.approveTakeoverRequest(baseUrl, token, requestId)
-                    } else {
-                        api.declineTakeoverRequest(baseUrl, token, requestId)
+                    runMutationWithReconnectWindow(
+                        if (approve) takeoverRequestApprovingMessage else takeoverRequestDecliningMessage
+                    ) {
+                        if (approve) {
+                            api.approveTakeoverRequest(baseUrl, token, requestId)
+                        } else {
+                            api.declineTakeoverRequest(baseUrl, token, requestId)
+                        }
                     }
                 }
             }.onSuccess {
@@ -641,12 +699,12 @@ private fun TaskBanditApp(
         val proofUriStrings = selectedProofUris[choreId].orEmpty()
         val missingRequiredItems = chore.checklist.filter { it.required && !selectedChecklistIds.contains(it.id) }
         if (missingRequiredItems.isNotEmpty()) {
-            errorMessage = checklistRequiredMessage
+            validationDialogMessage = checklistRequiredMessage
             return
         }
 
         if (chore.requirePhotoProof && proofUriStrings.isEmpty()) {
-            errorMessage = photoRequiredMessage
+            validationDialogMessage = photoRequiredMessage
             return
         }
 
@@ -666,13 +724,15 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    submitDraft(
-                        api = api,
-                        baseUrl = baseUrl,
-                        token = token,
-                        draft = draft,
-                        contentResolver = context.contentResolver
-                    )
+                    runMutationWithReconnectWindow(submittingMessage) {
+                        submitDraft(
+                            api = api,
+                            baseUrl = baseUrl,
+                            token = token,
+                            draft = draft,
+                            contentResolver = context.contentResolver
+                        )
+                    }
                 }
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
@@ -681,21 +741,8 @@ private fun TaskBanditApp(
             } catch (throwable: Throwable) {
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
-                } else if (throwable is TaskBanditTransportException) {
-                    withContext(Dispatchers.IO) {
-                        outboxStore.enqueue(draft)
-                    }
-                    val currentQueuedSubmissionCount = outboxStore.readQueue().size
-                    queuedSubmissionCount = currentQueuedSubmissionCount
-                    dashboard?.let { loadedDashboard ->
-                        widgetStore.saveDashboard(loadedDashboard, currentQueuedSubmissionCount)
-                        TaskBanditWidgetProvider.refreshAllWidgets(context)
-                    }
-                    selectedProofUris = selectedProofUris - choreId
-                    submitSelections = submitSelections - choreId
-                    noticeMessage = queuedNoticeMessage
                 } else {
-                    errorMessage = throwable.message
+                    errorMessage = throwable.message ?: reconnectFailedMessage
                 }
             }
             activeSubmitAction = null
@@ -720,18 +767,20 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.createChoreInstance(
-                        baseUrl = baseUrl,
-                        token = token,
-                        templateId = templateId,
-                        dueAtIsoUtc = dueAtIsoUtc,
-                        assigneeId = assigneeId,
-                        assignmentStrategy = assignmentStrategy,
-                        recurrenceType = recurrenceType,
-                        recurrenceIntervalDays = recurrenceIntervalDays,
-                        suppressRecurrence = recurrenceType == "none",
-                        variantId = variantId
-                    )
+                    runMutationWithReconnectWindow(creatingChoreMessage) {
+                        api.createChoreInstance(
+                            baseUrl = baseUrl,
+                            token = token,
+                            templateId = templateId,
+                            dueAtIsoUtc = dueAtIsoUtc,
+                            assigneeId = assigneeId,
+                            assignmentStrategy = assignmentStrategy,
+                            recurrenceType = recurrenceType,
+                            recurrenceIntervalDays = recurrenceIntervalDays,
+                            suppressRecurrence = recurrenceType == "none",
+                            variantId = variantId
+                        )
+                    }
                 }
             }.onSuccess {
                 createSuccessCounter += 1
@@ -756,7 +805,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.deleteNotificationDevice(baseUrl, token, deviceId)
+                    runMutationWithReconnectWindow(deviceRemovingMessage) {
+                        api.deleteNotificationDevice(baseUrl, token, deviceId)
+                    }
                 }
             }.onSuccess { devices ->
                 notificationDevices = devices
@@ -918,6 +969,7 @@ private fun TaskBanditApp(
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
                     isDashboardSyncConnected = isDashboardSyncConnected,
+                    showDashboardSyncNotice = showDashboardSyncNotice,
                     isSyncingQueue = isSyncingQueue,
                     activeReviewAction = activeReviewAction,
                     activeStartAction = activeStartAction,
@@ -928,7 +980,10 @@ private fun TaskBanditApp(
                     activeDeviceAction = activeDeviceAction,
                     errorMessage = errorMessage,
                     noticeMessage = noticeMessage,
+                    pendingReconnectActionLabel = pendingReconnectActionLabel,
+                    validationDialogMessage = validationDialogMessage,
                     queuedSubmissionCount = queuedSubmissionCount,
+                    onDismissValidationDialog = { validationDialogMessage = null },
                     onDismissUpdate = ::dismissUpdateNotice,
                     onRefresh = ::requestDashboardRefresh,
                     onLogout = ::logout,
@@ -1270,6 +1325,7 @@ private fun DashboardScreen(
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
     isDashboardSyncConnected: Boolean,
+    showDashboardSyncNotice: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
     activeStartAction: String?,
@@ -1280,7 +1336,10 @@ private fun DashboardScreen(
     activeDeviceAction: String?,
     errorMessage: String?,
     noticeMessage: String?,
+    pendingReconnectActionLabel: String?,
+    validationDialogMessage: String?,
     queuedSubmissionCount: Int,
+    onDismissValidationDialog: () -> Unit,
     onDismissUpdate: () -> Unit,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
@@ -1361,7 +1420,13 @@ private fun DashboardScreen(
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
     val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
-    val showStatusCard = queuedSubmissionCount > 0 || isSyncingQueue || !noticeMessage.isNullOrBlank() || !errorMessage.isNullOrBlank()
+    val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
+    val showStatusCard =
+        !pendingReconnectActionLabel.isNullOrBlank() ||
+            queuedSubmissionCount > 0 ||
+            isSyncingQueue ||
+            !noticeMessage.isNullOrBlank() ||
+            !errorMessage.isNullOrBlank()
 
     LaunchedEffect(templates) {
         if (templates.isNotEmpty() && templates.none { it.id == selectedTemplateId }) {
@@ -1469,6 +1534,19 @@ private fun DashboardScreen(
                     resetCreateForm()
                 }) {
                     Text(stringResource(R.string.mobile_create_success_create_another))
+                }
+            }
+        )
+    }
+
+    if (!validationDialogMessage.isNullOrBlank()) {
+        AlertDialog(
+            onDismissRequest = onDismissValidationDialog,
+            title = { Text(actionRequiredTitle) },
+            text = { Text(validationDialogMessage) },
+            confirmButton = {
+                Button(onClick = onDismissValidationDialog) {
+                    Text(stringResource(R.string.mobile_validation_confirm))
                 }
             }
         )
@@ -1606,6 +1684,7 @@ private fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         MobileTabButton(
+                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.CHORES,
                             label = stringResource(R.string.mobile_tab_chores),
                             icon = Icons.Rounded.AssignmentTurnedIn,
@@ -1615,6 +1694,7 @@ private fun DashboardScreen(
                             }
                         )
                         MobileCenterTabButton(
+                            modifier = Modifier.weight(1.1f),
                             selected = activeTab == MobileDashboardTab.CREATE,
                             label = stringResource(R.string.mobile_tab_create),
                             icon = Icons.Rounded.AddCircle,
@@ -1624,6 +1704,7 @@ private fun DashboardScreen(
                             }
                         )
                         MobileTabButton(
+                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.SETTINGS,
                             label = stringResource(R.string.mobile_tab_settings),
                             icon = Icons.Rounded.Tune,
@@ -1656,7 +1737,7 @@ private fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
             if (activeTab == MobileDashboardTab.CHORES) {
-                if (!isDashboardSyncConnected) {
+                if (showDashboardSyncNotice) {
                     item {
                         ChoreConnectionBanner(
                             message = stringResource(R.string.mobile_sync_disconnected)
@@ -1708,6 +1789,7 @@ private fun DashboardScreen(
                                         isSyncingQueue = isSyncingQueue,
                                         errorMessage = errorMessage,
                                         noticeMessage = noticeMessage,
+                                        pendingReconnectActionLabel = pendingReconnectActionLabel,
                                         queuedSubmissionCount = queuedSubmissionCount
                                     )
                                 }
@@ -1743,6 +1825,7 @@ private fun DashboardScreen(
                                 isSyncingQueue = isSyncingQueue,
                                 errorMessage = errorMessage,
                                 noticeMessage = noticeMessage,
+                                pendingReconnectActionLabel = pendingReconnectActionLabel,
                                 queuedSubmissionCount = queuedSubmissionCount
                             )
                         }
@@ -1974,7 +2057,13 @@ private fun DashboardScreen(
 }
 
 @Composable
-private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun MobileTabButton(
+    modifier: Modifier = Modifier,
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     val iconTint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     val chipColor = if (selected) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
@@ -1982,6 +2071,7 @@ private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector,
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
     }
     TextButton(
+        modifier = modifier,
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
@@ -2002,14 +2092,22 @@ private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector,
                 text = label,
                 color = iconTint,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
 @Composable
-private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun MobileCenterTabButton(
+    modifier: Modifier = Modifier,
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     val containerColor = if (selected) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -2018,10 +2116,12 @@ private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageV
     val iconTint = MaterialTheme.colorScheme.onPrimary
 
     TextButton(
+        modifier = modifier,
         onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
     ) {
         Column(
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -2040,7 +2140,9 @@ private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageV
                 text = label,
                 color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -2052,10 +2154,26 @@ private fun DashboardStatusCard(
     isSyncingQueue: Boolean,
     errorMessage: String?,
     noticeMessage: String?,
+    pendingReconnectActionLabel: String?,
     queuedSubmissionCount: Int
 ) {
     Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!pendingReconnectActionLabel.isNullOrBlank()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Text(
+                        text = stringResource(
+                            R.string.mobile_sync_reconnecting_action_status,
+                            pendingReconnectActionLabel
+                        ),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
             if (queuedSubmissionCount > 0 || isSyncingQueue) {
                 Text(
                     text = if (isSyncingQueue) {
@@ -2908,8 +3026,42 @@ private fun ChoreCard(
 private fun MobileChoiceRow(options: List<MobileChoiceOption>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.chunked(2).forEach { rowOptions ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                rowOptions.forEach { option -> if (option.selected) Button(onClick = option.onClick) { Text(option.label) } else OutlinedButton(onClick = option.onClick) { Text(option.label) } }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowOptions.forEach { option ->
+                    if (option.selected) {
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            onClick = option.onClick,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = option.label,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = option.onClick,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = option.label,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                repeat(2 - rowOptions.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }

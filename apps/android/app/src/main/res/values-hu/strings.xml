@@ -55,6 +55,9 @@
     <string name="mobile_refresh">Frissítés</string>
     <string name="mobile_refreshing">Frissítés...</string>
     <string name="mobile_sync_disconnected">Az élő szinkron átmenetileg offline. Újracsatlakozás folyamatban...</string>
+    <string name="mobile_sync_reconnecting_action">Próbáljuk visszaállítani az élő kapcsolatot...</string>
+    <string name="mobile_sync_reconnecting_action_status">%1$s. Kapcsolat helyreállítása...</string>
+    <string name="mobile_connection_restore_failed">Az élő kapcsolat nem állt helyre időben. Próbáld újra.</string>
     <string name="mobile_logout">Kijelentkezés</string>
     <string name="mobile_tab_chores">Feladatok</string>
     <string name="mobile_tab_create">Létrehozás</string>
@@ -181,6 +184,8 @@
     <string name="mobile_submit_confirm_title">Befejezed ezt a feladatot?</string>
     <string name="mobile_submit_confirm_body">Most beküldjük ezt: „%1$s”?</string>
     <string name="mobile_submit_confirm_action">Igen, befejezem</string>
+    <string name="mobile_action_required_title">Teendő</string>
+    <string name="mobile_validation_confirm">Értem</string>
     <string name="mobile_start">Feladat indítása</string>
     <string name="mobile_starting">Indítás...</string>
     <string name="mobile_started">Folyamatban</string>
