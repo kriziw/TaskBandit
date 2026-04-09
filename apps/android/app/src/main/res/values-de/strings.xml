@@ -74,7 +74,7 @@
     <string name="mobile_chore_assigned_elsewhere">Anderswo zugewiesen</string>
     <string name="mobile_take_over_task">Aufgabe übernehmen</string>
     <string name="mobile_taking_over_task">Übernahme läuft...</string>
-    <string name="mobile_work_task">An Aufgabe arbeiten</string>
+    <string name="mobile_work_task">Öffnen</string>
     <string name="mobile_hide_task_tools">Aufgabenwerkzeuge ausblenden</string>
     <string name="mobile_view_task">Aufgabe ansehen</string>
     <string name="mobile_chore_read_only_hint">Übernimm diese Aufgabe, bevor du daran arbeitest.</string>
@@ -246,4 +246,25 @@
     <string name="widget_refreshing">Widget wird aktualisiert...</string>
     <string name="mobile_push_channel_name">TaskBandit-Hinweise</string>
     <string name="mobile_push_channel_description">Erinnerungen bei nahen Fälligkeiten, Freigaben und weitere TaskBandit-Aktualisierungen.</string>
+    <string name="mobile_start_confirm_title">Aufgabe starten?</string>
+    <string name="mobile_start_confirm_body">\"%1$s\" jetzt starten?</string>
+    <string name="mobile_start_confirm_action">Ja, starten</string>
+    <string name="mobile_takeover_confirm_title">Aufgabe übernehmen?</string>
+    <string name="mobile_takeover_confirm_body">\"%1$s\" übernehmen?</string>
+    <string name="mobile_takeover_confirm_body_assigned">\"%1$s\" von %2$s übernehmen?</string>
+    <string name="mobile_takeover_confirm_action">Ja, übernehmen</string>
+    <string name="mobile_approve_confirm_title">Einreichung freigeben?</string>
+    <string name="mobile_approve_confirm_body">\"%1$s\" freigeben und als erledigt markieren?</string>
+    <string name="mobile_approve_confirm_action">Ja, freigeben</string>
+    <string name="mobile_reject_confirm_title">Einreichung ablehnen?</string>
+    <string name="mobile_reject_confirm_body">\"%1$s\" ablehnen und um Nachbesserung bitten?</string>
+    <string name="mobile_reject_confirm_action">Ja, ablehnen</string>
+    <string name="mobile_takeover_request_approve_confirm_title">Übernahme genehmigen?</string>
+    <string name="mobile_takeover_request_approve_confirm_body">%1$s soll \"%2$s\" übernehmen?</string>
+    <string name="mobile_takeover_request_approve_confirm_action">Ja, genehmigen</string>
+    <string name="mobile_takeover_request_decline_confirm_title">Anfrage ablehnen?</string>
+    <string name="mobile_takeover_request_decline_confirm_body">Anfrage von %1$s für \"%2$s\" ablehnen?</string>
+    <string name="mobile_takeover_request_decline_confirm_action">Ja, ablehnen</string>
+    <string name="mobile_photo_step_start">1 · Starten</string>
+    <string name="mobile_photo_step_proof">2 · Nachweis hinzufügen</string>
 </resources>
