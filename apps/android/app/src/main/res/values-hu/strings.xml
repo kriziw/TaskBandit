@@ -94,6 +94,7 @@
     <string name="mobile_create_select_template_prompt">Válassz típust…</string>
     <string name="mobile_create_repeat_every_x_days_option">Minden X. napon</string>
     <string name="mobile_create_interval_days_label">Intervallum (nap)</string>
+    <string name="mobile_create_interval_days_invalid">Adj meg 0-nál nagyobb számot.</string>
     <string name="mobile_create_template">Típus</string>
     <string name="mobile_create_select_template">A kezdéshez válassz egy sablont lent.</string>
     <string name="mobile_create_selected_template">Kiválasztva</string>
@@ -131,6 +132,7 @@
     <string name="mobile_create_no_templates">Még nincs elérhető sablon. Először a webes felületen hozz létre sablonokat.</string>
     <string name="mobile_create_variant">Altípus</string>
     <string name="mobile_create_select_variant_prompt">Válassz altípust…</string>
+    <string name="mobile_create_no_subtype">Nincs altípus</string>
     <string name="mobile_create_variant_required">A feladat létrehozásához válassz altípust.</string>
     <string name="mobile_chore_created">A feladat Androidról létre lett hozva.</string>
     <string name="mobile_create_success_title">Kész</string>
