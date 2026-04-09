@@ -33,6 +33,7 @@ import type {
   FollowUpDelayUnit,
   RuntimeLogEntry,
   SignupInput,
+  TakeoverRequestEntry,
   UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
@@ -55,6 +56,7 @@ type DashboardPayload = {
   pointsLedger: PointsLedgerEntry[];
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
+  takeoverRequests: TakeoverRequestEntry[];
 };
 
 type LoginFormState = {
@@ -374,6 +376,7 @@ export function App() {
   const templatesRef = useRef<HTMLElement | null>(null);
   const scheduleRef = useRef<HTMLElement | null>(null);
   const approvalQueueRef = useRef<HTMLElement | null>(null);
+  const takeoverRequestsRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
   const notificationsRef = useRef<HTMLElement | null>(null);
@@ -555,6 +558,11 @@ export function App() {
 
   const unreadNotifications = useMemo(
     () => payload?.notifications.filter((notification) => !notification.isRead) ?? [],
+    [payload]
+  );
+
+  const pendingTakeoverRequests = useMemo(
+    () => payload?.takeoverRequests.filter((request) => request.status === "PENDING") ?? [],
     [payload]
   );
 
@@ -825,6 +833,7 @@ export function App() {
         pointsLedger,
         templates,
         instances,
+        takeoverRequests,
         nextRuntimeLogs
       ] =
         await Promise.all([
@@ -853,6 +862,7 @@ export function App() {
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language),
+        taskBanditApi.getTakeoverRequests(accessToken, language),
         currentUser.role === "admin" && activePage === "admin"
           ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
           : Promise.resolve(runtimeLogs)
@@ -872,7 +882,8 @@ export function App() {
         notificationPreferences,
         pointsLedger,
         templates,
-        instances
+        instances,
+        takeoverRequests
       });
       setRuntimeLogs(nextRuntimeLogs);
       setPageError(null);
@@ -1120,6 +1131,53 @@ export function App() {
     );
   }
 
+  function firstNameFromDisplayName(value: string) {
+    return value.trim().split(/\s+/)[0] || value;
+  }
+
+  function renderTakeoverRequestCard(request: TakeoverRequestEntry) {
+    return (
+      <div className="task-row compact takeover-request-card" key={request.id}>
+        <div className="task-row-header">
+          <strong>{request.choreTitle}</strong>
+          <span className="status-pill state-pending_approval">{t("takeover.awaiting_reply")}</span>
+        </div>
+        <p>
+          {t("takeover.requested_by").replace(
+            "{name}",
+            firstNameFromDisplayName(request.requester.displayName)
+          )}
+        </p>
+        <p>
+          {t("takeover.requested_at")}: {formatDate(request.createdAt)}
+        </p>
+        {request.note ? (
+          <p>
+            {t("task.note")}: {request.note}
+          </p>
+        ) : null}
+        <div className="button-row">
+          <button
+            className="primary-button"
+            type="button"
+            disabled={busyAction === `takeover-approve:${request.id}`}
+            onClick={() => void handleTakeoverApproval(request.id, "approve")}
+          >
+            {t("takeover.approve")}
+          </button>
+          <button
+            className="ghost-button"
+            type="button"
+            disabled={busyAction === `takeover-decline:${request.id}`}
+            onClick={() => void handleTakeoverApproval(request.id, "decline")}
+          >
+            {t("takeover.decline")}
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   function formatTemplateRecurrence(template: ChoreTemplate) {
     switch (template.recurrence.type) {
       case "daily":
@@ -1346,6 +1404,29 @@ export function App() {
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t("approval.failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleTakeoverApproval(requestId: string, action: "approve" | "decline") {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction(`takeover-${action}:${requestId}`);
+    try {
+      if (action === "approve") {
+        await taskBanditApi.approveTakeoverRequest(token, language, requestId);
+        setNotice(t("takeover.approved_notice"));
+      } else {
+        await taskBanditApi.declineTakeoverRequest(token, language, requestId);
+        setNotice(t("takeover.declined_notice"));
+      }
+
+      await refreshDashboard(token, { silent: true });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("takeover.action_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -2231,6 +2312,15 @@ export function App() {
         ];
       case "chores":
         return [
+          ...(pendingTakeoverRequests.length > 0
+            ? [
+                {
+                  key: "chores-takeovers",
+                  label: t("panel.takeover_approvals"),
+                  ref: takeoverRequestsRef
+                }
+              ]
+            : []),
           { key: "chores-mine", label: t("panel.my_chores"), ref: myChoresRef },
           { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef }
         ];
@@ -2284,7 +2374,7 @@ export function App() {
       default:
         return [];
     }
-  }, [activePage, payload?.currentUser.role, t]);
+  }, [activePage, payload?.currentUser.role, pendingTakeoverRequests.length, t]);
 
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
     setActivePage(page);
@@ -2887,6 +2977,19 @@ export function App() {
                     ))}
                   </div>
                 )}
+              </article>
+            ) : null}
+
+            {pendingTakeoverRequests.length > 0 ? (
+              <article className="panel page-panel page-chores page-takeover-requests" ref={takeoverRequestsRef}>
+                <div className="section-heading">
+                  <h2>{t("panel.takeover_approvals")}</h2>
+                  <span className="section-kicker">{pendingTakeoverRequests.length}</span>
+                </div>
+                <p className="inline-message">{t("takeover.panel_hint")}</p>
+                <div className="stack-list">
+                  {pendingTakeoverRequests.map((request) => renderTakeoverRequestCard(request))}
+                </div>
               </article>
             ) : null}
 

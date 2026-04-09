@@ -116,6 +116,26 @@ export type NotificationEntry = {
   };
 };
 
+export type TakeoverRequestEntry = {
+  id: string;
+  choreId: string;
+  choreTitle: string;
+  status: "PENDING" | "APPROVED" | "DECLINED" | "CANCELLED";
+  note: string | null;
+  createdAt: string;
+  respondedAt: string | null;
+  requester: {
+    id: string;
+    displayName: string;
+    role: HouseholdRole;
+  };
+  requested: {
+    id: string;
+    displayName: string;
+    role: HouseholdRole;
+  };
+};
+
 export type RuntimeLogEntry = {
   id: string;
   timestamp: string;

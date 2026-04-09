@@ -181,7 +181,7 @@
     <string name="mobile_started">In progress</string>
     <string name="mobile_chore_started">Chore moved into progress.</string>
     <string name="mobile_chore_taken_over">Task was assigned to you.</string>
-    <string name="mobile_takeover_requests_title">Takeover requests</string>
+    <string name="mobile_takeover_requests_title">Needs your approval</string>
     <string name="mobile_takeover_request_card_body">%1$s asked you to take over this chore.</string>
     <string name="mobile_takeover_request_approve">Approve takeover</string>
     <string name="mobile_takeover_request_approving">Approving...</string>
