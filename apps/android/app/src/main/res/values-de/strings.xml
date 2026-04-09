@@ -75,6 +75,8 @@
     <string name="mobile_request_takeover_pick_member">Haushaltsmitglied auswählen</string>
     <string name="mobile_request_takeover_confirm">Anfrage senden</string>
     <string name="mobile_request_takeover_cancel">Abbrechen</string>
+    <string name="mobile_takeover_pending_with_name">Wartet auf die Bestätigung von %1$s. Du kannst an dieser Aufgabe weiterarbeiten, bis die Entscheidung da ist.</string>
+    <string name="mobile_takeover_pending_short_with_name">Wartet auf %1$s</string>
     <string name="mobile_checklist_required">Erledige alle Pflichtpunkte der Checkliste, bevor du die Aufgabe sendest.</string>
     <string name="mobile_photo_required_hint">Diese Aufgabe braucht mindestens ein Beweisfoto.</string>
     <string name="mobile_photo_required_missing">Fuge mindestens ein Beweisfoto hinzu, bevor du die Aufgabe sendest.</string>

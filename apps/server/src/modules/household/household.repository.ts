@@ -1937,12 +1937,19 @@ export class HouseholdRepository {
     );
   }
 
-  async getPendingTakeoverRequests(householdId: string, requestedUserId: string) {
+  async getPendingTakeoverRequests(householdId: string, viewerUserId: string) {
     const requests = await this.prisma.choreTakeoverRequest.findMany({
       where: {
         householdId,
-        requestedUserId,
-        status: ChoreTakeoverRequestStatus.PENDING
+        status: ChoreTakeoverRequestStatus.PENDING,
+        OR: [
+          {
+            requestedUserId: viewerUserId
+          },
+          {
+            requesterUserId: viewerUserId
+          }
+        ]
       },
       include: {
         choreInstance: true,
@@ -2559,6 +2566,17 @@ export class HouseholdRepository {
     nextState: "pending_approval" | "completed";
   }) {
     const updatedInstance = await this.prisma.$transaction(async (tx) => {
+      await tx.choreTakeoverRequest.updateMany({
+        where: {
+          choreInstanceId: input.instanceId,
+          status: ChoreTakeoverRequestStatus.PENDING
+        },
+        data: {
+          status: ChoreTakeoverRequestStatus.CANCELLED,
+          respondedAtUtc: new Date()
+        }
+      });
+
       await tx.choreChecklistCompletion.deleteMany({
         where: {
           choreInstanceId: input.instanceId

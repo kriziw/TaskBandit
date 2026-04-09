@@ -197,6 +197,8 @@
     <string name="mobile_request_takeover_pick_member">Pick a household member</string>
     <string name="mobile_request_takeover_confirm">Send request</string>
     <string name="mobile_request_takeover_cancel">Cancel</string>
+    <string name="mobile_takeover_pending_with_name">Pending approval from %1$s. You can keep working on this chore until they decide.</string>
+    <string name="mobile_takeover_pending_short_with_name">Waiting for %1$s</string>
     <string name="mobile_checklist_required">Complete all required checklist items before submitting.</string>
     <string name="mobile_photo_required_hint">This chore needs at least one proof photo.</string>
     <string name="mobile_photo_required_missing">Add at least one proof photo before submitting.</string>
