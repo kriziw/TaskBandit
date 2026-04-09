@@ -2498,20 +2498,32 @@ private fun CompactChoreMeta(
     requirePhotoProof: Boolean,
     modifier: Modifier = Modifier
 ) {
-    val metaParts = buildList {
+    val supportingParts = buildList {
         subtypeLabel?.takeIf { it.isNotBlank() }?.let(::add)
         assignmentLabel?.takeIf { it.isNotBlank() }?.let(::add)
-        add(stringResource(R.string.mobile_due_at, formatDueAtForCard(dueAt)))
         if (requirePhotoProof) add(stringResource(R.string.mobile_photo_required_hint))
     }
-    Text(
-        text = metaParts.joinToString(" • "),
+    Column(
         modifier = modifier,
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-        maxLines = 2,
-        overflow = TextOverflow.Ellipsis
-    )
+        verticalArrangement = Arrangement.spacedBy(1.dp)
+    ) {
+        if (supportingParts.isNotEmpty()) {
+            Text(
+                text = supportingParts.joinToString(" • "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        Text(
+            text = stringResource(R.string.mobile_due_at, formatDueAtForCard(dueAt)),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
 }
 
 @Composable
@@ -3562,7 +3574,7 @@ private fun formatApiTimestamp(value: String): String {
 
 private fun formatDueAtForCard(value: String): String {
     return runCatching {
-        DateTimeFormatter.ofPattern("EEE d MMM HH:mm", Locale.getDefault())
+        DateTimeFormatter.ofPattern("EEEE d MMM HH:mm", Locale.getDefault())
             .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault(formatApiTimestamp(value))
