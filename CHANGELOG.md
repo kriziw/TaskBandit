@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.8](https://github.com/kriziw/TaskBandit/compare/v0.25.7...v0.25.8) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** compact chore cards and improve due date readability ([#133](https://github.com/kriziw/TaskBandit/issues/133)) ([be8822f](https://github.com/kriziw/TaskBandit/commit/be8822f5a4000f6b48c29349c8131d2a3c7eb1d2))
+
 ## [0.25.7](https://github.com/kriziw/TaskBandit/compare/v0.25.6...v0.25.7) (2026-04-09)
 
 
