@@ -42,6 +42,7 @@
     <string name="mobile_dashboard_summary">%1$d jovahagyas var, %2$d aktiv feladat, %3$d szeria</string>
     <string name="mobile_refresh">Frissites</string>
     <string name="mobile_refreshing">Frissites...</string>
+    <string name="mobile_sync_disconnected">Az elo szinkron most atmenetileg offline. Ujracsatlakozas folyamatban...</string>
     <string name="mobile_logout">Kijelentkezes</string>
     <string name="mobile_my_chores">Feladataim</string>
     <string name="mobile_pending_approvals">Varakozo jovahagyasok</string>

@@ -51,7 +51,6 @@ import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
@@ -246,6 +245,7 @@ private fun TaskBanditApp(
     var activeCreateAction by remember { mutableStateOf<String?>(null) }
     var createSuccessCounter by remember { mutableIntStateOf(0) }
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
+    var isDashboardSyncConnected by remember { mutableStateOf(true) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
@@ -330,6 +330,7 @@ private fun TaskBanditApp(
         dashboard = null
         serverReleaseInfo = null
         notificationDevices = emptyList()
+        isDashboardSyncConnected = true
         isBusy = false
         refreshQueued = false
         errorMessage = null
@@ -792,6 +793,8 @@ private fun TaskBanditApp(
 
         dashboardSyncClient.connect(activeBaseUrl, token).collect { signal ->
             when (signal) {
+                MobileDashboardSyncSignal.Connected -> isDashboardSyncConnected = true
+                MobileDashboardSyncSignal.Disconnected -> isDashboardSyncConnected = false
                 MobileDashboardSyncSignal.RefreshRequested -> requestDashboardRefresh()
                 MobileDashboardSyncSignal.Unauthorized -> logout()
             }
@@ -905,6 +908,7 @@ private fun TaskBanditApp(
                     themeMode = themeMode,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
+                    isDashboardSyncConnected = isDashboardSyncConnected,
                     isSyncingQueue = isSyncingQueue,
                     activeReviewAction = activeReviewAction,
                     activeStartAction = activeStartAction,
@@ -1256,6 +1260,7 @@ private fun DashboardScreen(
     themeMode: MobileThemeMode,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
+    isDashboardSyncConnected: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
     activeStartAction: String?,
@@ -1606,6 +1611,13 @@ private fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
             if (activeTab == MobileDashboardTab.CHORES) {
+                if (!isDashboardSyncConnected) {
+                    item {
+                        ChoreConnectionBanner(
+                            message = stringResource(R.string.mobile_sync_disconnected)
+                        )
+                    }
+                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -1648,12 +1660,10 @@ private fun DashboardScreen(
                                 if (showStatusCard) {
                                     DashboardStatusCard(
                                         modifier = Modifier.fillMaxWidth(),
-                                        isBusy = isBusy,
                                         isSyncingQueue = isSyncingQueue,
                                         errorMessage = errorMessage,
                                         noticeMessage = noticeMessage,
-                                        queuedSubmissionCount = queuedSubmissionCount,
-                                        onRefresh = onRefresh
+                                        queuedSubmissionCount = queuedSubmissionCount
                                     )
                                 }
                             }
@@ -1685,12 +1695,10 @@ private fun DashboardScreen(
                     if (showStatusCard) {
                         item {
                             DashboardStatusCard(
-                                isBusy = isBusy,
                                 isSyncingQueue = isSyncingQueue,
                                 errorMessage = errorMessage,
                                 noticeMessage = noticeMessage,
-                                queuedSubmissionCount = queuedSubmissionCount,
-                                onRefresh = onRefresh
+                                queuedSubmissionCount = queuedSubmissionCount
                             )
                         }
                     }
@@ -1996,20 +2004,13 @@ private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageV
 @Composable
 private fun DashboardStatusCard(
     modifier: Modifier = Modifier,
-    isBusy: Boolean,
     isSyncingQueue: Boolean,
     errorMessage: String?,
     noticeMessage: String?,
-    queuedSubmissionCount: Int,
-    onRefresh: () -> Unit
+    queuedSubmissionCount: Int
 ) {
     Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onRefresh, enabled = !isBusy) {
-                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.size(6.dp))
-                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
-            }
             if (queuedSubmissionCount > 0 || isSyncingQueue) {
                 Text(
                     text = if (isSyncingQueue) {
@@ -2027,6 +2028,22 @@ private fun DashboardStatusCard(
                 Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
             }
         }
+    }
+}
+
+@Composable
+private fun ChoreConnectionBanner(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
     }
 }
 
