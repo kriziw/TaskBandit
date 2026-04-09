@@ -1,5 +1,5 @@
-# Mirror of the repository-root docker-compose.yml for quick-start downloads.
-# Keep this file in sync with ../../docker-compose.yml.
+# Canonical self-hosted Docker Compose entrypoint for repo checkouts and quick-start downloads.
+# Keep this file in sync with infra/docker/docker-compose.yml.
 
 services:
   postgres:
