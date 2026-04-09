@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.11](https://github.com/kriziw/TaskBandit/compare/v0.25.10...v0.25.11) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** polish core chore flow for daily use ([#144](https://github.com/kriziw/TaskBandit/issues/144)) ([b170b64](https://github.com/kriziw/TaskBandit/commit/b170b645a36f4543727d903f5c9d505a55292b31))
+
 ## [0.25.10](https://github.com/kriziw/TaskBandit/compare/v0.25.9...v0.25.10) (2026-04-09)
 
 
