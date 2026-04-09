@@ -1801,7 +1801,8 @@ export class HouseholdRepository {
           householdId,
           templateId: template.id,
           subtypeLabel,
-          title: dto.title?.trim() || (variant ? `${template.title} — ${variant.label}` : template.title),
+          requirePhotoProofOverride: template.requirePhotoProof,
+          title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
           state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId: resolvedAssigneeId,
           dueAtUtc: dto.dueAt,
@@ -2033,6 +2034,7 @@ export class HouseholdRepository {
         data: {
           templateId: template.id,
           subtypeLabel,
+          requirePhotoProofOverride: template.requirePhotoProof,
           title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
           variantId: dto.variantId ?? null,
           assigneeId: resolvedAssigneeId,
@@ -3241,6 +3243,8 @@ export class HouseholdRepository {
 
     const followUpTemplateLookup = new Map(followUpTemplates.map((template) => [template.id, template]));
     const carriedSubtypeLabel = (instance as any).subtypeLabel ?? null;
+    const carriedRequirePhotoProof =
+      (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
 
     await this.prisma.$transaction(async (tx) => {
       for (const dependency of dependencies) {
@@ -3267,6 +3271,7 @@ export class HouseholdRepository {
             ) ?? null
           : null;
         const followUpTitle = this.composeChoreTitle(template.title, carriedSubtypeLabel);
+        const effectiveFollowUpRequirePhotoProof = carriedRequirePhotoProof || template.requirePhotoProof;
 
         await tx.choreInstance.create({
           data: {
@@ -3274,6 +3279,7 @@ export class HouseholdRepository {
             templateId: template.id,
             title: followUpTitle,
             subtypeLabel: carriedSubtypeLabel,
+            requirePhotoProofOverride: effectiveFollowUpRequirePhotoProof,
             state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
             assigneeId,
             dueAtUtc: followUpDueAt,
@@ -3375,7 +3381,9 @@ export class HouseholdRepository {
       ? template.variants.find((v) => v.id === variantId) ?? null
       : null;
     const subtypeLabel = (instance as any).subtypeLabel ?? variant?.label ?? null;
-    const instanceTitle = variant ? `${template.title} — ${variant.label}` : template.title;
+    const requirePhotoProof =
+      (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
+    const instanceTitle = this.composeChoreTitle(template.title, subtypeLabel);
 
     await this.prisma.$transaction(async (tx) => {
       const assigneeId = await this.resolveAssigneeForTemplate(
@@ -3396,6 +3404,7 @@ export class HouseholdRepository {
           suppressRecurrence: false,
           variantId: variantId,
           subtypeLabel,
+          requirePhotoProofOverride: requirePhotoProof,
           assignmentStrategyOverride: instance.assignmentStrategyOverride,
           recurrenceTypeOverride: instance.recurrenceTypeOverride,
           recurrenceIntervalDaysOverride: instance.recurrenceIntervalDaysOverride,
@@ -3645,7 +3654,7 @@ export class HouseholdRepository {
         dueAt: instance.dueAtUtc,
         difficulty: "easy" as const,
         basePoints: 0,
-        requirePhotoProof: false,
+        requirePhotoProof: (instance as any).requirePhotoProofOverride ?? false,
         awardedPoints: 0,
         completedChecklistItems: 0,
         isOverdue:
@@ -3679,7 +3688,7 @@ export class HouseholdRepository {
       dueAt: instance.dueAtUtc,
       difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
       basePoints: instance.template.basePoints,
-      requirePhotoProof: instance.template.requirePhotoProof,
+      requirePhotoProof: (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof,
       awardedPoints: instance.awardedPoints,
       completedChecklistItems: instance.completedChecklistItems,
       isOverdue:

@@ -472,7 +472,7 @@
   "templates.base_points": "Base points",
   "templates.strategy": "Strategy",
   "templates.photo_required": "Photo proof required",
-  "templates.photo_optional": "Photo proof optional",
+  "templates.photo_optional": "Photo proof not required",
   "templates.follow_ups": "Follow-up chores",
   "templates.no_follow_ups": "No follow-up chores configured.",
   "templates.follow_up_hint": "Create another template first if this chore should trigger a follow-up.",

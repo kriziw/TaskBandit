@@ -462,7 +462,7 @@
   "templates.base_points": "Alappont",
   "templates.strategy": "Stratégia",
   "templates.photo_required": "Fotóbizonyíték kötelező",
-  "templates.photo_optional": "Fotóbizonyíték opcionális",
+  "templates.photo_optional": "Fotóbizonyíték nem kötelező",
   "templates.follow_ups": "Következő feladatok",
   "templates.no_follow_ups": "Nincs beállított következő feladat.",
   "templates.follow_up_hint": "Előbb hozz létre egy másik sablont, ha ez a feladat továbbítson egy következő lépést.",

@@ -472,7 +472,7 @@
   "templates.base_points": "Basispunkte",
   "templates.strategy": "Strategie",
   "templates.photo_required": "Fotobeleg erforderlich",
-  "templates.photo_optional": "Fotobeleg optional",
+  "templates.photo_optional": "Fotobeleg nicht erforderlich",
   "templates.follow_ups": "Folgeaufgaben",
   "templates.no_follow_ups": "Keine Folgeaufgaben konfiguriert.",
   "templates.follow_up_hint": "Lege zuerst eine weitere Vorlage an, wenn diese Aufgabe eine Folgeaufgabe auslosen soll.",
