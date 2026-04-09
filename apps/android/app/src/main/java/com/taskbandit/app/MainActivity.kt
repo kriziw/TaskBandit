@@ -1729,21 +1729,15 @@ private fun DashboardScreen(
                 .padding(padding)
         ) {
             val isTablet = isTabletWidth(maxWidth)
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 16.dp)
-                    .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 16.dp)
+                        .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
             if (activeTab == MobileDashboardTab.CHORES) {
-                if (showDashboardSyncNotice) {
-                    item {
-                        ChoreConnectionBanner(
-                            message = stringResource(R.string.mobile_sync_disconnected)
-                        )
-                    }
-                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -2051,11 +2045,28 @@ private fun DashboardScreen(
                     }
                 }
             }
+                }
+
+                if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = if (isTablet) 28.dp else 20.dp,
+                                end = if (isTablet) 28.dp else 20.dp,
+                                top = 12.dp
+                            )
+                            .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier)
+                    ) {
+                        ChoreConnectionBanner(
+                            message = stringResource(R.string.mobile_sync_disconnected)
+                        )
+                    }
+                }
+            }
         }
     }
 }
-}
-
 @Composable
 private fun MobileTabButton(
     modifier: Modifier = Modifier,
