@@ -2,6 +2,20 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.22.0](https://github.com/kriziw/TaskBandit/compare/v0.21.0...v0.22.0) (2026-04-09)
+
+
+### Features
+
+* **android:** strengthen section contrast ([2ef9c18](https://github.com/kriziw/TaskBandit/commit/2ef9c181827b217213673f6f57c3679f814163b0))
+
+
+### Bug Fixes
+
+* **chores:** cancel pending takeovers on completion ([62234c7](https://github.com/kriziw/TaskBandit/commit/62234c7fdd31168313535b51e463490e4db078b6))
+* **chores:** polish takeover state and contrast ([2d60b3a](https://github.com/kriziw/TaskBandit/commit/2d60b3aba0b52bda8b6290bc476629e7474f35e1))
+* **chores:** show pending takeover state ([2e362df](https://github.com/kriziw/TaskBandit/commit/2e362dfa40630ce2f81ec11b8c1eb709f88c9742))
+
 ## [0.21.0](https://github.com/kriziw/TaskBandit/compare/v0.20.0...v0.21.0) (2026-04-09)
 
 
