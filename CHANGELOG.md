@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.9](https://github.com/kriziw/TaskBandit/compare/v0.25.8...v0.25.9) (2026-04-09)
+
+
+### Bug Fixes
+
+* **docs:** harden self-hosted deployment setup ([#139](https://github.com/kriziw/TaskBandit/issues/139)) ([1163654](https://github.com/kriziw/TaskBandit/commit/11636541dccfeaae7d339f8b5cc84e055d59f1fd))
+
 ## [0.25.8](https://github.com/kriziw/TaskBandit/compare/v0.25.7...v0.25.8) (2026-04-09)
 
 
