@@ -178,6 +178,9 @@
     <string name="mobile_login_failed">Login failed.</string>
     <string name="mobile_submit">Submit chore</string>
     <string name="mobile_submitting">Submitting...</string>
+    <string name="mobile_submit_confirm_title">Finish this chore?</string>
+    <string name="mobile_submit_confirm_body">Submit \"%1$s\" now?</string>
+    <string name="mobile_submit_confirm_action">Yes, finish</string>
     <string name="mobile_start">Start chore</string>
     <string name="mobile_starting">Starting...</string>
     <string name="mobile_started">In progress</string>
