@@ -26,6 +26,7 @@ import type {
   RuntimeLogEntry,
   SignupInput,
   ReleaseInfo,
+  TakeoverRequestEntry,
   UpdateHouseholdMemberInput,
   UploadedProof
 } from "../types/taskbandit";
@@ -498,6 +499,25 @@ export const taskBanditApi = {
       language
     });
   },
+  getTakeoverRequests(token: string, language: AppLanguage) {
+    return request<TakeoverRequestEntry[]>("/api/chores/takeover-requests", {
+      token,
+      language
+    });
+  },
+  requestTakeover(
+    token: string,
+    language: AppLanguage,
+    instanceId: string,
+    payload: { requestedUserId: string; note?: string }
+  ) {
+    return request<TakeoverRequestEntry>(`/api/chores/instances/${instanceId}/takeover-request`, {
+      method: "POST",
+      token,
+      language,
+      body: payload
+    });
+  },
   submitChore(
     token: string,
     language: AppLanguage,
@@ -573,6 +593,22 @@ export const taskBanditApi = {
   },
   rejectChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/reject`, {
+      method: "POST",
+      token,
+      language,
+      body: { note }
+    });
+  },
+  approveTakeoverRequest(token: string, language: AppLanguage, requestId: string, note?: string) {
+    return request<ChoreInstance>(`/api/chores/takeover-requests/${requestId}/approve`, {
+      method: "POST",
+      token,
+      language,
+      body: { note }
+    });
+  },
+  declineTakeoverRequest(token: string, language: AppLanguage, requestId: string, note?: string) {
+    return request<TakeoverRequestEntry>(`/api/chores/takeover-requests/${requestId}/decline`, {
       method: "POST",
       token,
       language,

@@ -835,6 +835,18 @@ h4,
   border: 1px solid rgba(36, 48, 67, 0.08);
 }
 
+.page-takeover-requests {
+  border-color: rgba(255, 201, 74, 0.35);
+  background:
+    linear-gradient(180deg, rgba(255, 244, 212, 0.86), rgba(255, 255, 255, 0.92)),
+    rgba(255, 255, 255, 0.8);
+}
+
+.takeover-request-card {
+  border-color: rgba(255, 201, 74, 0.24);
+  background: rgba(255, 255, 255, 0.72);
+}
+
 .section-heading-compact {
   margin-bottom: 0;
 }

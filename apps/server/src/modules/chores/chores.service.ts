@@ -7,7 +7,9 @@ import { PointsService } from "../gamification/points.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
+import { RequestChoreTakeoverDto } from "./dto/request-chore-takeover.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
+import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
 import { ProofStorageService } from "./proof-storage.service";
 
@@ -115,8 +117,115 @@ export class ChoresService {
     return startedInstance;
   }
 
+  async takeOverInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_start_state", language)
+      );
+    }
+
+    if (instance.assigneeId === user.id) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_start_state", language)
+      );
+    }
+
+    const updatedInstance = await this.repository.takeOverInstance(instanceId, user.householdId, user.id);
+    this.publishSyncEvent(user, "instance.taken_over", "instance", instanceId);
+    return updatedInstance;
+  }
+
   getInstances(user: AuthenticatedUser) {
     return this.repository.getInstancesForViewer(user);
+  }
+
+  getTakeoverRequests(user: AuthenticatedUser) {
+    return this.repository.getPendingTakeoverRequests(user.householdId, user.id);
+  }
+
+  async requestTakeover(
+    instanceId: string,
+    dto: RequestChoreTakeoverDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (user.role === "child") {
+      return this.repository.throwForbidden(
+        this.i18nService.translate("chores.takeover_request_forbidden", language)
+      );
+    }
+
+    if (instance.assigneeId !== user.id) {
+      return this.repository.throwForbidden(
+        this.i18nService.translate("chores.takeover_request_only_assignee", language)
+      );
+    }
+
+    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_takeover_request_state", language)
+      );
+    }
+
+    const takeoverRequest = await this.repository.createTakeoverRequest({
+      householdId: user.householdId,
+      instanceId,
+      requesterUserId: user.id,
+      requestedUserId: dto.requestedUserId,
+      note: dto.note,
+      conflictMessage: this.i18nService.translate("chores.takeover_request_already_pending", language),
+      forbiddenMessage: this.i18nService.translate("chores.takeover_request_invalid_target", language)
+    });
+    this.publishSyncEvent(user, "instance.takeover_requested", "instance", instanceId);
+    return takeoverRequest;
+  }
+
+  async approveTakeoverRequest(
+    requestId: string,
+    dto: RespondChoreTakeoverDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const updatedInstance = await this.repository.approveTakeoverRequest({
+      requestId,
+      householdId: user.householdId,
+      actingUserId: user.id,
+      note: dto.note,
+      invalidStateMessage: this.i18nService.translate("chores.invalid_takeover_request_state", language),
+      notFoundMessage: this.i18nService.translate("chores.takeover_request_not_found", language),
+      forbiddenMessage: this.i18nService.translate("chores.takeover_request_approval_forbidden", language)
+    });
+    this.publishSyncEvent(user, "instance.takeover_approved", "instance", updatedInstance.id);
+    return updatedInstance;
+  }
+
+  async declineTakeoverRequest(
+    requestId: string,
+    dto: RespondChoreTakeoverDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    const takeoverRequest = await this.repository.declineTakeoverRequest({
+      requestId,
+      householdId: user.householdId,
+      actingUserId: user.id,
+      note: dto.note,
+      invalidStateMessage: this.i18nService.translate("chores.invalid_takeover_request_state", language),
+      notFoundMessage: this.i18nService.translate("chores.takeover_request_not_found", language),
+      forbiddenMessage: this.i18nService.translate("chores.takeover_request_approval_forbidden", language)
+    });
+    this.publishSyncEvent(user, "instance.takeover_declined", "takeover_request", takeoverRequest.id);
+    return takeoverRequest;
   }
 
   uploadProof(
@@ -306,7 +415,7 @@ export class ChoresService {
   private publishSyncEvent(
     user: AuthenticatedUser,
     action: string,
-    entityType: "instance" | "template",
+    entityType: "instance" | "template" | "takeover_request",
     entityId?: string
   ) {
     this.dashboardSyncService.publishChoreUpdate({

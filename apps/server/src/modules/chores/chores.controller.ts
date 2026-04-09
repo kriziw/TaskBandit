@@ -24,7 +24,9 @@ import { I18nService } from "../../common/i18n/i18n.service";
 import { ChoresService } from "./chores.service";
 import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
+import { RequestChoreTakeoverDto } from "./dto/request-chore-takeover.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
+import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
 import { memoryStorage } from "multer";
 
@@ -72,6 +74,11 @@ export class ChoresController {
     return this.choresService.getInstances(user);
   }
 
+  @Get("takeover-requests")
+  takeoverRequests(@CurrentUser() user: AuthenticatedUser) {
+    return this.choresService.getTakeoverRequests(user);
+  }
+
   @Post("instances")
   @Roles("admin", "parent")
   createInstance(@Body() dto: CreateChoreInstanceDto, @CurrentUser() user: AuthenticatedUser) {
@@ -116,6 +123,64 @@ export class ChoresController {
   ) {
     return this.choresService.startInstance(
       instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("instances/:id/takeover")
+  takeOver(
+    @Param("id") instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.takeOverInstance(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("instances/:id/takeover-request")
+  requestTakeOver(
+    @Param("id") instanceId: string,
+    @Body() dto: RequestChoreTakeoverDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.requestTakeover(
+      instanceId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("takeover-requests/:id/approve")
+  approveTakeOverRequest(
+    @Param("id") requestId: string,
+    @Body() dto: RespondChoreTakeoverDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.approveTakeoverRequest(
+      requestId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("takeover-requests/:id/decline")
+  declineTakeOverRequest(
+    @Param("id") requestId: string,
+    @Body() dto: RespondChoreTakeoverDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.declineTakeoverRequest(
+      requestId,
+      dto,
       user,
       this.i18nService.resolveLanguage(acceptLanguage)
     );

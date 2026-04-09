@@ -63,6 +63,9 @@ enum RecurrenceStartStrategy {
 
 enum NotificationType {
   CHORE_ASSIGNED
+  CHORE_TAKEOVER_REQUEST
+  CHORE_TAKEOVER_APPROVED
+  CHORE_TAKEOVER_DECLINED
   CHORE_SUBMITTED
   CHORE_APPROVED
   CHORE_REJECTED
@@ -95,6 +98,13 @@ enum NotificationEmailDeliveryStatus {
   SKIPPED
 }
 
+enum ChoreTakeoverRequestStatus {
+  PENDING
+  APPROVED
+  DECLINED
+  CANCELLED
+}
+
 model Household {
   id             String              @id @default(uuid()) @db.Uuid
   name           String
@@ -106,6 +116,7 @@ model Household {
   auditLogs      AuditLog[]
   pointsLedgerEntries PointsLedgerEntry[]
   notifications  Notification[]
+  choreTakeoverRequests ChoreTakeoverRequest[]
 }
 
 model HouseholdSettings {
@@ -147,6 +158,8 @@ model User {
   notifications Notification[] @relation("NotificationRecipient")
   notificationPreference NotificationPreference?
   notificationDevices NotificationDevice[]
+  takeoverRequestsRequested ChoreTakeoverRequest[] @relation("TakeoverRequester")
+  takeoverRequestsReceived ChoreTakeoverRequest[] @relation("TakeoverRequested")
 }
 
 model AuthIdentity {
@@ -251,6 +264,27 @@ model ChoreInstance {
   template        ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Restrict)
   checklistCompletions ChoreChecklistCompletion[]
   attachments     ChoreAttachment[]
+  takeoverRequests ChoreTakeoverRequest[]
+}
+
+model ChoreTakeoverRequest {
+  id              String                    @id @default(uuid()) @db.Uuid
+  householdId     String                    @db.Uuid
+  choreInstanceId String                    @db.Uuid
+  requesterUserId String                    @db.Uuid
+  requestedUserId String                    @db.Uuid
+  status          ChoreTakeoverRequestStatus @default(PENDING)
+  note            String?
+  createdAtUtc    DateTime                  @default(now())
+  respondedAtUtc  DateTime?
+  household       Household                 @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  choreInstance   ChoreInstance             @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)
+  requester       User                      @relation("TakeoverRequester", fields: [requesterUserId], references: [id], onDelete: Cascade)
+  requested       User                      @relation("TakeoverRequested", fields: [requestedUserId], references: [id], onDelete: Cascade)
+
+  @@index([requestedUserId, status, createdAtUtc])
+  @@index([choreInstanceId, status, createdAtUtc])
+  @@index([householdId, createdAtUtc])
 }
 
 model ChoreTemplateVariant {

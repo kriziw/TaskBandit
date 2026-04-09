@@ -498,4 +498,14 @@
   "empty.filtered_chores": "Nincs olyan feladat, ami megfelel a mostani szűrőknek.",
   "error.load_dashboard": "A TaskBandit nem tudta betölteni az élő irányítópultot.",
   "error.missing_template": "Ehhez a példányhoz nem található feladatsablon."
+  ,"panel.takeover_approvals": "Átvételi jóváhagyások"
+  ,"takeover.panel_hint": "Itt kezelheted az átvételi kéréseket, hogy a feladatok gördülékenyen kerüljenek át másik háztartási taghoz."
+  ,"takeover.awaiting_reply": "Válaszodra vár"
+  ,"takeover.requested_by": "{name} megkért, hogy vedd át ezt a feladatot."
+  ,"takeover.requested_at": "Kérve"
+  ,"takeover.approve": "Átvétel jóváhagyása"
+  ,"takeover.decline": "Kérés elutasítása"
+  ,"takeover.approved_notice": "Az átvételi kérés jóváhagyva, a feladat újra lett osztva."
+  ,"takeover.declined_notice": "Az átvételi kérés elutasítva."
+  ,"takeover.action_failed": "A TaskBandit nem tudta feldolgozni az átvételi kérést."
 }

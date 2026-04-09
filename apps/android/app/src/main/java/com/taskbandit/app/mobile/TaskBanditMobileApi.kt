@@ -45,6 +45,7 @@ class TaskBanditMobileApi {
         val userJson = requestJson(baseUrl, "/api/auth/me", token = token)
         val summaryJson = requestJson(baseUrl, "/api/dashboard/summary", token = token)
         val choresJson = requestJsonArray(baseUrl, "/api/chores/instances", token = token)
+        val takeoverRequestsJson = requestJsonArray(baseUrl, "/api/chores/takeover-requests", token = token)
         val notificationsJson = requestJsonArray(baseUrl, "/api/dashboard/notifications", token = token)
 
         val user = MobileUser(
@@ -79,6 +80,7 @@ class TaskBanditMobileApi {
                         title = entry.optString("title"),
                         state = entry.optString("state"),
                         assigneeId = entry.optString("assigneeId").ifBlank { null },
+                        assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
                         dueAt = entry.optString("dueAt"),
                         isOverdue = entry.optBoolean("isOverdue"),
                         requirePhotoProof = entry.optBoolean("requirePhotoProof"),
@@ -96,10 +98,42 @@ class TaskBanditMobileApi {
                 add(
                     MobileNotification(
                         id = entry.optString("id"),
+                        type = entry.optString("type"),
                         title = entry.optString("title"),
                         message = entry.optString("message"),
+                        entityType = entry.optString("entityType").ifBlank { null },
+                        entityId = entry.optString("entityId").ifBlank { null },
                         isRead = entry.optBoolean("isRead"),
                         createdAt = entry.optString("createdAt")
+                    )
+                )
+            }
+        }
+
+        val takeoverRequests = buildList {
+            for (index in 0 until takeoverRequestsJson.length()) {
+                val entry = takeoverRequestsJson.optJSONObject(index) ?: continue
+                val requesterJson = entry.optJSONObject("requester") ?: continue
+                val requestedJson = entry.optJSONObject("requested") ?: continue
+                add(
+                    MobileTakeoverRequest(
+                        id = entry.optString("id"),
+                        choreId = entry.optString("choreId"),
+                        choreTitle = entry.optString("choreTitle"),
+                        status = entry.optString("status"),
+                        note = entry.optString("note").ifBlank { null },
+                        createdAt = entry.optString("createdAt"),
+                        respondedAt = entry.optString("respondedAt").ifBlank { null },
+                        requester = MobileHouseholdMember(
+                            id = requesterJson.optString("id"),
+                            displayName = requesterJson.optString("displayName"),
+                            role = requesterJson.optString("role")
+                        ),
+                        requested = MobileHouseholdMember(
+                            id = requestedJson.optString("id"),
+                            displayName = requestedJson.optString("displayName"),
+                            role = requestedJson.optString("role")
+                        )
                     )
                 )
             }
@@ -128,6 +162,7 @@ class TaskBanditMobileApi {
             streakLeader = summaryJson.optString("streakLeader"),
             leaderboard = leaderboard,
             chores = chores,
+            takeoverRequests = takeoverRequests,
             notifications = notifications,
             members = members,
             templates = templates
@@ -183,6 +218,55 @@ class TaskBanditMobileApi {
             token = token,
             method = "POST",
             body = JSONObject()
+        )
+    }
+
+    fun takeOverChore(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/takeover",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
+    fun requestTakeover(
+        baseUrl: String,
+        token: String,
+        instanceId: String,
+        requestedUserId: String,
+        note: String? = null
+    ) {
+        val body = JSONObject()
+            .put("requestedUserId", requestedUserId)
+            .put("note", note ?: "")
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/takeover-request",
+            token = token,
+            method = "POST",
+            body = body
+        )
+    }
+
+    fun approveTakeoverRequest(baseUrl: String, token: String, requestId: String, note: String? = null) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/takeover-requests/$requestId/approve",
+            token = token,
+            method = "POST",
+            body = JSONObject().put("note", note ?: "")
+        )
+    }
+
+    fun declineTakeoverRequest(baseUrl: String, token: String, requestId: String, note: String? = null) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/takeover-requests/$requestId/decline",
+            token = token,
+            method = "POST",
+            body = JSONObject().put("note", note ?: "")
         )
     }
 

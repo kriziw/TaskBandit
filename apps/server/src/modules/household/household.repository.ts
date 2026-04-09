@@ -9,6 +9,7 @@ import {
   AssignmentStrategyType,
   ChoreAttachment,
   ChoreChecklistCompletion,
+  ChoreTakeoverRequestStatus,
   ChoreState,
   Difficulty,
   FollowUpDelayUnit,
@@ -1905,12 +1906,67 @@ export class HouseholdRepository {
 
     const shouldRestrictOtherChores =
       user.role === "child" && !(settings?.membersCanSeeFullHouseholdChoreDetails ?? true);
+    const assigneeIds = Array.from(
+      new Set(instances.map((instance) => instance.assigneeId).filter((assigneeId): assigneeId is string => Boolean(assigneeId)))
+    );
+    const assigneeDisplayNameById = new Map<string, string | null>();
+
+    if (assigneeIds.length > 0) {
+      const assignees = await this.prisma.user.findMany({
+        where: {
+          id: {
+            in: assigneeIds
+          }
+        },
+        select: {
+          id: true,
+          displayName: true
+        }
+      });
+
+      assignees.forEach((assignee) => {
+        assigneeDisplayNameById.set(assignee.id, assignee.displayName);
+      });
+    }
 
     return instances.map((instance) =>
       this.mapInstance(instance, {
-        redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id
+        redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id,
+        assigneeDisplayName: instance.assigneeId ? assigneeDisplayNameById.get(instance.assigneeId) ?? null : null
       })
     );
+  }
+
+  async getPendingTakeoverRequests(householdId: string, requestedUserId: string) {
+    const requests = await this.prisma.choreTakeoverRequest.findMany({
+      where: {
+        householdId,
+        requestedUserId,
+        status: ChoreTakeoverRequestStatus.PENDING
+      },
+      include: {
+        choreInstance: true,
+        requester: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true
+          }
+        },
+        requested: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true
+          }
+        }
+      },
+      orderBy: {
+        createdAtUtc: "desc"
+      }
+    });
+
+    return requests.map((request) => this.mapTakeoverRequest(request));
   }
 
   async updateInstance(instanceId: string, dto: CreateChoreInstanceDto, householdId: string, actorUserId?: string) {
@@ -2090,6 +2146,406 @@ export class HouseholdRepository {
     });
 
     return this.mapInstance(updatedInstance);
+  }
+
+  async takeOverInstance(instanceId: string, householdId: string, actorUserId: string) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: instanceId
+      },
+      data: {
+        assigneeId: actorUserId,
+        state: ChoreState.ASSIGNED
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "instance.taken_over",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: `Took over chore "${updatedInstance.title}".`
+    });
+
+    await this.prisma.choreTakeoverRequest.updateMany({
+      where: {
+        householdId,
+        choreInstanceId: instanceId,
+        status: ChoreTakeoverRequestStatus.PENDING
+      },
+      data: {
+        status: ChoreTakeoverRequestStatus.CANCELLED,
+        respondedAtUtc: new Date()
+      }
+    });
+
+    const assignee = await this.prisma.user.findUnique({
+      where: {
+        id: actorUserId
+      },
+      select: {
+        displayName: true
+      }
+    });
+
+    return this.mapInstance(updatedInstance, {
+      assigneeDisplayName: assignee?.displayName ?? null
+    });
+  }
+
+  async createTakeoverRequest(input: {
+    householdId: string;
+    instanceId: string;
+    requesterUserId: string;
+    requestedUserId: string;
+    note?: string;
+    conflictMessage: string;
+    forbiddenMessage: string;
+  }) {
+    if (input.requesterUserId === input.requestedUserId) {
+      throw new ForbiddenException({ message: input.forbiddenMessage });
+    }
+
+    const requestedUser = await this.prisma.user.findFirst({
+      where: {
+        id: input.requestedUserId,
+        householdId: input.householdId
+      },
+      select: {
+        id: true,
+        displayName: true,
+        role: true
+      }
+    });
+
+    if (!requestedUser) {
+      throw new ForbiddenException({ message: input.forbiddenMessage });
+    }
+
+    const existingPendingRequest = await this.prisma.choreTakeoverRequest.findFirst({
+      where: {
+        householdId: input.householdId,
+        choreInstanceId: input.instanceId,
+        requesterUserId: input.requesterUserId,
+        requestedUserId: input.requestedUserId,
+        status: ChoreTakeoverRequestStatus.PENDING
+      }
+    });
+
+    if (existingPendingRequest) {
+      throw new ConflictException({ message: input.conflictMessage });
+    }
+
+    const [requester, choreInstance] = await Promise.all([
+      this.prisma.user.findUniqueOrThrow({
+        where: {
+          id: input.requesterUserId
+        },
+        select: {
+          displayName: true
+        }
+      }),
+      this.prisma.choreInstance.findFirstOrThrow({
+        where: {
+          id: input.instanceId,
+          householdId: input.householdId
+        }
+      })
+    ]);
+
+    const request = await this.prisma.$transaction(async (tx) => {
+      const createdRequest = await tx.choreTakeoverRequest.create({
+        data: {
+          householdId: input.householdId,
+          choreInstanceId: input.instanceId,
+          requesterUserId: input.requesterUserId,
+          requestedUserId: input.requestedUserId,
+          note: input.note?.trim() || null
+        },
+        include: {
+          choreInstance: true,
+          requester: {
+            select: {
+              id: true,
+              displayName: true,
+              role: true
+            }
+          },
+          requested: {
+            select: {
+              id: true,
+              displayName: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      await this.recordNotification(tx, {
+        householdId: input.householdId,
+        recipientUserId: input.requestedUserId,
+        type: NotificationType.CHORE_TAKEOVER_REQUEST,
+        title: "Takeover request",
+        message: `"${requester.displayName}" asked you to take over "${choreInstance.title}".`,
+        entityType: "chore_takeover_request",
+        entityId: createdRequest.id
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId: input.householdId,
+        actorUserId: input.requesterUserId,
+        action: "instance.takeover_requested",
+        entityType: "chore_instance",
+        entityId: choreInstance.id,
+        summary: `Requested that "${requestedUser.displayName}" takes over chore "${choreInstance.title}".`
+      });
+
+      return createdRequest;
+    });
+
+    return this.mapTakeoverRequest(request);
+  }
+
+  async approveTakeoverRequest(input: {
+    requestId: string;
+    householdId: string;
+    actingUserId: string;
+    note?: string;
+    invalidStateMessage: string;
+    notFoundMessage: string;
+    forbiddenMessage: string;
+  }) {
+    const request = await this.prisma.choreTakeoverRequest.findFirst({
+      where: {
+        id: input.requestId,
+        householdId: input.householdId
+      },
+      include: {
+        choreInstance: {
+          include: {
+            template: {
+              include: {
+                checklistItems: true
+              }
+            },
+            checklistCompletions: true,
+            attachments: true
+          }
+        },
+        requester: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true
+          }
+        },
+        requested: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    if (!request) {
+      throw new NotFoundException({ message: input.notFoundMessage });
+    }
+
+    if (request.requestedUserId !== input.actingUserId) {
+      throw new ForbiddenException({ message: input.forbiddenMessage });
+    }
+
+    if (
+      request.status !== ChoreTakeoverRequestStatus.PENDING ||
+      request.choreInstance.assigneeId !== request.requesterUserId ||
+      request.choreInstance.state === ChoreState.COMPLETED ||
+      request.choreInstance.state === ChoreState.CANCELLED ||
+      request.choreInstance.state === ChoreState.PENDING_APPROVAL
+    ) {
+      throw new ConflictException({ message: input.invalidStateMessage });
+    }
+
+    const updatedInstance = await this.prisma.$transaction(async (tx) => {
+      await tx.choreTakeoverRequest.update({
+        where: {
+          id: request.id
+        },
+        data: {
+          status: ChoreTakeoverRequestStatus.APPROVED,
+          note: input.note?.trim() || request.note,
+          respondedAtUtc: new Date()
+        }
+      });
+
+      await tx.choreTakeoverRequest.updateMany({
+        where: {
+          choreInstanceId: request.choreInstanceId,
+          status: ChoreTakeoverRequestStatus.PENDING,
+          id: {
+            not: request.id
+          }
+        },
+        data: {
+          status: ChoreTakeoverRequestStatus.CANCELLED,
+          respondedAtUtc: new Date()
+        }
+      });
+
+      const reassigned = await tx.choreInstance.update({
+        where: {
+          id: request.choreInstanceId
+        },
+        data: {
+          assigneeId: input.actingUserId,
+          state: ChoreState.ASSIGNED
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          checklistCompletions: true,
+          attachments: true
+        }
+      });
+
+      await this.recordNotification(tx, {
+        householdId: input.householdId,
+        recipientUserId: request.requesterUserId,
+        type: NotificationType.CHORE_TAKEOVER_APPROVED,
+        title: "Takeover approved",
+        message: `"${request.requested.displayName}" accepted the takeover request for "${request.choreInstance.title}".`,
+        entityType: "chore_instance",
+        entityId: request.choreInstanceId
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId: input.householdId,
+        actorUserId: input.actingUserId,
+        action: "instance.takeover_approved",
+        entityType: "chore_instance",
+        entityId: request.choreInstanceId,
+        summary: `Accepted takeover request for chore "${request.choreInstance.title}".`
+      });
+
+      return reassigned;
+    });
+
+    return this.mapInstance(updatedInstance, {
+      assigneeDisplayName: request.requested.displayName
+    });
+  }
+
+  async declineTakeoverRequest(input: {
+    requestId: string;
+    householdId: string;
+    actingUserId: string;
+    note?: string;
+    invalidStateMessage: string;
+    notFoundMessage: string;
+    forbiddenMessage: string;
+  }) {
+    const request = await this.prisma.choreTakeoverRequest.findFirst({
+      where: {
+        id: input.requestId,
+        householdId: input.householdId
+      },
+      include: {
+        choreInstance: true,
+        requester: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true
+          }
+        },
+        requested: {
+          select: {
+            id: true,
+            displayName: true,
+            role: true
+          }
+        }
+      }
+    });
+
+    if (!request) {
+      throw new NotFoundException({ message: input.notFoundMessage });
+    }
+
+    if (request.requestedUserId !== input.actingUserId) {
+      throw new ForbiddenException({ message: input.forbiddenMessage });
+    }
+
+    if (request.status !== ChoreTakeoverRequestStatus.PENDING) {
+      throw new ConflictException({ message: input.invalidStateMessage });
+    }
+
+    const declinedRequest = await this.prisma.$transaction(async (tx) => {
+      const updatedRequest = await tx.choreTakeoverRequest.update({
+        where: {
+          id: request.id
+        },
+        data: {
+          status: ChoreTakeoverRequestStatus.DECLINED,
+          note: input.note?.trim() || request.note,
+          respondedAtUtc: new Date()
+        },
+        include: {
+          choreInstance: true,
+          requester: {
+            select: {
+              id: true,
+              displayName: true,
+              role: true
+            }
+          },
+          requested: {
+            select: {
+              id: true,
+              displayName: true,
+              role: true
+            }
+          }
+        }
+      });
+
+      await this.recordNotification(tx, {
+        householdId: input.householdId,
+        recipientUserId: request.requesterUserId,
+        type: NotificationType.CHORE_TAKEOVER_DECLINED,
+        title: "Takeover declined",
+        message: `"${request.requested.displayName}" declined the takeover request for "${request.choreInstance.title}".`,
+        entityType: "chore_instance",
+        entityId: request.choreInstanceId
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId: input.householdId,
+        actorUserId: input.actingUserId,
+        action: "instance.takeover_declined",
+        entityType: "chore_instance",
+        entityId: request.choreInstanceId,
+        summary: `Declined takeover request for chore "${request.choreInstance.title}".`
+      });
+
+      return updatedRequest;
+    });
+
+    return this.mapTakeoverRequest(declinedRequest);
   }
 
   async submitInstance(input: {
@@ -3118,6 +3574,7 @@ export class HouseholdRepository {
     }>,
     options?: {
       redactDetails?: boolean;
+      assigneeDisplayName?: string | null;
     }
   ) {
     if (options?.redactDetails) {
@@ -3158,6 +3615,7 @@ export class HouseholdRepository {
       title: instance.title,
       state: instance.state.toLowerCase(),
       assigneeId: instance.assigneeId,
+      assigneeDisplayName: options?.assigneeDisplayName ?? null,
       dueAt: instance.dueAtUtc,
       difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
       basePoints: instance.template.basePoints,
@@ -3294,6 +3752,48 @@ export class HouseholdRepository {
           attemptedAt: entry.emailLastAttemptedAtUtc,
           error: entry.emailDeliveryError
         }
+      }
+    };
+  }
+
+  private mapTakeoverRequest(
+    request: Prisma.ChoreTakeoverRequestGetPayload<{
+      include: {
+        choreInstance: true;
+        requester: {
+          select: {
+            id: true;
+            displayName: true;
+            role: true;
+          };
+        };
+        requested: {
+          select: {
+            id: true;
+            displayName: true;
+            role: true;
+          };
+        };
+      };
+    }>
+  ) {
+    return {
+      id: request.id,
+      choreId: request.choreInstanceId,
+      choreTitle: request.choreInstance.title,
+      status: request.status.toLowerCase(),
+      note: request.note,
+      createdAt: request.createdAtUtc,
+      respondedAt: request.respondedAtUtc,
+      requester: {
+        id: request.requester.id,
+        displayName: request.requester.displayName,
+        role: request.requester.role.toLowerCase()
+      },
+      requested: {
+        id: request.requested.id,
+        displayName: request.requested.displayName,
+        role: request.requested.role.toLowerCase()
       }
     };
   }
@@ -3533,6 +4033,9 @@ export class HouseholdRepository {
 
     switch (input.type) {
       case NotificationType.CHORE_ASSIGNED:
+      case NotificationType.CHORE_TAKEOVER_REQUEST:
+      case NotificationType.CHORE_TAKEOVER_APPROVED:
+      case NotificationType.CHORE_TAKEOVER_DECLINED:
         return preference.receiveAssignments;
       case NotificationType.CHORE_APPROVED:
       case NotificationType.CHORE_REJECTED:

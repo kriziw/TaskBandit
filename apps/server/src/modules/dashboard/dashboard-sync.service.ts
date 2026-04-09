@@ -1,7 +1,7 @@
 import { Injectable, MessageEvent } from "@nestjs/common";
 import { Observable, Subject, interval, map, merge } from "rxjs";
 
-type DashboardSyncEntityType = "instance" | "template";
+type DashboardSyncEntityType = "instance" | "template" | "takeover_request";
 
 interface DashboardSyncPayload {
   topic: "chores";
