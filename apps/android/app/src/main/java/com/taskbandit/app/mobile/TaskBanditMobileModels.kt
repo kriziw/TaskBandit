@@ -68,10 +68,25 @@ data class MobileChoreSubmissionDraft(
 
 data class MobileNotification(
     val id: String,
+    val type: String,
     val title: String,
     val message: String,
+    val entityType: String? = null,
+    val entityId: String? = null,
     val isRead: Boolean,
     val createdAt: String
+)
+
+data class MobileTakeoverRequest(
+    val id: String,
+    val choreId: String,
+    val choreTitle: String,
+    val status: String,
+    val note: String? = null,
+    val createdAt: String,
+    val respondedAt: String? = null,
+    val requester: MobileHouseholdMember,
+    val requested: MobileHouseholdMember
 )
 
 data class MobileNotificationDevice(
@@ -127,6 +142,7 @@ data class MobileDashboard(
     val streakLeader: String,
     val leaderboard: List<MobileLeaderboardEntry>,
     val chores: List<MobileChore>,
+    val takeoverRequests: List<MobileTakeoverRequest>,
     val notifications: List<MobileNotification>,
     val members: List<MobileHouseholdMember>,
     val templates: List<MobileChoreTemplate>
