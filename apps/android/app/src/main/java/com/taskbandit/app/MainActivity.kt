@@ -2349,6 +2349,8 @@ private fun HistoricChoreCard(
 ) {
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
+    val typeTitle = chore.typeTitle.ifBlank { chore.title }
+    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp)
@@ -2378,12 +2380,21 @@ private fun HistoricChoreCard(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = chore.title,
+                        text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                    subtypeLabel?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         text = stringResource(R.string.mobile_chores_history),
                         style = MaterialTheme.typography.labelMedium,
@@ -2465,6 +2476,8 @@ private fun ChoreCard(
     val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canManageTask = chore.assigneeId == null || chore.assigneeId == currentUserId
     val section = resolveChoreSection(chore, currentUserId)
+    val typeTitle = chore.typeTitle.ifBlank { chore.title }
+    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
     val requiresTakeOver = section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
@@ -2515,12 +2528,21 @@ private fun ChoreCard(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = chore.title,
+                        text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                    subtypeLabel?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         text = assignmentLabel,
                         style = MaterialTheme.typography.labelMedium,
@@ -2548,6 +2570,17 @@ private fun ChoreCard(
                         }
                     )
                 }
+            ) {
+                Text(
+                    text = statusLabel,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (chore.isOverdue) {
+                        MaterialTheme.colorScheme.onErrorContainer
+                    } else {
+                        accentContentColor
+                    }
+                )
             }
 
             CompactChoreMeta(
@@ -2983,8 +3016,9 @@ private fun CreateVariantPanel(
     onVariantSelected: (String?) -> Unit
 ) {
     selectedTemplate?.takeIf { it.variants.isNotEmpty() }?.let { template ->
-        val noVariantLabel = stringResource(R.string.mobile_create_no_variant)
-        val selectedVariantLabel = template.variants.firstOrNull { it.id == createVariantId }?.label ?: noVariantLabel
+        val selectedVariantLabel =
+            template.variants.firstOrNull { it.id == createVariantId }?.label
+                ?: stringResource(R.string.mobile_create_select_variant_prompt)
 
         CreatePanelCard(title = stringResource(R.string.mobile_create_variant)) {
             ExposedDropdownMenuBox(
@@ -3002,10 +3036,6 @@ private fun CreateVariantPanel(
                     expanded = variantDropdownExpanded,
                     onDismissRequest = { onVariantDropdownExpandedChange(false) }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(noVariantLabel) },
-                        onClick = { onVariantSelected(null) }
-                    )
                     template.variants.forEach { variant ->
                         DropdownMenuItem(
                             text = { Text(variant.label) },
@@ -3013,6 +3043,13 @@ private fun CreateVariantPanel(
                         )
                     }
                 }
+            }
+            if (createVariantId == null) {
+                Text(
+                    text = stringResource(R.string.mobile_create_variant_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -3032,6 +3069,8 @@ private fun CreateSubmitPanel(
 ) {
     CreatePanelCard(title = stringResource(R.string.mobile_create_action)) {
         selectedTemplate?.let { template ->
+            val subtypeRequired = template.variants.isNotEmpty()
+            val canCreate = activeCreateAction == null && (!subtypeRequired || createVariantId != null)
             Button(
                 onClick = {
                     val recType = if (createRecurrenceType == "template") null else createRecurrenceType
@@ -3046,7 +3085,7 @@ private fun CreateSubmitPanel(
                         createVariantId
                     )
                 },
-                enabled = activeCreateAction == null,
+                enabled = canCreate,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (activeCreateAction != null) {
@@ -3054,6 +3093,13 @@ private fun CreateSubmitPanel(
                 } else {
                     Text(stringResource(R.string.mobile_create_action))
                 }
+            }
+            if (subtypeRequired && createVariantId == null) {
+                Text(
+                    text = stringResource(R.string.mobile_create_variant_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }

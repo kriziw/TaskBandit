@@ -30,6 +30,8 @@ class TaskBanditWidgetStore(
                             JSONObject()
                                 .put("id", chore.id)
                                 .put("title", chore.title)
+                                .put("typeTitle", chore.typeTitle)
+                                .put("subtypeLabel", chore.subtypeLabel)
                                 .put("state", chore.state)
                                 .put("dueAt", chore.dueAt)
                                 .put("isOverdue", chore.isOverdue)
@@ -75,6 +77,8 @@ class TaskBanditWidgetStore(
                     MobileChore(
                         id = entry.optString("id"),
                         title = entry.optString("title"),
+                        typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
+                        subtypeLabel = entry.optString("subtypeLabel").ifBlank { null },
                         state = entry.optString("state"),
                         dueAt = entry.optString("dueAt"),
                         isOverdue = entry.optBoolean("isOverdue"),

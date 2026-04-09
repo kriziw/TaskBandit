@@ -966,10 +966,17 @@ export function App() {
   }
 
   function renderHouseholdChoreCard(instance: ChoreInstance) {
+    const choreHeading = (
+      <div>
+        <strong>{instance.typeTitle || instance.title}</strong>
+        {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
+      </div>
+    );
+
     return (
       <div className="task-row compact" key={instance.id}>
         <div className="task-row-header">
-          <strong>{instance.title}</strong>
+          {choreHeading}
           <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
         </div>
         <p>
@@ -1028,11 +1035,17 @@ export function App() {
   function renderMyChoreCard(instance: ChoreInstance) {
     const selectedChecklistIds = getSelectedChecklistIds(instance);
     const selectedFiles = selectedProofFiles[instance.id] ?? [];
+    const choreHeading = (
+      <div>
+        <strong>{instance.typeTitle || instance.title}</strong>
+        {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
+      </div>
+    );
 
     return (
       <div className="task-row" key={instance.id}>
         <div className="task-row-header">
-          <strong>{instance.title}</strong>
+          {choreHeading}
           <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
         </div>
         <p>
@@ -1800,6 +1813,12 @@ export function App() {
   async function handleCreateInstance(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!token || !payload) {
+      return;
+    }
+
+    const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
+    if ((selectedTemplate?.variants?.length ?? 0) > 0 && !instanceForm.variantId) {
+      setPageError("Please select a subtype for this chore type.");
       return;
     }
 
@@ -2926,7 +2945,10 @@ export function App() {
                     {pendingApprovals.map((instance) => (
                       <div className="task-row" key={instance.id}>
                         <div className="task-row-header">
-                          <strong>{instance.title}</strong>
+                          <div>
+                            <strong>{instance.typeTitle || instance.title}</strong>
+                            {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
+                          </div>
                           <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
                         </div>
                         <p>
@@ -4743,10 +4765,10 @@ export function App() {
                     </label>
                     <div className="stack-list">
                       <div className="section-heading">
-                        <h3>Variants</h3>
+                        <h3>Subtypes</h3>
                         <span className="section-kicker">{(templateForm.variants ?? []).length}</span>
                       </div>
-                      <p className="inline-message">Optional: define named subtypes (e.g. "White clothes", "Colour clothes"). When picked, the variant name is appended to the chore title.</p>
+                      <p className="inline-message">Optional: define reusable subtypes here, for example "White clothes" or "Colour clothes". The chosen subtype carries over to follow-up chores too.</p>
                       {(templateForm.variants ?? []).map((v, index) => (
                         <div className="task-row compact" key={index}>
                           <span>{v.label}</span>
@@ -4768,7 +4790,7 @@ export function App() {
                         <input
                           type="text"
                           id="newVariantLabel"
-                          placeholder="Variant name"
+                          placeholder="Subtype name"
                           maxLength={100}
                           onKeyDown={(event) => {
                             if (event.key === "Enter") {
@@ -4944,7 +4966,11 @@ export function App() {
                       <select
                         value={instanceForm.templateId}
                         onChange={(event) =>
-                          setInstanceForm((current) => ({ ...current, templateId: event.target.value }))
+                          setInstanceForm((current) => ({
+                            ...current,
+                            templateId: event.target.value,
+                            variantId: undefined
+                          }))
                         }
                       >
                         {payload.templates.map((template) => (
@@ -4959,8 +4985,9 @@ export function App() {
                       if ((selectedTemplate?.variants?.length ?? 0) > 0) {
                         return (
                           <label>
-                            <span>Variant</span>
+                            <span>Subtype</span>
                             <select
+                              required
                               value={instanceForm.variantId ?? ""}
                               onChange={(event) =>
                                 setInstanceForm((current) => ({
@@ -4974,6 +5001,7 @@ export function App() {
                                 <option key={v.id} value={v.id}>{v.label}</option>
                               ))}
                             </select>
+                            <small className="inline-message">Selecting a subtype is required for this type.</small>
                           </label>
                         );
                       }
