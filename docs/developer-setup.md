@@ -11,7 +11,7 @@
 ## Recommended Local Flow
 
 1. Copy `.env.example` to `.env` and adjust any values you want to override.
-2. Start PostgreSQL with Docker Compose from `infra/docker`.
+2. Start PostgreSQL and TaskBandit with Docker Compose from the repository root.
 3. Decide whether you want demo seed data. For a clean install, set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=false`.
 4. If you want to run the published container instead of a local build, leave `TASKBANDIT_IMAGE_TAG` at `latest` or pin it to a published Docker Hub tag.
 5. If you want to run the server locally, install dependencies in `apps/server`, run `npm run prisma:generate`, apply the Prisma migration, then start the NestJS API.
@@ -25,7 +25,7 @@
 - The backend also exposes bootstrap endpoints for checking initialization state and creating the first household when demo seeding is disabled.
 - Local authentication foundations are in place with JWT-based login endpoints and Authentik-oriented OIDC configuration settings.
 - The repository now includes an initial Prisma migration snapshot under `apps/server/prisma/migrations`.
-- Docker Compose now pulls the server image from `kriziw/taskbandit`.
+- Docker Compose now pulls the server image from `kriziw/taskbandit`, and the canonical self-hosted entrypoint lives at the repository root in `docker-compose.yml`.
 - The Android project currently includes Gradle files but not a checked-in wrapper yet.
 - Authentik is the target OIDC provider for the first external identity integration.
 - Reverse proxy support is built in through trusted proxy handling and optional path-base configuration.
