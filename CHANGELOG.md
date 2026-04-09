@@ -2,6 +2,22 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.24.0](https://github.com/kriziw/TaskBandit/compare/v0.23.0...v0.24.0) (2026-04-09)
+
+
+### Features
+
+* **android:** add proof photo capture ([b847312](https://github.com/kriziw/TaskBandit/commit/b847312c737326cede345b09550d265be950d61b))
+* **android:** confirm chore completion ([ab57348](https://github.com/kriziw/TaskBandit/commit/ab57348376df927222725ccc162ba75601d139b1))
+* **android:** keep chores synced live ([24cec99](https://github.com/kriziw/TaskBandit/commit/24cec99c8293f2c956de63791f31405a0ce9e26f))
+* **chores:** add subtype-aware chore naming ([6955b89](https://github.com/kriziw/TaskBandit/commit/6955b893e0ac666ae0ec40430b29689406a87ca7))
+* **chores:** add subtype-aware mobile chore workflows ([ae49769](https://github.com/kriziw/TaskBandit/commit/ae497694dd02c59510b97c9a45ef9d227c9c3cbb))
+
+
+### Bug Fixes
+
+* **android:** clean rebased chore card merge ([5ec966d](https://github.com/kriziw/TaskBandit/commit/5ec966d528e716173fa89df00f541996990d22ab))
+
 ## [0.23.0](https://github.com/kriziw/TaskBandit/compare/v0.22.0...v0.23.0) (2026-04-09)
 
 
