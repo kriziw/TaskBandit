@@ -46,7 +46,7 @@ fun TaskBanditTheme(
 ) {
     MaterialTheme(
         colorScheme = if (darkTheme) DarkColors else LightColors,
-        typography = TaskBanditTypography,
+        typography = taskBanditTypographyForCurrentLocale(),
         content = content
     )
 }

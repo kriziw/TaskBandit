@@ -349,6 +349,17 @@ export type AssignmentStrategy =
   | "manual_default_assignee";
 
 export type FollowUpDelayUnit = "hours" | "days";
+export type TemplateTranslationLocale = "en" | "de" | "hu";
+export type LocalizedTemplateTranslation = {
+  locale: TemplateTranslationLocale;
+  title?: string;
+  description?: string;
+};
+
+export type LocalizedVariantLabelTranslation = {
+  locale: TemplateTranslationLocale;
+  label?: string;
+};
 
 export type ChoreTemplateDependencyRule = {
   templateId: string;
@@ -360,6 +371,8 @@ export type ChoreTemplate = {
   id: string;
   title: string;
   description: string;
+  defaultLocale: TemplateTranslationLocale;
+  translations: LocalizedTemplateTranslation[];
   difficulty: Difficulty;
   basePoints: number;
   assignmentStrategy: AssignmentStrategy;
@@ -370,7 +383,7 @@ export type ChoreTemplate = {
   };
   requirePhotoProof: boolean;
   recurrenceStartStrategy: RecurrenceStartStrategy;
-  variants: Array<{ id: string; label: string }>;
+  variants: Array<{ id: string; label: string; translations: LocalizedVariantLabelTranslation[] }>;
   checklist: ChoreTemplateChecklistItem[];
   dependencyTemplateIds: string[];
   dependencyRules: ChoreTemplateDependencyRule[];
@@ -460,8 +473,10 @@ export type UpdateHouseholdMemberInput = {
 };
 
 export type CreateChoreTemplateInput = {
+  defaultLocale?: TemplateTranslationLocale;
   title: string;
   description: string;
+  translations?: LocalizedTemplateTranslation[];
   difficulty: Difficulty;
   assignmentStrategy: AssignmentStrategy;
   recurrenceType?: RecurrenceType;
@@ -469,7 +484,7 @@ export type CreateChoreTemplateInput = {
   recurrenceWeekdays?: string[];
   requirePhotoProof: boolean;
   recurrenceStartStrategy?: RecurrenceStartStrategy;
-  variants?: Array<{ label: string }>;
+  variants?: Array<{ id?: string; label: string; translations?: LocalizedVariantLabelTranslation[] }>;
   dependencyTemplateIds?: string[];
   dependencyRules?: ChoreTemplateDependencyRule[];
   checklist?: Array<{
