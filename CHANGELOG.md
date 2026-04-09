@@ -2,6 +2,22 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.21.0](https://github.com/kriziw/TaskBandit/compare/v0.20.0...v0.21.0) (2026-04-09)
+
+
+### Features
+
+* **android:** add chore takeover flow ([0d1bcea](https://github.com/kriziw/TaskBandit/commit/0d1bcea03a567ec1b11f99e2882c915cc134ff20))
+* **android:** tint chore sections ([62e61c4](https://github.com/kriziw/TaskBandit/commit/62e61c40d95062a3d35a87fe849380aa6f4c7b97))
+* **chores:** add guided takeover requests ([b017c3e](https://github.com/kriziw/TaskBandit/commit/b017c3e99d620b899c34c46e968ea80bdda867c6))
+* **chores:** add takeover request workflow ([03648f5](https://github.com/kriziw/TaskBandit/commit/03648f5e332fd6b91fddf64684a10da564ab26e1))
+* **ui:** surface takeover approvals clearly ([a08d148](https://github.com/kriziw/TaskBandit/commit/a08d1484beef29a6a705fb2ca5d0024880ec29bc))
+
+
+### Bug Fixes
+
+* **android:** simplify historic chore cards ([9c1dcdd](https://github.com/kriziw/TaskBandit/commit/9c1dcdd9d1274d4438593f3c3cea180ad8b19eb1))
+
 ## [0.20.0](https://github.com/kriziw/TaskBandit/compare/v0.19.1...v0.20.0) (2026-04-09)
 
 
