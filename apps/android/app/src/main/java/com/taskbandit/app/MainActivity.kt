@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
@@ -53,6 +54,7 @@ import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
@@ -78,6 +80,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
@@ -138,6 +141,13 @@ private enum class MobileChoreSection {
     MINE,
     UNASSIGNED,
     OTHERS
+}
+
+private enum class MobileChoreSectionTone {
+    MINE,
+    UNASSIGNED,
+    OTHERS,
+    HISTORIC
 }
 
 private fun isTabletWidth(maxWidth: Dp): Boolean = maxWidth >= 840.dp
@@ -1812,9 +1822,18 @@ private fun LazyListScope.choreSection(
     onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
-    item { ChoreSectionHeader(title = title, count = chores.size) }
-    items(chores, key = { it.id }) { chore ->
-        ChoreCard(chore = chore, currentUserId = currentUserId, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
+    val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+        MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
+        MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
+        MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
+        null -> MobileChoreSectionTone.UNASSIGNED
+    }
+    item {
+        ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
+            chores.forEach { chore ->
+                ChoreCard(chore = chore, currentUserId = currentUserId, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
+            }
+        }
     }
 }
 private fun LazyListScope.historicChoreSection(
@@ -1824,13 +1843,16 @@ private fun LazyListScope.historicChoreSection(
     onExpandedChange: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
-    item { ChoreSectionHeader(title = title, count = chores.size) }
-    items(chores, key = { "historic_${it.id}" }) { chore ->
-        HistoricChoreCard(
-            chore = chore,
-            expanded = expandedChoreIds.contains(chore.id),
-            onExpandedChange = { onExpandedChange(chore.id) }
-        )
+    item {
+        ChoreSectionPanel(title = title, count = chores.size, tone = MobileChoreSectionTone.HISTORIC) {
+            chores.forEach { chore ->
+                HistoricChoreCard(
+                    chore = chore,
+                    expanded = expandedChoreIds.contains(chore.id),
+                    onExpandedChange = { onExpandedChange(chore.id) }
+                )
+            }
+        }
     }
 }
 
@@ -1855,8 +1877,13 @@ private fun ChoreSectionColumn(
     onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        ChoreSectionHeader(title = title, count = chores.size)
+    val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+        MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
+        MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
+        MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
+        null -> MobileChoreSectionTone.UNASSIGNED
+    }
+    ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
         chores.forEach { chore ->
             ChoreCard(
                 chore = chore,
@@ -1888,8 +1915,7 @@ private fun HistoricChoreSectionColumn(
     onExpandedChange: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
-    Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        ChoreSectionHeader(title = title, count = chores.size)
+    ChoreSectionPanel(title = title, count = chores.size, tone = MobileChoreSectionTone.HISTORIC) {
         chores.forEach { chore ->
             HistoricChoreCard(
                 chore = chore,
@@ -1901,36 +1927,87 @@ private fun HistoricChoreSectionColumn(
 }
 
 @Composable
-private fun ChoreSectionHeader(title: String, count: Int) {
+private fun ChoreSectionPanel(
+    title: String,
+    count: Int,
+    tone: MobileChoreSectionTone,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val (containerColor, contentColor, badgeColor, badgeContentColor) = rememberSectionToneColors(tone)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(24.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        )
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            Surface(
-                shape = CircleShape,
-                color = MaterialTheme.colorScheme.secondaryContainer
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = count.toString(),
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                    style = MaterialTheme.typography.labelMedium,
-                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
+                Surface(
+                    shape = CircleShape,
+                    color = badgeColor
+                ) {
+                    Text(
+                        text = count.toString(),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = badgeContentColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
             }
+            content()
         }
     }
 }
+
+@Composable
+private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionToneColors = when (tone) {
+    MobileChoreSectionTone.MINE -> SectionToneColors(
+        container = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f),
+        content = MaterialTheme.colorScheme.onSurface,
+        badgeContainer = MaterialTheme.colorScheme.primaryContainer,
+        badgeContent = MaterialTheme.colorScheme.onPrimaryContainer
+    )
+    MobileChoreSectionTone.UNASSIGNED -> SectionToneColors(
+        container = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.40f),
+        content = MaterialTheme.colorScheme.onSurface,
+        badgeContainer = MaterialTheme.colorScheme.tertiaryContainer,
+        badgeContent = MaterialTheme.colorScheme.onTertiaryContainer
+    )
+    MobileChoreSectionTone.OTHERS -> SectionToneColors(
+        container = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.44f),
+        content = MaterialTheme.colorScheme.onSurface,
+        badgeContainer = MaterialTheme.colorScheme.secondaryContainer,
+        badgeContent = MaterialTheme.colorScheme.onSecondaryContainer
+    )
+    MobileChoreSectionTone.HISTORIC -> SectionToneColors(
+        container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
+        content = MaterialTheme.colorScheme.onSurface,
+        badgeContainer = MaterialTheme.colorScheme.surface,
+        badgeContent = MaterialTheme.colorScheme.onSurface
+    )
+}
+
+private data class SectionToneColors(
+    val container: Color,
+    val content: Color,
+    val badgeContainer: Color,
+    val badgeContent: Color
+)
 
 @Composable
 private fun HistoricChoreCard(
