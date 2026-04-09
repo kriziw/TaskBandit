@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.4](https://github.com/kriziw/TaskBandit/compare/v0.25.3...v0.25.4) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** polish live sync and mobile layout ([#104](https://github.com/kriziw/TaskBandit/issues/104)) ([e3e0f81](https://github.com/kriziw/TaskBandit/commit/e3e0f8116ac6939c0902e4bd0d91a8563fc71e66))
+
 ## [0.25.3](https://github.com/kriziw/TaskBandit/compare/v0.25.2...v0.25.3) (2026-04-09)
 
 
