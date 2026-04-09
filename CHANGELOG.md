@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.19.2](https://github.com/kriziw/TaskBandit/compare/v0.19.1...v0.19.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** bump android gradle plugin ([29cec39](https://github.com/kriziw/TaskBandit/commit/29cec39ae5b572648f9f7b3d04df24d994353141))
+* **android:** bump android gradle plugin ([0aa9896](https://github.com/kriziw/TaskBandit/commit/0aa9896adc48c9309723a666235d620f27048446))
+
 ## [0.19.1](https://github.com/kriziw/TaskBandit/compare/v0.19.0...v0.19.1) (2026-04-08)
 
 
