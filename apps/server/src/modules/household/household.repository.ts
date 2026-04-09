@@ -25,6 +25,11 @@ import {
   Prisma
 } from "@prisma/client";
 import { hash } from "bcryptjs";
+import {
+  fallbackLanguage,
+  supportedLanguages,
+  SupportedLanguage
+} from "../../common/i18n/supported-languages";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto";
@@ -37,6 +42,11 @@ import { UpdateHouseholdMemberDto } from "../settings/dto/update-household-membe
 import { UpdateSettingsDto } from "../settings/dto/update-settings.dto";
 
 type PrismaExecutor = PrismaService | Prisma.TransactionClient;
+type LocalizedTemplateTranslationInput = NonNullable<CreateChoreTemplateDto["translations"]>[number];
+type LocalizedVariantTranslationInput = NonNullable<
+  NonNullable<CreateChoreTemplateDto["variants"]>[number]["translations"]
+>[number];
+type LocalizedTextMap = Partial<Record<SupportedLanguage, string>>;
 
 @Injectable()
 export class HouseholdRepository {
@@ -1535,7 +1545,7 @@ export class HouseholdRepository {
     };
   }
 
-  async getTemplates(householdId: string) {
+  async getTemplates(householdId: string, language: SupportedLanguage = fallbackLanguage) {
     const templates = await this.prisma.choreTemplate.findMany({
       where: {
         householdId
@@ -1550,10 +1560,16 @@ export class HouseholdRepository {
       }
     });
 
-    return templates.map((template) => this.mapTemplate(template));
+    return templates
+      .map((template) => this.mapTemplate(template, language))
+      .sort((left, right) => left.title.localeCompare(right.title));
   }
 
-  async getTemplateForHousehold(templateId: string, householdId: string) {
+  async getTemplateForHousehold(
+    templateId: string,
+    householdId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const template = await this.prisma.choreTemplate.findFirst({
       where: {
         id: templateId,
@@ -1566,12 +1582,28 @@ export class HouseholdRepository {
       }
     });
 
-    return template ? this.mapTemplate(template) : null;
+    return template ? this.mapTemplate(template, language) : null;
   }
 
-  async createTemplate(dto: CreateChoreTemplateDto, householdId: string, actorUserId?: string) {
+  async createTemplate(
+    dto: CreateChoreTemplateDto,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const dependencyRules = this.normalizeDependencyRules(dto);
     const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
+    const normalizedDefaultLocale = this.normalizeSupportedLanguage(dto.defaultLocale);
+    const titleTranslations = this.normalizeTemplateTitleTranslations(
+      dto.translations,
+      normalizedDefaultLocale,
+      dto.title
+    );
+    const descriptionTranslations = this.normalizeTemplateDescriptionTranslations(
+      dto.translations,
+      normalizedDefaultLocale,
+      dto.description
+    );
 
     if (dependencyTemplateIds.length > 0) {
       const availableDependencies = await this.prisma.choreTemplate.findMany({
@@ -1597,8 +1629,11 @@ export class HouseholdRepository {
       const createdTemplate = await tx.choreTemplate.create({
         data: {
           householdId,
+          defaultLocale: normalizedDefaultLocale,
           title: dto.title.trim(),
+          titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
+          descriptionTranslations: this.toPrismaJsonOrNull(descriptionTranslations),
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
           assignmentStrategy: dto.assignmentStrategy,
@@ -1627,6 +1662,9 @@ export class HouseholdRepository {
           variants: {
             create: (dto.variants ?? []).map((v, i) => ({
               label: v.label.trim(),
+              labelTranslations: this.toPrismaJsonOrNull(
+                this.normalizeVariantLabelTranslations(v.translations, normalizedDefaultLocale, v.label)
+              ),
               sortOrder: i + 1
             }))
           }
@@ -1650,12 +1688,47 @@ export class HouseholdRepository {
       return createdTemplate;
     });
 
-    return this.mapTemplate(template);
+    return this.mapTemplate(template, language);
   }
 
-  async updateTemplate(templateId: string, dto: CreateChoreTemplateDto, householdId: string, actorUserId?: string) {
+  async updateTemplate(
+    templateId: string,
+    dto: CreateChoreTemplateDto,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const dependencyRules = this.normalizeDependencyRules(dto, templateId);
     const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
+    const existingTemplate = await this.prisma.choreTemplate.findFirst({
+      where: {
+        id: templateId,
+        householdId
+      },
+      include: {
+        variants: true
+      }
+    });
+
+    if (!existingTemplate) {
+      throw new NotFoundException({
+        message: "That chore template could not be found."
+      });
+    }
+
+    const normalizedDefaultLocale = this.normalizeSupportedLanguage(
+      dto.defaultLocale ?? existingTemplate.defaultLocale
+    );
+    const titleTranslations = this.normalizeTemplateTitleTranslations(
+      dto.translations,
+      normalizedDefaultLocale,
+      dto.title
+    );
+    const descriptionTranslations = this.normalizeTemplateDescriptionTranslations(
+      dto.translations,
+      normalizedDefaultLocale,
+      dto.description
+    );
 
     if (dependencyTemplateIds.length > 0) {
       const availableDependencies = await this.prisma.choreTemplate.findMany({
@@ -1690,13 +1763,65 @@ export class HouseholdRepository {
         }
       });
 
-      return tx.choreTemplate.update({
+      const submittedVariantIds = new Set(
+        (dto.variants ?? [])
+          .map((variant) => variant.id)
+          .filter((variantId): variantId is string => Boolean(variantId))
+      );
+      const variantIdsToDelete = existingTemplate.variants
+        .filter((variant) => !submittedVariantIds.has(variant.id))
+        .map((variant) => variant.id);
+
+      if (variantIdsToDelete.length > 0) {
+        await tx.choreTemplateVariant.deleteMany({
+          where: {
+            id: {
+              in: variantIdsToDelete
+            }
+          }
+        });
+      }
+
+      for (const [index, variantInput] of (dto.variants ?? []).entries()) {
+        const normalizedVariantTranslations = this.normalizeVariantLabelTranslations(
+          variantInput.translations,
+          normalizedDefaultLocale,
+          variantInput.label
+        );
+
+        if (variantInput.id) {
+          await tx.choreTemplateVariant.update({
+            where: {
+              id: variantInput.id
+            },
+            data: {
+              label: variantInput.label.trim(),
+              labelTranslations: this.toPrismaJsonOrNull(normalizedVariantTranslations),
+              sortOrder: index + 1
+            }
+          });
+        } else {
+          await tx.choreTemplateVariant.create({
+            data: {
+              templateId,
+              label: variantInput.label.trim(),
+              labelTranslations: this.toPrismaJsonOrNull(normalizedVariantTranslations),
+              sortOrder: index + 1
+            }
+          });
+        }
+      }
+
+      const updatedTemplate = await tx.choreTemplate.update({
         where: {
           id: templateId
         },
         data: {
+          defaultLocale: normalizedDefaultLocale,
           title: dto.title.trim(),
+          titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
+          descriptionTranslations: this.toPrismaJsonOrNull(descriptionTranslations),
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
           assignmentStrategy: dto.assignmentStrategy,
@@ -1721,13 +1846,6 @@ export class HouseholdRepository {
               followUpDelayValue: dependencyRule.followUpDelayValue,
               followUpDelayUnit: dependencyRule.followUpDelayUnit
             }))
-          },
-          variants: {
-            deleteMany: {},
-            create: (dto.variants ?? []).map((v, i) => ({
-              label: v.label.trim(),
-              sortOrder: i + 1
-            }))
           }
         },
         include: {
@@ -1736,6 +1854,8 @@ export class HouseholdRepository {
           variants: true
         }
       });
+
+      return updatedTemplate;
     });
 
     await this.recordAuditLog(this.prisma, {
@@ -1747,10 +1867,80 @@ export class HouseholdRepository {
       summary: `Updated chore template "${template.title}".`
     });
 
-    return this.mapTemplate(template);
+    return this.mapTemplate(template, language);
   }
 
-  async createInstance(dto: CreateChoreInstanceDto, householdId: string, actorUserId?: string) {
+  async deleteTemplate(templateId: string, householdId: string, actorUserId?: string) {
+    const template = await this.prisma.choreTemplate.findFirst({
+      where: {
+        id: templateId,
+        householdId
+      },
+      select: {
+        id: true,
+        title: true
+      }
+    });
+
+    if (!template) {
+      throw new NotFoundException({
+        message: "That chore template could not be found."
+      });
+    }
+
+    const instanceCount = await this.prisma.choreInstance.count({
+      where: {
+        templateId
+      }
+    });
+
+    if (instanceCount > 0) {
+      throw new ConflictException({
+        message: "This chore template cannot be deleted because chores already use it."
+      });
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.choreTemplateDependency.deleteMany({
+        where: {
+          OR: [
+            {
+              templateId
+            },
+            {
+              followUpTemplateId: templateId
+            }
+          ]
+        }
+      });
+
+      await tx.choreTemplate.delete({
+        where: {
+          id: templateId
+        }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "template.deleted",
+        entityType: "chore_template",
+        entityId: template.id,
+        summary: `Deleted chore template "${template.title}".`
+      });
+    });
+
+    return {
+      ok: true
+    };
+  }
+
+  async createInstance(
+    dto: CreateChoreInstanceDto,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const template = await this.prisma.choreTemplate.findFirstOrThrow({
       where: {
         id: dto.templateId,
@@ -1829,6 +2019,7 @@ export class HouseholdRepository {
               checklistItems: true
             }
           },
+          variant: true,
           checklistCompletions: true,
           attachments: true
         }
@@ -1858,10 +2049,10 @@ export class HouseholdRepository {
       return createdInstance;
     });
 
-    return this.mapInstance(instance);
+    return this.mapInstance(instance, undefined, language);
   }
 
-  async getInstances(householdId: string) {
+  async getInstances(householdId: string, language: SupportedLanguage = fallbackLanguage) {
     const instances = await this.prisma.choreInstance.findMany({
       where: {
         householdId
@@ -1872,6 +2063,7 @@ export class HouseholdRepository {
             checklistItems: true
           }
         },
+        variant: true,
         checklistCompletions: true,
         attachments: true
       },
@@ -1880,14 +2072,14 @@ export class HouseholdRepository {
       }
     });
 
-    return instances.map((instance) => this.mapInstance(instance));
+    return instances.map((instance) => this.mapInstance(instance, undefined, language));
   }
 
   async getInstancesForViewer(user: {
     id: string;
     householdId: string;
     role: "admin" | "parent" | "child";
-  }) {
+  }, language: SupportedLanguage = fallbackLanguage) {
     const [settings, instances] = await Promise.all([
       this.prisma.householdSettings.findUnique({
         where: {
@@ -1904,6 +2096,7 @@ export class HouseholdRepository {
               checklistItems: true
             }
           },
+          variant: true,
           checklistCompletions: true,
           attachments: true
         },
@@ -1942,11 +2135,15 @@ export class HouseholdRepository {
       this.mapInstance(instance, {
         redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id,
         assigneeDisplayName: instance.assigneeId ? assigneeDisplayNameById.get(instance.assigneeId) ?? null : null
-      })
+      }, language)
     );
   }
 
-  async getPendingTakeoverRequests(householdId: string, viewerUserId: string) {
+  async getPendingTakeoverRequests(
+    householdId: string,
+    viewerUserId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const requests = await this.prisma.choreTakeoverRequest.findMany({
       where: {
         householdId,
@@ -1961,7 +2158,12 @@ export class HouseholdRepository {
         ]
       },
       include: {
-        choreInstance: true,
+        choreInstance: {
+          include: {
+            template: true,
+            variant: true
+          }
+        },
         requester: {
           select: {
             id: true,
@@ -1982,10 +2184,16 @@ export class HouseholdRepository {
       }
     });
 
-    return requests.map((request) => this.mapTakeoverRequest(request));
+    return requests.map((request) => this.mapTakeoverRequest(request, language));
   }
 
-  async updateInstance(instanceId: string, dto: CreateChoreInstanceDto, householdId: string, actorUserId?: string) {
+  async updateInstance(
+    instanceId: string,
+    dto: CreateChoreInstanceDto,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const existingInstance = await this.prisma.choreInstance.findFirstOrThrow({
       where: {
         id: instanceId,
@@ -2047,6 +2255,7 @@ export class HouseholdRepository {
               checklistItems: true
             }
           },
+          variant: true,
           checklistCompletions: true,
           attachments: true
         }
@@ -2076,10 +2285,14 @@ export class HouseholdRepository {
       return savedInstance;
     });
 
-    return this.mapInstance(updatedInstance);
+    return this.mapInstance(updatedInstance, undefined, language);
   }
 
-  async getInstanceForHousehold(instanceId: string, householdId: string) {
+  async getInstanceForHousehold(
+    instanceId: string,
+    householdId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const instance = await this.prisma.choreInstance.findFirst({
       where: {
         id: instanceId,
@@ -2091,12 +2304,13 @@ export class HouseholdRepository {
             checklistItems: true
           }
         },
+        variant: true,
         checklistCompletions: true,
         attachments: true
       }
     });
 
-    return instance ? this.mapInstance(instance) : null;
+    return instance ? this.mapInstance(instance, undefined, language) : null;
   }
 
   async getAttachmentForViewer(user: {
@@ -2150,7 +2364,12 @@ export class HouseholdRepository {
     };
   }
 
-  async startInstance(instanceId: string, householdId: string, actorUserId?: string) {
+  async startInstance(
+    instanceId: string,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const updatedInstance = await this.prisma.choreInstance.update({
       where: {
         id: instanceId
@@ -2164,6 +2383,7 @@ export class HouseholdRepository {
             checklistItems: true
           }
         },
+        variant: true,
         checklistCompletions: true,
         attachments: true
       }
@@ -2178,10 +2398,15 @@ export class HouseholdRepository {
       summary: `Started chore "${updatedInstance.title}".`
     });
 
-    return this.mapInstance(updatedInstance);
+    return this.mapInstance(updatedInstance, undefined, language);
   }
 
-  async takeOverInstance(instanceId: string, householdId: string, actorUserId: string) {
+  async takeOverInstance(
+    instanceId: string,
+    householdId: string,
+    actorUserId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const updatedInstance = await this.prisma.choreInstance.update({
       where: {
         id: instanceId
@@ -2196,6 +2421,7 @@ export class HouseholdRepository {
             checklistItems: true
           }
         },
+        variant: true,
         checklistCompletions: true,
         attachments: true
       }
@@ -2233,7 +2459,7 @@ export class HouseholdRepository {
 
     return this.mapInstance(updatedInstance, {
       assigneeDisplayName: assignee?.displayName ?? null
-    });
+    }, language);
   }
 
   async createTakeoverRequest(input: {
@@ -2244,6 +2470,7 @@ export class HouseholdRepository {
     note?: string;
     conflictMessage: string;
     forbiddenMessage: string;
+    language?: SupportedLanguage;
   }) {
     if (input.requesterUserId === input.requestedUserId) {
       throw new ForbiddenException({ message: input.forbiddenMessage });
@@ -2306,7 +2533,12 @@ export class HouseholdRepository {
           note: input.note?.trim() || null
         },
         include: {
-          choreInstance: true,
+          choreInstance: {
+            include: {
+              template: true,
+              variant: true
+            }
+          },
           requester: {
             select: {
               id: true,
@@ -2346,7 +2578,7 @@ export class HouseholdRepository {
       return createdRequest;
     });
 
-    return this.mapTakeoverRequest(request);
+    return this.mapTakeoverRequest(request, input.language ?? fallbackLanguage);
   }
 
   async approveTakeoverRequest(input: {
@@ -2357,6 +2589,7 @@ export class HouseholdRepository {
     invalidStateMessage: string;
     notFoundMessage: string;
     forbiddenMessage: string;
+    language?: SupportedLanguage;
   }) {
     const request = await this.prisma.choreTakeoverRequest.findFirst({
       where: {
@@ -2371,6 +2604,7 @@ export class HouseholdRepository {
                 checklistItems: true
               }
             },
+            variant: true,
             checklistCompletions: true,
             attachments: true
           }
@@ -2450,6 +2684,7 @@ export class HouseholdRepository {
               checklistItems: true
             }
           },
+          variant: true,
           checklistCompletions: true,
           attachments: true
         }
@@ -2479,7 +2714,7 @@ export class HouseholdRepository {
 
     return this.mapInstance(updatedInstance, {
       assigneeDisplayName: request.requested.displayName
-    });
+    }, input.language ?? fallbackLanguage);
   }
 
   async declineTakeoverRequest(input: {
@@ -2490,6 +2725,7 @@ export class HouseholdRepository {
     invalidStateMessage: string;
     notFoundMessage: string;
     forbiddenMessage: string;
+    language?: SupportedLanguage;
   }) {
     const request = await this.prisma.choreTakeoverRequest.findFirst({
       where: {
@@ -2497,7 +2733,12 @@ export class HouseholdRepository {
         householdId: input.householdId
       },
       include: {
-        choreInstance: true,
+        choreInstance: {
+          include: {
+            template: true,
+            variant: true
+          }
+        },
         requester: {
           select: {
             id: true,
@@ -2538,7 +2779,12 @@ export class HouseholdRepository {
           respondedAtUtc: new Date()
         },
         include: {
-          choreInstance: true,
+          choreInstance: {
+            include: {
+              template: true,
+              variant: true
+            }
+          },
           requester: {
             select: {
               id: true,
@@ -2578,7 +2824,7 @@ export class HouseholdRepository {
       return updatedRequest;
     });
 
-    return this.mapTakeoverRequest(declinedRequest);
+    return this.mapTakeoverRequest(declinedRequest, input.language ?? fallbackLanguage);
   }
 
   async submitInstance(input: {
@@ -2590,6 +2836,7 @@ export class HouseholdRepository {
     note?: string;
     awardedPoints: number;
     nextState: "pending_approval" | "completed";
+    language?: SupportedLanguage;
   }) {
     const updatedInstance = await this.prisma.$transaction(async (tx) => {
       await tx.choreTakeoverRequest.updateMany({
@@ -2663,6 +2910,7 @@ export class HouseholdRepository {
               checklistItems: true
             }
           },
+          variant: true,
           checklistCompletions: true,
           attachments: true
         }
@@ -2738,7 +2986,7 @@ export class HouseholdRepository {
           : `Completed chore "${updatedInstance.title}".`
     });
 
-    return this.mapInstance(updatedInstance);
+    return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
 
   async reviewInstance(input: {
@@ -2748,6 +2996,7 @@ export class HouseholdRepository {
     approved: boolean;
     note?: string;
     awardedPoints: number;
+    language?: SupportedLanguage;
   }) {
     const updatedInstance = await this.prisma.choreInstance.update({
       where: {
@@ -2768,6 +3017,7 @@ export class HouseholdRepository {
             checklistItems: true
           }
         },
+        variant: true,
         checklistCompletions: true,
         attachments: true
       }
@@ -2829,10 +3079,15 @@ export class HouseholdRepository {
         : `Rejected chore "${updatedInstance.title}" and sent it back for fixes.`
     });
 
-    return this.mapInstance(updatedInstance);
+    return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
 
-  async cancelInstance(instanceId: string, householdId: string, actorUserId?: string) {
+  async cancelInstance(
+    instanceId: string,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
     const updatedInstance = await this.prisma.choreInstance.update({
       where: {
         id: instanceId
@@ -2846,6 +3101,7 @@ export class HouseholdRepository {
             checklistItems: true
           }
         },
+        variant: true,
         checklistCompletions: true,
         attachments: true
       }
@@ -2872,7 +3128,7 @@ export class HouseholdRepository {
       });
     }
 
-    return this.mapInstance(updatedInstance);
+    return this.mapInstance(updatedInstance, undefined, language);
   }
 
   throwNotFound(message: string): never {
@@ -3592,18 +3848,23 @@ export class HouseholdRepository {
   private mapTemplate(
     template: Prisma.ChoreTemplateGetPayload<{
       include: { checklistItems: true; dependencies: true; variants: true };
-    }>
+    }>,
+    language: SupportedLanguage = fallbackLanguage
   ) {
     const dependencyRules = template.dependencies.map((dependency) => ({
       templateId: dependency.followUpTemplateId,
       delayValue: dependency.followUpDelayValue,
       delayUnit: dependency.followUpDelayUnit.toLowerCase()
     }));
+    const localizedTitle = this.resolveTemplateTitle(template, language);
+    const localizedDescription = this.resolveTemplateDescription(template, language);
 
     return {
       id: template.id,
-      title: template.title,
-      description: template.description,
+      title: localizedTitle,
+      description: localizedDescription,
+      defaultLocale: this.normalizeSupportedLanguage(template.defaultLocale),
+      translations: this.serializeTemplateTranslations(template),
       difficulty: template.difficulty.toLowerCase(),
       basePoints: template.basePoints,
       assignmentStrategy: this.mapAssignmentStrategy(template.assignmentStrategy),
@@ -3625,7 +3886,11 @@ export class HouseholdRepository {
       dependencyRules,
       variants: template.variants
         .sort((a, b) => a.sortOrder - b.sortOrder)
-        .map((v) => ({ id: v.id, label: v.label }))
+        .map((v) => ({
+          id: v.id,
+          label: this.resolveVariantLabel(v, this.normalizeSupportedLanguage(template.defaultLocale), language),
+          translations: this.serializeVariantTranslations(v)
+        }))
     };
   }
 
@@ -3635,20 +3900,31 @@ export class HouseholdRepository {
         template: { include: { checklistItems: true } };
         checklistCompletions: true;
         attachments: true;
+        variant?: true;
       };
     }>,
     options?: {
       redactDetails?: boolean;
       assigneeDisplayName?: string | null;
-    }
+    },
+    language: SupportedLanguage = fallbackLanguage
   ) {
+    const localizedTypeTitle = this.resolveTemplateTitle(instance.template, language);
+    const localizedSubtypeLabel =
+      this.resolveVariantLabel(
+        (instance as { variant?: Prisma.ChoreTemplateVariantGetPayload<object> | null }).variant ?? null,
+        this.normalizeSupportedLanguage(instance.template.defaultLocale),
+        language
+      ) ?? (instance as any).subtypeLabel ?? null;
+    const localizedTitle = this.composeChoreTitle(localizedTypeTitle, localizedSubtypeLabel);
+
     if (options?.redactDetails) {
       return {
         id: instance.id,
         templateId: instance.templateId,
-        title: instance.title,
-        typeTitle: instance.template.title,
-        subtypeLabel: (instance as any).subtypeLabel ?? null,
+        title: localizedTitle,
+        typeTitle: localizedTypeTitle,
+        subtypeLabel: localizedSubtypeLabel,
         state: instance.state.toLowerCase(),
         assigneeId: null,
         dueAt: instance.dueAtUtc,
@@ -3679,9 +3955,9 @@ export class HouseholdRepository {
     return {
       id: instance.id,
       templateId: instance.templateId,
-      title: instance.title,
-      typeTitle: instance.template.title,
-      subtypeLabel: (instance as any).subtypeLabel ?? null,
+      title: localizedTitle,
+      typeTitle: localizedTypeTitle,
+      subtypeLabel: localizedSubtypeLabel,
       state: instance.state.toLowerCase(),
       assigneeId: instance.assigneeId,
       assigneeDisplayName: options?.assigneeDisplayName ?? null,
@@ -3722,6 +3998,156 @@ export class HouseholdRepository {
         createdAt: attachment.createdAtUtc
       }))
     };
+  }
+
+  private normalizeSupportedLanguage(language?: string | null): SupportedLanguage {
+    const normalized = language?.trim().toLowerCase();
+    return (supportedLanguages.find((entry) => entry === normalized) ?? fallbackLanguage) as SupportedLanguage;
+  }
+
+  private parseLocalizedTextMap(value: Prisma.JsonValue | null | undefined): LocalizedTextMap {
+    if (!value || typeof value !== "object" || Array.isArray(value)) {
+      return {};
+    }
+
+    const normalizedEntries = Object.entries(value as Record<string, unknown>)
+      .map(([locale, rawValue]) => [this.normalizeSupportedLanguage(locale), typeof rawValue === "string" ? rawValue.trim() : ""] as const)
+      .filter(([, text]) => text.length > 0);
+
+    return Object.fromEntries(normalizedEntries);
+  }
+
+  private toPrismaJsonOrNull(map: LocalizedTextMap): Prisma.InputJsonValue | typeof Prisma.JsonNull {
+    const normalizedEntries = Object.entries(map).filter(([, value]) => Boolean(value?.trim()));
+    if (normalizedEntries.length === 0) {
+      return Prisma.JsonNull;
+    }
+
+    return Object.fromEntries(normalizedEntries.map(([locale, value]) => [locale, value!.trim()]));
+  }
+
+  private normalizeTemplateTitleTranslations(
+    translations: CreateChoreTemplateDto["translations"],
+    defaultLocale: SupportedLanguage,
+    defaultTitle: string
+  ) {
+    return this.normalizeTemplateTranslationEntries(translations, "title", defaultLocale, defaultTitle);
+  }
+
+  private normalizeTemplateDescriptionTranslations(
+    translations: CreateChoreTemplateDto["translations"],
+    defaultLocale: SupportedLanguage,
+    defaultDescription: string
+  ) {
+    return this.normalizeTemplateTranslationEntries(translations, "description", defaultLocale, defaultDescription);
+  }
+
+  private normalizeTemplateTranslationEntries(
+    translations: CreateChoreTemplateDto["translations"],
+    field: "title" | "description",
+    defaultLocale: SupportedLanguage,
+    defaultValue: string
+  ) {
+    const normalized: LocalizedTextMap = {};
+    const trimmedDefaultValue = defaultValue.trim();
+
+    for (const entry of translations ?? []) {
+      const locale = this.normalizeSupportedLanguage(entry.locale);
+      const value = (field === "title" ? entry.title : entry.description)?.trim();
+      if (!value || locale === defaultLocale || value === trimmedDefaultValue) {
+        continue;
+      }
+      normalized[locale] = value;
+    }
+
+    return normalized;
+  }
+
+  private normalizeVariantLabelTranslations(
+    translations: LocalizedVariantTranslationInput[] | undefined,
+    defaultLocale: SupportedLanguage,
+    defaultLabel: string
+  ) {
+    const normalized: LocalizedTextMap = {};
+    const trimmedDefaultLabel = defaultLabel.trim();
+
+    for (const entry of translations ?? []) {
+      const locale = this.normalizeSupportedLanguage(entry.locale);
+      const value = entry.label?.trim();
+      if (!value || locale === defaultLocale || value === trimmedDefaultLabel) {
+        continue;
+      }
+      normalized[locale] = value;
+    }
+
+    return normalized;
+  }
+
+  private resolveTemplateTitle(
+    template: { title: string; titleTranslations?: Prisma.JsonValue | null },
+    language: SupportedLanguage
+  ) {
+    const translations = this.parseLocalizedTextMap(template.titleTranslations);
+    return translations[language]?.trim() || template.title;
+  }
+
+  private resolveTemplateDescription(
+    template: { description: string; descriptionTranslations?: Prisma.JsonValue | null },
+    language: SupportedLanguage
+  ) {
+    const translations = this.parseLocalizedTextMap(template.descriptionTranslations);
+    return translations[language]?.trim() || template.description;
+  }
+
+  private resolveVariantLabel(
+    variant:
+      | { label: string; labelTranslations?: Prisma.JsonValue | null }
+      | null
+      | undefined,
+    defaultLocale: SupportedLanguage,
+    language: SupportedLanguage
+  ) {
+    if (!variant) {
+      return null;
+    }
+
+    const translations = this.parseLocalizedTextMap(variant.labelTranslations);
+    if (language === defaultLocale) {
+      return variant.label;
+    }
+
+    return translations[language]?.trim() || variant.label;
+  }
+
+  private serializeTemplateTranslations(
+    template: {
+      titleTranslations?: Prisma.JsonValue | null;
+      descriptionTranslations?: Prisma.JsonValue | null;
+    }
+  ) {
+    const titleTranslations = this.parseLocalizedTextMap(template.titleTranslations);
+    const descriptionTranslations = this.parseLocalizedTextMap(template.descriptionTranslations);
+
+    return supportedLanguages
+      .map((locale) => ({
+        locale,
+        title: titleTranslations[locale] ?? "",
+        description: descriptionTranslations[locale] ?? ""
+      }))
+      .filter((entry) => entry.title || entry.description);
+  }
+
+  private serializeVariantTranslations(
+    variant: { labelTranslations?: Prisma.JsonValue | null }
+  ) {
+    const labelTranslations = this.parseLocalizedTextMap(variant.labelTranslations);
+
+    return supportedLanguages
+      .map((locale) => ({
+        locale,
+        label: labelTranslations[locale] ?? ""
+      }))
+      .filter((entry) => entry.label);
   }
 
   private composeChoreTitle(typeTitle: string, subtypeLabel?: string | null) {
@@ -3833,7 +4259,12 @@ export class HouseholdRepository {
   private mapTakeoverRequest(
     request: Prisma.ChoreTakeoverRequestGetPayload<{
       include: {
-        choreInstance: true;
+        choreInstance: {
+          include: {
+            template: true;
+            variant: true;
+          };
+        };
         requester: {
           select: {
             id: true;
@@ -3849,12 +4280,21 @@ export class HouseholdRepository {
           };
         };
       };
-    }>
+    }>,
+    language: SupportedLanguage = fallbackLanguage
   ) {
+    const localizedTypeTitle = this.resolveTemplateTitle(request.choreInstance.template, language);
+    const localizedSubtypeLabel =
+      this.resolveVariantLabel(
+        request.choreInstance.variant,
+        this.normalizeSupportedLanguage(request.choreInstance.template.defaultLocale),
+        language
+      ) ?? request.choreInstance.subtypeLabel ?? null;
+
     return {
       id: request.id,
       choreId: request.choreInstanceId,
-      choreTitle: request.choreInstance.title,
+      choreTitle: this.composeChoreTitle(localizedTypeTitle, localizedSubtypeLabel),
       status: request.status.toLowerCase(),
       note: request.note,
       createdAt: request.createdAtUtc,

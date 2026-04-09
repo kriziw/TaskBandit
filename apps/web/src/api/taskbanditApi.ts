@@ -411,6 +411,13 @@ export const taskBanditApi = {
       body: input
     });
   },
+  deleteTemplate(token: string, language: AppLanguage, templateId: string) {
+    return request<{ ok: true }>(`/api/chores/templates/${templateId}`, {
+      method: "DELETE",
+      token,
+      language
+    });
+  },
   createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
     return request<ChoreInstance>("/api/chores/instances", {
       method: "POST",
