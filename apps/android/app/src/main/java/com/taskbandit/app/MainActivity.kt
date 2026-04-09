@@ -2501,7 +2501,7 @@ private fun CompactChoreMeta(
     val metaParts = buildList {
         subtypeLabel?.takeIf { it.isNotBlank() }?.let(::add)
         assignmentLabel?.takeIf { it.isNotBlank() }?.let(::add)
-        add(stringResource(R.string.mobile_due_at, formatApiTimestamp(dueAt)))
+        add(stringResource(R.string.mobile_due_at, formatDueAtForCard(dueAt)))
         if (requirePhotoProof) add(stringResource(R.string.mobile_photo_required_hint))
     }
     Text(
@@ -3558,6 +3558,14 @@ private fun formatApiTimestamp(value: String): String {
             .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault(value)
+}
+
+private fun formatDueAtForCard(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("EEE d MMM HH:mm", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(formatApiTimestamp(value))
 }
 
 private suspend fun flushQueuedSubmissions(
