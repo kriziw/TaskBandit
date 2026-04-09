@@ -57,6 +57,7 @@
     <string name="mobile_starting">Startet...</string>
     <string name="mobile_started">In Bearbeitung</string>
     <string name="mobile_chore_started">Aufgabe wurde in Bearbeitung versetzt.</string>
+    <string name="mobile_chore_taken_over">Die Aufgabe wurde dir zugewiesen.</string>
     <string name="mobile_checklist_required">Erledige alle Pflichtpunkte der Checkliste, bevor du die Aufgabe sendest.</string>
     <string name="mobile_photo_required_hint">Diese Aufgabe braucht mindestens ein Beweisfoto.</string>
     <string name="mobile_photo_required_missing">Fuge mindestens ein Beweisfoto hinzu, bevor du die Aufgabe sendest.</string>
@@ -90,4 +91,8 @@
     <string name="widget_refreshing">Widget wird aktualisiert...</string>
     <string name="mobile_push_channel_name">TaskBandit Hinweise</string>
     <string name="mobile_push_channel_description">Bald-fallig-Erinnerungen, Freigaben und weitere TaskBandit-Aktualisierungen.</string>
+    <string name="mobile_chore_assigned_to_name">Zugewiesen an %1$s</string>
+    <string name="mobile_take_over_task">Aufgabe ubernehmen</string>
+    <string name="mobile_taking_over_task">Wird ubernommen...</string>
+    <string name="mobile_chore_read_only_hint">Ubernimm diese Aufgabe zuerst, bevor du daran arbeitest.</string>
 </resources>

@@ -57,6 +57,7 @@
     <string name="mobile_starting">Inditas...</string>
     <string name="mobile_started">Folyamatban</string>
     <string name="mobile_chore_started">A feladat folyamatban allapotba kerult.</string>
+    <string name="mobile_chore_taken_over">A feladat most hozzad lett rendelve.</string>
     <string name="mobile_checklist_required">Minden kotelezo ellenorzo pontot fejezz be a bekuldes elott.</string>
     <string name="mobile_photo_required_hint">Ehhez a feladathoz legalabb egy fotos bizonyitek kell.</string>
     <string name="mobile_photo_required_missing">Adj hozza legalabb egy fotos bizonyitekot a bekuldes elott.</string>
@@ -90,4 +91,8 @@
     <string name="widget_refreshing">Widget frissitese...</string>
     <string name="mobile_push_channel_name">TaskBandit ertesitesek</string>
     <string name="mobile_push_channel_description">Kozeli hataridok, jovahagyasok es egyeb TaskBandit frissitesek.</string>
+    <string name="mobile_chore_assigned_to_name">%1$s feladata</string>
+    <string name="mobile_take_over_task">Feladat atvetele</string>
+    <string name="mobile_taking_over_task">Atvetel folyamatban...</string>
+    <string name="mobile_chore_read_only_hint">Vedd at a feladatot, mielott dolgozni kezdesz rajta.</string>
 </resources>

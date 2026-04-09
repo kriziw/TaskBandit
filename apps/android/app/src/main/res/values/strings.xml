@@ -66,11 +66,14 @@
     <string name="mobile_chores_others">Assigned to someone else</string>
     <string name="mobile_chore_assigned_to_you">Assigned to you</string>
     <string name="mobile_chore_unassigned">Open for anyone</string>
+    <string name="mobile_chore_assigned_to_name">Assigned to %1$s</string>
     <string name="mobile_chore_assigned_elsewhere">Assigned elsewhere</string>
+    <string name="mobile_take_over_task">Take over task</string>
+    <string name="mobile_taking_over_task">Taking over...</string>
     <string name="mobile_work_task">Work on task</string>
     <string name="mobile_hide_task_tools">Hide task tools</string>
     <string name="mobile_view_task">View task</string>
-    <string name="mobile_chore_read_only_hint">This chore is visible here, but only the assignee or a parent/admin can work on it.</string>
+    <string name="mobile_chore_read_only_hint">Take over this task before you can work on it.</string>
     <string name="mobile_my_chores">My chores</string>
     <string name="mobile_no_chores">No active chores right now.</string>
     <string name="mobile_chores_history">Recent history</string>
@@ -176,6 +179,7 @@
     <string name="mobile_starting">Starting...</string>
     <string name="mobile_started">In progress</string>
     <string name="mobile_chore_started">Chore moved into progress.</string>
+    <string name="mobile_chore_taken_over">Task was assigned to you.</string>
     <string name="mobile_checklist_required">Complete all required checklist items before submitting.</string>
     <string name="mobile_photo_required_hint">This chore needs at least one proof photo.</string>
     <string name="mobile_photo_required_missing">Add at least one proof photo before submitting.</string>

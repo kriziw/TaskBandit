@@ -79,6 +79,7 @@ class TaskBanditMobileApi {
                         title = entry.optString("title"),
                         state = entry.optString("state"),
                         assigneeId = entry.optString("assigneeId").ifBlank { null },
+                        assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
                         dueAt = entry.optString("dueAt"),
                         isOverdue = entry.optBoolean("isOverdue"),
                         requirePhotoProof = entry.optBoolean("requirePhotoProof"),
@@ -180,6 +181,16 @@ class TaskBanditMobileApi {
         requestJson(
             baseUrl = baseUrl,
             path = "/api/chores/instances/$instanceId/start",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
+    fun takeOverChore(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/takeover",
             token = token,
             method = "POST",
             body = JSONObject()

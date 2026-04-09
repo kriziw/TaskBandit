@@ -115,6 +115,29 @@ export class ChoresService {
     return startedInstance;
   }
 
+  async takeOverInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_start_state", language)
+      );
+    }
+
+    if (instance.assigneeId === user.id) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_start_state", language)
+      );
+    }
+
+    const updatedInstance = await this.repository.takeOverInstance(instanceId, user.householdId, user.id);
+    this.publishSyncEvent(user, "instance.taken_over", "instance", instanceId);
+    return updatedInstance;
+  }
+
   getInstances(user: AuthenticatedUser) {
     return this.repository.getInstancesForViewer(user);
   }

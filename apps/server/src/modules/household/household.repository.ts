@@ -1905,10 +1905,33 @@ export class HouseholdRepository {
 
     const shouldRestrictOtherChores =
       user.role === "child" && !(settings?.membersCanSeeFullHouseholdChoreDetails ?? true);
+    const assigneeIds = Array.from(
+      new Set(instances.map((instance) => instance.assigneeId).filter((assigneeId): assigneeId is string => Boolean(assigneeId)))
+    );
+    const assigneeDisplayNameById = new Map<string, string | null>();
+
+    if (assigneeIds.length > 0) {
+      const assignees = await this.prisma.user.findMany({
+        where: {
+          id: {
+            in: assigneeIds
+          }
+        },
+        select: {
+          id: true,
+          displayName: true
+        }
+      });
+
+      assignees.forEach((assignee) => {
+        assigneeDisplayNameById.set(assignee.id, assignee.displayName);
+      });
+    }
 
     return instances.map((instance) =>
       this.mapInstance(instance, {
-        redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id
+        redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id,
+        assigneeDisplayName: instance.assigneeId ? assigneeDisplayNameById.get(instance.assigneeId) ?? null : null
       })
     );
   }
@@ -2090,6 +2113,49 @@ export class HouseholdRepository {
     });
 
     return this.mapInstance(updatedInstance);
+  }
+
+  async takeOverInstance(instanceId: string, householdId: string, actorUserId: string) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: instanceId
+      },
+      data: {
+        assigneeId: actorUserId,
+        state: ChoreState.ASSIGNED
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId,
+      actorUserId,
+      action: "instance.taken_over",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: `Took over chore "${updatedInstance.title}".`
+    });
+
+    const assignee = await this.prisma.user.findUnique({
+      where: {
+        id: actorUserId
+      },
+      select: {
+        displayName: true
+      }
+    });
+
+    return this.mapInstance(updatedInstance, {
+      assigneeDisplayName: assignee?.displayName ?? null
+    });
   }
 
   async submitInstance(input: {
@@ -3118,6 +3184,7 @@ export class HouseholdRepository {
     }>,
     options?: {
       redactDetails?: boolean;
+      assigneeDisplayName?: string | null;
     }
   ) {
     if (options?.redactDetails) {
@@ -3158,6 +3225,7 @@ export class HouseholdRepository {
       title: instance.title,
       state: instance.state.toLowerCase(),
       assigneeId: instance.assigneeId,
+      assigneeDisplayName: options?.assigneeDisplayName ?? null,
       dueAt: instance.dueAtUtc,
       difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
       basePoints: instance.template.basePoints,

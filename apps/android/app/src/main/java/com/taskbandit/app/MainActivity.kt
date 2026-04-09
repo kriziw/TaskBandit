@@ -192,6 +192,7 @@ private fun TaskBanditApp(
     val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
+    val choreTakenOverMessage = stringResource(R.string.mobile_chore_taken_over)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
@@ -471,6 +472,31 @@ private fun TaskBanditApp(
                 }
             }.onSuccess {
                 noticeMessage = choreStartedMessage
+                requestDashboardRefresh()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message
+                }
+            }
+            activeStartAction = null
+        }
+    }
+
+    fun takeOverChore(choreId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeStartAction = "takeover:$choreId"
+        errorMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.takeOverChore(baseUrl, token, choreId)
+                }
+            }.onSuccess {
+                noticeMessage = choreTakenOverMessage
                 requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
@@ -786,6 +812,7 @@ private fun TaskBanditApp(
                     selectedProofUris = selectedProofUris,
                     onPickProofs = ::openProofPicker,
                     onStartChore = ::startChore,
+                    onTakeOverChore = ::takeOverChore,
                     onSubmitChore = ::submitChore,
                     onCreateChore = ::createChore,
                     onRemoveNotificationDevice = ::removeNotificationDevice,
@@ -1132,6 +1159,7 @@ private fun DashboardScreen(
     selectedProofUris: Map<String, List<String>>,
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
+    onTakeOverChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
     onCreateChore: (String, String, String?, String, String?, Int?, String?) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
@@ -1142,7 +1170,6 @@ private fun DashboardScreen(
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
     val currentUserId = dashboard?.user?.id
-    val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
     var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
     var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
@@ -1379,9 +1406,9 @@ private fun DashboardScreen(
                                 modifier = Modifier.weight(1.55f),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                ChoreSectionColumn(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                                ChoreSectionColumn(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
                             }
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -1411,9 +1438,9 @@ private fun DashboardScreen(
                         }
                     }
                 } else {
-                    choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+                    choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
                     historicChoreSection(
                         chores = historicChores,
                         title = choresHistoryLabel,
@@ -1780,14 +1807,14 @@ private fun SectionIntro(title: String, body: String) {
 }
 
 private fun LazyListScope.choreSection(
-    chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
+    chores: List<MobileChore>, title: String, currentUserId: String?, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
     item { ChoreSectionHeader(title = title, count = chores.size) }
     items(chores, key = { it.id }) { chore ->
-        ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
+        ChoreCard(chore = chore, currentUserId = currentUserId, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onSubmitChore = onSubmitChore)
     }
 }
 private fun LazyListScope.historicChoreSection(
@@ -1812,7 +1839,6 @@ private fun ChoreSectionColumn(
     chores: List<MobileChore>,
     title: String,
     currentUserId: String?,
-    currentUserRole: String?,
     expandedChoreIds: Set<String>,
     activeReviewAction: String?,
     activeStartAction: String?,
@@ -1825,6 +1851,7 @@ private fun ChoreSectionColumn(
     onToggleChecklistItem: (String, String, List<String>) -> Unit,
     onPickProofs: (String) -> Unit,
     onStartChore: (String) -> Unit,
+    onTakeOverChore: (String) -> Unit,
     onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
@@ -1834,7 +1861,6 @@ private fun ChoreSectionColumn(
             ChoreCard(
                 chore = chore,
                 currentUserId = currentUserId,
-                currentUserRole = currentUserRole,
                 expanded = expandedChoreIds.contains(chore.id),
                 activeReviewAction = activeReviewAction,
                 activeStartAction = activeStartAction,
@@ -1847,6 +1873,7 @@ private fun ChoreSectionColumn(
                 onToggleChecklistItem = onToggleChecklistItem,
                 onPickProofs = onPickProofs,
                 onStartChore = onStartChore,
+                onTakeOverChore = onTakeOverChore,
                 onSubmitChore = onSubmitChore
             )
         }
@@ -2035,15 +2062,16 @@ private fun HistoricChoreCard(
 
 @Composable
 private fun ChoreCard(
-    chore: MobileChore, currentUserId: String?, currentUserRole: String?, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?,
+    chore: MobileChore, currentUserId: String?, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
-    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     val isPendingApproval = chore.state == "pending_approval"
     val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
-    val canManageTask = currentUserRole != "child" || chore.assigneeId == null || chore.assigneeId == currentUserId
+    val canManageTask = chore.assigneeId == null || chore.assigneeId == currentUserId
     val section = resolveChoreSection(chore, currentUserId)
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
+    val requiresTakeOver = section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
     val accentContainerColor = when (section) {
         MobileChoreSection.MINE -> MaterialTheme.colorScheme.primaryContainer
@@ -2171,14 +2199,37 @@ private fun ChoreCard(
 
             if (isSubmittableState) {
                 Button(
-                    onClick = onExpandedChange,
+                    onClick = {
+                        if (requiresTakeOver) {
+                            onTakeOverChore(chore.id)
+                        } else {
+                            onExpandedChange()
+                        }
+                    },
+                    enabled = if (requiresTakeOver) activeStartAction == null else true,
                     modifier = Modifier.fillMaxWidth()
                 ) {
-                    Text(stringResource(if (!canManageTask) R.string.mobile_view_task else if (expanded) R.string.mobile_hide_task_tools else R.string.mobile_work_task))
+                    Text(
+                        stringResource(
+                            if (requiresTakeOver) {
+                                if (activeStartAction == "takeover:${chore.id}") {
+                                    R.string.mobile_taking_over_task
+                                } else {
+                                    R.string.mobile_take_over_task
+                                }
+                            } else if (!canManageTask) {
+                                R.string.mobile_view_task
+                            } else if (expanded) {
+                                R.string.mobile_hide_task_tools
+                            } else {
+                                R.string.mobile_work_task
+                            }
+                        )
+                    )
                 }
             }
 
-            if (expanded) {
+            if (expanded && !requiresTakeOver) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
@@ -2683,8 +2734,22 @@ private fun parseInstantForSort(value: String): Instant = runCatching { Instant.
 private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?): String = when (resolveChoreSection(chore, currentUserId)) {
     MobileChoreSection.MINE -> stringResource(R.string.mobile_chore_assigned_to_you)
     MobileChoreSection.UNASSIGNED -> stringResource(R.string.mobile_chore_unassigned)
-    MobileChoreSection.OTHERS -> stringResource(R.string.mobile_chore_assigned_elsewhere)
+    MobileChoreSection.OTHERS -> {
+        val firstName = firstNameFromDisplayName(chore.assigneeDisplayName)
+        if (firstName != null) {
+            stringResource(R.string.mobile_chore_assigned_to_name, firstName)
+        } else {
+            stringResource(R.string.mobile_chore_assigned_elsewhere)
+        }
+    }
 }
+
+private fun firstNameFromDisplayName(displayName: String?): String? =
+    displayName
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?.split(Regex("\\s+"))
+        ?.firstOrNull()
 
 private fun defaultCreateDueAtMillis(): Long =
     Instant.now()

@@ -25,6 +25,7 @@ data class MobileChore(
     val title: String,
     val state: String,
     val assigneeId: String? = null,
+    val assigneeDisplayName: String? = null,
     val dueAt: String,
     val isOverdue: Boolean,
     val requirePhotoProof: Boolean,
