@@ -17,6 +17,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
@@ -169,14 +170,22 @@ private data class MobileChoiceOption(
     val onClick: () -> Unit
 )
 
-class MainActivity : ComponentActivity() {
+class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
         val appPreferencesStore = TaskBanditAppPreferencesStore(sharedPreferences)
         val outboxStore = TaskBanditOutboxStore(sharedPreferences)
         val widgetStore = TaskBanditWidgetStore(sharedPreferences)
+        val initialLanguageTag = appPreferencesStore.readLanguageTag()
+        val initialLocaleList = if (initialLanguageTag == "system") {
+            LocaleListCompat.getEmptyLocaleList()
+        } else {
+            LocaleListCompat.forLanguageTags(initialLanguageTag)
+        }
+
+        AppCompatDelegate.setApplicationLocales(initialLocaleList)
+        super.onCreate(savedInstanceState)
 
         setContent {
             TaskBanditApp(
