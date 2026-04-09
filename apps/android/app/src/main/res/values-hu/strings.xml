@@ -42,6 +42,7 @@
     <string name="mobile_dashboard_summary">%1$d jovahagyas var, %2$d aktiv feladat, %3$d szeria</string>
     <string name="mobile_refresh">Frissites</string>
     <string name="mobile_refreshing">Frissites...</string>
+    <string name="mobile_sync_disconnected">Az elo szinkron most atmenetileg offline. Ujracsatlakozas folyamatban...</string>
     <string name="mobile_logout">Kijelentkezes</string>
     <string name="mobile_my_chores">Feladataim</string>
     <string name="mobile_pending_approvals">Varakozo jovahagyasok</string>
@@ -54,6 +55,9 @@
     <string name="mobile_login_failed">Sikertelen bejelentkezes.</string>
     <string name="mobile_submit">Feladat bekuldese</string>
     <string name="mobile_submitting">Bekuldes...</string>
+    <string name="mobile_submit_confirm_title">Befejezed ezt a feladatot?</string>
+    <string name="mobile_submit_confirm_body">Most kuldjuk be ezt: \"%1$s\"?</string>
+    <string name="mobile_submit_confirm_action">Igen, befejezem</string>
     <string name="mobile_start">Feladat inditasa</string>
     <string name="mobile_starting">Inditas...</string>
     <string name="mobile_started">Folyamatban</string>
@@ -81,6 +85,7 @@
     <string name="mobile_photo_required_hint">Ehhez a feladathoz legalabb egy fotos bizonyitek kell.</string>
     <string name="mobile_photo_required_missing">Adj hozza legalabb egy fotos bizonyitekot a bekuldes elott.</string>
     <string name="mobile_pick_photos">Bizonyitekfotok valasztasa</string>
+    <string name="mobile_take_photo">Bizonyitekfoto keszitese</string>
     <string name="mobile_selected_photos">%1$d foto kivalasztva</string>
     <string name="mobile_submission_sent">A feladat androidrol be lett kuldve.</string>
     <string name="mobile_submission_queued">Most nincs kapcsolat. A feladat sorba lett allitva szinkronizalashoz.</string>

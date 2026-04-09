@@ -14,6 +14,8 @@ import okhttp3.sse.EventSourceListener
 import okhttp3.sse.EventSources
 
 sealed interface MobileDashboardSyncSignal {
+    data object Connected : MobileDashboardSyncSignal
+    data object Disconnected : MobileDashboardSyncSignal
     data object RefreshRequested : MobileDashboardSyncSignal
     data object Unauthorized : MobileDashboardSyncSignal
 }
@@ -42,6 +44,7 @@ class TaskBanditDashboardSyncClient {
 
                 activeEventSource = eventSourceFactory.newEventSource(request, object : EventSourceListener() {
                     override fun onOpen(eventSource: EventSource, response: Response) {
+                        trySend(MobileDashboardSyncSignal.Connected)
                         trySend(MobileDashboardSyncSignal.RefreshRequested)
                         openedThisAttempt = true
                     }
@@ -60,6 +63,7 @@ class TaskBanditDashboardSyncClient {
                     }
 
                     override fun onClosed(eventSource: EventSource) {
+                        trySend(MobileDashboardSyncSignal.Disconnected)
                         if (!connectionEnded.isCompleted) {
                             connectionEnded.complete(Unit)
                         }
@@ -73,6 +77,8 @@ class TaskBanditDashboardSyncClient {
                         if (response?.code == 401) {
                             trySend(MobileDashboardSyncSignal.Unauthorized)
                             keepRunning = false
+                        } else {
+                            trySend(MobileDashboardSyncSignal.Disconnected)
                         }
 
                         if (!connectionEnded.isCompleted) {

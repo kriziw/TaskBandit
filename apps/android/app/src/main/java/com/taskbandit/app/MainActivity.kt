@@ -18,6 +18,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
+import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
@@ -50,7 +51,6 @@ import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.NotificationsActive
-import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
@@ -130,6 +130,7 @@ import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
+import java.io.File
 import java.util.Locale
 import java.util.UUID
 
@@ -244,9 +245,13 @@ private fun TaskBanditApp(
     var activeCreateAction by remember { mutableStateOf<String?>(null) }
     var createSuccessCounter by remember { mutableIntStateOf(0) }
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
+    var isDashboardSyncConnected by remember { mutableStateOf(true) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
+    var pendingPhotoCaptureChoreId by remember { mutableStateOf<String?>(null) }
+    var pendingPhotoCaptureUriString by remember { mutableStateOf<String?>(null) }
+    var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(outboxStore.readQueue().size) }
     var notificationsPermissionGranted by remember {
         mutableStateOf(
@@ -286,9 +291,31 @@ private fun TaskBanditApp(
                 }
             }
 
-            selectedProofUris = selectedProofUris + (choreId to uris.map(Uri::toString))
+            val existingUris = selectedProofUris[choreId].orEmpty()
+            selectedProofUris =
+                selectedProofUris + (choreId to (existingUris + uris.map(Uri::toString)).distinct())
         }
         pendingPhotoPickerChoreId = null
+    }
+
+    val proofCameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.TakePicture()
+    ) { success ->
+        val choreId = pendingPhotoCaptureChoreId
+        val uriString = pendingPhotoCaptureUriString
+        val filePath = pendingPhotoCaptureFilePath
+
+        if (success && choreId != null && uriString != null) {
+            val existingUris = selectedProofUris[choreId].orEmpty()
+            selectedProofUris =
+                selectedProofUris + (choreId to (existingUris + uriString).distinct())
+        } else if (!success && !filePath.isNullOrBlank()) {
+            runCatching { File(filePath).delete() }
+        }
+
+        pendingPhotoCaptureChoreId = null
+        pendingPhotoCaptureUriString = null
+        pendingPhotoCaptureFilePath = null
     }
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
@@ -303,6 +330,7 @@ private fun TaskBanditApp(
         dashboard = null
         serverReleaseInfo = null
         notificationDevices = emptyList()
+        isDashboardSyncConnected = true
         isBusy = false
         refreshQueued = false
         errorMessage = null
@@ -475,6 +503,20 @@ private fun TaskBanditApp(
     fun openProofPicker(choreId: String) {
         pendingPhotoPickerChoreId = choreId
         proofPicker.launch(arrayOf("image/*"))
+    }
+
+    fun takeProofPhoto(choreId: String) {
+        val captureFile = createProofCaptureFile(context)
+        val captureUri = FileProvider.getUriForFile(
+            context,
+            "${context.packageName}.fileprovider",
+            captureFile
+        )
+
+        pendingPhotoCaptureChoreId = choreId
+        pendingPhotoCaptureUriString = captureUri.toString()
+        pendingPhotoCaptureFilePath = captureFile.absolutePath
+        proofCameraLauncher.launch(captureUri)
     }
 
     fun startChore(choreId: String) {
@@ -751,6 +793,8 @@ private fun TaskBanditApp(
 
         dashboardSyncClient.connect(activeBaseUrl, token).collect { signal ->
             when (signal) {
+                MobileDashboardSyncSignal.Connected -> isDashboardSyncConnected = true
+                MobileDashboardSyncSignal.Disconnected -> isDashboardSyncConnected = false
                 MobileDashboardSyncSignal.RefreshRequested -> requestDashboardRefresh()
                 MobileDashboardSyncSignal.Unauthorized -> logout()
             }
@@ -864,6 +908,7 @@ private fun TaskBanditApp(
                     themeMode = themeMode,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
+                    isDashboardSyncConnected = isDashboardSyncConnected,
                     isSyncingQueue = isSyncingQueue,
                     activeReviewAction = activeReviewAction,
                     activeStartAction = activeStartAction,
@@ -884,6 +929,7 @@ private fun TaskBanditApp(
                     submitSelections = submitSelections,
                     selectedProofUris = selectedProofUris,
                     onPickProofs = ::openProofPicker,
+                    onTakeProofPhoto = ::takeProofPhoto,
                     onStartChore = ::startChore,
                     onTakeOverChore = ::takeOverChore,
                     onRequestTakeover = ::requestTakeover,
@@ -1214,6 +1260,7 @@ private fun DashboardScreen(
     themeMode: MobileThemeMode,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
+    isDashboardSyncConnected: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
     activeStartAction: String?,
@@ -1234,6 +1281,7 @@ private fun DashboardScreen(
     submitSelections: Map<String, Set<String>>,
     selectedProofUris: Map<String, List<String>>,
     onPickProofs: (String) -> Unit,
+    onTakeProofPhoto: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String, String) -> Unit,
@@ -1265,6 +1313,7 @@ private fun DashboardScreen(
     var createVariantId by rememberSaveable { mutableStateOf<String?>(null) }
     var variantDropdownExpanded by remember { mutableStateOf(false) }
     var showCreateSuccessDialog by remember { mutableStateOf(false) }
+    var submitConfirmationChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
@@ -1411,6 +1460,41 @@ private fun DashboardScreen(
                     resetCreateForm()
                 }) {
                     Text(stringResource(R.string.mobile_create_success_create_another))
+                }
+            }
+        )
+    }
+
+    val submitConfirmationChore = remember(sortedChores, submitConfirmationChoreId) {
+        sortedChores.firstOrNull { it.id == submitConfirmationChoreId }
+    }
+
+    if (submitConfirmationChore != null) {
+        AlertDialog(
+            onDismissRequest = {
+                submitConfirmationChoreId = null
+            },
+            title = { Text(stringResource(R.string.mobile_submit_confirm_title)) },
+            text = {
+                Text(
+                    text = stringResource(
+                        R.string.mobile_submit_confirm_body,
+                        submitConfirmationChore.title
+                    )
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val choreId = submitConfirmationChore.id
+                    submitConfirmationChoreId = null
+                    onSubmitChore(choreId)
+                }) {
+                    Text(stringResource(R.string.mobile_submit_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { submitConfirmationChoreId = null }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
                 }
             }
         )
@@ -1563,6 +1647,13 @@ private fun DashboardScreen(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
             if (activeTab == MobileDashboardTab.CHORES) {
+                if (!isDashboardSyncConnected) {
+                    item {
+                        ChoreConnectionBanner(
+                            message = stringResource(R.string.mobile_sync_disconnected)
+                        )
+                    }
+                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -1585,9 +1676,9 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
-                                ChoreSectionColumn(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = onSubmitChore)
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = onSubmitChore)
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = onSubmitChore)
+                                ChoreSectionColumn(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
                             }
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -1605,12 +1696,10 @@ private fun DashboardScreen(
                                 if (showStatusCard) {
                                     DashboardStatusCard(
                                         modifier = Modifier.fillMaxWidth(),
-                                        isBusy = isBusy,
                                         isSyncingQueue = isSyncingQueue,
                                         errorMessage = errorMessage,
                                         noticeMessage = noticeMessage,
-                                        queuedSubmissionCount = queuedSubmissionCount,
-                                        onRefresh = onRefresh
+                                        queuedSubmissionCount = queuedSubmissionCount
                                     )
                                 }
                             }
@@ -1627,9 +1716,9 @@ private fun DashboardScreen(
                             )
                         }
                     }
-                    choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = onSubmitChore)
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = onSubmitChore)
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = onSubmitChore)
+                    choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
                     historicChoreSection(
                         chores = historicChores,
                         title = choresHistoryLabel,
@@ -1642,12 +1731,10 @@ private fun DashboardScreen(
                     if (showStatusCard) {
                         item {
                             DashboardStatusCard(
-                                isBusy = isBusy,
                                 isSyncingQueue = isSyncingQueue,
                                 errorMessage = errorMessage,
                                 noticeMessage = noticeMessage,
-                                queuedSubmissionCount = queuedSubmissionCount,
-                                onRefresh = onRefresh
+                                queuedSubmissionCount = queuedSubmissionCount
                             )
                         }
                     }
@@ -1953,20 +2040,13 @@ private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageV
 @Composable
 private fun DashboardStatusCard(
     modifier: Modifier = Modifier,
-    isBusy: Boolean,
     isSyncingQueue: Boolean,
     errorMessage: String?,
     noticeMessage: String?,
-    queuedSubmissionCount: Int,
-    onRefresh: () -> Unit
+    queuedSubmissionCount: Int
 ) {
     Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Button(onClick = onRefresh, enabled = !isBusy) {
-                Icon(imageVector = Icons.Rounded.Refresh, contentDescription = null, modifier = Modifier.size(18.dp))
-                Spacer(modifier = Modifier.size(6.dp))
-                Text(stringResource(if (isBusy) R.string.mobile_refreshing else R.string.mobile_refresh))
-            }
             if (queuedSubmissionCount > 0 || isSyncingQueue) {
                 Text(
                     text = if (isSyncingQueue) {
@@ -1988,6 +2068,22 @@ private fun DashboardStatusCard(
 }
 
 @Composable
+private fun ChoreConnectionBanner(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
 private fun SectionIntro(title: String, body: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
@@ -1998,7 +2094,7 @@ private fun SectionIntro(title: String, body: String) {
 private fun LazyListScope.choreSection(
     chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
     val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
@@ -2010,7 +2106,7 @@ private fun LazyListScope.choreSection(
     item {
         ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
             chores.forEach { chore ->
-                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
+                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
             }
         }
     }
@@ -2054,6 +2150,7 @@ private fun ChoreSectionColumn(
     onReject: (String) -> Unit,
     onToggleChecklistItem: (String, String, List<String>) -> Unit,
     onPickProofs: (String) -> Unit,
+    onTakeProofPhoto: (String) -> Unit,
     onStartChore: (String) -> Unit,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String) -> Unit,
@@ -2085,6 +2182,7 @@ private fun ChoreSectionColumn(
                 onReject = onReject,
                 onToggleChecklistItem = onToggleChecklistItem,
                 onPickProofs = onPickProofs,
+                onTakeProofPhoto = onTakeProofPhoto,
                 onStartChore = onStartChore,
                 onTakeOverChore = onTakeOverChore,
                 onRequestTakeover = onRequestTakeover,
@@ -2349,6 +2447,8 @@ private fun HistoricChoreCard(
 ) {
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
+    val typeTitle = chore.typeTitle.ifBlank { chore.title }
+    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp)
@@ -2378,12 +2478,21 @@ private fun HistoricChoreCard(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = chore.title,
+                        text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                    subtypeLabel?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         text = stringResource(R.string.mobile_chores_history),
                         style = MaterialTheme.typography.labelMedium,
@@ -2459,12 +2568,14 @@ private fun ChoreCard(
     chore: MobileChore, currentUserId: String?, currentUserRole: String?, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeTakeoverRequestAction: String?,
     outgoingTakeoverRequest: MobileTakeoverRequest?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
-    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     val isPendingApproval = chore.state == "pending_approval"
     val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canManageTask = chore.assigneeId == null || chore.assigneeId == currentUserId
     val section = resolveChoreSection(chore, currentUserId)
+    val typeTitle = chore.typeTitle.ifBlank { chore.title }
+    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
     val requiresTakeOver = section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
@@ -2515,12 +2626,21 @@ private fun ChoreCard(
                     verticalArrangement = Arrangement.spacedBy(3.dp)
                 ) {
                     Text(
-                        text = chore.title,
+                        text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
+                        maxLines = 3,
                         overflow = TextOverflow.Ellipsis
                     )
+                    subtypeLabel?.let {
+                        Text(
+                            text = it,
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         text = assignmentLabel,
                         style = MaterialTheme.typography.labelMedium,
@@ -2669,39 +2789,62 @@ private fun ChoreCard(
                                 }
                             }
                         }
-                        if (selectedProofCount > 0) {
-                            Text(
-                                text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        } else if (chore.requirePhotoProof) {
-                            Text(
-                                text = stringResource(R.string.mobile_photo_required_hint),
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
+                        if (chore.requirePhotoProof) {
+                            if (selectedProofCount > 0) {
+                                Text(
+                                    text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.mobile_photo_required_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
                         }
                         if (canManageTask && isSubmittableState) {
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
-                                Button(
-                                    onClick = { onStartChore(chore.id) },
-                                    enabled = activeStartAction == null && chore.state != "in_progress",
-                                    modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                                ) {
-                                    Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                if (chore.requirePhotoProof) {
+                                    Button(
+                                        onClick = { onStartChore(chore.id) },
+                                        enabled = activeStartAction == null && chore.state != "in_progress",
+                                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                    }
+                                    OutlinedButton(
+                                        onClick = { onPickProofs(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_pick_photos))
+                                    }
+                                } else {
+                                    Button(
+                                        onClick = { onStartChore(chore.id) },
+                                        enabled = activeStartAction == null && chore.state != "in_progress",
+                                        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    ) {
+                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                    }
                                 }
+                            }
+                            if (chore.requirePhotoProof) {
                                 OutlinedButton(
-                                    onClick = { onPickProofs(chore.id) },
+                                    onClick = { onTakeProofPhoto(chore.id) },
                                     enabled = activeSubmitAction == null,
-                                    modifier = Modifier.weight(1f).heightIn(min = 40.dp),
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
                                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
                                 ) {
-                                    Text(stringResource(R.string.mobile_pick_photos))
+                                    Text(stringResource(R.string.mobile_take_photo))
                                 }
                             }
                             Button(
@@ -2983,8 +3126,9 @@ private fun CreateVariantPanel(
     onVariantSelected: (String?) -> Unit
 ) {
     selectedTemplate?.takeIf { it.variants.isNotEmpty() }?.let { template ->
-        val noVariantLabel = stringResource(R.string.mobile_create_no_variant)
-        val selectedVariantLabel = template.variants.firstOrNull { it.id == createVariantId }?.label ?: noVariantLabel
+        val selectedVariantLabel =
+            template.variants.firstOrNull { it.id == createVariantId }?.label
+                ?: stringResource(R.string.mobile_create_select_variant_prompt)
 
         CreatePanelCard(title = stringResource(R.string.mobile_create_variant)) {
             ExposedDropdownMenuBox(
@@ -3002,10 +3146,6 @@ private fun CreateVariantPanel(
                     expanded = variantDropdownExpanded,
                     onDismissRequest = { onVariantDropdownExpandedChange(false) }
                 ) {
-                    DropdownMenuItem(
-                        text = { Text(noVariantLabel) },
-                        onClick = { onVariantSelected(null) }
-                    )
                     template.variants.forEach { variant ->
                         DropdownMenuItem(
                             text = { Text(variant.label) },
@@ -3013,6 +3153,13 @@ private fun CreateVariantPanel(
                         )
                     }
                 }
+            }
+            if (createVariantId == null) {
+                Text(
+                    text = stringResource(R.string.mobile_create_variant_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -3032,6 +3179,8 @@ private fun CreateSubmitPanel(
 ) {
     CreatePanelCard(title = stringResource(R.string.mobile_create_action)) {
         selectedTemplate?.let { template ->
+            val subtypeRequired = template.variants.isNotEmpty()
+            val canCreate = activeCreateAction == null && (!subtypeRequired || createVariantId != null)
             Button(
                 onClick = {
                     val recType = if (createRecurrenceType == "template") null else createRecurrenceType
@@ -3046,7 +3195,7 @@ private fun CreateSubmitPanel(
                         createVariantId
                     )
                 },
-                enabled = activeCreateAction == null,
+                enabled = canCreate,
                 modifier = Modifier.fillMaxWidth()
             ) {
                 if (activeCreateAction != null) {
@@ -3054,6 +3203,13 @@ private fun CreateSubmitPanel(
                 } else {
                     Text(stringResource(R.string.mobile_create_action))
                 }
+            }
+            if (subtypeRequired && createVariantId == null) {
+                Text(
+                    text = stringResource(R.string.mobile_create_variant_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
     }
@@ -3333,4 +3489,9 @@ private fun readUriDisplayName(contentResolver: ContentResolver, uri: Uri): Stri
     }
 
     return "proof-image"
+}
+
+private fun createProofCaptureFile(context: android.content.Context): File {
+    val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
+    return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
 }

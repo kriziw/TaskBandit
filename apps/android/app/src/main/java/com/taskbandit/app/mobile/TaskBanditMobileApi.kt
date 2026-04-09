@@ -78,6 +78,8 @@ class TaskBanditMobileApi {
                     MobileChore(
                         id = entry.optString("id"),
                         title = entry.optString("title"),
+                        typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
+                        subtypeLabel = entry.optString("subtypeLabel").ifBlank { null },
                         state = entry.optString("state"),
                         assigneeId = entry.optString("assigneeId").ifBlank { null },
                         assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },

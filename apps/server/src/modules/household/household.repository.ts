@@ -1,4 +1,5 @@
 import {
+  BadRequestException,
   ConflictException,
   ForbiddenException,
   Injectable,
@@ -1756,15 +1757,21 @@ export class HouseholdRepository {
         householdId
       },
       include: {
-        checklistItems: true
+        checklistItems: true,
+        variants: true
       }
     });
 
+    if (template.variants.length > 0 && !dto.variantId) {
+      throw new BadRequestException({
+        message: "Please select a subtype for this chore type."
+      });
+    }
+
     const variant = dto.variantId
-      ? await this.prisma.choreTemplateVariant.findFirst({
-          where: { id: dto.variantId, templateId: template.id }
-        })
+      ? template.variants.find((entry) => entry.id === dto.variantId) ?? null
       : null;
+    const subtypeLabel = variant?.label ?? null;
 
     const effectiveAssignmentStrategy = dto.assignmentStrategy ?? template.assignmentStrategy;
     const effectiveRecurrenceType =
@@ -1793,7 +1800,9 @@ export class HouseholdRepository {
         data: {
           householdId,
           templateId: template.id,
-          title: dto.title?.trim() || (variant ? `${template.title} — ${variant.label}` : template.title),
+          subtypeLabel,
+          requirePhotoProofOverride: template.requirePhotoProof,
+          title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
           state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId: resolvedAssigneeId,
           dueAtUtc: dto.dueAt,
@@ -1991,8 +2000,22 @@ export class HouseholdRepository {
       where: {
         id: dto.templateId,
         householdId
+      },
+      include: {
+        variants: true
       }
     });
+
+    if (template.variants.length > 0 && !dto.variantId) {
+      throw new BadRequestException({
+        message: "Please select a subtype for this chore type."
+      });
+    }
+
+    const variant = dto.variantId
+      ? template.variants.find((entry) => entry.id === dto.variantId) ?? null
+      : null;
+    const subtypeLabel = variant?.label ?? null;
 
     const resolvedAssigneeId = dto.assigneeId
       ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
@@ -2010,7 +2033,10 @@ export class HouseholdRepository {
         },
         data: {
           templateId: template.id,
-          title: dto.title?.trim() || template.title,
+          subtypeLabel,
+          requirePhotoProofOverride: template.requirePhotoProof,
+          title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
+          variantId: dto.variantId ?? null,
           assigneeId: resolvedAssigneeId,
           state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           dueAtUtc: dto.dueAt
@@ -3203,6 +3229,9 @@ export class HouseholdRepository {
           in: dependencyTemplateIds
         }
       },
+      include: {
+        variants: true
+      },
       orderBy: {
         title: "asc"
       }
@@ -3213,6 +3242,9 @@ export class HouseholdRepository {
     }
 
     const followUpTemplateLookup = new Map(followUpTemplates.map((template) => [template.id, template]));
+    const carriedSubtypeLabel = (instance as any).subtypeLabel ?? null;
+    const carriedRequirePhotoProof =
+      (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
 
     await this.prisma.$transaction(async (tx) => {
       for (const dependency of dependencies) {
@@ -3233,15 +3265,25 @@ export class HouseholdRepository {
           template.id,
           template.assignmentStrategy
         );
+        const matchingVariant = carriedSubtypeLabel
+          ? template.variants.find(
+              (entry) => entry.label.trim().toLowerCase() === carriedSubtypeLabel.trim().toLowerCase()
+            ) ?? null
+          : null;
+        const followUpTitle = this.composeChoreTitle(template.title, carriedSubtypeLabel);
+        const effectiveFollowUpRequirePhotoProof = carriedRequirePhotoProof || template.requirePhotoProof;
 
         await tx.choreInstance.create({
           data: {
             householdId: instance.householdId,
             templateId: template.id,
-            title: template.title,
+            title: followUpTitle,
+            subtypeLabel: carriedSubtypeLabel,
+            requirePhotoProofOverride: effectiveFollowUpRequirePhotoProof,
             state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
             assigneeId,
-            dueAtUtc: followUpDueAt
+            dueAtUtc: followUpDueAt,
+            variantId: matchingVariant?.id ?? null
           }
         });
 
@@ -3251,7 +3293,7 @@ export class HouseholdRepository {
             recipientUserId: assigneeId,
             type: NotificationType.CHORE_ASSIGNED,
             title: "Follow-up chore assigned",
-            message: `"${template.title}" was created as a follow-up chore for you.`,
+            message: `"${followUpTitle}" was created as a follow-up chore for you.`,
             entityType: "chore_template",
             entityId: template.id
           });
@@ -3338,7 +3380,10 @@ export class HouseholdRepository {
     const variant = variantId
       ? template.variants.find((v) => v.id === variantId) ?? null
       : null;
-    const instanceTitle = variant ? `${template.title} — ${variant.label}` : template.title;
+    const subtypeLabel = (instance as any).subtypeLabel ?? variant?.label ?? null;
+    const requirePhotoProof =
+      (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
+    const instanceTitle = this.composeChoreTitle(template.title, subtypeLabel);
 
     await this.prisma.$transaction(async (tx) => {
       const assigneeId = await this.resolveAssigneeForTemplate(
@@ -3358,6 +3403,8 @@ export class HouseholdRepository {
           dueAtUtc: nextDueAt,
           suppressRecurrence: false,
           variantId: variantId,
+          subtypeLabel,
+          requirePhotoProofOverride: requirePhotoProof,
           assignmentStrategyOverride: instance.assignmentStrategyOverride,
           recurrenceTypeOverride: instance.recurrenceTypeOverride,
           recurrenceIntervalDaysOverride: instance.recurrenceIntervalDaysOverride,
@@ -3600,12 +3647,14 @@ export class HouseholdRepository {
         id: instance.id,
         templateId: instance.templateId,
         title: instance.title,
+        typeTitle: instance.template.title,
+        subtypeLabel: (instance as any).subtypeLabel ?? null,
         state: instance.state.toLowerCase(),
         assigneeId: null,
         dueAt: instance.dueAtUtc,
         difficulty: "easy" as const,
         basePoints: 0,
-        requirePhotoProof: false,
+        requirePhotoProof: (instance as any).requirePhotoProofOverride ?? false,
         awardedPoints: 0,
         completedChecklistItems: 0,
         isOverdue:
@@ -3631,13 +3680,15 @@ export class HouseholdRepository {
       id: instance.id,
       templateId: instance.templateId,
       title: instance.title,
+      typeTitle: instance.template.title,
+      subtypeLabel: (instance as any).subtypeLabel ?? null,
       state: instance.state.toLowerCase(),
       assigneeId: instance.assigneeId,
       assigneeDisplayName: options?.assigneeDisplayName ?? null,
       dueAt: instance.dueAtUtc,
       difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
       basePoints: instance.template.basePoints,
-      requirePhotoProof: instance.template.requirePhotoProof,
+      requirePhotoProof: (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof,
       awardedPoints: instance.awardedPoints,
       completedChecklistItems: instance.completedChecklistItems,
       isOverdue:
@@ -3671,6 +3722,11 @@ export class HouseholdRepository {
         createdAt: attachment.createdAtUtc
       }))
     };
+  }
+
+  private composeChoreTitle(typeTitle: string, subtypeLabel?: string | null) {
+    const normalizedSubtype = subtypeLabel?.trim();
+    return normalizedSubtype ? `${typeTitle} - ${normalizedSubtype}` : typeTitle;
   }
 
   private mapAuditLog(

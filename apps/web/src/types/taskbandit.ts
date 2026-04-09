@@ -388,6 +388,8 @@ export type ChoreInstance = {
   id: string;
   templateId: string;
   title: string;
+  typeTitle: string;
+  subtypeLabel: string | null;
   state: ChoreState;
   assigneeId: string | null;
   dueAt: string;

@@ -54,6 +54,7 @@
     <string name="mobile_dashboard_admin_only">Admin or parent</string>
     <string name="mobile_refresh">Refresh</string>
     <string name="mobile_refreshing">Refreshing...</string>
+    <string name="mobile_sync_disconnected">Live sync is temporarily offline. Reconnecting...</string>
     <string name="mobile_logout">Log out</string>
     <string name="mobile_tab_chores">Chores</string>
     <string name="mobile_tab_create">Create</string>
@@ -87,10 +88,10 @@
     <string name="mobile_hide_details">Close task</string>
     <string name="mobile_create_title">Create chores</string>
     <string name="mobile_create_hint">Secondary flow: create a chore from a template with one tap.</string>
-    <string name="mobile_create_select_template_prompt">Select a template…</string>
+    <string name="mobile_create_select_template_prompt">Select a type…</string>
     <string name="mobile_create_repeat_every_x_days_option">Every X days</string>
     <string name="mobile_create_interval_days_label">Interval (days)</string>
-    <string name="mobile_create_template">Template</string>
+    <string name="mobile_create_template">Type</string>
     <string name="mobile_create_select_template">Choose a template below to begin.</string>
     <string name="mobile_create_selected_template">Selected</string>
     <string name="mobile_create_use_template">Use template</string>
@@ -125,8 +126,9 @@
     <string name="mobile_create_ready">Choose a template, schedule the chore, and confirm the assignment behavior.</string>
     <string name="mobile_create_no_permission">Only admin or parent roles can create chores.</string>
     <string name="mobile_create_no_templates">No templates available yet. Add templates from web first.</string>
-    <string name="mobile_create_variant">Variant</string>
-    <string name="mobile_create_no_variant">No variant</string>
+    <string name="mobile_create_variant">Subtype</string>
+    <string name="mobile_create_select_variant_prompt">Select a subtype…</string>
+    <string name="mobile_create_variant_required">Select a subtype to create this chore.</string>
     <string name="mobile_chore_created">Chore created from Android.</string>
     <string name="mobile_create_success_title">Done</string>
     <string name="mobile_create_success_body">The chore was created successfully.</string>
@@ -176,6 +178,9 @@
     <string name="mobile_login_failed">Login failed.</string>
     <string name="mobile_submit">Submit chore</string>
     <string name="mobile_submitting">Submitting...</string>
+    <string name="mobile_submit_confirm_title">Finish this chore?</string>
+    <string name="mobile_submit_confirm_body">Submit \"%1$s\" now?</string>
+    <string name="mobile_submit_confirm_action">Yes, finish</string>
     <string name="mobile_start">Start chore</string>
     <string name="mobile_starting">Starting...</string>
     <string name="mobile_started">In progress</string>
@@ -203,6 +208,7 @@
     <string name="mobile_photo_required_hint">This chore needs at least one proof photo.</string>
     <string name="mobile_photo_required_missing">Add at least one proof photo before submitting.</string>
     <string name="mobile_pick_photos">Pick proof photos</string>
+    <string name="mobile_take_photo">Take proof photo</string>
     <string name="mobile_selected_photos">%1$d photo(s) selected</string>
     <string name="mobile_submission_sent">Chore submitted from Android.</string>
     <string name="mobile_submission_queued">No connection right now. The chore was queued for sync.</string>

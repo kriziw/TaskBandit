@@ -235,6 +235,8 @@ model ChoreInstance {
   householdId     String        @db.Uuid
   templateId      String        @db.Uuid
   title           String
+  subtypeLabel    String?
+  requirePhotoProofOverride Boolean?
   state           ChoreState
   assigneeId      String?       @db.Uuid
   dueAtUtc        DateTime
