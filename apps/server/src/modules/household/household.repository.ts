@@ -1952,15 +1952,14 @@ export class HouseholdRepository {
       }
     });
 
-    if (template.variants.length > 0 && !dto.variantId) {
-      throw new BadRequestException({
-        message: "Please select a subtype for this chore type."
-      });
-    }
-
     const variant = dto.variantId
       ? template.variants.find((entry) => entry.id === dto.variantId) ?? null
       : null;
+    if (dto.variantId && !variant) {
+      throw new BadRequestException({
+        message: "The selected subtype could not be found for this chore type."
+      });
+    }
     const subtypeLabel = variant?.label ?? null;
 
     const effectiveAssignmentStrategy = dto.assignmentStrategy ?? template.assignmentStrategy;
@@ -2214,15 +2213,14 @@ export class HouseholdRepository {
       }
     });
 
-    if (template.variants.length > 0 && !dto.variantId) {
-      throw new BadRequestException({
-        message: "Please select a subtype for this chore type."
-      });
-    }
-
     const variant = dto.variantId
       ? template.variants.find((entry) => entry.id === dto.variantId) ?? null
       : null;
+    if (dto.variantId && !variant) {
+      throw new BadRequestException({
+        message: "The selected subtype could not be found for this chore type."
+      });
+    }
     const subtypeLabel = variant?.label ?? null;
 
     const resolvedAssigneeId = dto.assigneeId

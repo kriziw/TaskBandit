@@ -94,6 +94,7 @@
     <string name="mobile_create_select_template_prompt">Typ auswählen…</string>
     <string name="mobile_create_repeat_every_x_days_option">Alle X Tage</string>
     <string name="mobile_create_interval_days_label">Intervall (Tage)</string>
+    <string name="mobile_create_interval_days_invalid">Gib eine Zahl größer als 0 ein.</string>
     <string name="mobile_create_template">Typ</string>
     <string name="mobile_create_select_template">Wähle unten eine Vorlage aus, um zu beginnen.</string>
     <string name="mobile_create_selected_template">Ausgewählt</string>
@@ -131,6 +132,7 @@
     <string name="mobile_create_no_templates">Noch keine Vorlagen vorhanden. Bitte zuerst Vorlagen im Web anlegen.</string>
     <string name="mobile_create_variant">Untertyp</string>
     <string name="mobile_create_select_variant_prompt">Untertyp auswählen…</string>
+    <string name="mobile_create_no_subtype">Kein Untertyp</string>
     <string name="mobile_create_variant_required">Wähle einen Untertyp, um diese Aufgabe zu erstellen.</string>
     <string name="mobile_chore_created">Aufgabe wurde von Android erstellt.</string>
     <string name="mobile_create_success_title">Fertig</string>

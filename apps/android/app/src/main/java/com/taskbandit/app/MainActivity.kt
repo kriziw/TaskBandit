@@ -180,7 +180,6 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
         val appPreferencesStore = TaskBanditAppPreferencesStore(sharedPreferences)
-        val outboxStore = TaskBanditOutboxStore(sharedPreferences)
         val widgetStore = TaskBanditWidgetStore(sharedPreferences)
         val initialLanguageTag = appPreferencesStore.readLanguageTag()
         val initialLocaleList = if (initialLanguageTag == "system") {
@@ -197,7 +196,6 @@ class MainActivity : AppCompatActivity() {
                 api = TaskBanditMobileApi(),
                 sessionStore = sessionStore,
                 appPreferencesStore = appPreferencesStore,
-                outboxStore = outboxStore,
                 widgetStore = widgetStore
             )
         }
@@ -209,7 +207,6 @@ private fun TaskBanditApp(
     api: TaskBanditMobileApi,
     sessionStore: TaskBanditSessionStore,
     appPreferencesStore: TaskBanditAppPreferencesStore,
-    outboxStore: TaskBanditOutboxStore,
     widgetStore: TaskBanditWidgetStore
 ) {
     val context = LocalContext.current
@@ -237,7 +234,6 @@ private fun TaskBanditApp(
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
     val reconnectFailedMessage = stringResource(R.string.mobile_connection_restore_failed)
-    val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
@@ -736,6 +732,9 @@ private fun TaskBanditApp(
                 }
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
+                dashboard = dashboard?.copy(
+                    chores = dashboard?.chores.orEmpty().filterNot { it.id == choreId }
+                )
                 noticeMessage = submissionSentMessage
                 requestDashboardRefresh()
             } catch (throwable: Throwable) {
@@ -968,7 +967,6 @@ private fun TaskBanditApp(
                     themeMode = themeMode,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
-                    isDashboardSyncConnected = isDashboardSyncConnected,
                     showDashboardSyncNotice = showDashboardSyncNotice,
                     isSyncingQueue = isSyncingQueue,
                     activeReviewAction = activeReviewAction,
@@ -1324,7 +1322,6 @@ private fun DashboardScreen(
     themeMode: MobileThemeMode,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
-    isDashboardSyncConnected: Boolean,
     showDashboardSyncNotice: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
@@ -1371,7 +1368,7 @@ private fun DashboardScreen(
     var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
     var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
     var createRecurrenceType by rememberSaveable { mutableStateOf("template") }
-    var createRecurrenceInterval by rememberSaveable { mutableIntStateOf(7) }
+    var createRecurrenceIntervalInput by rememberSaveable { mutableStateOf("7") }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expandedHistoricChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var templateDropdownExpanded by remember { mutableStateOf(false) }
@@ -1421,6 +1418,16 @@ private fun DashboardScreen(
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
     val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
     val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
+    val recurrenceIntervalInvalidMessage = stringResource(R.string.mobile_create_interval_days_invalid)
+    val parsedCreateRecurrenceInterval = createRecurrenceIntervalInput.trim().toIntOrNull()
+    val createRecurrenceIntervalError =
+        if (createRecurrenceType == "every_x_days" &&
+            (createRecurrenceIntervalInput.isBlank() || parsedCreateRecurrenceInterval == null || parsedCreateRecurrenceInterval <= 0)
+        ) {
+            recurrenceIntervalInvalidMessage
+        } else {
+            null
+        }
     val showStatusCard =
         !pendingReconnectActionLabel.isNullOrBlank() ||
             queuedSubmissionCount > 0 ||
@@ -1439,7 +1446,7 @@ private fun DashboardScreen(
         createAssignmentStrategy = template.assignmentStrategy
         val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
         createRecurrenceType = defaultType
-        createRecurrenceInterval = defaultInterval
+        createRecurrenceIntervalInput = defaultInterval.toString()
         createAssigneeId = null
         createVariantId = null
     }
@@ -1451,11 +1458,11 @@ private fun DashboardScreen(
             createAssignmentStrategy = template.assignmentStrategy
             val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
             createRecurrenceType = defaultType
-            createRecurrenceInterval = defaultInterval
+            createRecurrenceIntervalInput = defaultInterval.toString()
         } else {
             createAssignmentStrategy = "round_robin"
             createRecurrenceType = "template"
-            createRecurrenceInterval = 7
+            createRecurrenceIntervalInput = "7"
         }
         createAssigneeId = null
         createVariantId = null
@@ -1859,7 +1866,8 @@ private fun DashboardScreen(
                                     )
                                     CreateRecurrencePanel(
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
                                         onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
                                         onRecurrenceTypeSelected = {
@@ -1867,7 +1875,9 @@ private fun DashboardScreen(
                                             recurrenceTypeDropdownExpanded = false
                                         },
                                         onRecurrenceIntervalChange = { v ->
-                                            v.toIntOrNull()?.let { if (it > 0) createRecurrenceInterval = it }
+                                            if (v.all(Char::isDigit)) {
+                                                createRecurrenceIntervalInput = v
+                                            }
                                         }
                                     )
                                 }
@@ -1909,7 +1919,8 @@ private fun DashboardScreen(
                                         createAssigneeId = createAssigneeId,
                                         createAssignmentStrategy = createAssignmentStrategy,
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         createVariantId = createVariantId,
                                         activeCreateAction = activeCreateAction,
                                         onCreateChore = onCreateChore
@@ -1934,7 +1945,8 @@ private fun DashboardScreen(
                                     )
                                     CreateRecurrencePanel(
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
                                         onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
                                         onRecurrenceTypeSelected = {
@@ -1942,7 +1954,9 @@ private fun DashboardScreen(
                                             recurrenceTypeDropdownExpanded = false
                                         },
                                         onRecurrenceIntervalChange = { v ->
-                                            v.toIntOrNull()?.let { if (it > 0) createRecurrenceInterval = it }
+                                            if (v.all(Char::isDigit)) {
+                                                createRecurrenceIntervalInput = v
+                                            }
                                         }
                                     )
                                     CreateAssignmentPanel(
@@ -1979,7 +1993,8 @@ private fun DashboardScreen(
                                         createAssigneeId = createAssigneeId,
                                         createAssignmentStrategy = createAssignmentStrategy,
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         createVariantId = createVariantId,
                                         activeCreateAction = activeCreateAction,
                                         onCreateChore = onCreateChore
@@ -2586,7 +2601,7 @@ private fun HistoricChoreCard(
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
-    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(20.dp)
@@ -2713,7 +2728,7 @@ private fun ChoreCard(
     val canManageTask = chore.assigneeId == null || chore.assigneeId == currentUserId
     val section = resolveChoreSection(chore, currentUserId)
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
-    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
     val requiresTakeOver = section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
@@ -3172,7 +3187,8 @@ private fun CreateTemplateAndSchedulePanel(
 @Composable
 private fun CreateRecurrencePanel(
     createRecurrenceType: String,
-    createRecurrenceInterval: Int,
+    createRecurrenceIntervalInput: String,
+    createRecurrenceIntervalError: String?,
     recurrenceTypeDropdownExpanded: Boolean,
     onRecurrenceDropdownExpandedChange: (Boolean) -> Unit,
     onRecurrenceTypeSelected: (String) -> Unit,
@@ -3205,13 +3221,21 @@ private fun CreateRecurrencePanel(
         }
         if (createRecurrenceType == "every_x_days") {
             OutlinedTextField(
-                value = createRecurrenceInterval.toString(),
+                value = createRecurrenceIntervalInput,
                 onValueChange = onRecurrenceIntervalChange,
                 label = { Text(stringResource(R.string.mobile_create_interval_days_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
+                isError = createRecurrenceIntervalError != null,
                 modifier = Modifier.fillMaxWidth()
             )
+            if (!createRecurrenceIntervalError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceIntervalError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
@@ -3318,6 +3342,10 @@ private fun CreateVariantPanel(
                     expanded = variantDropdownExpanded,
                     onDismissRequest = { onVariantDropdownExpandedChange(false) }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.mobile_create_no_subtype)) },
+                        onClick = { onVariantSelected(null) }
+                    )
                     template.variants.forEach { variant ->
                         DropdownMenuItem(
                             text = { Text(variant.label) },
@@ -3325,13 +3353,6 @@ private fun CreateVariantPanel(
                         )
                     }
                 }
-            }
-            if (createVariantId == null) {
-                Text(
-                    text = stringResource(R.string.mobile_create_variant_required),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -3344,15 +3365,18 @@ private fun CreateSubmitPanel(
     createAssigneeId: String?,
     createAssignmentStrategy: String,
     createRecurrenceType: String,
-    createRecurrenceInterval: Int,
+    createRecurrenceInterval: Int?,
+    createRecurrenceIntervalError: String?,
     createVariantId: String?,
     activeCreateAction: String?,
     onCreateChore: (String, String, String?, String, String?, Int?, String?) -> Unit
 ) {
     CreatePanelCard(title = stringResource(R.string.mobile_create_action)) {
         selectedTemplate?.let { template ->
-            val subtypeRequired = template.variants.isNotEmpty()
-            val canCreate = activeCreateAction == null && (!subtypeRequired || createVariantId != null)
+            val needsRecurrenceInterval = createRecurrenceType == "every_x_days"
+            val canCreate =
+                activeCreateAction == null &&
+                    (!needsRecurrenceInterval || (createRecurrenceIntervalError == null && (createRecurrenceInterval ?: 0) > 0))
             Button(
                 onClick = {
                     val recType = if (createRecurrenceType == "template") null else createRecurrenceType
@@ -3375,13 +3399,6 @@ private fun CreateSubmitPanel(
                 } else {
                     Text(stringResource(R.string.mobile_create_action))
                 }
-            }
-            if (subtypeRequired && createVariantId == null) {
-                Text(
-                    text = stringResource(R.string.mobile_create_variant_required),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -3516,6 +3533,11 @@ private fun firstNameFromDisplayName(displayName: String?): String? =
         ?.takeIf { it.isNotEmpty() }
         ?.split(Regex("\\s+"))
         ?.firstOrNull()
+
+private fun normalizeSubtypeLabel(value: String?): String? =
+    value
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
 
 private fun defaultCreateDueAtMillis(): Long =
     Instant.now()

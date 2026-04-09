@@ -79,7 +79,9 @@ class TaskBanditMobileApi {
                         id = entry.optString("id"),
                         title = entry.optString("title"),
                         typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
-                        subtypeLabel = entry.optString("subtypeLabel").ifBlank { null },
+                        subtypeLabel = entry.optString("subtypeLabel")
+                            .trim()
+                            .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
                         state = entry.optString("state"),
                         assigneeId = entry.optString("assigneeId").ifBlank { null },
                         assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
@@ -561,7 +563,10 @@ class TaskBanditMobileApi {
                 val item = entries.optJSONObject(index) ?: continue
                 val id = item.optString("id")
                 val label = item.optString("label")
-                if (id.isBlank() || label.isBlank()) continue
+                    .trim()
+                    .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    ?: continue
+                if (id.isBlank()) continue
                 add(MobileTemplateVariant(id = id, label = label))
             }
         }
