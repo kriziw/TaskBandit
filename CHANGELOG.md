@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.2](https://github.com/kriziw/TaskBandit/compare/v0.25.1...v0.25.2) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** restore language switching ([#87](https://github.com/kriziw/TaskBandit/issues/87)) ([f714b8b](https://github.com/kriziw/TaskBandit/commit/f714b8b564334351ce3234ae0e9c06e205fea7ae))
+
 ## [0.25.1](https://github.com/kriziw/TaskBandit/compare/v0.25.0...v0.25.1) (2026-04-09)
 
 
