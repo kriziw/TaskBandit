@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.1](https://github.com/kriziw/TaskBandit/compare/v0.25.0...v0.25.1) (2026-04-09)
+
+
+### Bug Fixes
+
+* **ci:** restore release publish detection ([#85](https://github.com/kriziw/TaskBandit/issues/85)) ([0681095](https://github.com/kriziw/TaskBandit/commit/0681095a876cd75f2669cb53e1778ff03f1efebc))
+
 ## [0.25.0](https://github.com/kriziw/TaskBandit/compare/v0.24.0...v0.25.0) (2026-04-09)
 
 
