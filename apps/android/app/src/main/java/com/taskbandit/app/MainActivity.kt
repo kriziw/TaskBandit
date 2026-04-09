@@ -2496,6 +2496,7 @@ private fun CompactChoreMeta(
     assignmentLabel: String? = null,
     subtypeLabel: String? = null,
     requirePhotoProof: Boolean,
+    includeWeekdayInDueDate: Boolean = true,
     modifier: Modifier = Modifier
 ) {
     val supportingParts = buildList {
@@ -2517,7 +2518,10 @@ private fun CompactChoreMeta(
             )
         }
         Text(
-            text = stringResource(R.string.mobile_due_at, formatDueAtForCard(dueAt)),
+            text = stringResource(
+                R.string.mobile_due_at,
+                if (includeWeekdayInDueDate) formatDueAtForCard(dueAt) else formatDueAtForHistoricCard(dueAt)
+            ),
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
@@ -2651,7 +2655,8 @@ private fun HistoricChoreCard(
                         dueAt = chore.dueAt,
                         subtypeLabel = subtypeLabel,
                         assignmentLabel = stringResource(R.string.mobile_chores_history),
-                        requirePhotoProof = chore.requirePhotoProof
+                        requirePhotoProof = chore.requirePhotoProof,
+                        includeWeekdayInDueDate = false
                     )
                 }
                 Surface(
@@ -3575,6 +3580,14 @@ private fun formatApiTimestamp(value: String): String {
 private fun formatDueAtForCard(value: String): String {
     return runCatching {
         DateTimeFormatter.ofPattern("EEEE d MMM HH:mm", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(formatApiTimestamp(value))
+}
+
+private fun formatDueAtForHistoricCard(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.getDefault())
             .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault(formatApiTimestamp(value))
