@@ -13,7 +13,9 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 
 ## AI Disclaimer
 
-This repository is being developed with AI assistance. Code, documentation, copy, and configuration generated or edited by AI should be reviewed by a human before production use, especially for security, privacy, and deployment-sensitive changes.
+This repository is developed with AI assistance, but AI is used here as a tool, not as an autonomous maintainer. Humans stay in control of every meaningful step: setting direction, reviewing and editing output, validating behavior, and deciding what is merged, released, and deployed.
+
+AI can help accelerate drafting, implementation, and iteration across code, documentation, copy, and configuration. Every AI-assisted change should still be treated like any other contributor output and reviewed carefully, especially for security, privacy, infrastructure, and deployment-sensitive work.
 
 ## License
 
