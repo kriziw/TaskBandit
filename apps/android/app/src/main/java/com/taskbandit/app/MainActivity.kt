@@ -2668,17 +2668,6 @@ private fun ChoreCard(
                         }
                     )
                 }
-            ) {
-                Text(
-                    text = statusLabel,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
-                    style = MaterialTheme.typography.labelSmall,
-                    color = if (chore.isOverdue) {
-                        MaterialTheme.colorScheme.onErrorContainer
-                    } else {
-                        accentContentColor
-                    }
-                )
             }
 
             CompactChoreMeta(
@@ -2816,7 +2805,6 @@ private fun ChoreCard(
                             }
                         }
                         if (canManageTask && isSubmittableState) {
-<<<<<<< HEAD
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
