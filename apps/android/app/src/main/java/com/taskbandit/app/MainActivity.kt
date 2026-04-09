@@ -1785,7 +1785,7 @@ private fun LazyListScope.choreSection(
     onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onStartChore: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
-    item { Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+    item { ChoreSectionHeader(title = title, count = chores.size) }
     items(chores, key = { it.id }) { chore ->
         ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onStartChore = onStartChore, onSubmitChore = onSubmitChore)
     }
@@ -1797,7 +1797,7 @@ private fun LazyListScope.historicChoreSection(
     onExpandedChange: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
-    item { Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold) }
+    item { ChoreSectionHeader(title = title, count = chores.size) }
     items(chores, key = { "historic_${it.id}" }) { chore ->
         HistoricChoreCard(
             chore = chore,
@@ -1829,7 +1829,7 @@ private fun ChoreSectionColumn(
 ) {
     if (chores.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        ChoreSectionHeader(title = title, count = chores.size)
         chores.forEach { chore ->
             ChoreCard(
                 chore = chore,
@@ -1862,13 +1862,45 @@ private fun HistoricChoreSectionColumn(
 ) {
     if (chores.isEmpty()) return
     Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-        Text(text = title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        ChoreSectionHeader(title = title, count = chores.size)
         chores.forEach { chore ->
             HistoricChoreCard(
                 chore = chore,
                 expanded = expandedChoreIds.contains(chore.id),
                 onExpandedChange = { onExpandedChange(chore.id) }
             )
+        }
+    }
+}
+
+@Composable
+private fun ChoreSectionHeader(title: String, count: Int) {
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(20.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 14.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleMedium,
+                fontWeight = FontWeight.SemiBold
+            )
+            Surface(
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.secondaryContainer
+            ) {
+                Text(
+                    text = count.toString(),
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
         }
     }
 }
