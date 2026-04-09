@@ -1937,12 +1937,19 @@ export class HouseholdRepository {
     );
   }
 
-  async getPendingTakeoverRequests(householdId: string, requestedUserId: string) {
+  async getPendingTakeoverRequests(householdId: string, viewerUserId: string) {
     const requests = await this.prisma.choreTakeoverRequest.findMany({
       where: {
         householdId,
-        requestedUserId,
-        status: ChoreTakeoverRequestStatus.PENDING
+        status: ChoreTakeoverRequestStatus.PENDING,
+        OR: [
+          {
+            requestedUserId: viewerUserId
+          },
+          {
+            requesterUserId: viewerUserId
+          }
+        ]
       },
       include: {
         choreInstance: true,

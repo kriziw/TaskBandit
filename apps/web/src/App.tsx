@@ -562,7 +562,11 @@ export function App() {
   );
 
   const pendingTakeoverRequests = useMemo(
-    () => payload?.takeoverRequests.filter((request) => request.status === "PENDING") ?? [],
+    () =>
+      payload?.takeoverRequests.filter(
+        (request) =>
+          request.status === "PENDING" && request.requested.id === payload.currentUser.id
+      ) ?? [],
     [payload]
   );
 
