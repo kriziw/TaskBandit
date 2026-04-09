@@ -86,6 +86,7 @@ class TaskBanditMobileApi {
                         assigneeId = entry.optString("assigneeId").ifBlank { null },
                         assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
                         dueAt = entry.optString("dueAt"),
+                        completedAt = entry.optString("completedAt").ifBlank { null },
                         isOverdue = entry.optBoolean("isOverdue"),
                         requirePhotoProof = entry.optBoolean("requirePhotoProof"),
                         checklist = parseChecklist(entry.optJSONArray("checklist")),

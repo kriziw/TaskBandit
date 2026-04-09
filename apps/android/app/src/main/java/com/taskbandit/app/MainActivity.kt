@@ -2497,6 +2497,7 @@ private fun CompactChoreMeta(
     subtypeLabel: String? = null,
     requirePhotoProof: Boolean,
     includeWeekdayInDueDate: Boolean = true,
+    dueLabelResId: Int = R.string.mobile_due_at,
     modifier: Modifier = Modifier
 ) {
     val supportingParts = buildList {
@@ -2519,7 +2520,7 @@ private fun CompactChoreMeta(
         }
         Text(
             text = stringResource(
-                R.string.mobile_due_at,
+                dueLabelResId,
                 if (includeWeekdayInDueDate) formatDueAtForCard(dueAt) else formatDueAtForHistoricCard(dueAt)
             ),
             style = MaterialTheme.typography.bodySmall,
@@ -2652,11 +2653,12 @@ private fun HistoricChoreCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     CompactChoreMeta(
-                        dueAt = chore.dueAt,
+                        dueAt = chore.completedAt ?: chore.dueAt,
                         subtypeLabel = subtypeLabel,
                         assignmentLabel = stringResource(R.string.mobile_chores_history),
                         requirePhotoProof = chore.requirePhotoProof,
-                        includeWeekdayInDueDate = false
+                        includeWeekdayInDueDate = false,
+                        dueLabelResId = R.string.mobile_completed_at
                     )
                 }
                 Surface(
