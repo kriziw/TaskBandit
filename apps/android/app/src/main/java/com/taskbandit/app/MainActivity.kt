@@ -3201,7 +3201,6 @@ private fun ChoreCard(
                                     }
                                 }
                             }
-                        }
                             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
                                 OutlinedButton(
                                     onClick = {},
