@@ -12,6 +12,7 @@ import org.json.JSONTokener
 import java.io.IOException
 
 class TaskBanditUnauthorizedException : IllegalStateException()
+class TaskBanditApiException(val status: Int, message: String) : IllegalStateException(message)
 class TaskBanditTransportException(message: String, cause: Throwable? = null) :
     IllegalStateException(message, cause)
 
@@ -45,7 +46,11 @@ class TaskBanditMobileApi {
         val userJson = requestJson(baseUrl, "/api/auth/me", token = token)
         val summaryJson = requestJson(baseUrl, "/api/dashboard/summary", token = token)
         val choresJson = requestJsonArray(baseUrl, "/api/chores/instances", token = token)
-        val takeoverRequestsJson = requestJsonArray(baseUrl, "/api/chores/takeover-requests", token = token)
+        val (takeoverRequestsJson, takeoverRequestsSupported) = requestOptionalJsonArray(
+            baseUrl = baseUrl,
+            path = "/api/chores/takeover-requests",
+            token = token
+        )
         val notificationsJson = requestJsonArray(baseUrl, "/api/dashboard/notifications", token = token)
 
         val user = MobileUser(
@@ -170,7 +175,10 @@ class TaskBanditMobileApi {
             takeoverRequests = takeoverRequests,
             notifications = notifications,
             members = members,
-            templates = templates
+            templates = templates,
+            compatibility = MobileDashboardCompatibility(
+                takeoverRequestsSupported = takeoverRequestsSupported
+            )
         )
     }
 
@@ -417,13 +425,30 @@ class TaskBanditMobileApi {
                     throw TaskBanditUnauthorizedException()
                 }
 
-                throw IllegalStateException(readErrorMessage(responseText))
+                throw TaskBanditApiException(response.code, readErrorMessage(responseText))
             }
         } catch (exception: IOException) {
             throw TaskBanditTransportException(
                 message = "Could not reach the TaskBandit server.",
                 cause = exception
             )
+        }
+    }
+
+    private fun requestOptionalJsonArray(
+        baseUrl: String,
+        path: String,
+        token: String? = null,
+        method: String = "GET"
+    ): Pair<JSONArray, Boolean> {
+        return try {
+            requestJsonArray(baseUrl, path, token, method) to true
+        } catch (exception: TaskBanditApiException) {
+            if (exception.status in setOf(404, 405, 501)) {
+                JSONArray() to false
+            } else {
+                throw exception
+            }
         }
     }
 
