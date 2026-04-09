@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.5](https://github.com/kriziw/TaskBandit/compare/v0.25.4...v0.25.5) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** float sync disconnect banner ([#109](https://github.com/kriziw/TaskBandit/issues/109)) ([364b1c9](https://github.com/kriziw/TaskBandit/commit/364b1c973141c08c229f5ad457417649f83c76bf))
+
 ## [0.25.4](https://github.com/kriziw/TaskBandit/compare/v0.25.3...v0.25.4) (2026-04-09)
 
 
