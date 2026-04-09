@@ -2,7 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
-## [0.19.2](https://github.com/kriziw/TaskBandit/compare/v0.19.1...v0.19.2) (2026-04-09)
+## [0.20.0](https://github.com/kriziw/TaskBandit/compare/v0.19.1...v0.20.0) (2026-04-09)
+
+
+### Features
+
+* **android:** polish chore section headers ([ef88405](https://github.com/kriziw/TaskBandit/commit/ef88405eeac82173e692e7501bf76fa041758363))
+* **android:** polish chore section headers ([4786abb](https://github.com/kriziw/TaskBandit/commit/4786abb623dccaa8712264afd5a236abed7032ac))
 
 
 ### Bug Fixes
