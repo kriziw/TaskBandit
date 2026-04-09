@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.3](https://github.com/kriziw/TaskBandit/compare/v0.25.2...v0.25.3) (2026-04-09)
+
+
+### Bug Fixes
+
+* **i18n:** localize dynamic household templates ([#102](https://github.com/kriziw/TaskBandit/issues/102)) ([bcca8a1](https://github.com/kriziw/TaskBandit/commit/bcca8a14f67d78f96c7097f70fde65046d648191))
+
 ## [0.25.2](https://github.com/kriziw/TaskBandit/compare/v0.25.1...v0.25.2) (2026-04-09)
 
 
