@@ -33,6 +33,7 @@ import type {
   RecurrenceType,
   FollowUpDelayUnit,
   RuntimeLogEntry,
+  ServerCompatibility,
   SignupInput,
   TakeoverRequestEntry,
   TemplateTranslationLocale,
@@ -59,6 +60,7 @@ type DashboardPayload = {
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
   takeoverRequests: TakeoverRequestEntry[];
+  compatibility: ServerCompatibility;
 };
 
 type LoginFormState = {
@@ -305,6 +307,28 @@ function createReleaseKey(release: ReleaseInfo) {
 
 function formatReleaseLabel(release: ReleaseInfo) {
   return `v${release.releaseVersion} · build ${release.buildNumber}`;
+}
+
+function isOptionalFeatureUnavailable(error: unknown) {
+  return error instanceof TaskBanditApiError && [404, 405, 501].includes(error.status);
+}
+
+async function loadOptionalFeature<T>(loader: () => Promise<T>, fallbackValue: T) {
+  try {
+    return {
+      value: await loader(),
+      supported: true
+    };
+  } catch (error) {
+    if (isOptionalFeatureUnavailable(error)) {
+      return {
+        value: fallbackValue,
+        supported: false
+      };
+    }
+
+    throw error;
+  }
 }
 
 const currentWebReleaseInfo: ReleaseInfo = {
@@ -572,10 +596,12 @@ export function App() {
 
   const pendingTakeoverRequests = useMemo(
     () =>
-      payload?.takeoverRequests.filter(
-        (request) =>
-          request.status === "PENDING" && request.requested.id === payload.currentUser.id
-      ) ?? [],
+      payload?.compatibility.takeoverRequests
+        ? payload.takeoverRequests.filter(
+            (request) =>
+              request.status === "PENDING" && request.requested.id === payload.currentUser.id
+          )
+        : [],
     [payload]
   );
 
@@ -840,16 +866,16 @@ export function App() {
         household,
         auditLog,
         notifications,
-        notificationDevices,
-        householdNotificationHealth,
-        notificationRecovery,
-        systemStatus,
-        backupReadiness,
+        notificationDevicesResult,
+        householdNotificationHealthResult,
+        notificationRecoveryResult,
+        systemStatusResult,
+        backupReadinessResult,
         notificationPreferences,
         pointsLedger,
         templates,
         instances,
-        takeoverRequests,
+        takeoverRequestsResult,
         nextRuntimeLogs
       ] =
         await Promise.all([
@@ -859,26 +885,44 @@ export function App() {
           ? Promise.resolve([])
           : taskBanditApi.getAuditLog(accessToken, language),
         taskBanditApi.getNotifications(accessToken, language),
-        taskBanditApi.getNotificationDevices(accessToken, language),
+        loadOptionalFeature(
+          () => taskBanditApi.getNotificationDevices(accessToken, language),
+          [] as NotificationDevice[]
+        ),
         currentUser.role === "admin"
-          ? taskBanditApi.getHouseholdNotificationHealth(accessToken, language)
-          : Promise.resolve([]),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getHouseholdNotificationHealth(accessToken, language),
+              [] as HouseholdNotificationHealthEntry[]
+            )
+          : Promise.resolve({ value: [] as HouseholdNotificationHealthEntry[], supported: false }),
         currentUser.role === "admin"
-          ? taskBanditApi.getNotificationRecovery(accessToken, language)
-          : Promise.resolve(null),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getNotificationRecovery(accessToken, language),
+              null as NotificationRecovery | null
+            )
+          : Promise.resolve({ value: null, supported: false }),
         currentUser.role === "admin"
-          ? taskBanditApi.getSystemStatus(accessToken, language)
-          : Promise.resolve(null),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getSystemStatus(accessToken, language),
+              null as AdminSystemStatus | null
+            )
+          : Promise.resolve({ value: null, supported: false }),
         currentUser.role === "admin"
-          ? taskBanditApi.getBackupReadiness(accessToken, language)
-          : Promise.resolve(null),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getBackupReadiness(accessToken, language),
+              null as BackupReadiness | null
+            )
+          : Promise.resolve({ value: null, supported: false }),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language),
-        taskBanditApi.getTakeoverRequests(accessToken, language),
+        loadOptionalFeature(
+          () => taskBanditApi.getTakeoverRequests(accessToken, language),
+          [] as TakeoverRequestEntry[]
+        ),
         currentUser.role === "admin" && activePage === "admin"
           ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
           : Promise.resolve(runtimeLogs)
@@ -890,16 +934,24 @@ export function App() {
         household,
         auditLog,
         notifications,
-        notificationDevices,
-        householdNotificationHealth,
-        notificationRecovery,
-        systemStatus,
-        backupReadiness,
+        notificationDevices: notificationDevicesResult.value,
+        householdNotificationHealth: householdNotificationHealthResult.value,
+        notificationRecovery: notificationRecoveryResult.value,
+        systemStatus: systemStatusResult.value,
+        backupReadiness: backupReadinessResult.value,
         notificationPreferences,
         pointsLedger,
         templates,
         instances,
-        takeoverRequests
+        takeoverRequests: takeoverRequestsResult.value,
+        compatibility: {
+          notificationDevices: notificationDevicesResult.supported,
+          notificationHealth: householdNotificationHealthResult.supported,
+          takeoverRequests: takeoverRequestsResult.supported,
+          systemStatus: systemStatusResult.supported,
+          backupReadiness: backupReadinessResult.supported,
+          notificationRecovery: notificationRecoveryResult.supported
+        }
       });
       setRuntimeLogs(nextRuntimeLogs);
       setPageError(null);
@@ -938,13 +990,33 @@ export function App() {
         current
           ? {
               ...current,
-              systemStatus: nextSystemStatus
+              systemStatus: nextSystemStatus,
+              compatibility: {
+                ...current.compatibility,
+                systemStatus: true
+              }
             }
           : current
       );
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
         handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (isOptionalFeatureUnavailable(error)) {
+        setPayload((current) =>
+          current
+            ? {
+                ...current,
+                systemStatus: null,
+                compatibility: {
+                  ...current.compatibility,
+                  systemStatus: false
+                }
+              }
+            : current
+        );
         return;
       }
 
@@ -961,13 +1033,33 @@ export function App() {
         current
           ? {
               ...current,
-              backupReadiness: nextBackupReadiness
+              backupReadiness: nextBackupReadiness,
+              compatibility: {
+                ...current.compatibility,
+                backupReadiness: true
+              }
             }
           : current
       );
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
         handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (isOptionalFeatureUnavailable(error)) {
+        setPayload((current) =>
+          current
+            ? {
+                ...current,
+                backupReadiness: null,
+                compatibility: {
+                  ...current.compatibility,
+                  backupReadiness: false
+                }
+              }
+            : current
+        );
         return;
       }
 
@@ -2490,7 +2582,7 @@ export function App() {
         ];
       case "chores":
         return [
-          ...(pendingTakeoverRequests.length > 0
+          ...(payload?.compatibility.takeoverRequests && pendingTakeoverRequests.length > 0
             ? [
                 {
                   key: "chores-takeovers",
@@ -2517,18 +2609,26 @@ export function App() {
             label: t("panel.notification_preferences"),
             ref: notificationPreferencesRef
           },
-          {
-            key: "notifications-devices",
-            label: t("panel.mobile_push_devices"),
-            ref: notificationDevicesRef
-          },
-          ...(payload?.currentUser.role === "admin"
+          ...(payload?.compatibility.notificationDevices
             ? [
                 {
-                  key: "notifications-health",
-                  label: t("panel.household_notification_health"),
-                  ref: notificationHealthRef
+                  key: "notifications-devices",
+                  label: t("panel.mobile_push_devices"),
+                  ref: notificationDevicesRef
                 }
+              ]
+            : []),
+          ...(payload?.currentUser.role === "admin"
+            ? [
+                ...(payload?.compatibility.notificationHealth
+                  ? [
+                      {
+                        key: "notifications-health",
+                        label: t("panel.household_notification_health"),
+                        ref: notificationHealthRef
+                      }
+                    ]
+                  : [])
               ]
             : [])
         ];
@@ -2540,19 +2640,38 @@ export function App() {
         ];
       case "admin":
         return [
-          { key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef },
-          { key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef },
+          ...(payload?.compatibility.backupReadiness
+            ? [{ key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef }]
+            : []),
+          ...(payload?.compatibility.systemStatus
+            ? [{ key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef }]
+            : []),
           { key: "admin-logs", label: t("panel.runtime_logs"), ref: runtimeLogsRef },
-          {
-            key: "admin-recovery",
-            label: t("panel.notification_recovery"),
-            ref: notificationRecoveryRef
-          }
+          ...(payload?.compatibility.notificationRecovery
+            ? [
+                {
+                  key: "admin-recovery",
+                  label: t("panel.notification_recovery"),
+                  ref: notificationRecoveryRef
+                }
+              ]
+            : [])
         ];
       default:
         return [];
     }
-  }, [activePage, payload?.currentUser.role, pendingTakeoverRequests.length, t]);
+  }, [
+    activePage,
+    payload?.currentUser.role,
+    payload?.compatibility.backupReadiness,
+    payload?.compatibility.notificationDevices,
+    payload?.compatibility.notificationHealth,
+    payload?.compatibility.notificationRecovery,
+    payload?.compatibility.systemStatus,
+    payload?.compatibility.takeoverRequests,
+    pendingTakeoverRequests.length,
+    t
+  ]);
 
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
     setActivePage(page);
@@ -3161,7 +3280,7 @@ export function App() {
               </article>
             ) : null}
 
-            {pendingTakeoverRequests.length > 0 ? (
+            {payload.compatibility.takeoverRequests && pendingTakeoverRequests.length > 0 ? (
               <article className="panel page-panel page-chores page-takeover-requests" ref={takeoverRequestsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.takeover_approvals")}</h2>
@@ -3630,7 +3749,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.notificationDevices ? (
+            {payload.compatibility.notificationDevices ? (
               <article className="panel page-panel page-notifications" ref={notificationDevicesRef}>
                 <div className="section-heading">
                   <h2>{t("panel.mobile_push_devices")}</h2>
@@ -3692,7 +3811,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.notificationHealth ? (
               <article className="panel page-panel page-notifications" ref={notificationHealthRef}>
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
@@ -3752,7 +3871,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.backupReadiness ? (
               <article className="panel page-panel page-admin" ref={backupReadinessRef}>
                 <div className="section-heading">
                   <h2>{t("panel.backup_readiness")}</h2>
@@ -3893,7 +4012,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.systemStatus ? (
               <article className="panel page-panel page-admin" ref={systemStatusRef}>
                 <div className="section-heading">
                   <h2>{t("panel.system_status")}</h2>
@@ -4074,7 +4193,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.notificationRecovery ? (
               <article className="panel page-panel page-admin" ref={notificationRecoveryRef}>
                 <div className="section-heading">
                   <h2>{t("panel.notification_recovery")}</h2>

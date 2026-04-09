@@ -54,6 +54,15 @@ export type ReleaseInfo = {
   commitSha: string;
 };
 
+export type ServerCompatibility = {
+  notificationDevices: boolean;
+  notificationHealth: boolean;
+  takeoverRequests: boolean;
+  systemStatus: boolean;
+  backupReadiness: boolean;
+  notificationRecovery: boolean;
+};
+
 export type DashboardSummary = {
   pendingApprovals: number;
   activeChores: number;

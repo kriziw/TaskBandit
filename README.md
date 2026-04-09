@@ -107,6 +107,12 @@ Recommended GitHub release secret:
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.
 
+Upgrade order for private self-hosted installs:
+
+- update the server container first, which also updates the bundled web UI
+- update Android clients after the server is running the newer version
+- TaskBandit now degrades gracefully when newer clients meet an older server for some optional features, but server-first upgrades remain the safest path for avoiding mixed-version surprises
+
 Docker Compose is configured to pull the server image from Docker Hub via `kriziw/taskbandit`. Use `TASKBANDIT_IMAGE_TAG` to pin a specific published tag if you do not want `latest`.
 The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
 The Docker publish workflow now refreshes the image on `main` when either the server or bundled web UI changes, and it can also be run manually from GitHub Actions.

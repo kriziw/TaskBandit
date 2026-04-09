@@ -110,6 +110,10 @@ data class MobileReleaseInfo(
     val commitSha: String
 )
 
+data class MobileDashboardCompatibility(
+    val takeoverRequestsSupported: Boolean = true
+)
+
 data class MobileHouseholdMember(
     val id: String,
     val displayName: String,
@@ -148,5 +152,6 @@ data class MobileDashboard(
     val takeoverRequests: List<MobileTakeoverRequest>,
     val notifications: List<MobileNotification>,
     val members: List<MobileHouseholdMember>,
-    val templates: List<MobileChoreTemplate>
+    val templates: List<MobileChoreTemplate>,
+    val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility()
 )
