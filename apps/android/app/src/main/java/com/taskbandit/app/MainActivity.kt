@@ -2016,6 +2016,7 @@ private fun HistoricChoreCard(
     onExpandedChange: () -> Unit
 ) {
     val statusLabel = chore.state.replace('_', ' ')
+    val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp)
@@ -2094,14 +2095,16 @@ private fun HistoricChoreCard(
                 }
             }
 
-            OutlinedButton(
-                onClick = onExpandedChange,
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Text(stringResource(if (expanded) R.string.mobile_chore_close_history else R.string.mobile_chore_open_history))
+            if (hasHistoricDetails) {
+                OutlinedButton(
+                    onClick = onExpandedChange,
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Text(stringResource(if (expanded) R.string.mobile_chore_close_history else R.string.mobile_chore_open_history))
+                }
             }
 
-            if (expanded && (chore.checklist.isNotEmpty() || chore.requirePhotoProof)) {
+            if (expanded && hasHistoricDetails) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
