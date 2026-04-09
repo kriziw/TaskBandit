@@ -1,0 +1,40 @@
+version: 2
+updates:
+  - package-ecosystem: "npm"
+    directory: "/apps/server"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "@nestjs/cli"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@nestjs/common"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@nestjs/config"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@nestjs/core"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@nestjs/platform-express"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "@nestjs/swagger"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "nodemailer"
+        update-types:
+          - "version-update:semver-major"
+
+  - package-ecosystem: "npm"
+    directory: "/apps/web"
+    schedule:
+      interval: "weekly"
+    ignore:
+      - dependency-name: "@vitejs/plugin-react"
+        update-types:
+          - "version-update:semver-major"
+      - dependency-name: "vite"
+        update-types:
+          - "version-update:semver-major"
