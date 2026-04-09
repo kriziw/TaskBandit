@@ -23,12 +23,12 @@ export class ChoresService {
     private readonly dashboardSyncService: DashboardSyncService
   ) {}
 
-  getTemplates(user: AuthenticatedUser) {
-    return this.repository.getTemplates(user.householdId);
+  getTemplates(user: AuthenticatedUser, language: SupportedLanguage) {
+    return this.repository.getTemplates(user.householdId, language);
   }
 
-  async createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser) {
-    const template = await this.repository.createTemplate(dto, user.householdId, user.id);
+  async createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser, language: SupportedLanguage) {
+    const template = await this.repository.createTemplate(dto, user.householdId, user.id, language);
     this.publishSyncEvent(user, "template.created", "template", template.id);
     return template;
   }
@@ -39,18 +39,35 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    const template = await this.repository.getTemplateForHousehold(templateId, user.householdId);
+    const template = await this.repository.getTemplateForHousehold(templateId, user.householdId, language);
     if (!template) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
     }
 
-    const updatedTemplate = await this.repository.updateTemplate(templateId, dto, user.householdId, user.id);
+    const updatedTemplate = await this.repository.updateTemplate(
+      templateId,
+      dto,
+      user.householdId,
+      user.id,
+      language
+    );
     this.publishSyncEvent(user, "template.updated", "template", templateId);
     return updatedTemplate;
   }
 
-  async createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser) {
-    const instance = await this.repository.createInstance(dto, user.householdId, user.id);
+  async deleteTemplate(templateId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    const template = await this.repository.getTemplateForHousehold(templateId, user.householdId, language);
+    if (!template) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
+    }
+
+    const deleted = await this.repository.deleteTemplate(templateId, user.householdId, user.id);
+    this.publishSyncEvent(user, "template.deleted", "template", templateId);
+    return deleted;
+  }
+
+  async createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser, language: SupportedLanguage) {
+    const instance = await this.repository.createInstance(dto, user.householdId, user.id, language);
     this.publishSyncEvent(user, "instance.created", "instance", instance.id);
     return instance;
   }
@@ -61,7 +78,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -72,13 +89,19 @@ export class ChoresService {
       );
     }
 
-    const updatedInstance = await this.repository.updateInstance(instanceId, dto, user.householdId, user.id);
+    const updatedInstance = await this.repository.updateInstance(
+      instanceId,
+      dto,
+      user.householdId,
+      user.id,
+      language
+    );
     this.publishSyncEvent(user, "instance.updated", "instance", instanceId);
     return updatedInstance;
   }
 
   async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -89,13 +112,18 @@ export class ChoresService {
       );
     }
 
-    const cancelledInstance = await this.repository.cancelInstance(instanceId, user.householdId, user.id);
+    const cancelledInstance = await this.repository.cancelInstance(
+      instanceId,
+      user.householdId,
+      user.id,
+      language
+    );
     this.publishSyncEvent(user, "instance.cancelled", "instance", instanceId);
     return cancelledInstance;
   }
 
   async startInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -112,13 +140,18 @@ export class ChoresService {
       );
     }
 
-    const startedInstance = await this.repository.startInstance(instanceId, user.householdId, user.id);
+    const startedInstance = await this.repository.startInstance(
+      instanceId,
+      user.householdId,
+      user.id,
+      language
+    );
     this.publishSyncEvent(user, "instance.started", "instance", instanceId);
     return startedInstance;
   }
 
   async takeOverInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -135,17 +168,22 @@ export class ChoresService {
       );
     }
 
-    const updatedInstance = await this.repository.takeOverInstance(instanceId, user.householdId, user.id);
+    const updatedInstance = await this.repository.takeOverInstance(
+      instanceId,
+      user.householdId,
+      user.id,
+      language
+    );
     this.publishSyncEvent(user, "instance.taken_over", "instance", instanceId);
     return updatedInstance;
   }
 
-  getInstances(user: AuthenticatedUser) {
-    return this.repository.getInstancesForViewer(user);
+  getInstances(user: AuthenticatedUser, language: SupportedLanguage) {
+    return this.repository.getInstancesForViewer(user, language);
   }
 
-  getTakeoverRequests(user: AuthenticatedUser) {
-    return this.repository.getPendingTakeoverRequests(user.householdId, user.id);
+  getTakeoverRequests(user: AuthenticatedUser, language: SupportedLanguage) {
+    return this.repository.getPendingTakeoverRequests(user.householdId, user.id, language);
   }
 
   async requestTakeover(
@@ -154,7 +192,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -183,6 +221,7 @@ export class ChoresService {
       requesterUserId: user.id,
       requestedUserId: dto.requestedUserId,
       note: dto.note,
+      language,
       conflictMessage: this.i18nService.translate("chores.takeover_request_already_pending", language),
       forbiddenMessage: this.i18nService.translate("chores.takeover_request_invalid_target", language)
     });
@@ -201,6 +240,7 @@ export class ChoresService {
       householdId: user.householdId,
       actingUserId: user.id,
       note: dto.note,
+      language,
       invalidStateMessage: this.i18nService.translate("chores.invalid_takeover_request_state", language),
       notFoundMessage: this.i18nService.translate("chores.takeover_request_not_found", language),
       forbiddenMessage: this.i18nService.translate("chores.takeover_request_approval_forbidden", language)
@@ -220,6 +260,7 @@ export class ChoresService {
       householdId: user.householdId,
       actingUserId: user.id,
       note: dto.note,
+      language,
       invalidStateMessage: this.i18nService.translate("chores.invalid_takeover_request_state", language),
       notFoundMessage: this.i18nService.translate("chores.takeover_request_not_found", language),
       forbiddenMessage: this.i18nService.translate("chores.takeover_request_approval_forbidden", language)
@@ -267,7 +308,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -337,6 +378,7 @@ export class ChoresService {
       attachments: dto.attachments ?? [],
       note: dto.note,
       awardedPoints,
+      language,
       nextState: shouldRequireApproval ? "pending_approval" : "completed"
     });
     this.publishSyncEvent(
@@ -354,7 +396,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -377,6 +419,7 @@ export class ChoresService {
       householdId: user.householdId,
       approved: true,
       note: dto.note,
+      language,
       awardedPoints
     });
     this.publishSyncEvent(user, "instance.approved", "instance", instanceId);
@@ -389,7 +432,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId);
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
@@ -406,6 +449,7 @@ export class ChoresService {
       householdId: user.householdId,
       approved: false,
       note: dto.note,
+      language,
       awardedPoints: 0
     });
     this.publishSyncEvent(user, "instance.rejected", "instance", instanceId);

@@ -28,7 +28,8 @@ This is a FOSS copyleft license. Commercial use is allowed, but redistributed or
 - `apps/server` - NestJS + Prisma backend API
 - `apps/web` - React + TypeScript web UI
 - `apps/android` - Android app built with Kotlin and Jetpack Compose
-- `infra/docker` - local development and deployment stack
+- `docker-compose.yml` - canonical self-hosted stack entrypoint for repo checkouts and quick-start downloads
+- `infra/docker` - mirrored Compose location kept for direct download compatibility
 - `docs` - product, architecture, and delivery notes
 
 ## Current Status
@@ -106,6 +107,12 @@ Recommended GitHub release secret:
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.
 
+Upgrade order for private self-hosted installs:
+
+- update the server container first, which also updates the bundled web UI
+- update Android clients after the server is running the newer version
+- TaskBandit now degrades gracefully when newer clients meet an older server for some optional features, but server-first upgrades remain the safest path for avoiding mixed-version surprises
+
 Docker Compose is configured to pull the server image from Docker Hub via `kriziw/taskbandit`. Use `TASKBANDIT_IMAGE_TAG` to pin a specific published tag if you do not want `latest`.
 The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
 The Docker publish workflow now refreshes the image on `main` when either the server or bundled web UI changes, and it can also be run manually from GitHub Actions.
@@ -120,7 +127,7 @@ The server container now also exposes `/health` and includes a Docker healthchec
 Fastest self-hosted setup:
 
 ```bash
-mkdir -p taskbandit && cd taskbandit && wget -O docker-compose.yml https://raw.githubusercontent.com/kriziw/TaskBandit/main/infra/docker/docker-compose.yml && wget -O .env https://raw.githubusercontent.com/kriziw/TaskBandit/main/.env.example
+mkdir -p taskbandit && cd taskbandit && wget -O docker-compose.yml https://raw.githubusercontent.com/kriziw/TaskBandit/main/docker-compose.yml && wget -O .env https://raw.githubusercontent.com/kriziw/TaskBandit/main/.env.example
 ```
 
 Then start it with:
@@ -131,14 +138,14 @@ docker compose up -d
 
 Manual setup:
 
-1. Copy `.env.example` to `.env`.
+1. Clone the repository, then copy `.env.example` to `.env` in the repository root.
 2. Review these values in `.env`:
    `TASKBANDIT_DB_NAME`, `TASKBANDIT_DB_USER`, `TASKBANDIT_DB_PASSWORD`, `TASKBANDIT_DB_HOST_PORT`, `TASKBANDIT_DATA_ROOT`, `TASKBANDIT_PORT`, `TASKBANDIT_JWT_SECRET`, `TASKBANDIT_IMAGE_TAG`, `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA`, `TASKBANDIT_STORAGE_ROOT`, `TASKBANDIT_REMINDER_INTERVAL_MS`, `TASKBANDIT_DUE_SOON_WINDOW_HOURS`, `TASKBANDIT_DAILY_SUMMARY_HOUR_UTC`, `TASKBANDIT_PUSH_DELIVERY_INTERVAL_MS`, `TASKBANDIT_EMAIL_DELIVERY_INTERVAL_MS`.
    OIDC is optional. Leave `TASKBANDIT_OIDC_ENABLED=false` unless you are actively wiring an OIDC provider.
    `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true` is the emergency recovery switch that keeps local sign-in available even if the UI setting disables it.
    If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
    FCM is also optional. Leave `TASKBANDIT_FCM_ENABLED=false` unless you are actively wiring Firebase Admin delivery for Android push notifications.
-3. Start TaskBandit:
+3. Start TaskBandit from the repository root:
    `docker compose up -d`
 4. Open `http://localhost:<TASKBANDIT_PORT>`.
 5. If demo seeding is enabled, sign in with:
@@ -164,6 +171,7 @@ Manual setup:
 - `TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE=1000` controls how many recent server runtime log entries stay available in the admin web UI live log panel.
 - `TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage` is the server-side path used for uploaded proof photos inside the container.
 - `TASKBANDIT_DATA_ROOT_HINT=./data`, `TASKBANDIT_COMPOSE_FILE_HINT=./docker-compose.yml`, and `TASKBANDIT_ENV_FILE_HINT=./.env` feed the admin backup-readiness panel with the host-side paths operators should preserve during migration.
+- A repository checkout and the quick-start download now use the same root-level `docker-compose.yml`, so the backup-readiness panel matches both flows by default.
 - Android clients now register a durable installation ID with the server so notification-device records move with the data volume and can later be upgraded to real push delivery providers.
 - `TASKBANDIT_FCM_ENABLED=false` keeps server-side Firebase Cloud Messaging off entirely.
 - `TASKBANDIT_FCM_SERVICE_ACCOUNT_BASE64` is the preferred way to pass a Firebase service-account JSON into Docker Compose for push delivery. `TASKBANDIT_FCM_SERVICE_ACCOUNT_JSON` also works if you prefer a raw JSON env value.

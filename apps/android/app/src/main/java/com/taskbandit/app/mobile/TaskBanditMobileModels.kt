@@ -29,6 +29,7 @@ data class MobileChore(
     val assigneeId: String? = null,
     val assigneeDisplayName: String? = null,
     val dueAt: String,
+    val completedAt: String? = null,
     val isOverdue: Boolean,
     val requirePhotoProof: Boolean,
     val checklist: List<MobileChecklistItem>,
@@ -109,6 +110,10 @@ data class MobileReleaseInfo(
     val commitSha: String
 )
 
+data class MobileDashboardCompatibility(
+    val takeoverRequestsSupported: Boolean = true
+)
+
 data class MobileHouseholdMember(
     val id: String,
     val displayName: String,
@@ -147,5 +152,6 @@ data class MobileDashboard(
     val takeoverRequests: List<MobileTakeoverRequest>,
     val notifications: List<MobileNotification>,
     val members: List<MobileHouseholdMember>,
-    val templates: List<MobileChoreTemplate>
+    val templates: List<MobileChoreTemplate>,
+    val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility()
 )

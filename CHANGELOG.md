@@ -2,6 +2,62 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.10](https://github.com/kriziw/TaskBandit/compare/v0.25.9...v0.25.10) (2026-04-09)
+
+
+### Bug Fixes
+
+* **clients:** degrade gracefully across mixed versions ([#141](https://github.com/kriziw/TaskBandit/issues/141)) ([6790ad8](https://github.com/kriziw/TaskBandit/commit/6790ad873b7364936da04ce2b2eb5cbb429791e5))
+
+## [0.25.9](https://github.com/kriziw/TaskBandit/compare/v0.25.8...v0.25.9) (2026-04-09)
+
+
+### Bug Fixes
+
+* **docs:** harden self-hosted deployment setup ([#139](https://github.com/kriziw/TaskBandit/issues/139)) ([1163654](https://github.com/kriziw/TaskBandit/commit/11636541dccfeaae7d339f8b5cc84e055d59f1fd))
+
+## [0.25.8](https://github.com/kriziw/TaskBandit/compare/v0.25.7...v0.25.8) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** compact chore cards and improve due date readability ([#133](https://github.com/kriziw/TaskBandit/issues/133)) ([be8822f](https://github.com/kriziw/TaskBandit/commit/be8822f5a4000f6b48c29349c8131d2a3c7eb1d2))
+
+## [0.25.7](https://github.com/kriziw/TaskBandit/compare/v0.25.6...v0.25.7) (2026-04-09)
+
+
+### Bug Fixes
+
+* **ci:** ignore risky major dependency updates ([#123](https://github.com/kriziw/TaskBandit/issues/123)) ([966e697](https://github.com/kriziw/TaskBandit/commit/966e6973f24c914cceb421432bcd26fb7c4a88fd))
+
+## [0.25.6](https://github.com/kriziw/TaskBandit/compare/v0.25.5...v0.25.6) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** improve chore creation flow ([#121](https://github.com/kriziw/TaskBandit/issues/121)) ([2106777](https://github.com/kriziw/TaskBandit/commit/2106777515992c2f2b9bf74845592cd1a5f0fb61))
+
+## [0.25.5](https://github.com/kriziw/TaskBandit/compare/v0.25.4...v0.25.5) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** float sync disconnect banner ([#109](https://github.com/kriziw/TaskBandit/issues/109)) ([364b1c9](https://github.com/kriziw/TaskBandit/commit/364b1c973141c08c229f5ad457417649f83c76bf))
+
+## [0.25.4](https://github.com/kriziw/TaskBandit/compare/v0.25.3...v0.25.4) (2026-04-09)
+
+
+### Bug Fixes
+
+* **android:** polish live sync and mobile layout ([#104](https://github.com/kriziw/TaskBandit/issues/104)) ([e3e0f81](https://github.com/kriziw/TaskBandit/commit/e3e0f8116ac6939c0902e4bd0d91a8563fc71e66))
+
+## [0.25.3](https://github.com/kriziw/TaskBandit/compare/v0.25.2...v0.25.3) (2026-04-09)
+
+
+### Bug Fixes
+
+* **i18n:** localize dynamic household templates ([#102](https://github.com/kriziw/TaskBandit/issues/102)) ([bcca8a1](https://github.com/kriziw/TaskBandit/commit/bcca8a14f67d78f96c7097f70fde65046d648191))
+
 ## [0.25.2](https://github.com/kriziw/TaskBandit/compare/v0.25.1...v0.25.2) (2026-04-09)
 
 

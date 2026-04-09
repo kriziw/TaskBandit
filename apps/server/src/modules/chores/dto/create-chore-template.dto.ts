@@ -18,6 +18,7 @@ import {
   Min,
   ValidateNested
 } from "class-validator";
+import { supportedLanguages, SupportedLanguage } from "../../../common/i18n/supported-languages";
 
 export class CreateChecklistItemDto {
   @ApiProperty()
@@ -31,12 +32,57 @@ export class CreateChecklistItemDto {
   required!: boolean;
 }
 
+export class CreateLocalizedTemplateTranslationDto {
+  @ApiProperty({ enum: supportedLanguages })
+  @IsString()
+  @IsIn(supportedLanguages)
+  locale!: SupportedLanguage;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(2000)
+  description?: string;
+}
+
+export class CreateLocalizedVariantLabelDto {
+  @ApiProperty({ enum: supportedLanguages })
+  @IsString()
+  @IsIn(supportedLanguages)
+  locale!: SupportedLanguage;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
+  label?: string;
+}
+
 export class CreateChoreTemplateVariantDto {
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsUUID("4")
+  id?: string;
+
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
   @MaxLength(100)
   label!: string;
+
+  @ApiPropertyOptional({ type: [CreateLocalizedVariantLabelDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => CreateLocalizedVariantLabelDto)
+  translations?: CreateLocalizedVariantLabelDto[];
 }
 
 export class CreateChoreDependencyRuleDto {
@@ -62,6 +108,12 @@ export class CreateChoreDependencyRuleDto {
 }
 
 export class CreateChoreTemplateDto {
+  @ApiPropertyOptional({ enum: supportedLanguages })
+  @IsOptional()
+  @IsString()
+  @IsIn(supportedLanguages)
+  defaultLocale?: SupportedLanguage;
+
   @ApiProperty()
   @IsString()
   @IsNotEmpty()
@@ -160,4 +212,12 @@ export class CreateChoreTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => CreateChoreTemplateVariantDto)
   variants?: CreateChoreTemplateVariantDto[];
+
+  @ApiPropertyOptional({ type: [CreateLocalizedTemplateTranslationDto] })
+  @IsOptional()
+  @IsArray()
+  @ArrayMaxSize(3)
+  @ValidateNested({ each: true })
+  @Type(() => CreateLocalizedTemplateTranslationDto)
+  translations?: CreateLocalizedTemplateTranslationDto[];
 }

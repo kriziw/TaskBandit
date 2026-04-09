@@ -17,6 +17,11 @@ Environment variable equivalents:
 
 Use `PathBase` only if the app is mounted under a subpath instead of a dedicated domain.
 
+Health-check behavior:
+
+- TaskBandit always keeps `/health` at the upstream root, even when `TASKBANDIT_REVERSE_PROXY_PATH_BASE` is set.
+- That means subpath hosting proxies should either expose `/health` separately or rely on the container/Docker health check instead of probing `/taskbandit/health`.
+
 ## Nginx Example
 
 ```nginx
@@ -38,6 +43,15 @@ server {
 Subpath example:
 
 ```nginx
+location = /health {
+    proxy_pass http://taskbandit-server:8080/health;
+    proxy_http_version 1.1;
+    proxy_set_header Host $host;
+    proxy_set_header X-Forwarded-Host $host;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+}
+
 location /taskbandit/ {
     proxy_pass http://taskbandit-server:8080/;
     proxy_http_version 1.1;
@@ -66,8 +80,28 @@ services:
       - traefik.http.services.taskbandit.loadbalancer.server.port=8080
 ```
 
+Subpath example:
+
+```yaml
+services:
+  server:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.taskbandit.rule=Host(`example.com`) && PathPrefix(`/taskbandit`)
+      - traefik.http.routers.taskbandit.entrypoints=websecure
+      - traefik.http.routers.taskbandit.tls=true
+      - traefik.http.routers.taskbandit.middlewares=taskbandit-strip
+      - traefik.http.middlewares.taskbandit-strip.stripprefix.prefixes=/taskbandit
+      - traefik.http.services.taskbandit.loadbalancer.server.port=8080
+      - traefik.http.routers.taskbandit-health.rule=Host(`example.com`) && Path(`/health`)
+      - traefik.http.routers.taskbandit-health.entrypoints=websecure
+      - traefik.http.routers.taskbandit-health.tls=true
+      - traefik.http.routers.taskbandit-health.service=taskbandit
+```
+
 ## Notes
 
 - Keep TLS termination at the proxy layer unless you have a specific reason not to.
-- If you later serve the web UI from the same server image, the same proxy setup will still apply.
-- If you deploy under a subpath, the API and Swagger endpoints will be exposed under that same base path.
+- TaskBandit serves the web UI from the same server image, so one proxy definition covers both the UI and API.
+- If you deploy under a subpath, the web UI, API, and Swagger endpoints will be exposed under that same base path.
+- Docker health checks already probe `http://127.0.0.1:${TASKBANDIT_PORT}/health` inside the container, so an external `/health` proxy route is optional unless your own reverse proxy or load balancer needs it.

@@ -12,6 +12,7 @@ import org.json.JSONTokener
 import java.io.IOException
 
 class TaskBanditUnauthorizedException : IllegalStateException()
+class TaskBanditApiException(val status: Int, message: String) : IllegalStateException(message)
 class TaskBanditTransportException(message: String, cause: Throwable? = null) :
     IllegalStateException(message, cause)
 
@@ -45,7 +46,11 @@ class TaskBanditMobileApi {
         val userJson = requestJson(baseUrl, "/api/auth/me", token = token)
         val summaryJson = requestJson(baseUrl, "/api/dashboard/summary", token = token)
         val choresJson = requestJsonArray(baseUrl, "/api/chores/instances", token = token)
-        val takeoverRequestsJson = requestJsonArray(baseUrl, "/api/chores/takeover-requests", token = token)
+        val (takeoverRequestsJson, takeoverRequestsSupported) = requestOptionalJsonArray(
+            baseUrl = baseUrl,
+            path = "/api/chores/takeover-requests",
+            token = token
+        )
         val notificationsJson = requestJsonArray(baseUrl, "/api/dashboard/notifications", token = token)
 
         val user = MobileUser(
@@ -79,11 +84,14 @@ class TaskBanditMobileApi {
                         id = entry.optString("id"),
                         title = entry.optString("title"),
                         typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
-                        subtypeLabel = entry.optString("subtypeLabel").ifBlank { null },
+                        subtypeLabel = entry.optString("subtypeLabel")
+                            .trim()
+                            .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
                         state = entry.optString("state"),
                         assigneeId = entry.optString("assigneeId").ifBlank { null },
                         assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
                         dueAt = entry.optString("dueAt"),
+                        completedAt = entry.optString("completedAt").ifBlank { null },
                         isOverdue = entry.optBoolean("isOverdue"),
                         requirePhotoProof = entry.optBoolean("requirePhotoProof"),
                         checklist = parseChecklist(entry.optJSONArray("checklist")),
@@ -167,7 +175,10 @@ class TaskBanditMobileApi {
             takeoverRequests = takeoverRequests,
             notifications = notifications,
             members = members,
-            templates = templates
+            templates = templates,
+            compatibility = MobileDashboardCompatibility(
+                takeoverRequestsSupported = takeoverRequestsSupported
+            )
         )
     }
 
@@ -414,13 +425,30 @@ class TaskBanditMobileApi {
                     throw TaskBanditUnauthorizedException()
                 }
 
-                throw IllegalStateException(readErrorMessage(responseText))
+                throw TaskBanditApiException(response.code, readErrorMessage(responseText))
             }
         } catch (exception: IOException) {
             throw TaskBanditTransportException(
                 message = "Could not reach the TaskBandit server.",
                 cause = exception
             )
+        }
+    }
+
+    private fun requestOptionalJsonArray(
+        baseUrl: String,
+        path: String,
+        token: String? = null,
+        method: String = "GET"
+    ): Pair<JSONArray, Boolean> {
+        return try {
+            requestJsonArray(baseUrl, path, token, method) to true
+        } catch (exception: TaskBanditApiException) {
+            if (exception.status in setOf(404, 405, 501)) {
+                JSONArray() to false
+            } else {
+                throw exception
+            }
         }
     }
 
@@ -561,7 +589,10 @@ class TaskBanditMobileApi {
                 val item = entries.optJSONObject(index) ?: continue
                 val id = item.optString("id")
                 val label = item.optString("label")
-                if (id.isBlank() || label.isBlank()) continue
+                    .trim()
+                    .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    ?: continue
+                if (id.isBlank()) continue
                 add(MobileTemplateVariant(id = id, label = label))
             }
         }

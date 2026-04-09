@@ -98,6 +98,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
@@ -125,6 +126,7 @@ import com.taskbandit.app.push.TaskBanditFirebasePushManager
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import com.taskbandit.app.widget.TaskBanditWidgetProvider
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
@@ -136,6 +138,9 @@ import java.util.Locale
 import java.util.UUID
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
+private const val syncDisconnectNoticeDelayMs = 3500L
+private const val mutationReconnectWindowMs = 5000L
+private const val mutationReconnectRetryDelayMs = 750L
 
 private enum class MobileDashboardTab {
     CHORES,
@@ -175,7 +180,6 @@ class MainActivity : AppCompatActivity() {
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
         val appPreferencesStore = TaskBanditAppPreferencesStore(sharedPreferences)
-        val outboxStore = TaskBanditOutboxStore(sharedPreferences)
         val widgetStore = TaskBanditWidgetStore(sharedPreferences)
         val initialLanguageTag = appPreferencesStore.readLanguageTag()
         val initialLocaleList = if (initialLanguageTag == "system") {
@@ -192,7 +196,6 @@ class MainActivity : AppCompatActivity() {
                 api = TaskBanditMobileApi(),
                 sessionStore = sessionStore,
                 appPreferencesStore = appPreferencesStore,
-                outboxStore = outboxStore,
                 widgetStore = widgetStore
             )
         }
@@ -204,7 +207,6 @@ private fun TaskBanditApp(
     api: TaskBanditMobileApi,
     sessionStore: TaskBanditSessionStore,
     appPreferencesStore: TaskBanditAppPreferencesStore,
-    outboxStore: TaskBanditOutboxStore,
     widgetStore: TaskBanditWidgetStore
 ) {
     val context = LocalContext.current
@@ -212,9 +214,18 @@ private fun TaskBanditApp(
     val loginFailedMessage = stringResource(R.string.mobile_login_failed)
     val checklistRequiredMessage = stringResource(R.string.mobile_checklist_required)
     val photoRequiredMessage = stringResource(R.string.mobile_photo_required_missing)
-    val queuedNoticeMessage = stringResource(R.string.mobile_submission_queued)
-    val syncedNoticeTemplate = stringResource(R.string.mobile_queue_synced)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
+    val submittingMessage = stringResource(R.string.mobile_submitting)
+    val approvingMessage = stringResource(R.string.mobile_approving)
+    val rejectingMessage = stringResource(R.string.mobile_rejecting)
+    val markingReadMessage = stringResource(R.string.mobile_marking_read)
+    val startingMessage = stringResource(R.string.mobile_starting)
+    val takingOverMessage = stringResource(R.string.mobile_taking_over_task)
+    val takeoverRequestSendingMessage = stringResource(R.string.mobile_request_takeover_sending)
+    val takeoverRequestApprovingMessage = stringResource(R.string.mobile_takeover_request_approving)
+    val takeoverRequestDecliningMessage = stringResource(R.string.mobile_takeover_request_declining)
+    val creatingChoreMessage = stringResource(R.string.mobile_create_creating)
+    val deviceRemovingMessage = stringResource(R.string.mobile_device_removing)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     val choreTakenOverMessage = stringResource(R.string.mobile_chore_taken_over)
     val takeoverRequestSentMessage = stringResource(R.string.mobile_takeover_request_sent)
@@ -222,6 +233,7 @@ private fun TaskBanditApp(
     val takeoverDeclinedMessage = stringResource(R.string.mobile_takeover_request_declined_notice)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
+    val reconnectFailedMessage = stringResource(R.string.mobile_connection_restore_failed)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
@@ -255,13 +267,16 @@ private fun TaskBanditApp(
     var createSuccessCounter by remember { mutableIntStateOf(0) }
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
     var isDashboardSyncConnected by remember { mutableStateOf(true) }
+    var showDashboardSyncNotice by remember { mutableStateOf(false) }
+    var pendingReconnectActionLabel by remember { mutableStateOf<String?>(null) }
+    var validationDialogMessage by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
     var selectedProofUris by remember { mutableStateOf<Map<String, List<String>>>(emptyMap()) }
     var pendingPhotoPickerChoreId by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureChoreId by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureUriString by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
-    var queuedSubmissionCount by remember { mutableIntStateOf(outboxStore.readQueue().size) }
+    var queuedSubmissionCount by remember { mutableIntStateOf(0) }
     var notificationsPermissionGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -327,6 +342,17 @@ private fun TaskBanditApp(
         pendingPhotoCaptureFilePath = null
     }
 
+    LaunchedEffect(isDashboardSyncConnected) {
+        if (isDashboardSyncConnected) {
+            showDashboardSyncNotice = false
+        } else {
+            delay(syncDisconnectNoticeDelayMs)
+            if (!isDashboardSyncConnected) {
+                showDashboardSyncNotice = true
+            }
+        }
+    }
+
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
     fun logout() {
@@ -340,10 +366,46 @@ private fun TaskBanditApp(
         serverReleaseInfo = null
         notificationDevices = emptyList()
         isDashboardSyncConnected = true
+        showDashboardSyncNotice = false
         isBusy = false
         refreshQueued = false
         errorMessage = null
         noticeMessage = null
+        pendingReconnectActionLabel = null
+        validationDialogMessage = null
+    }
+
+    suspend fun <T> runMutationWithReconnectWindow(
+        actionLabel: String,
+        block: suspend () -> T
+    ): T {
+        val deadline = System.currentTimeMillis() + mutationReconnectWindowMs
+        var reconnecting = false
+        try {
+            while (true) {
+                try {
+                    return block()
+                } catch (throwable: Throwable) {
+                    if (throwable !is TaskBanditTransportException) {
+                        throw throwable
+                    }
+
+                    val now = System.currentTimeMillis()
+                    if (now >= deadline) {
+                        throw IllegalStateException(reconnectFailedMessage)
+                    }
+
+                    if (!reconnecting) {
+                        reconnecting = true
+                        pendingReconnectActionLabel = actionLabel
+                    }
+
+                    delay(minOf(mutationReconnectRetryDelayMs, deadline - now))
+                }
+            }
+        } finally {
+            pendingReconnectActionLabel = null
+        }
     }
 
     fun refreshDashboard() {
@@ -386,38 +448,16 @@ private fun TaskBanditApp(
                         }.getOrDefault(emptyList())
                     )
                 }
-                val flushedCount = flushQueuedSubmissions(
-                    api = api,
-                    outboxStore = outboxStore,
-                    baseUrl = baseUrl,
-                    token = token,
-                    contentResolver = context.contentResolver,
-                    onSyncingChange = { isSyncing -> isSyncingQueue = isSyncing }
-                )
-
-                if (flushedCount > 0) {
-                    Pair(
-                        withContext(Dispatchers.IO) {
-                            refreshPayload.copy(dashboard = api.loadDashboard(baseUrl, token))
-                        },
-                        flushedCount
-                    )
-                } else {
-                    Pair(refreshPayload, 0)
-                }
-            }.onSuccess { (loadedPayload, flushedCount) ->
+                refreshPayload
+            }.onSuccess { loadedPayload ->
                 dashboard = loadedPayload.dashboard
                 serverReleaseInfo = loadedPayload.latestReleaseInfo
                 notificationDevices = loadedPayload.notificationDevices
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, token)
-                val currentQueuedSubmissionCount = outboxStore.readQueue().size
-                queuedSubmissionCount = currentQueuedSubmissionCount
-                widgetStore.saveDashboard(loadedPayload.dashboard, currentQueuedSubmissionCount)
+                queuedSubmissionCount = 0
+                widgetStore.saveDashboard(loadedPayload.dashboard, 0)
                 TaskBanditWidgetProvider.refreshAllWidgets(context)
-                if (flushedCount > 0) {
-                    noticeMessage = syncedNoticeTemplate.format(flushedCount)
-                }
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
@@ -456,10 +496,12 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    if (approve) {
-                        api.approveChore(baseUrl, token, instanceId)
-                    } else {
-                        api.rejectChore(baseUrl, token, instanceId)
+                    runMutationWithReconnectWindow(approvingMessage.takeIf { approve } ?: rejectingMessage) {
+                        if (approve) {
+                            api.approveChore(baseUrl, token, instanceId)
+                        } else {
+                            api.rejectChore(baseUrl, token, instanceId)
+                        }
                     }
                 }
             }.onSuccess {
@@ -484,7 +526,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.markNotificationRead(baseUrl, token, notificationId)
+                    runMutationWithReconnectWindow(markingReadMessage) {
+                        api.markNotificationRead(baseUrl, token, notificationId)
+                    }
                 }
             }.onSuccess {
                 requestDashboardRefresh()
@@ -537,7 +581,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.startChore(baseUrl, token, choreId)
+                    runMutationWithReconnectWindow(startingMessage) {
+                        api.startChore(baseUrl, token, choreId)
+                    }
                 }
             }.onSuccess {
                 noticeMessage = choreStartedMessage
@@ -562,7 +608,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.takeOverChore(baseUrl, token, choreId)
+                    runMutationWithReconnectWindow(takingOverMessage) {
+                        api.takeOverChore(baseUrl, token, choreId)
+                    }
                 }
             }.onSuccess {
                 noticeMessage = choreTakenOverMessage
@@ -587,7 +635,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.requestTakeover(baseUrl, token, choreId, requestedUserId)
+                    runMutationWithReconnectWindow(takeoverRequestSendingMessage) {
+                        api.requestTakeover(baseUrl, token, choreId, requestedUserId)
+                    }
                 }
             }.onSuccess {
                 noticeMessage = takeoverRequestSentMessage
@@ -612,10 +662,14 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    if (approve) {
-                        api.approveTakeoverRequest(baseUrl, token, requestId)
-                    } else {
-                        api.declineTakeoverRequest(baseUrl, token, requestId)
+                    runMutationWithReconnectWindow(
+                        if (approve) takeoverRequestApprovingMessage else takeoverRequestDecliningMessage
+                    ) {
+                        if (approve) {
+                            api.approveTakeoverRequest(baseUrl, token, requestId)
+                        } else {
+                            api.declineTakeoverRequest(baseUrl, token, requestId)
+                        }
                     }
                 }
             }.onSuccess {
@@ -641,12 +695,12 @@ private fun TaskBanditApp(
         val proofUriStrings = selectedProofUris[choreId].orEmpty()
         val missingRequiredItems = chore.checklist.filter { it.required && !selectedChecklistIds.contains(it.id) }
         if (missingRequiredItems.isNotEmpty()) {
-            errorMessage = checklistRequiredMessage
+            validationDialogMessage = checklistRequiredMessage
             return
         }
 
         if (chore.requirePhotoProof && proofUriStrings.isEmpty()) {
-            errorMessage = photoRequiredMessage
+            validationDialogMessage = photoRequiredMessage
             return
         }
 
@@ -666,36 +720,28 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             try {
                 withContext(Dispatchers.IO) {
-                    submitDraft(
-                        api = api,
-                        baseUrl = baseUrl,
-                        token = token,
-                        draft = draft,
-                        contentResolver = context.contentResolver
-                    )
+                    runMutationWithReconnectWindow(submittingMessage) {
+                        submitDraft(
+                            api = api,
+                            baseUrl = baseUrl,
+                            token = token,
+                            draft = draft,
+                            contentResolver = context.contentResolver
+                        )
+                    }
                 }
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
+                dashboard = dashboard?.copy(
+                    chores = dashboard?.chores.orEmpty().filterNot { it.id == choreId }
+                )
                 noticeMessage = submissionSentMessage
                 requestDashboardRefresh()
             } catch (throwable: Throwable) {
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
-                } else if (throwable is TaskBanditTransportException) {
-                    withContext(Dispatchers.IO) {
-                        outboxStore.enqueue(draft)
-                    }
-                    val currentQueuedSubmissionCount = outboxStore.readQueue().size
-                    queuedSubmissionCount = currentQueuedSubmissionCount
-                    dashboard?.let { loadedDashboard ->
-                        widgetStore.saveDashboard(loadedDashboard, currentQueuedSubmissionCount)
-                        TaskBanditWidgetProvider.refreshAllWidgets(context)
-                    }
-                    selectedProofUris = selectedProofUris - choreId
-                    submitSelections = submitSelections - choreId
-                    noticeMessage = queuedNoticeMessage
                 } else {
-                    errorMessage = throwable.message
+                    errorMessage = throwable.message ?: reconnectFailedMessage
                 }
             }
             activeSubmitAction = null
@@ -720,18 +766,20 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.createChoreInstance(
-                        baseUrl = baseUrl,
-                        token = token,
-                        templateId = templateId,
-                        dueAtIsoUtc = dueAtIsoUtc,
-                        assigneeId = assigneeId,
-                        assignmentStrategy = assignmentStrategy,
-                        recurrenceType = recurrenceType,
-                        recurrenceIntervalDays = recurrenceIntervalDays,
-                        suppressRecurrence = recurrenceType == "none",
-                        variantId = variantId
-                    )
+                    runMutationWithReconnectWindow(creatingChoreMessage) {
+                        api.createChoreInstance(
+                            baseUrl = baseUrl,
+                            token = token,
+                            templateId = templateId,
+                            dueAtIsoUtc = dueAtIsoUtc,
+                            assigneeId = assigneeId,
+                            assignmentStrategy = assignmentStrategy,
+                            recurrenceType = recurrenceType,
+                            recurrenceIntervalDays = recurrenceIntervalDays,
+                            suppressRecurrence = recurrenceType == "none",
+                            variantId = variantId
+                        )
+                    }
                 }
             }.onSuccess {
                 createSuccessCounter += 1
@@ -756,7 +804,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.deleteNotificationDevice(baseUrl, token, deviceId)
+                    runMutationWithReconnectWindow(deviceRemovingMessage) {
+                        api.deleteNotificationDevice(baseUrl, token, deviceId)
+                    }
                 }
             }.onSuccess { devices ->
                 notificationDevices = devices
@@ -917,7 +967,7 @@ private fun TaskBanditApp(
                     themeMode = themeMode,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
-                    isDashboardSyncConnected = isDashboardSyncConnected,
+                    showDashboardSyncNotice = showDashboardSyncNotice,
                     isSyncingQueue = isSyncingQueue,
                     activeReviewAction = activeReviewAction,
                     activeStartAction = activeStartAction,
@@ -928,7 +978,10 @@ private fun TaskBanditApp(
                     activeDeviceAction = activeDeviceAction,
                     errorMessage = errorMessage,
                     noticeMessage = noticeMessage,
+                    pendingReconnectActionLabel = pendingReconnectActionLabel,
+                    validationDialogMessage = validationDialogMessage,
                     queuedSubmissionCount = queuedSubmissionCount,
+                    onDismissValidationDialog = { validationDialogMessage = null },
                     onDismissUpdate = ::dismissUpdateNotice,
                     onRefresh = ::requestDashboardRefresh,
                     onLogout = ::logout,
@@ -1269,7 +1322,7 @@ private fun DashboardScreen(
     themeMode: MobileThemeMode,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
-    isDashboardSyncConnected: Boolean,
+    showDashboardSyncNotice: Boolean,
     isSyncingQueue: Boolean,
     activeReviewAction: String?,
     activeStartAction: String?,
@@ -1280,7 +1333,10 @@ private fun DashboardScreen(
     activeDeviceAction: String?,
     errorMessage: String?,
     noticeMessage: String?,
+    pendingReconnectActionLabel: String?,
+    validationDialogMessage: String?,
     queuedSubmissionCount: Int,
+    onDismissValidationDialog: () -> Unit,
     onDismissUpdate: () -> Unit,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
@@ -1312,7 +1368,7 @@ private fun DashboardScreen(
     var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
     var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
     var createRecurrenceType by rememberSaveable { mutableStateOf("template") }
-    var createRecurrenceInterval by rememberSaveable { mutableIntStateOf(7) }
+    var createRecurrenceIntervalInput by rememberSaveable { mutableStateOf("7") }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expandedHistoricChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var templateDropdownExpanded by remember { mutableStateOf(false) }
@@ -1331,13 +1387,22 @@ private fun DashboardScreen(
     val templates = dashboard?.templates.orEmpty()
     val members = dashboard?.members.orEmpty()
     val pendingTakeoverRequests = dashboard?.takeoverRequests.orEmpty()
-    val incomingTakeoverRequests = remember(pendingTakeoverRequests, currentUserId) {
-        pendingTakeoverRequests.filter { it.status == "PENDING" && it.requested.id == currentUserId }
+    val supportsTakeoverRequests = dashboard?.compatibility?.takeoverRequestsSupported ?: true
+    val incomingTakeoverRequests = remember(pendingTakeoverRequests, currentUserId, supportsTakeoverRequests) {
+        if (!supportsTakeoverRequests) {
+            emptyList()
+        } else {
+            pendingTakeoverRequests.filter { it.status == "PENDING" && it.requested.id == currentUserId }
+        }
     }
-    val outgoingTakeoverRequestsByChoreId = remember(pendingTakeoverRequests, currentUserId) {
-        pendingTakeoverRequests
-            .filter { it.status == "PENDING" && it.requester.id == currentUserId }
-            .associateBy { it.choreId }
+    val outgoingTakeoverRequestsByChoreId = remember(pendingTakeoverRequests, currentUserId, supportsTakeoverRequests) {
+        if (!supportsTakeoverRequests) {
+            emptyMap()
+        } else {
+            pendingTakeoverRequests
+                .filter { it.status == "PENDING" && it.requester.id == currentUserId }
+                .associateBy { it.choreId }
+        }
     }
     val selectedTemplate = remember(templates, selectedTemplateId) {
         templates.firstOrNull { it.id == selectedTemplateId } ?: templates.firstOrNull()
@@ -1363,7 +1428,23 @@ private fun DashboardScreen(
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
     val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
-    val showStatusCard = queuedSubmissionCount > 0 || isSyncingQueue || !noticeMessage.isNullOrBlank() || !errorMessage.isNullOrBlank()
+    val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
+    val recurrenceIntervalInvalidMessage = stringResource(R.string.mobile_create_interval_days_invalid)
+    val parsedCreateRecurrenceInterval = createRecurrenceIntervalInput.trim().toIntOrNull()
+    val createRecurrenceIntervalError =
+        if (createRecurrenceType == "every_x_days" &&
+            (createRecurrenceIntervalInput.isBlank() || parsedCreateRecurrenceInterval == null || parsedCreateRecurrenceInterval <= 0)
+        ) {
+            recurrenceIntervalInvalidMessage
+        } else {
+            null
+        }
+    val showStatusCard =
+        !pendingReconnectActionLabel.isNullOrBlank() ||
+            queuedSubmissionCount > 0 ||
+            isSyncingQueue ||
+            !noticeMessage.isNullOrBlank() ||
+            !errorMessage.isNullOrBlank()
 
     LaunchedEffect(templates) {
         if (templates.isNotEmpty() && templates.none { it.id == selectedTemplateId }) {
@@ -1376,7 +1457,7 @@ private fun DashboardScreen(
         createAssignmentStrategy = template.assignmentStrategy
         val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
         createRecurrenceType = defaultType
-        createRecurrenceInterval = defaultInterval
+        createRecurrenceIntervalInput = defaultInterval.toString()
         createAssigneeId = null
         createVariantId = null
     }
@@ -1388,11 +1469,11 @@ private fun DashboardScreen(
             createAssignmentStrategy = template.assignmentStrategy
             val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
             createRecurrenceType = defaultType
-            createRecurrenceInterval = defaultInterval
+            createRecurrenceIntervalInput = defaultInterval.toString()
         } else {
             createAssignmentStrategy = "round_robin"
             createRecurrenceType = "template"
-            createRecurrenceInterval = 7
+            createRecurrenceIntervalInput = "7"
         }
         createAssigneeId = null
         createVariantId = null
@@ -1471,6 +1552,19 @@ private fun DashboardScreen(
                     resetCreateForm()
                 }) {
                     Text(stringResource(R.string.mobile_create_success_create_another))
+                }
+            }
+        )
+    }
+
+    if (!validationDialogMessage.isNullOrBlank()) {
+        AlertDialog(
+            onDismissRequest = onDismissValidationDialog,
+            title = { Text(actionRequiredTitle) },
+            text = { Text(validationDialogMessage) },
+            confirmButton = {
+                Button(onClick = onDismissValidationDialog) {
+                    Text(stringResource(R.string.mobile_validation_confirm))
                 }
             }
         )
@@ -1579,7 +1673,7 @@ private fun DashboardScreen(
         sortedChores.firstOrNull { it.id == requestTakeoverChoreId }
     }
 
-    if (requestTakeoverChore != null) {
+    if (requestTakeoverChore != null && supportsTakeoverRequests) {
         AlertDialog(
             onDismissRequest = {
                 requestTakeoverChoreId = null
@@ -1672,6 +1766,7 @@ private fun DashboardScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         MobileTabButton(
+                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.CHORES,
                             label = stringResource(R.string.mobile_tab_chores),
                             icon = Icons.Rounded.AssignmentTurnedIn,
@@ -1681,6 +1776,7 @@ private fun DashboardScreen(
                             }
                         )
                         MobileCenterTabButton(
+                            modifier = Modifier.weight(1.1f),
                             selected = activeTab == MobileDashboardTab.CREATE,
                             label = stringResource(R.string.mobile_tab_create),
                             icon = Icons.Rounded.AddCircle,
@@ -1690,6 +1786,7 @@ private fun DashboardScreen(
                             }
                         )
                         MobileTabButton(
+                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.SETTINGS,
                             label = stringResource(R.string.mobile_tab_settings),
                             icon = Icons.Rounded.Tune,
@@ -1714,21 +1811,15 @@ private fun DashboardScreen(
                 .padding(padding)
         ) {
             val isTablet = isTabletWidth(maxWidth)
-            LazyColumn(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 16.dp)
-                    .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
-                verticalArrangement = Arrangement.spacedBy(16.dp)
-            ) {
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 16.dp)
+                        .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
             if (activeTab == MobileDashboardTab.CHORES) {
-                if (!isDashboardSyncConnected) {
-                    item {
-                        ChoreConnectionBanner(
-                            message = stringResource(R.string.mobile_sync_disconnected)
-                        )
-                    }
-                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -1743,7 +1834,7 @@ private fun DashboardScreen(
                                 modifier = Modifier.weight(1.55f),
                                 verticalArrangement = Arrangement.spacedBy(16.dp)
                             ) {
-                                if (incomingTakeoverRequests.isNotEmpty()) {
+                                if (supportsTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
                                     TakeoverRequestsPanel(
                                         requests = incomingTakeoverRequests,
                                         activeTakeoverRequestAction = activeTakeoverRequestAction,
@@ -1751,9 +1842,9 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
-                                ChoreSectionColumn(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
                             }
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -1774,6 +1865,7 @@ private fun DashboardScreen(
                                         isSyncingQueue = isSyncingQueue,
                                         errorMessage = errorMessage,
                                         noticeMessage = noticeMessage,
+                                        pendingReconnectActionLabel = pendingReconnectActionLabel,
                                         queuedSubmissionCount = queuedSubmissionCount
                                     )
                                 }
@@ -1781,7 +1873,7 @@ private fun DashboardScreen(
                         }
                     }
                 } else {
-                    if (incomingTakeoverRequests.isNotEmpty()) {
+                    if (supportsTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
                         item {
                             TakeoverRequestsPanel(
                                 requests = incomingTakeoverRequests,
@@ -1791,9 +1883,9 @@ private fun DashboardScreen(
                             )
                         }
                     }
-                    choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = myChores, title = choresMineLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
                     historicChoreSection(
                         chores = historicChores,
                         title = choresHistoryLabel,
@@ -1809,6 +1901,7 @@ private fun DashboardScreen(
                                 isSyncingQueue = isSyncingQueue,
                                 errorMessage = errorMessage,
                                 noticeMessage = noticeMessage,
+                                pendingReconnectActionLabel = pendingReconnectActionLabel,
                                 queuedSubmissionCount = queuedSubmissionCount
                             )
                         }
@@ -1848,7 +1941,8 @@ private fun DashboardScreen(
                                     )
                                     CreateRecurrencePanel(
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
                                         onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
                                         onRecurrenceTypeSelected = {
@@ -1856,7 +1950,9 @@ private fun DashboardScreen(
                                             recurrenceTypeDropdownExpanded = false
                                         },
                                         onRecurrenceIntervalChange = { v ->
-                                            v.toIntOrNull()?.let { if (it > 0) createRecurrenceInterval = it }
+                                            if (v.all(Char::isDigit)) {
+                                                createRecurrenceIntervalInput = v
+                                            }
                                         }
                                     )
                                 }
@@ -1898,7 +1994,8 @@ private fun DashboardScreen(
                                         createAssigneeId = createAssigneeId,
                                         createAssignmentStrategy = createAssignmentStrategy,
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         createVariantId = createVariantId,
                                         activeCreateAction = activeCreateAction,
                                         onCreateChore = onCreateChore
@@ -1923,7 +2020,8 @@ private fun DashboardScreen(
                                     )
                                     CreateRecurrencePanel(
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
                                         onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
                                         onRecurrenceTypeSelected = {
@@ -1931,7 +2029,9 @@ private fun DashboardScreen(
                                             recurrenceTypeDropdownExpanded = false
                                         },
                                         onRecurrenceIntervalChange = { v ->
-                                            v.toIntOrNull()?.let { if (it > 0) createRecurrenceInterval = it }
+                                            if (v.all(Char::isDigit)) {
+                                                createRecurrenceIntervalInput = v
+                                            }
                                         }
                                     )
                                     CreateAssignmentPanel(
@@ -1968,7 +2068,8 @@ private fun DashboardScreen(
                                         createAssigneeId = createAssigneeId,
                                         createAssignmentStrategy = createAssignmentStrategy,
                                         createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = createRecurrenceInterval,
+                                        createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
                                         createVariantId = createVariantId,
                                         activeCreateAction = activeCreateAction,
                                         onCreateChore = onCreateChore
@@ -2034,13 +2135,36 @@ private fun DashboardScreen(
                     }
                 }
             }
+                }
+
+                if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = if (isTablet) 28.dp else 20.dp,
+                                end = if (isTablet) 28.dp else 20.dp,
+                                top = 12.dp
+                            )
+                            .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier)
+                    ) {
+                        ChoreConnectionBanner(
+                            message = stringResource(R.string.mobile_sync_disconnected)
+                        )
+                    }
+                }
+            }
         }
     }
 }
-}
-
 @Composable
-private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun MobileTabButton(
+    modifier: Modifier = Modifier,
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     val iconTint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
     val chipColor = if (selected) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
@@ -2048,6 +2172,7 @@ private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector,
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
     }
     TextButton(
+        modifier = modifier,
         onClick = onClick,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
@@ -2068,14 +2193,22 @@ private fun MobileTabButton(selected: Boolean, label: String, icon: ImageVector,
                 text = label,
                 color = iconTint,
                 style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium
+                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
 }
 
 @Composable
-private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageVector, onClick: () -> Unit) {
+private fun MobileCenterTabButton(
+    modifier: Modifier = Modifier,
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    onClick: () -> Unit
+) {
     val containerColor = if (selected) {
         MaterialTheme.colorScheme.primary
     } else {
@@ -2084,10 +2217,12 @@ private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageV
     val iconTint = MaterialTheme.colorScheme.onPrimary
 
     TextButton(
+        modifier = modifier,
         onClick = onClick,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 0.dp)
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
     ) {
         Column(
+            modifier = Modifier.fillMaxWidth(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
@@ -2106,7 +2241,9 @@ private fun MobileCenterTabButton(selected: Boolean, label: String, icon: ImageV
                 text = label,
                 color = MaterialTheme.colorScheme.primary,
                 style = MaterialTheme.typography.labelMedium,
-                fontWeight = FontWeight.SemiBold
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
             )
         }
     }
@@ -2118,10 +2255,26 @@ private fun DashboardStatusCard(
     isSyncingQueue: Boolean,
     errorMessage: String?,
     noticeMessage: String?,
+    pendingReconnectActionLabel: String?,
     queuedSubmissionCount: Int
 ) {
     Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
         Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!pendingReconnectActionLabel.isNullOrBlank()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Text(
+                        text = stringResource(
+                            R.string.mobile_sync_reconnecting_action_status,
+                            pendingReconnectActionLabel
+                        ),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
             if (queuedSubmissionCount > 0 || isSyncingQueue) {
                 Text(
                     text = if (isSyncingQueue) {
@@ -2167,7 +2320,7 @@ private fun SectionIntro(title: String, body: String) {
 }
 
 private fun LazyListScope.choreSection(
-    chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
+    chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
     onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
@@ -2181,7 +2334,7 @@ private fun LazyListScope.choreSection(
     item {
         ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
             chores.forEach { chore ->
-                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
+                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
             }
         }
     }
@@ -2212,6 +2365,7 @@ private fun ChoreSectionColumn(
     title: String,
     currentUserId: String?,
     currentUserRole: String?,
+    supportsTakeoverRequests: Boolean,
     expandedChoreIds: Set<String>,
     activeReviewAction: String?,
     activeStartAction: String?,
@@ -2244,6 +2398,7 @@ private fun ChoreSectionColumn(
                 chore = chore,
                 currentUserId = currentUserId,
                 currentUserRole = currentUserRole,
+                supportsTakeoverRequests = supportsTakeoverRequests,
                 expanded = expandedChoreIds.contains(chore.id),
                 activeReviewAction = activeReviewAction,
                 activeStartAction = activeStartAction,
@@ -2296,16 +2451,16 @@ private fun ChoreSectionPanel(
     val (containerColor, contentColor, badgeColor, badgeContentColor, borderColor) = rememberSectionToneColors(tone)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.5.dp, borderColor),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.25.dp, borderColor),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = contentColor
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2323,8 +2478,8 @@ private fun ChoreSectionPanel(
                 ) {
                     Text(
                         text = count.toString(),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
                         color = badgeContentColor,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -2415,26 +2570,41 @@ private data class SectionToneColors(
 @Composable
 private fun CompactChoreMeta(
     dueAt: String,
+    assignmentLabel: String? = null,
+    subtypeLabel: String? = null,
     requirePhotoProof: Boolean,
+    includeWeekdayInDueDate: Boolean = true,
+    dueLabelResId: Int = R.string.mobile_due_at,
     modifier: Modifier = Modifier
 ) {
+    val supportingParts = buildList {
+        subtypeLabel?.takeIf { it.isNotBlank() }?.let(::add)
+        assignmentLabel?.takeIf { it.isNotBlank() }?.let(::add)
+        if (requirePhotoProof) add(stringResource(R.string.mobile_photo_required_hint))
+    }
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
+        verticalArrangement = Arrangement.spacedBy(1.dp)
     ) {
-        Text(
-            text = stringResource(R.string.mobile_due_at, formatApiTimestamp(dueAt)),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (requirePhotoProof) {
+        if (supportingParts.isNotEmpty()) {
             Text(
-                text = stringResource(R.string.mobile_photo_required_hint),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
+                text = supportingParts.joinToString(" • "),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
             )
         }
+        Text(
+            text = stringResource(
+                dueLabelResId,
+                if (includeWeekdayInDueDate) formatDueAtForCard(dueAt) else formatDueAtForHistoricCard(dueAt)
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
     }
 }
 
@@ -2585,18 +2755,18 @@ private fun HistoricChoreCard(
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
-    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
@@ -2607,33 +2777,27 @@ private fun HistoricChoreCard(
                         imageVector = Icons.Rounded.AssignmentTurnedIn,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(7.dp).size(16.dp)
+                        modifier = Modifier.padding(6.dp).size(14.dp)
                     )
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    subtypeLabel?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.mobile_chores_history),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    CompactChoreMeta(
+                        dueAt = chore.completedAt ?: chore.dueAt,
+                        subtypeLabel = subtypeLabel,
+                        assignmentLabel = stringResource(R.string.mobile_chores_history),
+                        requirePhotoProof = chore.requirePhotoProof,
+                        includeWeekdayInDueDate = false,
+                        dueLabelResId = R.string.mobile_completed_at
                     )
                 }
                 Surface(
@@ -2642,23 +2806,18 @@ private fun HistoricChoreCard(
                 ) {
                     Text(
                         text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            CompactChoreMeta(
-                dueAt = chore.dueAt,
-                requirePhotoProof = chore.requirePhotoProof
-            )
-
             if (hasHistoricDetails) {
                 OutlinedButton(
                     onClick = onExpandedChange,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(stringResource(if (expanded) R.string.mobile_chore_close_history else R.string.mobile_chore_open_history))
                 }
@@ -2671,15 +2830,15 @@ private fun HistoricChoreCard(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         if (chore.checklist.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 chore.checklist.forEach { item ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Checkbox(
                                             checked = chore.completedChecklistIds.contains(item.id),
@@ -2687,7 +2846,7 @@ private fun HistoricChoreCard(
                                         )
                                         Text(
                                             text = item.title,
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodySmall
                                         )
                                     }
                                 }
@@ -2702,7 +2861,7 @@ private fun HistoricChoreCard(
 
 @Composable
 private fun ChoreCard(
-    chore: MobileChore, currentUserId: String?, currentUserRole: String?, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeTakeoverRequestAction: String?,
+    chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeTakeoverRequestAction: String?,
     outgoingTakeoverRequest: MobileTakeoverRequest?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
     onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
@@ -2751,11 +2910,11 @@ private fun ChoreCard(
     val canManageTask = chore.assigneeId == null || chore.assigneeId == currentUserId
     val section = resolveChoreSection(chore, currentUserId)
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
-    val subtypeLabel = chore.subtypeLabel?.takeIf { it.isNotBlank() }
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
-    val requiresTakeOver = section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
+    val requiresTakeOver = supportsTakeoverRequests && section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
-    val canRequestTakeover = currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
+    val canRequestTakeover = supportsTakeoverRequests && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
     val outgoingTakeoverFirstName = outgoingTakeoverRequest?.requested?.displayName?.let(::firstNameFromDisplayName)
     val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
     val accentContainerColor = when (section) {
@@ -2775,15 +2934,15 @@ private fun ChoreCard(
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
@@ -2794,35 +2953,25 @@ private fun ChoreCard(
                         imageVector = sectionIcon,
                         contentDescription = null,
                         tint = accentContentColor,
-                        modifier = Modifier.padding(7.dp).size(16.dp)
+                        modifier = Modifier.padding(6.dp).size(14.dp)
                     )
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    subtypeLabel?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Text(
-                        text = assignmentLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    CompactChoreMeta(
+                        dueAt = chore.dueAt,
+                        assignmentLabel = assignmentLabel,
+                        subtypeLabel = subtypeLabel,
+                        requirePhotoProof = chore.requirePhotoProof
                     )
                 }
                 Surface(
@@ -2835,7 +2984,7 @@ private fun ChoreCard(
                 ) {
                     Text(
                         text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (chore.isOverdue) {
                             MaterialTheme.colorScheme.onErrorContainer
@@ -2845,11 +2994,6 @@ private fun ChoreCard(
                     )
                 }
             }
-
-            CompactChoreMeta(
-                dueAt = chore.dueAt,
-                requirePhotoProof = chore.requirePhotoProof
-            )
 
             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
                 Surface(
@@ -2862,7 +3006,7 @@ private fun ChoreCard(
                             R.string.mobile_takeover_pending_with_name,
                             outgoingTakeoverFirstName
                         ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         fontWeight = FontWeight.Medium
@@ -2878,16 +3022,16 @@ private fun ChoreCard(
                     Button(
                         onClick = { showApproveConfirm = true },
                         enabled = activeReviewAction == null,
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(stringResource(if (activeReviewAction == "approve:${chore.id}") R.string.mobile_approving else R.string.mobile_approve))
                     }
                     OutlinedButton(
                         onClick = { showRejectConfirm = true },
                         enabled = activeReviewAction == null,
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(stringResource(if (activeReviewAction == "reject:${chore.id}") R.string.mobile_rejecting else R.string.mobile_reject))
                     }
@@ -2905,8 +3049,8 @@ private fun ChoreCard(
                         }
                     },
                     enabled = if (requiresTakeOver) activeStartAction == null else true,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         stringResource(
@@ -2935,8 +3079,8 @@ private fun ChoreCard(
                     color = accentContainerColor.copy(alpha = 0.32f)
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         if (!canManageTask) {
                             Text(
@@ -2946,11 +3090,11 @@ private fun ChoreCard(
                             )
                         }
                         if (chore.checklist.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 chore.checklist.forEach { item ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Checkbox(
                                             checked = selectedChecklistIds.contains(item.id),
@@ -2987,13 +3131,26 @@ private fun ChoreCard(
                                     style = MaterialTheme.typography.labelSmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
-                                Button(
-                                    onClick = { onStartChore(chore.id) },
-                                    enabled = activeStartAction == null && chore.state != "in_progress",
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                    Button(
+                                        onClick = { onStartChore(chore.id) },
+                                        enabled = activeStartAction == null && chore.state != "in_progress",
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                    }
+                                    OutlinedButton(
+                                        onClick = { onPickProofs(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_pick_photos))
+                                    }
                                 }
                                 Text(
                                     text = stringResource(R.string.mobile_photo_step_proof),
@@ -3005,46 +3162,52 @@ private fun ChoreCard(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     OutlinedButton(
-                                        onClick = { onPickProofs(chore.id) },
-                                        enabled = activeSubmitAction == null,
-                                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                                    ) {
-                                        Text(stringResource(R.string.mobile_pick_photos))
-                                    }
-                                    OutlinedButton(
                                         onClick = { onTakeProofPhoto(chore.id) },
                                         enabled = activeSubmitAction == null,
-                                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                     ) {
                                         Text(stringResource(R.string.mobile_take_photo))
                                     }
+                                    Button(
+                                        onClick = { onSubmitChore(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
+                                    }
                                 }
                             } else {
-                                Button(
-                                    onClick = { onStartChore(chore.id) },
-                                    enabled = activeStartAction == null && chore.state != "in_progress",
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                    Button(
+                                        onClick = { onStartChore(chore.id) },
+                                        enabled = activeStartAction == null && chore.state != "in_progress",
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                    }
+                                    Button(
+                                        onClick = { onSubmitChore(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
+                                    }
                                 }
                             }
-                            Button(
-                                onClick = { onSubmitChore(chore.id) },
-                                enabled = activeSubmitAction == null,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
-                            }
+                        }
                             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
                                 OutlinedButton(
                                     onClick = {},
                                     enabled = false,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
                                         stringResource(
@@ -3057,8 +3220,8 @@ private fun ChoreCard(
                                 OutlinedButton(
                                     onClick = { onRequestTakeover(chore.id) },
                                     enabled = activeTakeoverRequestAction == null,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
                                         stringResource(
@@ -3083,8 +3246,42 @@ private fun ChoreCard(
 private fun MobileChoiceRow(options: List<MobileChoiceOption>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.chunked(2).forEach { rowOptions ->
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                rowOptions.forEach { option -> if (option.selected) Button(onClick = option.onClick) { Text(option.label) } else OutlinedButton(onClick = option.onClick) { Text(option.label) } }
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowOptions.forEach { option ->
+                    if (option.selected) {
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            onClick = option.onClick,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = option.label,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = option.onClick,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = option.label,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                repeat(2 - rowOptions.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
@@ -3184,7 +3381,8 @@ private fun CreateTemplateAndSchedulePanel(
 @Composable
 private fun CreateRecurrencePanel(
     createRecurrenceType: String,
-    createRecurrenceInterval: Int,
+    createRecurrenceIntervalInput: String,
+    createRecurrenceIntervalError: String?,
     recurrenceTypeDropdownExpanded: Boolean,
     onRecurrenceDropdownExpandedChange: (Boolean) -> Unit,
     onRecurrenceTypeSelected: (String) -> Unit,
@@ -3217,13 +3415,21 @@ private fun CreateRecurrencePanel(
         }
         if (createRecurrenceType == "every_x_days") {
             OutlinedTextField(
-                value = createRecurrenceInterval.toString(),
+                value = createRecurrenceIntervalInput,
                 onValueChange = onRecurrenceIntervalChange,
                 label = { Text(stringResource(R.string.mobile_create_interval_days_label)) },
                 keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
                 singleLine = true,
+                isError = createRecurrenceIntervalError != null,
                 modifier = Modifier.fillMaxWidth()
             )
+            if (!createRecurrenceIntervalError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceIntervalError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
         }
     }
 }
@@ -3330,6 +3536,10 @@ private fun CreateVariantPanel(
                     expanded = variantDropdownExpanded,
                     onDismissRequest = { onVariantDropdownExpandedChange(false) }
                 ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.mobile_create_no_subtype)) },
+                        onClick = { onVariantSelected(null) }
+                    )
                     template.variants.forEach { variant ->
                         DropdownMenuItem(
                             text = { Text(variant.label) },
@@ -3337,13 +3547,6 @@ private fun CreateVariantPanel(
                         )
                     }
                 }
-            }
-            if (createVariantId == null) {
-                Text(
-                    text = stringResource(R.string.mobile_create_variant_required),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -3356,15 +3559,18 @@ private fun CreateSubmitPanel(
     createAssigneeId: String?,
     createAssignmentStrategy: String,
     createRecurrenceType: String,
-    createRecurrenceInterval: Int,
+    createRecurrenceInterval: Int?,
+    createRecurrenceIntervalError: String?,
     createVariantId: String?,
     activeCreateAction: String?,
     onCreateChore: (String, String, String?, String, String?, Int?, String?) -> Unit
 ) {
     CreatePanelCard(title = stringResource(R.string.mobile_create_action)) {
         selectedTemplate?.let { template ->
-            val subtypeRequired = template.variants.isNotEmpty()
-            val canCreate = activeCreateAction == null && (!subtypeRequired || createVariantId != null)
+            val needsRecurrenceInterval = createRecurrenceType == "every_x_days"
+            val canCreate =
+                activeCreateAction == null &&
+                    (!needsRecurrenceInterval || (createRecurrenceIntervalError == null && (createRecurrenceInterval ?: 0) > 0))
             Button(
                 onClick = {
                     val recType = if (createRecurrenceType == "template") null else createRecurrenceType
@@ -3387,13 +3593,6 @@ private fun CreateSubmitPanel(
                 } else {
                     Text(stringResource(R.string.mobile_create_action))
                 }
-            }
-            if (subtypeRequired && createVariantId == null) {
-                Text(
-                    text = stringResource(R.string.mobile_create_variant_required),
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
             }
         }
     }
@@ -3529,6 +3728,11 @@ private fun firstNameFromDisplayName(displayName: String?): String? =
         ?.split(Regex("\\s+"))
         ?.firstOrNull()
 
+private fun normalizeSubtypeLabel(value: String?): String? =
+    value
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+
 private fun defaultCreateDueAtMillis(): Long =
     Instant.now()
         .plus(4, ChronoUnit.HOURS)
@@ -3573,6 +3777,22 @@ private fun formatApiTimestamp(value: String): String {
             .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault(value)
+}
+
+private fun formatDueAtForCard(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("EEEE d MMM HH:mm", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(formatApiTimestamp(value))
+}
+
+private fun formatDueAtForHistoricCard(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(formatApiTimestamp(value))
 }
 
 private suspend fun flushQueuedSubmissions(

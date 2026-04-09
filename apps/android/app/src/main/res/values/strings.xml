@@ -55,6 +55,9 @@
     <string name="mobile_refresh">Refresh</string>
     <string name="mobile_refreshing">Refreshing...</string>
     <string name="mobile_sync_disconnected">Live sync is temporarily offline. Reconnecting...</string>
+    <string name="mobile_sync_reconnecting_action">Trying to restore the live connection...</string>
+    <string name="mobile_sync_reconnecting_action_status">%1$s. Restoring connection...</string>
+    <string name="mobile_connection_restore_failed">The live connection did not come back in time. Please try again.</string>
     <string name="mobile_logout">Log out</string>
     <string name="mobile_tab_chores">Chores</string>
     <string name="mobile_tab_create">Create</string>
@@ -82,6 +85,7 @@
     <string name="mobile_chore_close_history">Close</string>
     <string name="mobile_pending_approvals">Pending approvals</string>
     <string name="mobile_due_at">Due %1$s</string>
+    <string name="mobile_completed_at">Completed %1$s</string>
     <string name="mobile_requested_at">Requested %1$s</string>
     <string name="mobile_state_overdue">Overdue</string>
     <string name="mobile_show_details">Open task</string>
@@ -91,6 +95,7 @@
     <string name="mobile_create_select_template_prompt">Select a type…</string>
     <string name="mobile_create_repeat_every_x_days_option">Every X days</string>
     <string name="mobile_create_interval_days_label">Interval (days)</string>
+    <string name="mobile_create_interval_days_invalid">Enter a number greater than 0.</string>
     <string name="mobile_create_template">Type</string>
     <string name="mobile_create_select_template">Choose a template below to begin.</string>
     <string name="mobile_create_selected_template">Selected</string>
@@ -128,6 +133,7 @@
     <string name="mobile_create_no_templates">No templates available yet. Add templates from web first.</string>
     <string name="mobile_create_variant">Subtype</string>
     <string name="mobile_create_select_variant_prompt">Select a subtype…</string>
+    <string name="mobile_create_no_subtype">No subtype</string>
     <string name="mobile_create_variant_required">Select a subtype to create this chore.</string>
     <string name="mobile_chore_created">Chore created from Android.</string>
     <string name="mobile_create_success_title">Done</string>
@@ -181,6 +187,8 @@
     <string name="mobile_submit_confirm_title">Finish this chore?</string>
     <string name="mobile_submit_confirm_body">Submit \"%1$s\" now?</string>
     <string name="mobile_submit_confirm_action">Yes, finish</string>
+    <string name="mobile_action_required_title">Action needed</string>
+    <string name="mobile_validation_confirm">Got it</string>
     <string name="mobile_start">Start chore</string>
     <string name="mobile_starting">Starting...</string>
     <string name="mobile_started">In progress</string>

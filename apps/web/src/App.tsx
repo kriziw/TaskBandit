@@ -23,6 +23,7 @@ import type {
   Household,
   HouseholdNotificationHealthEntry,
   HouseholdSettings,
+  LocalizedTemplateTranslation,
   NotificationDevice,
   NotificationRecovery,
   NotificationPreferences,
@@ -32,8 +33,10 @@ import type {
   RecurrenceType,
   FollowUpDelayUnit,
   RuntimeLogEntry,
+  ServerCompatibility,
   SignupInput,
   TakeoverRequestEntry,
+  TemplateTranslationLocale,
   UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
@@ -57,6 +60,7 @@ type DashboardPayload = {
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
   takeoverRequests: TakeoverRequestEntry[];
+  compatibility: ServerCompatibility;
 };
 
 type LoginFormState = {
@@ -119,6 +123,27 @@ const recurrenceWeekdayOrder = [
 
 const defaultDependencyDelayValue = 1;
 const defaultDependencyDelayUnit: FollowUpDelayUnit = "hours";
+const templateTranslationLocales: AppLanguage[] = ["en", "de", "hu"];
+
+function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): TemplateFormState {
+  return {
+    defaultLocale,
+    title: "",
+    description: "",
+    translations: [],
+    difficulty: "easy",
+    assignmentStrategy: "round_robin",
+    recurrenceType: "none",
+    recurrenceIntervalDays: 2,
+    recurrenceWeekdays: [],
+    requirePhotoProof: false,
+    recurrenceStartStrategy: "due_at",
+    variants: [],
+    dependencyTemplateIds: [],
+    dependencyRules: [],
+    checklist: []
+  };
+}
 
 function normalizeTemplateDependencyRules(
   dependencyRules?: ChoreTemplateDependencyRule[],
@@ -284,6 +309,28 @@ function formatReleaseLabel(release: ReleaseInfo) {
   return `v${release.releaseVersion} · build ${release.buildNumber}`;
 }
 
+function isOptionalFeatureUnavailable(error: unknown) {
+  return error instanceof TaskBanditApiError && [404, 405, 501].includes(error.status);
+}
+
+async function loadOptionalFeature<T>(loader: () => Promise<T>, fallbackValue: T) {
+  try {
+    return {
+      value: await loader(),
+      supported: true
+    };
+  } catch (error) {
+    if (isOptionalFeatureUnavailable(error)) {
+      return {
+        value: fallbackValue,
+        supported: false
+      };
+    }
+
+    throw error;
+  }
+}
+
 const currentWebReleaseInfo: ReleaseInfo = {
   releaseVersion: import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION ?? "0.0.0-dev",
   buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
@@ -336,21 +383,7 @@ export function App() {
   const [memberForm, setMemberForm] = useState<MemberFormState>(createEmptyMemberForm);
   const [memberEditForm, setMemberEditForm] = useState<MemberEditFormState>(createEmptyMemberEditForm);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-  const [templateForm, setTemplateForm] = useState<TemplateFormState>({
-    title: "",
-    description: "",
-    difficulty: "easy",
-    assignmentStrategy: "round_robin",
-    recurrenceType: "none",
-    recurrenceIntervalDays: 2,
-    recurrenceWeekdays: [],
-    requirePhotoProof: false,
-    recurrenceStartStrategy: "due_at",
-    variants: [],
-    dependencyTemplateIds: [],
-    dependencyRules: [],
-    checklist: []
-  });
+  const [templateForm, setTemplateForm] = useState<TemplateFormState>(() => createEmptyTemplateForm(language));
   const [instanceForm, setInstanceForm] = useState<InstanceFormState>({
     templateId: "",
     assigneeId: "",
@@ -563,10 +596,12 @@ export function App() {
 
   const pendingTakeoverRequests = useMemo(
     () =>
-      payload?.takeoverRequests.filter(
-        (request) =>
-          request.status === "PENDING" && request.requested.id === payload.currentUser.id
-      ) ?? [],
+      payload?.compatibility.takeoverRequests
+        ? payload.takeoverRequests.filter(
+            (request) =>
+              request.status === "PENDING" && request.requested.id === payload.currentUser.id
+          )
+        : [],
     [payload]
   );
 
@@ -655,8 +690,11 @@ export function App() {
       { key: "notifications", label: t("nav.notifications") }
     ];
 
-    if (payload.currentUser.role === "admin") {
+    if (payload.currentUser.role !== "child") {
       pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
+    }
+
+    if (payload.currentUser.role === "admin") {
       pages.splice(3, 0, { key: "household", label: t("nav.household") });
       pages.push({ key: "settings", label: t("nav.settings") });
       pages.push({ key: "admin", label: t("nav.admin") });
@@ -828,16 +866,16 @@ export function App() {
         household,
         auditLog,
         notifications,
-        notificationDevices,
-        householdNotificationHealth,
-        notificationRecovery,
-        systemStatus,
-        backupReadiness,
+        notificationDevicesResult,
+        householdNotificationHealthResult,
+        notificationRecoveryResult,
+        systemStatusResult,
+        backupReadinessResult,
         notificationPreferences,
         pointsLedger,
         templates,
         instances,
-        takeoverRequests,
+        takeoverRequestsResult,
         nextRuntimeLogs
       ] =
         await Promise.all([
@@ -847,26 +885,44 @@ export function App() {
           ? Promise.resolve([])
           : taskBanditApi.getAuditLog(accessToken, language),
         taskBanditApi.getNotifications(accessToken, language),
-        taskBanditApi.getNotificationDevices(accessToken, language),
+        loadOptionalFeature(
+          () => taskBanditApi.getNotificationDevices(accessToken, language),
+          [] as NotificationDevice[]
+        ),
         currentUser.role === "admin"
-          ? taskBanditApi.getHouseholdNotificationHealth(accessToken, language)
-          : Promise.resolve([]),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getHouseholdNotificationHealth(accessToken, language),
+              [] as HouseholdNotificationHealthEntry[]
+            )
+          : Promise.resolve({ value: [] as HouseholdNotificationHealthEntry[], supported: false }),
         currentUser.role === "admin"
-          ? taskBanditApi.getNotificationRecovery(accessToken, language)
-          : Promise.resolve(null),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getNotificationRecovery(accessToken, language),
+              null as NotificationRecovery | null
+            )
+          : Promise.resolve({ value: null, supported: false }),
         currentUser.role === "admin"
-          ? taskBanditApi.getSystemStatus(accessToken, language)
-          : Promise.resolve(null),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getSystemStatus(accessToken, language),
+              null as AdminSystemStatus | null
+            )
+          : Promise.resolve({ value: null, supported: false }),
         currentUser.role === "admin"
-          ? taskBanditApi.getBackupReadiness(accessToken, language)
-          : Promise.resolve(null),
+          ? loadOptionalFeature(
+              () => taskBanditApi.getBackupReadiness(accessToken, language),
+              null as BackupReadiness | null
+            )
+          : Promise.resolve({ value: null, supported: false }),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
         currentUser.role === "child"
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
         taskBanditApi.getInstances(accessToken, language),
-        taskBanditApi.getTakeoverRequests(accessToken, language),
+        loadOptionalFeature(
+          () => taskBanditApi.getTakeoverRequests(accessToken, language),
+          [] as TakeoverRequestEntry[]
+        ),
         currentUser.role === "admin" && activePage === "admin"
           ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
           : Promise.resolve(runtimeLogs)
@@ -878,16 +934,24 @@ export function App() {
         household,
         auditLog,
         notifications,
-        notificationDevices,
-        householdNotificationHealth,
-        notificationRecovery,
-        systemStatus,
-        backupReadiness,
+        notificationDevices: notificationDevicesResult.value,
+        householdNotificationHealth: householdNotificationHealthResult.value,
+        notificationRecovery: notificationRecoveryResult.value,
+        systemStatus: systemStatusResult.value,
+        backupReadiness: backupReadinessResult.value,
         notificationPreferences,
         pointsLedger,
         templates,
         instances,
-        takeoverRequests
+        takeoverRequests: takeoverRequestsResult.value,
+        compatibility: {
+          notificationDevices: notificationDevicesResult.supported,
+          notificationHealth: householdNotificationHealthResult.supported,
+          takeoverRequests: takeoverRequestsResult.supported,
+          systemStatus: systemStatusResult.supported,
+          backupReadiness: backupReadinessResult.supported,
+          notificationRecovery: notificationRecoveryResult.supported
+        }
       });
       setRuntimeLogs(nextRuntimeLogs);
       setPageError(null);
@@ -926,13 +990,33 @@ export function App() {
         current
           ? {
               ...current,
-              systemStatus: nextSystemStatus
+              systemStatus: nextSystemStatus,
+              compatibility: {
+                ...current.compatibility,
+                systemStatus: true
+              }
             }
           : current
       );
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
         handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (isOptionalFeatureUnavailable(error)) {
+        setPayload((current) =>
+          current
+            ? {
+                ...current,
+                systemStatus: null,
+                compatibility: {
+                  ...current.compatibility,
+                  systemStatus: false
+                }
+              }
+            : current
+        );
         return;
       }
 
@@ -949,13 +1033,33 @@ export function App() {
         current
           ? {
               ...current,
-              backupReadiness: nextBackupReadiness
+              backupReadiness: nextBackupReadiness,
+              compatibility: {
+                ...current.compatibility,
+                backupReadiness: true
+              }
             }
           : current
       );
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
         handleLogout(t("auth.session_expired"));
+        return;
+      }
+
+      if (isOptionalFeatureUnavailable(error)) {
+        setPayload((current) =>
+          current
+            ? {
+                ...current,
+                backupReadiness: null,
+                compatibility: {
+                  ...current.compatibility,
+                  backupReadiness: false
+                }
+              }
+            : current
+        );
         return;
       }
 
@@ -1768,13 +1872,37 @@ export function App() {
       templateForm.recurrenceType === "every_x_days"
         ? Math.max(1, Number(templateForm.recurrenceIntervalDays ?? 1))
         : undefined;
+    const sanitizedTranslations = (templateForm.translations ?? [])
+      .map((entry) => ({
+        locale: entry.locale,
+        title: entry.title?.trim() || undefined,
+        description: entry.description?.trim() || undefined
+      }))
+      .filter((entry) => entry.locale !== templateForm.defaultLocale)
+      .filter((entry) => Boolean(entry.title || entry.description));
+    const sanitizedVariants = (templateForm.variants ?? [])
+      .map((variant) => ({
+        id: variant.id,
+        label: variant.label.trim(),
+        translations: (variant.translations ?? [])
+          .map((entry) => ({
+            locale: entry.locale,
+            label: entry.label?.trim() || undefined
+          }))
+          .filter((entry) => entry.locale !== templateForm.defaultLocale)
+          .filter((entry) => Boolean(entry.label))
+      }))
+      .filter((variant) => variant.label.length > 0);
 
     setBusyAction("create-template");
     try {
       const templatePayload = {
         ...templateForm,
+        defaultLocale: templateForm.defaultLocale ?? language,
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
+        translations: sanitizedTranslations,
+        variants: sanitizedVariants,
         dependencyTemplateIds: sanitizedDependencyIds,
         dependencyRules: sanitizedDependencyRules,
         recurrenceWeekdays: sanitizedRecurrenceWeekdays,
@@ -1818,7 +1946,7 @@ export function App() {
 
     const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
     if ((selectedTemplate?.variants?.length ?? 0) > 0 && !instanceForm.variantId) {
-      setPageError("Please select a subtype for this chore type.");
+      setPageError(t("instances.subtype_required"));
       return;
     }
 
@@ -2136,6 +2264,86 @@ export function App() {
     );
   }
 
+  function getLanguageLabel(locale: AppLanguage) {
+    if (locale === "de") {
+      return t("language.german");
+    }
+    if (locale === "hu") {
+      return t("language.hungarian");
+    }
+    return t("language.english");
+  }
+
+  function updateTemplateTranslation(
+    locale: AppLanguage,
+    nextValue: Partial<Pick<LocalizedTemplateTranslation, "title" | "description">>
+  ) {
+    setTemplateForm((current) => {
+      const existingEntries = current.translations ?? [];
+      const existingEntry = existingEntries.find((entry) => entry.locale === locale);
+      const mergedEntry: LocalizedTemplateTranslation = {
+        locale,
+        title: nextValue.title ?? existingEntry?.title,
+        description: nextValue.description ?? existingEntry?.description
+      };
+      const hasContent = Boolean(mergedEntry.title?.trim() || mergedEntry.description?.trim());
+      const filteredEntries = existingEntries.filter((entry) => entry.locale !== locale);
+
+      return {
+        ...current,
+        translations: hasContent ? [...filteredEntries, mergedEntry] : filteredEntries
+      };
+    });
+  }
+
+  function addVariantDraftItem() {
+    setTemplateForm((current) => ({
+      ...current,
+      variants: [...(current.variants ?? []), { label: "", translations: [] }]
+    }));
+  }
+
+  function updateVariantDraftItem(
+    index: number,
+    nextValue: Partial<NonNullable<TemplateFormState["variants"]>[number]>
+  ) {
+    setTemplateForm((current) => ({
+      ...current,
+      variants: (current.variants ?? []).map((item, itemIndex) =>
+        itemIndex === index ? { ...item, ...nextValue } : item
+      )
+    }));
+  }
+
+  function updateVariantTranslation(index: number, locale: AppLanguage, label: string) {
+    setTemplateForm((current) => ({
+      ...current,
+      variants: (current.variants ?? []).map((item, itemIndex) => {
+        if (itemIndex !== index) {
+          return item;
+        }
+
+        const existingEntries = item.translations ?? [];
+        const filteredEntries = existingEntries.filter((entry) => entry.locale !== locale);
+        const nextEntries = label.trim()
+          ? [...filteredEntries, { locale, label }]
+          : filteredEntries;
+
+        return {
+          ...item,
+          translations: nextEntries
+        };
+      })
+    }));
+  }
+
+  function removeVariantDraftItem(index: number) {
+    setTemplateForm((current) => ({
+      ...current,
+      variants: (current.variants ?? []).filter((_, itemIndex) => itemIndex !== index)
+    }));
+  }
+
   function addChecklistDraftItem() {
     setTemplateForm((current) => ({
       ...current,
@@ -2225,21 +2433,7 @@ export function App() {
 
   function resetTemplateForm() {
     setEditingTemplateId(null);
-    setTemplateForm({
-      title: "",
-      description: "",
-      difficulty: "easy",
-      assignmentStrategy: "round_robin",
-      recurrenceType: "none",
-      recurrenceIntervalDays: 2,
-      recurrenceWeekdays: [],
-      requirePhotoProof: false,
-      recurrenceStartStrategy: "due_at",
-      variants: [],
-      dependencyTemplateIds: [],
-      dependencyRules: [],
-      checklist: []
-    });
+    setTemplateForm(createEmptyTemplateForm(language));
   }
 
   function resetInstanceForm() {
@@ -2255,8 +2449,10 @@ export function App() {
   function startEditingTemplate(template: ChoreTemplate) {
     setEditingTemplateId(template.id);
     setTemplateForm({
+      defaultLocale: template.defaultLocale,
       title: template.title,
       description: template.description,
+      translations: template.translations?.map((entry) => ({ ...entry })) ?? [],
       difficulty: template.difficulty,
       assignmentStrategy: template.assignmentStrategy,
       recurrenceType: template.recurrence.type,
@@ -2264,7 +2460,12 @@ export function App() {
       recurrenceWeekdays: template.recurrence.weekdays,
       requirePhotoProof: template.requirePhotoProof,
       recurrenceStartStrategy: template.recurrenceStartStrategy ?? "due_at",
-      variants: template.variants?.map((v) => ({ label: v.label })) ?? [],
+      variants:
+        template.variants?.map((variant) => ({
+          id: variant.id,
+          label: variant.label,
+          translations: variant.translations?.map((entry) => ({ ...entry })) ?? []
+        })) ?? [],
       dependencyTemplateIds: template.dependencyTemplateIds,
       dependencyRules: normalizeTemplateDependencyRules(
         template.dependencyRules,
@@ -2275,6 +2476,52 @@ export function App() {
         required: item.required
       }))
     });
+  }
+
+  async function handleDeleteTemplate(templateId: string) {
+    if (!token || !payload) {
+      return;
+    }
+
+    if (!window.confirm(t("templates.delete_confirm"))) {
+      return;
+    }
+
+    setBusyAction(`delete-template:${templateId}`);
+    try {
+      await taskBanditApi.deleteTemplate(token, language, templateId);
+      setPayload((current) => {
+        if (!current) {
+          return current;
+        }
+
+        const nextTemplates = current.templates.filter((template) => template.id !== templateId);
+        return {
+          ...current,
+          templates: nextTemplates
+        };
+      });
+
+      if (editingTemplateId === templateId) {
+        resetTemplateForm();
+      }
+
+      setInstanceForm((current) =>
+        current.templateId === templateId
+          ? {
+              ...current,
+              templateId: "",
+              variantId: undefined
+            }
+          : current
+      );
+      setNotice(t("templates.deleted"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("templates.delete_failed")));
+    } finally {
+      setBusyAction(null);
+    }
   }
 
   function startEditingInstance(instance: ChoreInstance) {
@@ -2335,7 +2582,7 @@ export function App() {
         ];
       case "chores":
         return [
-          ...(pendingTakeoverRequests.length > 0
+          ...(payload?.compatibility.takeoverRequests && pendingTakeoverRequests.length > 0
             ? [
                 {
                   key: "chores-takeovers",
@@ -2362,18 +2609,26 @@ export function App() {
             label: t("panel.notification_preferences"),
             ref: notificationPreferencesRef
           },
-          {
-            key: "notifications-devices",
-            label: t("panel.mobile_push_devices"),
-            ref: notificationDevicesRef
-          },
-          ...(payload?.currentUser.role === "admin"
+          ...(payload?.compatibility.notificationDevices
             ? [
                 {
-                  key: "notifications-health",
-                  label: t("panel.household_notification_health"),
-                  ref: notificationHealthRef
+                  key: "notifications-devices",
+                  label: t("panel.mobile_push_devices"),
+                  ref: notificationDevicesRef
                 }
+              ]
+            : []),
+          ...(payload?.currentUser.role === "admin"
+            ? [
+                ...(payload?.compatibility.notificationHealth
+                  ? [
+                      {
+                        key: "notifications-health",
+                        label: t("panel.household_notification_health"),
+                        ref: notificationHealthRef
+                      }
+                    ]
+                  : [])
               ]
             : [])
         ];
@@ -2385,19 +2640,38 @@ export function App() {
         ];
       case "admin":
         return [
-          { key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef },
-          { key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef },
+          ...(payload?.compatibility.backupReadiness
+            ? [{ key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef }]
+            : []),
+          ...(payload?.compatibility.systemStatus
+            ? [{ key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef }]
+            : []),
           { key: "admin-logs", label: t("panel.runtime_logs"), ref: runtimeLogsRef },
-          {
-            key: "admin-recovery",
-            label: t("panel.notification_recovery"),
-            ref: notificationRecoveryRef
-          }
+          ...(payload?.compatibility.notificationRecovery
+            ? [
+                {
+                  key: "admin-recovery",
+                  label: t("panel.notification_recovery"),
+                  ref: notificationRecoveryRef
+                }
+              ]
+            : [])
         ];
       default:
         return [];
     }
-  }, [activePage, payload?.currentUser.role, pendingTakeoverRequests.length, t]);
+  }, [
+    activePage,
+    payload?.currentUser.role,
+    payload?.compatibility.backupReadiness,
+    payload?.compatibility.notificationDevices,
+    payload?.compatibility.notificationHealth,
+    payload?.compatibility.notificationRecovery,
+    payload?.compatibility.systemStatus,
+    payload?.compatibility.takeoverRequests,
+    pendingTakeoverRequests.length,
+    t
+  ]);
 
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
     setActivePage(page);
@@ -3006,7 +3280,7 @@ export function App() {
               </article>
             ) : null}
 
-            {pendingTakeoverRequests.length > 0 ? (
+            {payload.compatibility.takeoverRequests && pendingTakeoverRequests.length > 0 ? (
               <article className="panel page-panel page-chores page-takeover-requests" ref={takeoverRequestsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.takeover_approvals")}</h2>
@@ -3475,7 +3749,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.notificationDevices ? (
+            {payload.compatibility.notificationDevices ? (
               <article className="panel page-panel page-notifications" ref={notificationDevicesRef}>
                 <div className="section-heading">
                   <h2>{t("panel.mobile_push_devices")}</h2>
@@ -3537,7 +3811,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.notificationHealth ? (
               <article className="panel page-panel page-notifications" ref={notificationHealthRef}>
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
@@ -3597,7 +3871,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.backupReadiness ? (
               <article className="panel page-panel page-admin" ref={backupReadinessRef}>
                 <div className="section-heading">
                   <h2>{t("panel.backup_readiness")}</h2>
@@ -3738,7 +4012,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.systemStatus ? (
               <article className="panel page-panel page-admin" ref={systemStatusRef}>
                 <div className="section-heading">
                   <h2>{t("panel.system_status")}</h2>
@@ -3919,7 +4193,7 @@ export function App() {
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
+            {payload.currentUser.role === "admin" && payload.compatibility.notificationRecovery ? (
               <article className="panel page-panel page-admin" ref={notificationRecoveryRef}>
                 <div className="section-heading">
                   <h2>{t("panel.notification_recovery")}</h2>
@@ -4609,13 +4883,41 @@ export function App() {
                           >
                             {t("common.edit")}
                           </button>
+                          <button
+                            className="ghost-button"
+                            type="button"
+                            disabled={busyAction === `delete-template:${template.id}`}
+                            onClick={() => void handleDeleteTemplate(template.id)}
+                          >
+                            {busyAction === `delete-template:${template.id}`
+                              ? t("templates.deleting")
+                              : t("common.delete")}
+                          </button>
                         </div>
                       </div>
                     ))}
                   </div>
                   <form className="login-form member-form" onSubmit={handleCreateTemplate}>
                     <label>
-                      <span>{t("templates.title")}</span>
+                      <span>{t("templates.default_locale")}</span>
+                      <select
+                        value={templateForm.defaultLocale ?? language}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            defaultLocale: event.target.value as TemplateTranslationLocale
+                          }))
+                        }
+                      >
+                        {templateTranslationLocales.map((locale) => (
+                          <option key={locale} value={locale}>
+                            {getLanguageLabel(locale)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("templates.default_title")}</span>
                       <input
                         type="text"
                         value={templateForm.title}
@@ -4625,7 +4927,7 @@ export function App() {
                       />
                     </label>
                     <label>
-                      <span>{t("templates.description")}</span>
+                      <span>{t("templates.default_description")}</span>
                       <textarea
                         value={templateForm.description}
                         onChange={(event) =>
@@ -4634,6 +4936,55 @@ export function App() {
                         rows={4}
                       />
                     </label>
+                    <div className="stack-list">
+                      <div className="section-heading">
+                        <h3>{t("templates.translations")}</h3>
+                        <span className="section-kicker">
+                          {templateTranslationLocales.filter(
+                            (locale) => locale !== (templateForm.defaultLocale ?? language)
+                          ).length}
+                        </span>
+                      </div>
+                      <p className="inline-message">{t("templates.translations_hint")}</p>
+                      {templateTranslationLocales
+                        .filter((locale) => locale !== (templateForm.defaultLocale ?? language))
+                        .map((locale) => {
+                          const translation = (templateForm.translations ?? []).find(
+                            (entry) => entry.locale === locale
+                          );
+
+                          return (
+                            <div className="task-row compact" key={locale}>
+                              <label>
+                                <span>
+                                  {getLanguageLabel(locale)} {t("templates.title")}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={translation?.title ?? ""}
+                                  onChange={(event) =>
+                                    updateTemplateTranslation(locale, { title: event.target.value })
+                                  }
+                                />
+                              </label>
+                              <label>
+                                <span>
+                                  {getLanguageLabel(locale)} {t("templates.description")}
+                                </span>
+                                <textarea
+                                  value={translation?.description ?? ""}
+                                  onChange={(event) =>
+                                    updateTemplateTranslation(locale, {
+                                      description: event.target.value
+                                    })
+                                  }
+                                  rows={2}
+                                />
+                              </label>
+                            </div>
+                          );
+                        })}
+                    </div>
                     <label>
                       <span>{t("templates.difficulty")}</span>
                       <select
@@ -4749,7 +5100,7 @@ export function App() {
                       />
                     </label>
                     <label>
-                      <span>Schedule next chore from</span>
+                      <span>{t("templates.recurrence_anchor")}</span>
                       <select
                         value={templateForm.recurrenceStartStrategy ?? "due_at"}
                         onChange={(event) =>
@@ -4759,71 +5110,64 @@ export function App() {
                           }))
                         }
                       >
-                        <option value="due_at">Original due date</option>
-                        <option value="completed_at">Completion date</option>
+                        <option value="due_at">{t("templates.recurrence_anchor_due_at")}</option>
+                        <option value="completed_at">{t("templates.recurrence_anchor_completed_at")}</option>
                       </select>
                     </label>
                     <div className="stack-list">
                       <div className="section-heading">
-                        <h3>Subtypes</h3>
+                        <h3>{t("templates.subtypes")}</h3>
                         <span className="section-kicker">{(templateForm.variants ?? []).length}</span>
                       </div>
-                      <p className="inline-message">Optional: define reusable subtypes here, for example "White clothes" or "Colour clothes". The chosen subtype carries over to follow-up chores too.</p>
-                      {(templateForm.variants ?? []).map((v, index) => (
-                        <div className="task-row compact" key={index}>
-                          <span>{v.label}</span>
+                      <p className="inline-message">{t("templates.subtypes_hint")}</p>
+                      {(templateForm.variants ?? []).map((variant, index) => (
+                        <div className="task-row compact" key={variant.id ?? `variant-${index}`}>
+                          <label>
+                            <span>{t("templates.subtype_name")}</span>
+                            <input
+                              type="text"
+                              value={variant.label}
+                              maxLength={100}
+                              onChange={(event) =>
+                                updateVariantDraftItem(index, { label: event.target.value })
+                              }
+                            />
+                          </label>
+                          {templateTranslationLocales
+                            .filter((locale) => locale !== (templateForm.defaultLocale ?? language))
+                            .map((locale) => {
+                              const translation = (variant.translations ?? []).find(
+                                (entry) => entry.locale === locale
+                              );
+
+                              return (
+                                <label key={`${variant.id ?? index}-${locale}`}>
+                                  <span>
+                                    {getLanguageLabel(locale)} {t("templates.subtype_name")}
+                                  </span>
+                                  <input
+                                    type="text"
+                                    value={translation?.label ?? ""}
+                                    maxLength={100}
+                                    onChange={(event) =>
+                                      updateVariantTranslation(index, locale, event.target.value)
+                                    }
+                                  />
+                                </label>
+                              );
+                            })}
                           <button
                             type="button"
                             className="ghost-button"
-                            onClick={() =>
-                              setTemplateForm((current) => ({
-                                ...current,
-                                variants: (current.variants ?? []).filter((_, i) => i !== index)
-                              }))
-                            }
+                            onClick={() => removeVariantDraftItem(index)}
                           >
-                            Remove
+                            {t("templates.remove_subtype")}
                           </button>
                         </div>
                       ))}
-                      <div style={{ display: "flex", gap: "8px" }}>
-                        <input
-                          type="text"
-                          id="newVariantLabel"
-                          placeholder="Subtype name"
-                          maxLength={100}
-                          onKeyDown={(event) => {
-                            if (event.key === "Enter") {
-                              event.preventDefault();
-                              const val = (event.target as HTMLInputElement).value.trim();
-                              if (val) {
-                                setTemplateForm((current) => ({
-                                  ...current,
-                                  variants: [...(current.variants ?? []), { label: val }]
-                                }));
-                                (event.target as HTMLInputElement).value = "";
-                              }
-                            }
-                          }}
-                        />
-                        <button
-                          type="button"
-                          className="ghost-button"
-                          onClick={() => {
-                            const input = document.getElementById("newVariantLabel") as HTMLInputElement;
-                            const val = input.value.trim();
-                            if (val) {
-                              setTemplateForm((current) => ({
-                                ...current,
-                                variants: [...(current.variants ?? []), { label: val }]
-                              }));
-                              input.value = "";
-                            }
-                          }}
-                        >
-                          Add
-                        </button>
-                      </div>
+                      <button type="button" className="ghost-button" onClick={addVariantDraftItem}>
+                        {t("templates.add_subtype")}
+                      </button>
                     </div>
                     <div className="stack-list">
                       <div className="section-heading">
@@ -4985,7 +5329,7 @@ export function App() {
                       if ((selectedTemplate?.variants?.length ?? 0) > 0) {
                         return (
                           <label>
-                            <span>Subtype</span>
+                            <span>{t("instances.subtype")}</span>
                             <select
                               required
                               value={instanceForm.variantId ?? ""}
@@ -4996,12 +5340,12 @@ export function App() {
                                 }))
                               }
                             >
-                              <option value="">— No variant —</option>
+                              <option value="">{t("instances.select_subtype")}</option>
                               {selectedTemplate!.variants.map((v) => (
                                 <option key={v.id} value={v.id}>{v.label}</option>
                               ))}
                             </select>
-                            <small className="inline-message">Selecting a subtype is required for this type.</small>
+                            <small className="inline-message">{t("instances.subtype_required")}</small>
                           </label>
                         );
                       }

@@ -193,8 +193,11 @@ model PasswordResetToken {
 model ChoreTemplate {
   id                 String                       @id @default(uuid()) @db.Uuid
   householdId        String                       @db.Uuid
+  defaultLocale      String                       @default("en") @db.VarChar(5)
   title              String
+  titleTranslations  Json?
   description        String
+  descriptionTranslations Json?
   difficulty         Difficulty
   basePoints         Int
   assignmentStrategy AssignmentStrategyType
@@ -293,6 +296,7 @@ model ChoreTemplateVariant {
   id         String        @id @default(uuid()) @db.Uuid
   templateId String        @db.Uuid
   label      String        @db.VarChar(100)
+  labelTranslations Json?
   sortOrder  Int           @default(0)
   template   ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
   instances  ChoreInstance[]

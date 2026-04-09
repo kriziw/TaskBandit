@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   Headers,
   Param,
@@ -43,14 +44,18 @@ export class ChoresController {
 
   @Get("templates")
   @Roles("admin", "parent")
-  templates(@CurrentUser() user: AuthenticatedUser) {
-    return this.choresService.getTemplates(user);
+  templates(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
+    return this.choresService.getTemplates(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Post("templates")
   @Roles("admin", "parent")
-  createTemplate(@Body() dto: CreateChoreTemplateDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.choresService.createTemplate(dto, user);
+  createTemplate(
+    @Body() dto: CreateChoreTemplateDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.createTemplate(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Put("templates/:id")
@@ -69,20 +74,38 @@ export class ChoresController {
     );
   }
 
+  @Delete("templates/:id")
+  @Roles("admin", "parent")
+  deleteTemplate(
+    @Param("id") templateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.deleteTemplate(
+      templateId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
   @Get("instances")
-  instances(@CurrentUser() user: AuthenticatedUser) {
-    return this.choresService.getInstances(user);
+  instances(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
+    return this.choresService.getInstances(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Get("takeover-requests")
-  takeoverRequests(@CurrentUser() user: AuthenticatedUser) {
-    return this.choresService.getTakeoverRequests(user);
+  takeoverRequests(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
+    return this.choresService.getTakeoverRequests(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Post("instances")
   @Roles("admin", "parent")
-  createInstance(@Body() dto: CreateChoreInstanceDto, @CurrentUser() user: AuthenticatedUser) {
-    return this.choresService.createInstance(dto, user);
+  createInstance(
+    @Body() dto: CreateChoreInstanceDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.createInstance(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Put("instances/:id")
