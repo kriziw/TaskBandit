@@ -2374,16 +2374,16 @@ private fun ChoreSectionPanel(
     val (containerColor, contentColor, badgeColor, badgeContentColor, borderColor) = rememberSectionToneColors(tone)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(24.dp),
-        border = BorderStroke(1.5.dp, borderColor),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.25.dp, borderColor),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = contentColor
         )
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2401,8 +2401,8 @@ private fun ChoreSectionPanel(
                 ) {
                     Text(
                         text = count.toString(),
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelMedium,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
                         color = badgeContentColor,
                         fontWeight = FontWeight.SemiBold
                     )
@@ -2493,27 +2493,25 @@ private data class SectionToneColors(
 @Composable
 private fun CompactChoreMeta(
     dueAt: String,
+    assignmentLabel: String? = null,
+    subtypeLabel: String? = null,
     requirePhotoProof: Boolean,
     modifier: Modifier = Modifier
 ) {
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(2.dp)
-    ) {
-        Text(
-            text = stringResource(R.string.mobile_due_at, formatApiTimestamp(dueAt)),
-            style = MaterialTheme.typography.bodySmall,
-            fontWeight = FontWeight.Medium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        if (requirePhotoProof) {
-            Text(
-                text = stringResource(R.string.mobile_photo_required_hint),
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
+    val metaParts = buildList {
+        subtypeLabel?.takeIf { it.isNotBlank() }?.let(::add)
+        assignmentLabel?.takeIf { it.isNotBlank() }?.let(::add)
+        add(stringResource(R.string.mobile_due_at, formatApiTimestamp(dueAt)))
+        if (requirePhotoProof) add(stringResource(R.string.mobile_photo_required_hint))
     }
+    Text(
+        text = metaParts.joinToString(" • "),
+        modifier = modifier,
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 2,
+        overflow = TextOverflow.Ellipsis
+    )
 }
 
 @Composable
@@ -2604,15 +2602,15 @@ private fun HistoricChoreCard(
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
@@ -2623,33 +2621,25 @@ private fun HistoricChoreCard(
                         imageVector = Icons.Rounded.AssignmentTurnedIn,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                        modifier = Modifier.padding(7.dp).size(16.dp)
+                        modifier = Modifier.padding(6.dp).size(14.dp)
                     )
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    subtypeLabel?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Text(
-                        text = stringResource(R.string.mobile_chores_history),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    CompactChoreMeta(
+                        dueAt = chore.dueAt,
+                        subtypeLabel = subtypeLabel,
+                        assignmentLabel = stringResource(R.string.mobile_chores_history),
+                        requirePhotoProof = chore.requirePhotoProof
                     )
                 }
                 Surface(
@@ -2658,23 +2648,18 @@ private fun HistoricChoreCard(
                 ) {
                     Text(
                         text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
             }
 
-            CompactChoreMeta(
-                dueAt = chore.dueAt,
-                requirePhotoProof = chore.requirePhotoProof
-            )
-
             if (hasHistoricDetails) {
                 OutlinedButton(
                     onClick = onExpandedChange,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                 ) {
                     Text(stringResource(if (expanded) R.string.mobile_chore_close_history else R.string.mobile_chore_open_history))
                 }
@@ -2687,15 +2672,15 @@ private fun HistoricChoreCard(
                     color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
                     ) {
                         if (chore.checklist.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 chore.checklist.forEach { item ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Checkbox(
                                             checked = chore.completedChecklistIds.contains(item.id),
@@ -2703,7 +2688,7 @@ private fun HistoricChoreCard(
                                         )
                                         Text(
                                             text = item.title,
-                                            style = MaterialTheme.typography.bodyMedium
+                                            style = MaterialTheme.typography.bodySmall
                                         )
                                     }
                                 }
@@ -2752,15 +2737,15 @@ private fun ChoreCard(
     }
     Card(
         modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp)
+        shape = RoundedCornerShape(18.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(12.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
@@ -2771,35 +2756,25 @@ private fun ChoreCard(
                         imageVector = sectionIcon,
                         contentDescription = null,
                         tint = accentContentColor,
-                        modifier = Modifier.padding(7.dp).size(16.dp)
+                        modifier = Modifier.padding(6.dp).size(14.dp)
                     )
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(3.dp)
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
                         text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
-                        maxLines = 3,
+                        maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
-                    subtypeLabel?.let {
-                        Text(
-                            text = it,
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis
-                        )
-                    }
-                    Text(
-                        text = assignmentLabel,
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+                    CompactChoreMeta(
+                        dueAt = chore.dueAt,
+                        assignmentLabel = assignmentLabel,
+                        subtypeLabel = subtypeLabel,
+                        requirePhotoProof = chore.requirePhotoProof
                     )
                 }
                 Surface(
@@ -2812,7 +2787,7 @@ private fun ChoreCard(
                 ) {
                     Text(
                         text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                         style = MaterialTheme.typography.labelSmall,
                         color = if (chore.isOverdue) {
                             MaterialTheme.colorScheme.onErrorContainer
@@ -2822,11 +2797,6 @@ private fun ChoreCard(
                     )
                 }
             }
-
-            CompactChoreMeta(
-                dueAt = chore.dueAt,
-                requirePhotoProof = chore.requirePhotoProof
-            )
 
             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
                 Surface(
@@ -2839,7 +2809,7 @@ private fun ChoreCard(
                             R.string.mobile_takeover_pending_with_name,
                             outgoingTakeoverFirstName
                         ),
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSecondaryContainer,
                         fontWeight = FontWeight.Medium
@@ -2855,16 +2825,16 @@ private fun ChoreCard(
                     Button(
                         onClick = { onApprove(chore.id) },
                         enabled = activeReviewAction == null,
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(stringResource(if (activeReviewAction == "approve:${chore.id}") R.string.mobile_approving else R.string.mobile_approve))
                     }
                     OutlinedButton(
                         onClick = { onReject(chore.id) },
                         enabled = activeReviewAction == null,
-                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                     ) {
                         Text(stringResource(if (activeReviewAction == "reject:${chore.id}") R.string.mobile_rejecting else R.string.mobile_reject))
                     }
@@ -2882,8 +2852,8 @@ private fun ChoreCard(
                         }
                     },
                     enabled = if (requiresTakeOver) activeStartAction == null else true,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 42.dp),
-                    contentPadding = PaddingValues(horizontal = 14.dp, vertical = 9.dp)
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         stringResource(
@@ -2912,8 +2882,8 @@ private fun ChoreCard(
                     color = accentContainerColor.copy(alpha = 0.32f)
                 ) {
                     Column(
-                        modifier = Modifier.fillMaxWidth().padding(12.dp),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
                         if (!canManageTask) {
                             Text(
@@ -2923,11 +2893,11 @@ private fun ChoreCard(
                             )
                         }
                         if (chore.checklist.isNotEmpty()) {
-                            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                 chore.checklist.forEach { item ->
                                     Row(
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
                                     ) {
                                         Checkbox(
                                             checked = selectedChecklistIds.contains(item.id),
@@ -2962,58 +2932,63 @@ private fun ChoreCard(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
+                                Button(
+                                    onClick = { onStartChore(chore.id) },
+                                    enabled = activeStartAction == null && chore.state != "in_progress",
+                                    modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                }
                                 if (chore.requirePhotoProof) {
-                                    Button(
-                                        onClick = { onStartChore(chore.id) },
-                                        enabled = activeStartAction == null && chore.state != "in_progress",
-                                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                                    ) {
-                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
-                                    }
                                     OutlinedButton(
                                         onClick = { onPickProofs(chore.id) },
                                         enabled = activeSubmitAction == null,
-                                        modifier = Modifier.weight(1f).heightIn(min = 40.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                     ) {
                                         Text(stringResource(R.string.mobile_pick_photos))
                                     }
                                 } else {
                                     Button(
-                                        onClick = { onStartChore(chore.id) },
-                                        enabled = activeStartAction == null && chore.state != "in_progress",
-                                        modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                        onClick = { onSubmitChore(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                     ) {
-                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
+                                        Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
                                     }
                                 }
                             }
                             if (chore.requirePhotoProof) {
-                                OutlinedButton(
-                                    onClick = { onTakeProofPhoto(chore.id) },
-                                    enabled = activeSubmitAction == null,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
-                                    Text(stringResource(R.string.mobile_take_photo))
+                                    OutlinedButton(
+                                        onClick = { onTakeProofPhoto(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_take_photo))
+                                    }
+                                    Button(
+                                        onClick = { onSubmitChore(chore.id) },
+                                        enabled = activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
+                                    }
                                 }
-                            }
-                            Button(
-                                onClick = { onSubmitChore(chore.id) },
-                                enabled = activeSubmitAction == null,
-                                modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
-                            ) {
-                                Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
                             }
                             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
                                 OutlinedButton(
                                     onClick = {},
                                     enabled = false,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
                                         stringResource(
@@ -3026,8 +3001,8 @@ private fun ChoreCard(
                                 OutlinedButton(
                                     onClick = { onRequestTakeover(chore.id) },
                                     enabled = activeTakeoverRequestAction == null,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 40.dp),
-                                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
                                     Text(
                                         stringResource(
