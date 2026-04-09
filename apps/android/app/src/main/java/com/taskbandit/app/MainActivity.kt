@@ -20,6 +20,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
@@ -84,6 +85,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.Lifecycle
@@ -2117,10 +2119,11 @@ private fun ChoreSectionPanel(
     tone: MobileChoreSectionTone,
     content: @Composable ColumnScope.() -> Unit
 ) {
-    val (containerColor, contentColor, badgeColor, badgeContentColor) = rememberSectionToneColors(tone)
+    val (containerColor, contentColor, badgeColor, badgeContentColor, borderColor) = rememberSectionToneColors(tone)
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(24.dp),
+        border = BorderStroke(1.5.dp, borderColor),
         colors = CardDefaults.cardColors(
             containerColor = containerColor,
             contentColor = contentColor
@@ -2159,38 +2162,80 @@ private fun ChoreSectionPanel(
 }
 
 @Composable
-private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionToneColors = when (tone) {
-    MobileChoreSectionTone.MINE -> SectionToneColors(
-        container = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f),
-        content = MaterialTheme.colorScheme.onSurface,
-        badgeContainer = MaterialTheme.colorScheme.primaryContainer,
-        badgeContent = MaterialTheme.colorScheme.onPrimaryContainer
-    )
-    MobileChoreSectionTone.UNASSIGNED -> SectionToneColors(
-        container = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.40f),
-        content = MaterialTheme.colorScheme.onSurface,
-        badgeContainer = MaterialTheme.colorScheme.tertiaryContainer,
-        badgeContent = MaterialTheme.colorScheme.onTertiaryContainer
-    )
-    MobileChoreSectionTone.OTHERS -> SectionToneColors(
-        container = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.44f),
-        content = MaterialTheme.colorScheme.onSurface,
-        badgeContainer = MaterialTheme.colorScheme.secondaryContainer,
-        badgeContent = MaterialTheme.colorScheme.onSecondaryContainer
-    )
-    MobileChoreSectionTone.HISTORIC -> SectionToneColors(
-        container = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f),
-        content = MaterialTheme.colorScheme.onSurface,
-        badgeContainer = MaterialTheme.colorScheme.surface,
-        badgeContent = MaterialTheme.colorScheme.onSurface
-    )
+private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionToneColors {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+    return if (isDarkTheme) {
+        when (tone) {
+            MobileChoreSectionTone.MINE -> SectionToneColors(
+                container = Color(0xFF24354A),
+                content = Color(0xFFF7F5FF),
+                badgeContainer = Color(0xFF79B9EE),
+                badgeContent = Color(0xFF132235),
+                borderColor = Color(0xFF5C84B3)
+            )
+            MobileChoreSectionTone.UNASSIGNED -> SectionToneColors(
+                container = Color(0xFF3A3352),
+                content = Color(0xFFF7F3FF),
+                badgeContainer = Color(0xFFB8A3F0),
+                badgeContent = Color(0xFF241B3A),
+                borderColor = Color(0xFF8F7AC8)
+            )
+            MobileChoreSectionTone.OTHERS -> SectionToneColors(
+                container = Color(0xFF2E2E63),
+                content = Color(0xFFF5F3FF),
+                badgeContainer = Color(0xFF9BA7FF),
+                badgeContent = Color(0xFF1A1F48),
+                borderColor = Color(0xFF717DDB)
+            )
+            MobileChoreSectionTone.HISTORIC -> SectionToneColors(
+                container = Color(0xFF222A38),
+                content = Color(0xFFF0F3F8),
+                badgeContainer = Color(0xFF5E708D),
+                badgeContent = Color(0xFFF0F3F8),
+                borderColor = Color(0xFF4D5A73)
+            )
+        }
+    } else {
+        when (tone) {
+            MobileChoreSectionTone.MINE -> SectionToneColors(
+                container = Color(0xFFF0E1C5),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFD3B07B),
+                badgeContent = Color(0xFF2D2110),
+                borderColor = Color(0xFFD0B283)
+            )
+            MobileChoreSectionTone.UNASSIGNED -> SectionToneColors(
+                container = Color(0xFFF7ECD5),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFE4C78D),
+                badgeContent = Color(0xFF35270E),
+                borderColor = Color(0xFFE0C58F)
+            )
+            MobileChoreSectionTone.OTHERS -> SectionToneColors(
+                container = Color(0xFFE6D5BA),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFCFAE7A),
+                badgeContent = Color(0xFF302110),
+                borderColor = Color(0xFFC9AA78)
+            )
+            MobileChoreSectionTone.HISTORIC -> SectionToneColors(
+                container = Color(0xFFF2EADF),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFD8C8B3),
+                badgeContent = MaterialTheme.colorScheme.onSurface,
+                borderColor = Color(0xFFD5C6B2)
+            )
+        }
+    }
 }
 
 private data class SectionToneColors(
     val container: Color,
     val content: Color,
     val badgeContainer: Color,
-    val badgeContent: Color
+    val badgeContent: Color,
+    val borderColor: Color
 )
 
 @Composable
