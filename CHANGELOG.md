@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.28.0](https://github.com/kriziw/TaskBandit/compare/v0.27.2...v0.28.0) (2026-04-10)
+
+
+### Features
+
+* **chores:** add recurring cycle controls ([#158](https://github.com/kriziw/TaskBandit/issues/158)) ([20237e5](https://github.com/kriziw/TaskBandit/commit/20237e5a8ceaa8d85109351265d7cd3c03f2f03b))
+
 ## [0.27.2](https://github.com/kriziw/TaskBandit/compare/v0.27.1...v0.27.2) (2026-04-10)
 
 
