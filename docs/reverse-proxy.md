@@ -103,5 +103,7 @@ services:
 
 - Keep TLS termination at the proxy layer unless you have a specific reason not to.
 - TaskBandit serves the web UI from the same server image, so one proxy definition covers both the UI and API.
+- If you are using the split admin/client deployment model instead, disable the embedded web UI with `TASKBANDIT_SERVE_EMBEDDED_WEB=false` and proxy the static admin/client frontends separately while keeping API traffic on the TaskBandit server.
+- For split frontend deployments, set `TASKBANDIT_CORS_ALLOWED_ORIGINS` to the exact admin and client browser origins that should be allowed to call the API.
 - If you deploy under a subpath, the web UI, API, and Swagger endpoints will be exposed under that same base path.
 - Docker health checks already probe `http://127.0.0.1:${TASKBANDIT_PORT}/health` inside the container, so an external `/health` proxy route is optional unless your own reverse proxy or load balancer needs it.

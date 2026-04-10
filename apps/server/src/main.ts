@@ -17,7 +17,21 @@ async function bootstrap() {
 
   app.useLogger(logger);
 
-  app.enableCors();
+  const corsAllowedOrigins = config.corsAllowedOrigins;
+  if (corsAllowedOrigins.length > 0) {
+    app.enableCors({
+      origin: (origin, callback) => {
+        if (!origin || corsAllowedOrigins.includes(origin)) {
+          callback(null, true);
+          return;
+        }
+
+        callback(new Error("Origin is not allowed by TaskBandit CORS settings."));
+      }
+    });
+  } else {
+    app.enableCors();
+  }
   app.enableShutdownHooks();
   app.useGlobalPipes(
     new ValidationPipe({
@@ -60,7 +74,7 @@ async function bootstrap() {
   const webIndex = join(webRoot, "index.html");
   const webMountPath = config.reverseProxyPathBase ? `/${config.reverseProxyPathBase}` : "/";
 
-  if (existsSync(webIndex)) {
+  if (config.serveEmbeddedWeb && existsSync(webIndex)) {
     if (webMountPath === "/") {
       app.useStaticAssets(webRoot);
     } else {

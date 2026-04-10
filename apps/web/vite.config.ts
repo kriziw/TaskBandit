@@ -23,6 +23,7 @@ export default defineConfig(({ mode }) => {
       : mode === "client"
         ? { client: entryPoints.client }
         : entryPoints;
+  const outDir = mode === "admin" ? "dist-admin" : mode === "client" ? "dist-client" : "dist";
 
   return {
     plugins: [react()],
@@ -36,6 +37,7 @@ export default defineConfig(({ mode }) => {
       port: 5173
     },
     build: {
+      outDir,
       rollupOptions: {
         input: buildInput
       }

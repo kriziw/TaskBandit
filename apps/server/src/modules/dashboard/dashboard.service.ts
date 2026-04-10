@@ -283,6 +283,8 @@ export class DashboardService {
       application: {
         status: "ready",
         port: this.appConfigService.port,
+        serveEmbeddedWeb: this.appConfigService.serveEmbeddedWeb,
+        corsAllowedOrigins: this.appConfigService.corsAllowedOrigins,
         reverseProxyEnabled: this.appConfigService.reverseProxyEnabled,
         reverseProxyPathBase: this.appConfigService.reverseProxyPathBase || null
       },

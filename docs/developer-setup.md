@@ -16,7 +16,7 @@
 4. If you want to run the published container instead of a local build, leave `TASKBANDIT_IMAGE_TAG` at `latest` or pin it to a published Docker Hub tag.
 5. If you want to run the server locally, install dependencies in `apps/server`, run `npm run prisma:generate`, apply the Prisma migration, then start the NestJS API.
 6. If needed, copy `apps/web/.env.example` to `apps/web/.env` and set `VITE_TASKBANDIT_API_BASE_URL` to the reachable API origin.
-7. Run the React app from `apps/web`.
+7. Run the React app from `apps/web`. Use `npm run dev:admin` and `npm run dev:client` when you want to exercise the split frontend model locally.
 8. Open the Android project from `apps/android` in Android Studio.
 
 ## Notes
@@ -30,5 +30,6 @@
 - Authentik is the target OIDC provider for the first external identity integration.
 - Reverse proxy support is built in through trusted proxy handling and optional path-base configuration.
 - Demo seeded local accounts use the password `TaskBandit123!` for `alex@taskbandit.local`, `maya@taskbandit.local`, and `luca@taskbandit.local`.
-- The web UI now talks to the live API and stores the JWT session in browser local storage.
+- The client PWA keeps its session in durable local storage, while the admin entrypoint uses session storage so admin access is more tightly scoped to the active browser session.
+- Split frontend deployment and migration rules are documented in `docs/dual-web-clients.md`.
 - Proof-photo uploads are now written to local disk under `TASKBANDIT_STORAGE_ROOT` and should point at a persistent path outside disposable containers in real deployments.
