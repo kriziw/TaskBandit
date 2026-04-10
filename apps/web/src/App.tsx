@@ -47,7 +47,7 @@ import type {
   UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
-const tokenStorageKey = "taskbandit-access-token";
+const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
@@ -259,8 +259,69 @@ function createEmptyMemberEditForm(): MemberEditFormState {
   };
 }
 
-function readStoredToken() {
-  return window.localStorage.getItem(tokenStorageKey);
+function getTokenStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? legacyTokenStorageKey : `${legacyTokenStorageKey}-${variant}`;
+}
+
+function getTokenMigrationKey(variant: WorkspaceVariant) {
+  return `${getTokenStorageKey(variant)}-migrated`;
+}
+
+function getTokenStorage(variant: WorkspaceVariant) {
+  if (variant === "admin") {
+    return window.sessionStorage;
+  }
+
+  return window.localStorage;
+}
+
+function readStoredToken(variant: WorkspaceVariant) {
+  const storage = getTokenStorage(variant);
+  const storageKey = getTokenStorageKey(variant);
+  const directValue = storage.getItem(storageKey);
+  if (directValue) {
+    return directValue;
+  }
+
+  if (variant !== "combined") {
+    const migrationKey = getTokenMigrationKey(variant);
+    if (window.localStorage.getItem(migrationKey) === "true") {
+      return null;
+    }
+
+    const legacyValue = window.localStorage.getItem(legacyTokenStorageKey);
+    if (legacyValue) {
+      storage.setItem(storageKey, legacyValue);
+      window.localStorage.setItem(migrationKey, "true");
+      return legacyValue;
+    }
+  }
+
+  return null;
+}
+
+function writeStoredToken(variant: WorkspaceVariant, token: string) {
+  const storage = getTokenStorage(variant);
+  storage.setItem(getTokenStorageKey(variant), token);
+  if (variant !== "combined") {
+    window.localStorage.setItem(getTokenMigrationKey(variant), "true");
+  }
+}
+
+function clearStoredToken(variant: WorkspaceVariant) {
+  const storage = getTokenStorage(variant);
+  storage.removeItem(getTokenStorageKey(variant));
+  if (variant !== "combined") {
+    window.localStorage.setItem(getTokenMigrationKey(variant), "true");
+  }
+}
+
+function getDismissedUpdateStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? dismissedUpdateStorageKey : `${dismissedUpdateStorageKey}-${variant}`;
+}
+
+function getDismissedPwaInstallStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? dismissedPwaInstallKey : `${dismissedPwaInstallKey}-${variant}`;
 }
 
 function isWorkspacePage(value: string | null): value is WorkspacePage {
@@ -401,14 +462,14 @@ const currentWebReleaseInfo: ReleaseInfo = {
 
 export function App({ workspaceVariant = "combined" }: { workspaceVariant?: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
-  const [token, setToken] = useState<string | null>(() => readStoredToken());
+  const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
-    window.localStorage.getItem(dismissedUpdateStorageKey)
+    window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant))
   );
   const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
   const [installPromptDismissed, setInstallPromptDismissed] = useState<boolean>(() =>
-    window.localStorage.getItem(dismissedPwaInstallKey) === "true"
+    window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
   );
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
@@ -534,7 +595,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     }
 
     if (oidcToken) {
-      window.localStorage.setItem(tokenStorageKey, oidcToken);
+      writeStoredToken(workspaceVariant, oidcToken);
       setToken(oidcToken);
       setLoginError(null);
       setNotice(t("auth.oidc_success"));
@@ -969,7 +1030,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     const onAppInstalled = () => {
       setInstallPromptEvent(null);
-      window.localStorage.setItem(dismissedPwaInstallKey, "true");
+      window.localStorage.setItem(getDismissedPwaInstallStorageKey(workspaceVariant), "true");
       setInstallPromptDismissed(true);
       setNotice(t("pwa.install_success"));
     };
@@ -982,6 +1043,14 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
       window.removeEventListener("appinstalled", onAppInstalled);
     };
   }, [isClientVariant, t]);
+
+  useEffect(() => {
+    setToken(readStoredToken(workspaceVariant));
+    setDismissedUpdateKey(window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant)));
+    setInstallPromptDismissed(
+      window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
+    );
+  }, [workspaceVariant]);
 
   const onboardingSteps = useMemo(
     () => [
@@ -1718,7 +1787,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   }
 
   function handleLogout(message?: string) {
-    window.localStorage.removeItem(tokenStorageKey);
+    clearStoredToken(workspaceVariant);
     setToken(null);
     setPayload(null);
     setRuntimeLogs([]);
@@ -1735,7 +1804,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     try {
       const response = await taskBanditApi.login(loginForm.email, loginForm.password, language);
-      window.localStorage.setItem(tokenStorageKey, response.accessToken);
+      writeStoredToken(workspaceVariant, response.accessToken);
       setToken(response.accessToken);
       setNotice(t("auth.login_success"));
     } catch (error) {
@@ -1752,7 +1821,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     try {
       const response = await taskBanditApi.signup(signupForm, language);
-      window.localStorage.setItem(tokenStorageKey, response.accessToken);
+      writeStoredToken(workspaceVariant, response.accessToken);
       setToken(response.accessToken);
       setSignupForm({
         displayName: "",
@@ -1827,7 +1896,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
         bootstrapForm.ownerPassword,
         language
       );
-      window.localStorage.setItem(tokenStorageKey, authResponse.accessToken);
+      writeStoredToken(workspaceVariant, authResponse.accessToken);
       setToken(authResponse.accessToken);
       setBootstrapStatus({
         isBootstrapped: true,
@@ -3170,7 +3239,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
       return;
     }
 
-    window.localStorage.setItem(dismissedUpdateStorageKey, availableUpdateKey);
+    window.localStorage.setItem(getDismissedUpdateStorageKey(workspaceVariant), availableUpdateKey);
     setDismissedUpdateKey(availableUpdateKey);
   }
 
@@ -3191,7 +3260,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   }
 
   function handleDismissInstallPrompt() {
-    window.localStorage.setItem(dismissedPwaInstallKey, "true");
+    window.localStorage.setItem(getDismissedPwaInstallStorageKey(workspaceVariant), "true");
     setInstallPromptDismissed(true);
     setInstallPromptEvent(null);
   }
@@ -4740,6 +4809,18 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                       </div>
                       <p>
                         {t("system_status.listen_port")}: {payload.systemStatus.application.port}
+                      </p>
+                      <p>
+                        {t("system_status.embedded_web")}:{" "}
+                        {payload.systemStatus.application.serveEmbeddedWeb
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.cors_origins")}:{" "}
+                        {payload.systemStatus.application.corsAllowedOrigins.length > 0
+                          ? payload.systemStatus.application.corsAllowedOrigins.join(", ")
+                          : t("system_status.cors_open")}
                       </p>
                       <p>
                         {t("system_status.reverse_proxy")}:{" "}

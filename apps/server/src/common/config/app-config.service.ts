@@ -70,6 +70,10 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_REVERSE_PROXY_ENABLED", "false") === "true";
   }
 
+  get serveEmbeddedWeb(): boolean {
+    return this.configService.get<string>("TASKBANDIT_SERVE_EMBEDDED_WEB", "true") === "true";
+  }
+
   get reverseProxyPathBase(): string {
     const rawValue = this.configService.get<string>("TASKBANDIT_REVERSE_PROXY_PATH_BASE", "").trim();
     if (!rawValue) {
@@ -124,6 +128,14 @@ export class AppConfigService {
 
   get envFileHint(): string {
     return this.configService.get<string>("TASKBANDIT_ENV_FILE_HINT", "./.env").trim();
+  }
+
+  get corsAllowedOrigins(): string[] {
+    return this.configService
+      .get<string>("TASKBANDIT_CORS_ALLOWED_ORIGINS", "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
   }
 
   get runtimeLogFilePath(): string {

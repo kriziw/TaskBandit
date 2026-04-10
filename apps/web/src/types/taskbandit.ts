@@ -238,6 +238,8 @@ export type AdminSystemStatus = {
   application: {
     status: "ready";
     port: number;
+    serveEmbeddedWeb: boolean;
+    corsAllowedOrigins: string[];
     reverseProxyEnabled: boolean;
     reverseProxyPathBase: string | null;
   };
