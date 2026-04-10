@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.26.0](https://github.com/kriziw/TaskBandit/compare/v0.25.12...v0.26.0) (2026-04-10)
+
+
+### Features
+
+* **web:** reorganize chores page and exports ([#148](https://github.com/kriziw/TaskBandit/issues/148)) ([7c12bd1](https://github.com/kriziw/TaskBandit/commit/7c12bd1d679c1c3665a20f95bba5865e2a6ce389))
+
 ## [0.25.12](https://github.com/kriziw/TaskBandit/compare/v0.25.11...v0.25.12) (2026-04-10)
 
 
