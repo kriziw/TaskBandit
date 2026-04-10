@@ -19,25 +19,6 @@ RUN npx prisma generate
 COPY apps/server/src ./src
 RUN npm run build
 
-FROM node:22-bookworm-slim AS web-build
-WORKDIR /workspace/apps/web
-
-ARG TASKBANDIT_RELEASE_VERSION
-ARG TASKBANDIT_BUILD_NUMBER
-ARG TASKBANDIT_COMMIT_SHA
-
-ENV VITE_TASKBANDIT_RELEASE_VERSION=${TASKBANDIT_RELEASE_VERSION}
-ENV VITE_TASKBANDIT_BUILD_NUMBER=${TASKBANDIT_BUILD_NUMBER}
-ENV VITE_TASKBANDIT_COMMIT_SHA=${TASKBANDIT_COMMIT_SHA}
-
-COPY apps/web/package.json apps/web/package-lock.json ./
-RUN npm ci
-
-COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html apps/web/admin.html apps/web/client.html ./
-COPY apps/web/public ./public
-COPY apps/web/src ./src
-RUN npm run build
-
 FROM node:22-bookworm-slim AS runtime
 WORKDIR /workspace/apps/server
 
@@ -56,7 +37,6 @@ COPY apps/server/prisma ./prisma
 RUN npx prisma generate
 
 COPY --from=server-build /workspace/apps/server/dist ./dist
-COPY --from=web-build /workspace/apps/web/dist ./public
 RUN mkdir -p /var/lib/taskbandit/storage
 
 ENV NODE_ENV=production

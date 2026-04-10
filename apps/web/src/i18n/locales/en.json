@@ -76,6 +76,8 @@
   "onboarding.go_settings": "Open settings",
   "onboarding.go_members": "Open members",
   "onboarding.go_templates": "Open templates",
+  "onboarding.go_notifications": "Open notifications",
+  "onboarding.go_chores": "Open chores",
   "onboarding.go_schedule": "Open scheduler",
   "onboarding.back": "Back",
   "onboarding.next": "Next",
