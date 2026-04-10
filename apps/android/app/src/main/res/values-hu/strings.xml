@@ -286,4 +286,5 @@
     <string name="mobile_close_cycle_confirm_title">Lezárod ezt a ciklust?</string>
     <string name="mobile_close_cycle_confirm_body">Lezárod a(z) „%1$s” ismétlődő ciklusát, és törlöd benne az összes még nyitott feladatot?</string>
     <string name="mobile_close_cycle_confirm_action">Igen, lezárom</string>
+    <string name="mobile_more_actions">További műveletek</string>
 </resources>
