@@ -60,6 +60,26 @@ select {
   padding: 24px 18px 40px;
 }
 
+.app-shell.variant-client {
+  max-width: 980px;
+}
+
+.app-shell.variant-client .hero {
+  grid-template-columns: minmax(0, 1fr) 180px;
+}
+
+.app-shell.variant-client .workspace-sidebar-panel {
+  padding: 10px;
+}
+
+.app-shell.variant-client .workspace-nav {
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+}
+
+.app-shell.variant-client .workspace-nav-button {
+  text-align: center;
+}
+
 .workspace-shell {
   display: grid;
   grid-template-columns: 250px minmax(0, 1fr);
@@ -1202,6 +1222,24 @@ h4,
     grid-column: span 1;
   }
 
+  .app-shell.variant-client .workspace-sidebar-panel {
+    padding: 8px;
+  }
+
+  .app-shell.variant-client .workspace-nav {
+    display: flex;
+    gap: 8px;
+    overflow-x: auto;
+    padding-bottom: 2px;
+    scroll-snap-type: x proximity;
+  }
+
+  .app-shell.variant-client .workspace-nav-button {
+    min-width: max-content;
+    flex: 0 0 auto;
+    scroll-snap-align: start;
+  }
+
 }
 
 @media (max-width: 640px) {
@@ -1237,5 +1275,17 @@ h4,
 
   .app-release-footer-inner {
     justify-content: flex-start;
+  }
+
+  .app-shell.variant-client .hero {
+    gap: 14px;
+  }
+
+  .app-shell.variant-client .mascot-card {
+    display: none;
+  }
+
+  .app-shell.variant-client .workspace-nav-kicker {
+    margin-bottom: 6px;
   }
 }

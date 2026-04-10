@@ -43,6 +43,7 @@ import type {
 const tokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
+const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
 type WorkspaceVariant = "combined" | "admin" | "client";
 
 type DashboardPayload = {
@@ -339,6 +340,12 @@ function formatReleaseLabel(release: ReleaseInfo) {
   return `v${release.releaseVersion} · build ${release.buildNumber}`;
 }
 
+type BeforeInstallPromptEvent = Event & {
+  readonly platforms: string[];
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 function isOptionalFeatureUnavailable(error: unknown) {
   return error instanceof TaskBanditApiError && [404, 405, 501].includes(error.status);
 }
@@ -373,6 +380,10 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
     window.localStorage.getItem(dismissedUpdateStorageKey)
+  );
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installPromptDismissed, setInstallPromptDismissed] = useState<boolean>(() =>
+    window.localStorage.getItem(dismissedPwaInstallKey) === "true"
   );
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
@@ -798,6 +809,42 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   const activePageDescription = isAdminVariantAccessDenied
     ? t("workspace.admin_only_body")
     : pageDescriptions[activePage];
+  const isClientVariant = workspaceVariant === "client";
+  const isStandaloneDisplayMode =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: window-controls-overlay)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const showInstallPrompt =
+    isClientVariant &&
+    !isStandaloneDisplayMode &&
+    !installPromptDismissed &&
+    installPromptEvent !== null;
+
+  useEffect(() => {
+    if (!isClientVariant) {
+      return;
+    }
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    };
+
+    const onAppInstalled = () => {
+      setInstallPromptEvent(null);
+      window.localStorage.setItem(dismissedPwaInstallKey, "true");
+      setInstallPromptDismissed(true);
+      setNotice(t("pwa.install_success"));
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, [isClientVariant, t]);
 
   const onboardingSteps = useMemo(
     () => [
@@ -2990,8 +3037,30 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     setDismissedUpdateKey(availableUpdateKey);
   }
 
+  async function handleInstallPwa() {
+    if (!installPromptEvent) {
+      return;
+    }
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    if (choice.outcome === "accepted") {
+      setInstallPromptEvent(null);
+      setNotice(t("pwa.install_success"));
+      return;
+    }
+
+    setInstallPromptEvent(null);
+  }
+
+  function handleDismissInstallPrompt() {
+    window.localStorage.setItem(dismissedPwaInstallKey, "true");
+    setInstallPromptDismissed(true);
+    setInstallPromptEvent(null);
+  }
+
   return (
-    <main className="app-shell">
+    <main className={`app-shell variant-${workspaceVariant}`} data-variant={workspaceVariant}>
       <section className="toolbar">
         <div className="toolbar-group">
           {payload?.currentUser ? (
@@ -3062,6 +3131,22 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
           <button className="ghost-button" type="button" onClick={handleDismissAvailableUpdate}>
             {t("release.dismiss_update")}
           </button>
+        </div>
+      ) : null}
+      {showInstallPrompt ? (
+        <div className="notice-banner info update-banner">
+          <div>
+            <strong>{t("pwa.install_title")}</strong>
+            <p>{t("pwa.install_body")}</p>
+          </div>
+          <div className="button-row">
+            <button className="secondary-button" type="button" onClick={() => void handleInstallPwa()}>
+              {t("pwa.install_action")}
+            </button>
+            <button className="ghost-button" type="button" onClick={handleDismissInstallPrompt}>
+              {t("pwa.install_later")}
+            </button>
+          </div>
         </div>
       ) : null}
 
