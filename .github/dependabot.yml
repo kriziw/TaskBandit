@@ -2,6 +2,7 @@ version: 2
 updates:
   - package-ecosystem: "npm"
     directory: "/apps/server"
+    target-branch: "main"
     schedule:
       interval: "weekly"
     ignore:
@@ -35,6 +36,7 @@ updates:
 
   - package-ecosystem: "npm"
     directory: "/apps/web"
+    target-branch: "main"
     schedule:
       interval: "weekly"
     ignore:
