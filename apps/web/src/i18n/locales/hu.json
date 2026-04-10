@@ -89,7 +89,7 @@
   "panel.leaderboard": "Rangsor",
   "panel.notifications": "Értesítések",
   "panel.notification_preferences": "Értesítési beállítások",
-  "panel.mobile_push_devices": "Mobil push eszközök",
+  "panel.mobile_push_devices": "Push eszközök",
   "panel.household_notification_health": "Háztartási értesítési állapot",
   "panel.backup_readiness": "Backup készenlét",
   "panel.system_status": "Rendszerállapot",
@@ -565,4 +565,16 @@
   ,"instances.repeat_end_date": "Befejezes datuma"
   ,"instances.repeat_occurrences_required": "Add meg, hogy osszesen hany alkalommal fusson ez az ismetlodo feladat."
   ,"instances.repeat_end_date_required": "Valaszd ki a datumot, amikor ez az ismetlodo feladat alljon le."
+  ,"pwa.browser_notifications_title": "Bongeszos ertesitesek bekapcsolasa"
+  ,"pwa.browser_notifications_body": "Kapcsold be a bongeszos ertesiteseket, hogy a kliens munkater a hatterben is tudjon jelezni."
+  ,"pwa.browser_notifications_action": "Ertesitesek bekapcsolasa"
+  ,"pwa.browser_notifications_enabled": "A bongeszos ertesitesek most mar engedelyezve vannak ezen az eszkozön."
+  ,"pwa.browser_notifications_failed": "A TaskBandit nem tudta bekapcsolni a bongeszos ertesiteseket ezen az eszkozön."
+  ,"pwa.browser_notifications_denied": "A bongeszos ertesitesek le vannak tiltva ennél az oldalnal. Ha kesobb szeretned bekapcsolni, modositd a bongeszo engedelyet."
+  ,"pwa.foreground_notification_received": "Uj haztartasi aktivitas erkezett."
+  ,"system_status.web_push_enabled": "Szerveres Web Push engedelyezve"
+  ,"settings.push_primary_hint": "A TaskBandit a push ertesiteseket tekinti az elsodleges haztartasi csatornanak. Jelentkezz be az Android alkalmazasba, vagy kapcsold be az ertesiteseket a kliens webappban, hogy ez az eszkoz elo emlekeztetoket es jovahagyasi frissiteseket kapjon."
+  ,"settings.no_notification_devices": "Ehhez a fiokhoz meg nincs regisztralva push-kepes eszkoz. Jelentkezz be az Android alkalmazasba, vagy kapcsold be az ertesiteseket a kliens webappban egy eszkoz csatlakoztatasahoz."
+  ,"settings.notification_device_browser": "Bongeszos kliens"
+  ,"settings.notification_device_provider_web_push": "Web Push"
 }

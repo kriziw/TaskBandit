@@ -44,6 +44,11 @@ export class SettingsController {
     return this.settingsService.getNotificationDevices(user);
   }
 
+  @Get("notification-devices/web-push/public-key")
+  getWebPushPublicKey(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.getWebPushPublicKey(user);
+  }
+
   @Get("notification-health")
   @Roles("admin")
   getHouseholdNotificationHealth(@CurrentUser() user: AuthenticatedUser) {

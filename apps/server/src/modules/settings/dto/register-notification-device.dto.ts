@@ -8,24 +8,36 @@ export class RegisterNotificationDeviceDto {
   installationId!: string;
 
   @ApiPropertyOptional({
-    enum: ["android"]
+    enum: ["android", "web"]
   })
   @IsOptional()
-  @IsIn(["android"])
-  platform?: "android";
+  @IsIn(["android", "web"])
+  platform?: "android" | "web";
 
   @ApiPropertyOptional({
-    enum: ["generic", "fcm"]
+    enum: ["generic", "fcm", "web_push"]
   })
   @IsOptional()
-  @IsIn(["generic", "fcm"])
-  provider?: "generic" | "fcm";
+  @IsIn(["generic", "fcm", "web_push"])
+  provider?: "generic" | "fcm" | "web_push";
 
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
   @MaxLength(500)
   pushToken?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  webPushP256dh?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  @MaxLength(500)
+  webPushAuth?: string;
 
   @ApiPropertyOptional()
   @IsOptional()

@@ -10,6 +10,12 @@ type FirebaseServiceAccount = {
   privateKey: string;
 };
 
+type WebPushConfig = {
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+};
+
 @Injectable()
 export class AppConfigService {
   constructor(private readonly configService: ConfigService) {}
@@ -161,6 +167,26 @@ export class AppConfigService {
     } catch {
       return null;
     }
+  }
+
+  get webPushConfig(): WebPushConfig | null {
+    const publicKey = this.configService.get<string>("TASKBANDIT_WEB_PUSH_PUBLIC_KEY", "").trim();
+    const privateKey = this.configService.get<string>("TASKBANDIT_WEB_PUSH_PRIVATE_KEY", "").trim();
+    const subject = this.configService.get<string>("TASKBANDIT_WEB_PUSH_SUBJECT", "").trim();
+
+    if (!publicKey || !privateKey || !subject) {
+      return null;
+    }
+
+    return {
+      publicKey,
+      privateKey,
+      subject
+    };
+  }
+
+  get webPushEnabled(): boolean {
+    return this.webPushConfig !== null;
   }
 
   get jwtSecret(): string {

@@ -15,6 +15,7 @@ import type {
   CreateHouseholdMemberInput,
   CreateHouseholdMemberResult,
   DashboardSummary,
+  DashboardSyncToken,
   Household,
   HouseholdSettings,
   HouseholdNotificationHealthEntry,
@@ -28,7 +29,8 @@ import type {
   ReleaseInfo,
   TakeoverRequestEntry,
   UpdateHouseholdMemberInput,
-  UploadedProof
+  UploadedProof,
+  WebPushPublicKeyResponse
 } from "../types/taskbandit";
 import type { AppLanguage } from "../i18n/I18nProvider";
 
@@ -67,7 +69,7 @@ function buildHeaders(token: string | null | undefined, language: AppLanguage) {
   return headers;
 }
 
-function resolveApiBaseUrl() {
+export function resolveApiBaseUrl() {
   const configured = import.meta.env.VITE_TASKBANDIT_API_BASE_URL?.trim();
   if (configured) {
     return configured.replace(/\/+$/, "");
@@ -194,6 +196,12 @@ export const taskBanditApi = {
   },
   getNotifications(token: string, language: AppLanguage) {
     return request<NotificationEntry[]>("/api/dashboard/notifications", {
+      token,
+      language
+    });
+  },
+  getDashboardSyncToken(token: string, language: AppLanguage) {
+    return request<DashboardSyncToken>("/api/dashboard/sync/token", {
       token,
       language
     });
@@ -329,6 +337,12 @@ export const taskBanditApi = {
       language
     });
   },
+  getWebPushPublicKey(token: string, language: AppLanguage) {
+    return request<WebPushPublicKeyResponse>("/api/settings/notification-devices/web-push/public-key", {
+      token,
+      language
+    });
+  },
   getHouseholdNotificationHealth(token: string, language: AppLanguage) {
     return request<HouseholdNotificationHealthEntry[]>("/api/settings/notification-health", {
       token,
@@ -366,6 +380,29 @@ export const taskBanditApi = {
       method: "DELETE",
       token,
       language
+    });
+  },
+  registerNotificationDevice(
+    token: string,
+    language: AppLanguage,
+    input: {
+      installationId: string;
+      platform?: "android" | "web";
+      provider?: "generic" | "fcm" | "web_push";
+      pushToken?: string;
+      webPushP256dh?: string;
+      webPushAuth?: string;
+      deviceName?: string;
+      appVersion?: string;
+      locale?: string;
+      notificationsEnabled?: boolean;
+    }
+  ) {
+    return request<NotificationDevice>("/api/settings/notification-devices/register", {
+      method: "POST",
+      token,
+      language,
+      body: input
     });
   },
   createHouseholdMember(token: string, language: AppLanguage, input: CreateHouseholdMemberInput) {
