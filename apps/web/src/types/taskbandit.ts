@@ -203,11 +203,14 @@ export type NotificationPreferences = {
   receiveDailySummary: boolean;
 };
 
+export type NotificationDevicePlatform = "android" | "web";
+export type NotificationDeviceProvider = "generic" | "fcm" | "web_push";
+
 export type NotificationDevice = {
   id: string;
   installationId: string;
-  platform: "android";
-  provider: "generic" | "fcm";
+  platform: NotificationDevicePlatform;
+  provider: NotificationDeviceProvider;
   pushTokenConfigured: boolean;
   deviceName: string | null;
   appVersion: string | null;
@@ -273,6 +276,7 @@ export type AdminSystemStatus = {
     householdPushEnabled: boolean;
     serverFcmEnabled: boolean;
     serviceAccountConfigured: boolean;
+    serverWebPushEnabled: boolean;
     registeredDeviceCount: number;
     pushReadyDeviceCount: number;
     membersWithPushReadyDevices: number;
@@ -323,7 +327,7 @@ export type NotificationRecovery = {
     message: string;
     recipientDisplayName: string;
     deviceName: string | null;
-    provider: "generic" | "fcm";
+    provider: NotificationDeviceProvider;
     attemptedAt: string | null;
     error: string | null;
     createdAt: string;
@@ -532,4 +536,16 @@ export type BootstrapHouseholdInput = {
   ownerEmail: string;
   ownerPassword: string;
   selfSignupEnabled: boolean;
+};
+
+export type DashboardSyncToken = {
+  token: string;
+  expiresInSeconds: number;
+};
+
+export type WebPushPublicKeyResponse = {
+  supported: boolean;
+  publicKey: string | null;
+  platform: "web_push";
+  householdId: string;
 };

@@ -35,6 +35,14 @@ export class DashboardController {
     return this.dashboardService.getNotifications(user);
   }
 
+  @Get("sync/token")
+  getSyncToken(@CurrentUser() user: AuthenticatedUser) {
+    return {
+      token: this.dashboardService.createSyncToken(user),
+      expiresInSeconds: 15 * 60
+    };
+  }
+
   @Sse("sync/stream")
   @Header("Cache-Control", "no-cache")
   @Header("X-Accel-Buffering", "no")

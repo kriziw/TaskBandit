@@ -1,8 +1,14 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
+import { resolveApiBaseUrl, taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
+import {
+  enableClientWebPush,
+  getClientWebPushSupportStatus,
+  syncClientWebPushRegistration,
+  type ClientWebPushStatus
+} from "./pwa/clientPush";
 import type {
   AdminSystemStatus,
   AuditLogEntry,
@@ -25,6 +31,7 @@ import type {
   HouseholdSettings,
   LocalizedTemplateTranslation,
   NotificationDevice,
+  NotificationDeviceProvider,
   NotificationRecovery,
   NotificationPreferences,
   NotificationEntry,
@@ -368,6 +375,24 @@ async function loadOptionalFeature<T>(loader: () => Promise<T>, fallbackValue: T
   }
 }
 
+function getInitialClientWebPushStatus(): ClientWebPushStatus {
+  if (!getClientWebPushSupportStatus()) {
+    return {
+      supported: false,
+      enabled: false,
+      permission: "unsupported",
+      needsPrompt: false
+    };
+  }
+
+  return {
+    supported: true,
+    enabled: false,
+    permission: Notification.permission,
+    needsPrompt: Notification.permission === "default"
+  };
+}
+
 const currentWebReleaseInfo: ReleaseInfo = {
   releaseVersion: import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION ?? "0.0.0-dev",
   buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
@@ -455,6 +480,9 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [clientWebPushStatus, setClientWebPushStatus] = useState<ClientWebPushStatus>(
+    getInitialClientWebPushStatus
+  );
   const householdSettingsRef = useRef<HTMLElement | null>(null);
   const membersRef = useRef<HTMLElement | null>(null);
   const templatesRef = useRef<HTMLElement | null>(null);
@@ -544,6 +572,115 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     void refreshDashboard(token, { silent: false });
   }, [token, language]);
+
+  useEffect(() => {
+    if (!token || workspaceVariant !== "client") {
+      setClientWebPushStatus(getInitialClientWebPushStatus());
+      return;
+    }
+
+    let cancelled = false;
+    void syncClientWebPushRegistration({
+      token,
+      language,
+      appVersion: `${currentWebReleaseInfo.releaseVersion}+${currentWebReleaseInfo.buildNumber}`
+    })
+      .then((status) => {
+        if (!cancelled) {
+          setClientWebPushStatus(status);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClientWebPushStatus(getInitialClientWebPushStatus());
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language, token, workspaceVariant]);
+
+  useEffect(() => {
+    if (!token || workspaceVariant !== "client") {
+      return;
+    }
+
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
+
+    const connect = async () => {
+      try {
+        const syncToken = await taskBanditApi.getDashboardSyncToken(token, language);
+        if (cancelled) {
+          return;
+        }
+
+        const streamUrl = new URL(`${resolveApiBaseUrl()}/api/dashboard/sync/client-stream`);
+        streamUrl.searchParams.set("token", syncToken.token);
+        eventSource = new EventSource(streamUrl.toString());
+        eventSource.addEventListener("chore-sync", () => {
+          void refreshDashboard(token, { silent: true });
+        });
+        eventSource.addEventListener("heartbeat", () => {
+          // keepalive only
+        });
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+          if (!cancelled) {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                void connect();
+              }
+            }, 3000);
+          }
+        };
+      } catch {
+        if (!cancelled) {
+          window.setTimeout(() => {
+            if (!cancelled) {
+              void connect();
+            }
+          }, 3000);
+        }
+      }
+    };
+
+    void connect();
+
+    return () => {
+      cancelled = true;
+      eventSource?.close();
+    };
+  }, [language, token, workspaceVariant]);
+
+  useEffect(() => {
+    if (workspaceVariant !== "client" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    const onServiceWorkerMessage = (event: MessageEvent<{ type?: string; payload?: { path?: string } }>) => {
+      if (event.data?.type === "taskbandit-push") {
+        setNotice(t("pwa.foreground_notification_received"));
+        if (token) {
+          void refreshDashboard(token, { silent: true });
+        }
+      }
+
+      if (event.data?.type === "taskbandit-notification-click" && event.data.payload?.path) {
+        window.location.hash = "notifications";
+        if (token) {
+          void refreshDashboard(token, { silent: true });
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", onServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onServiceWorkerMessage);
+    };
+  }, [t, token, workspaceVariant]);
 
   useEffect(() => {
     if (payload) {
@@ -3059,6 +3196,33 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     setInstallPromptEvent(null);
   }
 
+  async function handleEnableBrowserNotifications() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("enable-browser-notifications");
+    try {
+      const status = await enableClientWebPush({
+        token,
+        language,
+        appVersion: `${currentWebReleaseInfo.releaseVersion}+${currentWebReleaseInfo.buildNumber}`
+      });
+      setClientWebPushStatus(status);
+
+      if (status.enabled) {
+        setNotice(t("pwa.browser_notifications_enabled"));
+        await refreshDashboard(token, { silent: true });
+      } else if (status.permission === "denied") {
+        setPageError(t("pwa.browser_notifications_denied"));
+      }
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("pwa.browser_notifications_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   return (
     <main className={`app-shell variant-${workspaceVariant}`} data-variant={workspaceVariant}>
       <section className="toolbar">
@@ -3145,6 +3309,24 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
             </button>
             <button className="ghost-button" type="button" onClick={handleDismissInstallPrompt}>
               {t("pwa.install_later")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {workspaceVariant === "client" && token && clientWebPushStatus.supported && clientWebPushStatus.needsPrompt ? (
+        <div className="notice-banner info update-banner">
+          <div>
+            <strong>{t("pwa.browser_notifications_title")}</strong>
+            <p>{t("pwa.browser_notifications_body")}</p>
+          </div>
+          <div className="button-row">
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={busyAction === "enable-browser-notifications"}
+              onClick={() => void handleEnableBrowserNotifications()}
+            >
+              {t("pwa.browser_notifications_action")}
             </button>
           </div>
         </div>
@@ -4273,7 +4455,12 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                     {payload.notificationDevices.map((device) => (
                       <div className="task-row compact" key={device.id}>
                         <div className="task-row-header">
-                          <strong>{device.deviceName || t("settings.notification_device_android")}</strong>
+                          <strong>
+                            {device.deviceName ||
+                              (device.platform === "web"
+                                ? t("settings.notification_device_browser")
+                                : t("settings.notification_device_android"))}
+                          </strong>
                           <span
                             className={`status-pill ${device.pushTokenConfigured ? "state-completed" : "state-open"}`}
                           >
@@ -4286,7 +4473,9 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                           {t("settings.notification_device_provider")}:{" "}
                           {device.provider === "fcm"
                             ? t("settings.notification_device_provider_fcm")
-                            : t("settings.notification_device_provider_generic")}
+                            : device.provider === "web_push"
+                              ? t("settings.notification_device_provider_web_push")
+                              : t("settings.notification_device_provider_generic")}
                         </p>
                         <p>
                           {t("settings.notification_device_last_seen")}: {formatDate(device.lastSeenAt)}
@@ -4649,6 +4838,12 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                       <p>
                         {t("system_status.service_account")}:{" "}
                         {payload.systemStatus.push.serviceAccountConfigured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.web_push_enabled")}:{" "}
+                        {payload.systemStatus.push.serverWebPushEnabled
                           ? t("common.enabled")
                           : t("common.disabled")}
                       </p>

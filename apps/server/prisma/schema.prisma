@@ -84,11 +84,13 @@ enum NotificationType {
 
 enum NotificationDevicePlatform {
   ANDROID
+  WEB
 }
 
 enum NotificationDeviceProvider {
   GENERIC
   FCM
+  WEB_PUSH
 }
 
 enum NotificationPushDeliveryStatus {
@@ -410,6 +412,8 @@ model NotificationDevice {
   platform             NotificationDevicePlatform
   provider             NotificationDeviceProvider @default(GENERIC)
   pushToken            String?
+  webPushP256dh        String?
+  webPushAuth          String?
   deviceName           String?
   appVersion           String?
   locale               String?
