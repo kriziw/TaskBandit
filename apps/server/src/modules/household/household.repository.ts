@@ -2836,7 +2836,72 @@ export class HouseholdRepository {
     nextState: "pending_approval" | "completed";
     language?: SupportedLanguage;
   }) {
-    const updatedInstance = await this.prisma.$transaction(async (tx) => {
+    const attachmentCount = input.attachments.length;
+    const completedChecklistItems = input.completedChecklistItemIds.length;
+    const targetState =
+      input.nextState === "pending_approval" ? ChoreState.PENDING_APPROVAL : ChoreState.COMPLETED;
+    const submissionResult = await this.prisma.$transaction(async (tx) => {
+      const transition = await tx.choreInstance.updateMany({
+        where: {
+          id: input.instanceId,
+          householdId: input.householdId,
+          state: {
+            in: [
+              ChoreState.OPEN,
+              ChoreState.ASSIGNED,
+              ChoreState.IN_PROGRESS,
+              ChoreState.NEEDS_FIXES,
+              ChoreState.OVERDUE
+            ]
+          }
+        },
+        data: {
+          state: targetState,
+          submittedAtUtc: new Date(),
+          submittedById: input.actingUserId,
+          submissionNote: input.note?.trim() || null,
+          attachmentCount,
+          completedChecklistItems,
+          awardedPoints: input.awardedPoints,
+          completedAtUtc: input.nextState === "completed" ? new Date() : null,
+          completedById: input.nextState === "completed" ? input.actingUserId : null
+        }
+      });
+
+      if (transition.count === 0) {
+        const existingInstance = await tx.choreInstance.findFirstOrThrow({
+          where: {
+            id: input.instanceId,
+            householdId: input.householdId
+          },
+          include: {
+            template: {
+              include: {
+                checklistItems: true
+              }
+            },
+            variant: true,
+            checklistCompletions: true,
+            attachments: true
+          }
+        });
+
+        const isDuplicateRetry =
+          (input.nextState === "completed" && existingInstance.state === ChoreState.COMPLETED) ||
+          (input.nextState === "pending_approval" && existingInstance.state === ChoreState.PENDING_APPROVAL);
+
+        if (!isDuplicateRetry) {
+          throw new ConflictException({
+            message: "This chore can no longer be submitted from its current state."
+          });
+        }
+
+        return {
+          instance: existingInstance,
+          didTransition: false
+        };
+      }
+
       await tx.choreTakeoverRequest.updateMany({
         where: {
           choreInstanceId: input.instanceId,
@@ -2883,24 +2948,10 @@ export class HouseholdRepository {
         });
       }
 
-      const attachmentCount = input.attachments.length;
-      const completedChecklistItems = input.completedChecklistItemIds.length;
-
-      return tx.choreInstance.update({
+      const updatedInstance = await tx.choreInstance.findFirstOrThrow({
         where: {
-          id: input.instanceId
-        },
-        data: {
-          state:
-            input.nextState === "pending_approval" ? ChoreState.PENDING_APPROVAL : ChoreState.COMPLETED,
-          submittedAtUtc: new Date(),
-          submittedById: input.actingUserId,
-          submissionNote: input.note?.trim() || null,
-          attachmentCount,
-          completedChecklistItems,
-          awardedPoints: input.awardedPoints,
-          completedAtUtc: input.nextState === "completed" ? new Date() : null,
-          completedById: input.nextState === "completed" ? input.actingUserId : null
+          id: input.instanceId,
+          householdId: input.householdId
         },
         include: {
           template: {
@@ -2913,9 +2964,16 @@ export class HouseholdRepository {
           attachments: true
         }
       });
+
+      return {
+        instance: updatedInstance,
+        didTransition: true
+      };
     });
 
-    if (input.nextState === "completed") {
+    const updatedInstance = submissionResult.instance;
+
+    if (submissionResult.didTransition && input.nextState === "completed") {
       const beneficiaryUserId = updatedInstance.assigneeId ?? input.actingUserId;
       await this.prisma.user.update({
         where: {
@@ -2943,7 +3001,7 @@ export class HouseholdRepository {
       await this.createRecurringInstance(updatedInstance);
     }
 
-    if (input.nextState === "pending_approval") {
+    if (submissionResult.didTransition && input.nextState === "pending_approval") {
       const approvers = await this.prisma.user.findMany({
         where: {
           householdId: input.householdId,
@@ -2972,17 +3030,19 @@ export class HouseholdRepository {
       }
     }
 
-    await this.recordAuditLog(this.prisma, {
-      householdId: input.householdId,
-      actorUserId: input.actingUserId,
-      action: input.nextState === "pending_approval" ? "instance.submitted" : "instance.completed",
-      entityType: "chore_instance",
-      entityId: updatedInstance.id,
-      summary:
-        input.nextState === "pending_approval"
-          ? `Submitted chore "${updatedInstance.title}" for approval.`
-          : `Completed chore "${updatedInstance.title}".`
-    });
+    if (submissionResult.didTransition) {
+      await this.recordAuditLog(this.prisma, {
+        householdId: input.householdId,
+        actorUserId: input.actingUserId,
+        action: input.nextState === "pending_approval" ? "instance.submitted" : "instance.completed",
+        entityType: "chore_instance",
+        entityId: updatedInstance.id,
+        summary:
+          input.nextState === "pending_approval"
+            ? `Submitted chore "${updatedInstance.title}" for approval.`
+            : `Completed chore "${updatedInstance.title}".`
+      });
+    }
 
     return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
@@ -2996,32 +3056,85 @@ export class HouseholdRepository {
     awardedPoints: number;
     language?: SupportedLanguage;
   }) {
-    const updatedInstance = await this.prisma.choreInstance.update({
-      where: {
-        id: input.instanceId
-      },
-      data: {
-        state: input.approved ? ChoreState.COMPLETED : ChoreState.NEEDS_FIXES,
-        reviewedAtUtc: new Date(),
-        reviewedById: input.actingUserId,
-        reviewNote: input.note?.trim() || null,
-        awardedPoints: input.approved ? input.awardedPoints : 0,
-        completedAtUtc: input.approved ? new Date() : null,
-        ...(input.approved ? {} : { completedById: null })
-      },
-      include: {
-        template: {
-          include: {
-            checklistItems: true
-          }
+    const reviewTargetState = input.approved ? ChoreState.COMPLETED : ChoreState.NEEDS_FIXES;
+    const reviewResult = await this.prisma.$transaction(async (tx) => {
+      const transition = await tx.choreInstance.updateMany({
+        where: {
+          id: input.instanceId,
+          householdId: input.householdId,
+          state: ChoreState.PENDING_APPROVAL
         },
-        variant: true,
-        checklistCompletions: true,
-        attachments: true
+        data: {
+          state: reviewTargetState,
+          reviewedAtUtc: new Date(),
+          reviewedById: input.actingUserId,
+          reviewNote: input.note?.trim() || null,
+          awardedPoints: input.approved ? input.awardedPoints : 0,
+          completedAtUtc: input.approved ? new Date() : null,
+          ...(input.approved ? {} : { completedById: null })
+        }
+      });
+
+      if (transition.count === 0) {
+        const existingInstance = await tx.choreInstance.findFirstOrThrow({
+          where: {
+            id: input.instanceId,
+            householdId: input.householdId
+          },
+          include: {
+            template: {
+              include: {
+                checklistItems: true
+              }
+            },
+            variant: true,
+            checklistCompletions: true,
+            attachments: true
+          }
+        });
+
+        const isDuplicateRetry =
+          (input.approved && existingInstance.state === ChoreState.COMPLETED) ||
+          (!input.approved && existingInstance.state === ChoreState.NEEDS_FIXES);
+
+        if (!isDuplicateRetry) {
+          throw new ConflictException({
+            message: "This chore can no longer be reviewed from its current state."
+          });
+        }
+
+        return {
+          instance: existingInstance,
+          didTransition: false
+        };
       }
+
+      const updatedInstance = await tx.choreInstance.findFirstOrThrow({
+        where: {
+          id: input.instanceId,
+          householdId: input.householdId
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          variant: true,
+          checklistCompletions: true,
+          attachments: true
+        }
+      });
+
+      return {
+        instance: updatedInstance,
+        didTransition: true
+      };
     });
 
-    if (input.approved) {
+    const updatedInstance = reviewResult.instance;
+
+    if (reviewResult.didTransition && input.approved) {
       const beneficiaryUserId = updatedInstance.assigneeId ?? updatedInstance.submittedById;
       if (beneficiaryUserId) {
         await this.prisma.user.update({
@@ -3052,7 +3165,7 @@ export class HouseholdRepository {
     }
 
     const reviewRecipientUserId = updatedInstance.submittedById ?? updatedInstance.assigneeId;
-    if (reviewRecipientUserId && reviewRecipientUserId !== input.actingUserId) {
+    if (reviewResult.didTransition && reviewRecipientUserId && reviewRecipientUserId !== input.actingUserId) {
       await this.recordNotification(this.prisma, {
         householdId: input.householdId,
         recipientUserId: reviewRecipientUserId,
@@ -3066,16 +3179,18 @@ export class HouseholdRepository {
       });
     }
 
-    await this.recordAuditLog(this.prisma, {
-      householdId: input.householdId,
-      actorUserId: input.actingUserId,
-      action: input.approved ? "instance.approved" : "instance.rejected",
-      entityType: "chore_instance",
-      entityId: updatedInstance.id,
-      summary: input.approved
-        ? `Approved chore "${updatedInstance.title}".`
-        : `Rejected chore "${updatedInstance.title}" and sent it back for fixes.`
-    });
+    if (reviewResult.didTransition) {
+      await this.recordAuditLog(this.prisma, {
+        householdId: input.householdId,
+        actorUserId: input.actingUserId,
+        action: input.approved ? "instance.approved" : "instance.rejected",
+        entityType: "chore_instance",
+        entityId: updatedInstance.id,
+        summary: input.approved
+          ? `Approved chore "${updatedInstance.title}".`
+          : `Rejected chore "${updatedInstance.title}" and sent it back for fixes.`
+      });
+    }
 
     return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
