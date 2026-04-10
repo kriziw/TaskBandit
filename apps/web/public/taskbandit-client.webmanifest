@@ -2,7 +2,7 @@
   "name": "TaskBandit Client",
   "short_name": "TaskBandit",
   "description": "Installable TaskBandit client for chores, notifications, and household progress.",
-  "start_url": "./client.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "background_color": "#fff7e8",

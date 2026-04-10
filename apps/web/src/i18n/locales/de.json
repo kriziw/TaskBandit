@@ -76,6 +76,8 @@
   "onboarding.go_settings": "Einstellungen offnen",
   "onboarding.go_members": "Mitglieder offnen",
   "onboarding.go_templates": "Vorlagen offnen",
+  "onboarding.go_notifications": "Benachrichtigungen offnen",
+  "onboarding.go_chores": "Aufgaben offnen",
   "onboarding.go_schedule": "Planer offnen",
   "onboarding.back": "Zuruck",
   "onboarding.next": "Weiter",

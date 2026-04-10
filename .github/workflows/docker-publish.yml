@@ -19,6 +19,22 @@ jobs:
         (github.ref_name == 'main' && startsWith(github.event.head_commit.message, 'chore(main): release') == false)
       }}
     runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            image: kriziw/taskbandit
+            file: ./apps/server/Dockerfile
+            target: runtime
+          - name: admin-web
+            image: kriziw/taskbandit-admin
+            file: ./apps/web/Dockerfile
+            target: admin-runtime
+          - name: client-web
+            image: kriziw/taskbandit-client
+            file: ./apps/web/Dockerfile
+            target: client-runtime
     permissions:
       contents: read
     steps:
@@ -53,16 +69,17 @@ jobs:
         id: meta
         uses: docker/metadata-action@v5
         with:
-          images: kriziw/taskbandit
+          images: ${{ matrix.image }}
           tags: |
             type=raw,value=latest,enable=${{ github.ref_name == 'main' && steps.prerelease.outputs.value != 'true' }}
             type=raw,value=prerelease,enable=${{ github.ref_name == 'main' && steps.prerelease.outputs.value == 'true' }}
 
-      - name: Build and push image
+      - name: Build and push image (${{ matrix.name }})
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./apps/server/Dockerfile
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
           push: true
           build-args: |
             TASKBANDIT_RELEASE_VERSION=${{ steps.version.outputs.value }}

@@ -99,11 +99,94 @@ services:
       - traefik.http.routers.taskbandit-health.service=taskbandit
 ```
 
+## Split Frontend Example
+
+When using the split deployment model, route the three services separately:
+
+- API -> `server`
+- admin web -> `admin-web`
+- client web -> `client-web`
+
+Nginx example:
+
+```nginx
+server {
+    listen 80;
+    server_name api.example.com;
+
+    location / {
+        proxy_pass http://taskbandit-server:8080;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+server {
+    listen 80;
+    server_name admin.example.com;
+
+    location / {
+        proxy_pass http://taskbandit-admin-web:80;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+
+server {
+    listen 80;
+    server_name client.example.com;
+
+    location / {
+        proxy_pass http://taskbandit-client-web:80;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    }
+}
+```
+
+Traefik example:
+
+```yaml
+services:
+  server:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.taskbandit-api.rule=Host(`api.example.com`)
+      - traefik.http.routers.taskbandit-api.entrypoints=websecure
+      - traefik.http.routers.taskbandit-api.tls=true
+      - traefik.http.services.taskbandit-api.loadbalancer.server.port=8080
+
+  admin-web:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.taskbandit-admin.rule=Host(`admin.example.com`)
+      - traefik.http.routers.taskbandit-admin.entrypoints=websecure
+      - traefik.http.routers.taskbandit-admin.tls=true
+      - traefik.http.services.taskbandit-admin.loadbalancer.server.port=80
+
+  client-web:
+    labels:
+      - traefik.enable=true
+      - traefik.http.routers.taskbandit-client.rule=Host(`client.example.com`)
+      - traefik.http.routers.taskbandit-client.entrypoints=websecure
+      - traefik.http.routers.taskbandit-client.tls=true
+      - traefik.http.services.taskbandit-client.loadbalancer.server.port=80
+```
+
 ## Notes
 
 - Keep TLS termination at the proxy layer unless you have a specific reason not to.
-- TaskBandit serves the web UI from the same server image, so one proxy definition covers both the UI and API.
-- If you are using the split admin/client deployment model instead, disable the embedded web UI with `TASKBANDIT_SERVE_EMBEDDED_WEB=false` and proxy the static admin/client frontends separately while keeping API traffic on the TaskBandit server.
+- The recommended deployment model is the split layout with separate API, admin-web, and client-web services.
+- Keep `TASKBANDIT_SERVE_EMBEDDED_WEB=false` for the split deployment and proxy the static admin/client frontends separately while keeping API traffic on the TaskBandit server.
 - For split frontend deployments, set `TASKBANDIT_CORS_ALLOWED_ORIGINS` to the exact admin and client browser origins that should be allowed to call the API.
 - If you deploy under a subpath, the web UI, API, and Swagger endpoints will be exposed under that same base path.
 - Docker health checks already probe `http://127.0.0.1:${TASKBANDIT_PORT}/health` inside the container, so an external `/health` proxy route is optional unless your own reverse proxy or load balancer needs it.

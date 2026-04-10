@@ -7,7 +7,7 @@
     "dev": "vite",
     "dev:admin": "vite --mode admin --port 5174",
     "dev:client": "vite --mode client --port 5173",
-    "build": "tsc --noEmit && vite build",
+    "build": "npm run build:admin && npm run build:client",
     "build:admin": "tsc --noEmit && vite build --mode admin",
     "build:client": "tsc --noEmit && vite build --mode client",
     "preview": "vite preview",

@@ -1,6 +1,6 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { resolveApiBaseUrl, taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
+import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
@@ -9,6 +9,7 @@ import {
   syncClientWebPushRegistration,
   type ClientWebPushStatus
 } from "./pwa/clientPush";
+import { resolveApiBaseUrl } from "./runtimeConfig";
 import type {
   AdminSystemStatus,
   AuditLogEntry,
@@ -51,7 +52,7 @@ const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
-type WorkspaceVariant = "combined" | "admin" | "client";
+type WorkspaceVariant = "admin" | "client";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -260,7 +261,7 @@ function createEmptyMemberEditForm(): MemberEditFormState {
 }
 
 function getTokenStorageKey(variant: WorkspaceVariant) {
-  return variant === "combined" ? legacyTokenStorageKey : `${legacyTokenStorageKey}-${variant}`;
+  return `${legacyTokenStorageKey}-${variant}`;
 }
 
 function getTokenMigrationKey(variant: WorkspaceVariant) {
@@ -283,18 +284,16 @@ function readStoredToken(variant: WorkspaceVariant) {
     return directValue;
   }
 
-  if (variant !== "combined") {
-    const migrationKey = getTokenMigrationKey(variant);
-    if (window.localStorage.getItem(migrationKey) === "true") {
-      return null;
-    }
+  const migrationKey = getTokenMigrationKey(variant);
+  if (window.localStorage.getItem(migrationKey) === "true") {
+    return null;
+  }
 
-    const legacyValue = window.localStorage.getItem(legacyTokenStorageKey);
-    if (legacyValue) {
-      storage.setItem(storageKey, legacyValue);
-      window.localStorage.setItem(migrationKey, "true");
-      return legacyValue;
-    }
+  const legacyValue = window.localStorage.getItem(legacyTokenStorageKey);
+  if (legacyValue) {
+    storage.setItem(storageKey, legacyValue);
+    window.localStorage.setItem(migrationKey, "true");
+    return legacyValue;
   }
 
   return null;
@@ -303,25 +302,21 @@ function readStoredToken(variant: WorkspaceVariant) {
 function writeStoredToken(variant: WorkspaceVariant, token: string) {
   const storage = getTokenStorage(variant);
   storage.setItem(getTokenStorageKey(variant), token);
-  if (variant !== "combined") {
-    window.localStorage.setItem(getTokenMigrationKey(variant), "true");
-  }
+  window.localStorage.setItem(getTokenMigrationKey(variant), "true");
 }
 
 function clearStoredToken(variant: WorkspaceVariant) {
   const storage = getTokenStorage(variant);
   storage.removeItem(getTokenStorageKey(variant));
-  if (variant !== "combined") {
-    window.localStorage.setItem(getTokenMigrationKey(variant), "true");
-  }
+  window.localStorage.setItem(getTokenMigrationKey(variant), "true");
 }
 
 function getDismissedUpdateStorageKey(variant: WorkspaceVariant) {
-  return variant === "combined" ? dismissedUpdateStorageKey : `${dismissedUpdateStorageKey}-${variant}`;
+  return `${dismissedUpdateStorageKey}-${variant}`;
 }
 
 function getDismissedPwaInstallStorageKey(variant: WorkspaceVariant) {
-  return variant === "combined" ? dismissedPwaInstallKey : `${dismissedPwaInstallKey}-${variant}`;
+  return `${dismissedPwaInstallKey}-${variant}`;
 }
 
 function isWorkspacePage(value: string | null): value is WorkspacePage {
@@ -329,19 +324,15 @@ function isWorkspacePage(value: string | null): value is WorkspacePage {
 }
 
 function getWorkspacePageStorageKey(variant: WorkspaceVariant) {
-  return variant === "combined" ? workspacePageStorageKey : `${workspacePageStorageKey}-${variant}`;
+  return `${workspacePageStorageKey}-${variant}`;
 }
 
 function getDefaultWorkspacePage(variant: WorkspaceVariant): WorkspacePage {
   if (variant === "admin") {
-    return "admin";
+    return "templates";
   }
 
-  if (variant === "client") {
-    return "chores";
-  }
-
-  return "overview";
+  return "chores";
 }
 
 function readStoredWorkspacePage(variant: WorkspaceVariant) {
@@ -460,7 +451,7 @@ const currentWebReleaseInfo: ReleaseInfo = {
   commitSha: import.meta.env.VITE_TASKBANDIT_COMMIT_SHA ?? "local"
 };
 
-export function App({ workspaceVariant = "combined" }: { workspaceVariant?: WorkspaceVariant }) {
+export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
@@ -936,7 +927,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     payload && workspaceVariant === "admin" && payload.currentUser.role !== "admin"
   );
 
-  const availablePages = useMemo(() => {
+  const availablePages = useMemo<Array<{ key: WorkspacePage; label: string }>>(() => {
     if (!payload) {
       return [];
     }
@@ -945,23 +936,21 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
       return [];
     }
 
-    const pages: Array<{ key: WorkspacePage; label: string }> = [
+    if (workspaceVariant === "admin") {
+      return [
+        { key: "templates", label: t("nav.templates") },
+        { key: "household", label: t("nav.household") },
+        { key: "settings", label: t("nav.settings") },
+        { key: "admin", label: t("nav.admin") }
+      ];
+    }
+
+    return [
       { key: "overview", label: t("nav.overview") },
       { key: "chores", label: t("nav.chores") },
-      { key: "notifications", label: t("nav.notifications") }
+      { key: "notifications", label: t("nav.notifications") },
+      { key: "settings", label: t("nav.settings") }
     ];
-
-    if (payload.currentUser.role !== "child") {
-      pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
-    }
-
-    if (workspaceVariant !== "client" && payload.currentUser.role === "admin") {
-      pages.splice(3, 0, { key: "household", label: t("nav.household") });
-      pages.push({ key: "settings", label: t("nav.settings") });
-      pages.push({ key: "admin", label: t("nav.admin") });
-    }
-
-    return pages;
   }, [payload, t, workspaceVariant]);
 
   useEffect(() => {
@@ -975,11 +964,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   }, [activePage, availablePages]);
 
   const workspaceVariantLabel =
-    workspaceVariant === "admin"
-      ? t("workspace.variant_admin")
-      : workspaceVariant === "client"
-        ? t("workspace.variant_client")
-        : t("workspace.variant_combined");
+    workspaceVariant === "admin" ? t("workspace.variant_admin") : t("workspace.variant_client");
   const activePageLabel = isAdminVariantAccessDenied
     ? t("workspace.admin_only_title")
     : availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
@@ -1052,8 +1037,48 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     );
   }, [workspaceVariant]);
 
-  const onboardingSteps = useMemo(
-    () => [
+  const onboardingSteps = useMemo(() => {
+    if (workspaceVariant === "admin") {
+      return [
+        {
+          key: "welcome" as const,
+          title: t("onboarding.welcome_title"),
+          description: t("onboarding.welcome_body"),
+          actionLabel: null,
+          action: null
+        },
+        {
+          key: "settings" as const,
+          title: t("onboarding.settings_title"),
+          description: t("onboarding.settings_body"),
+          actionLabel: t("onboarding.go_settings"),
+          action: () => openWorkspacePage("settings", householdSettingsRef)
+        },
+        {
+          key: "members" as const,
+          title: t("onboarding.members_title"),
+          description: t("onboarding.members_body"),
+          actionLabel: t("onboarding.go_members"),
+          action: () => openWorkspacePage("household", membersRef)
+        },
+        {
+          key: "chores" as const,
+          title: t("onboarding.chores_title"),
+          description: t("onboarding.chores_body"),
+          actionLabel: t("onboarding.go_templates"),
+          action: () => openWorkspacePage("templates", templatesRef)
+        },
+        {
+          key: "overview" as const,
+          title: t("onboarding.overview_title"),
+          description: t("onboarding.overview_body"),
+          actionLabel: t("onboarding.go_settings"),
+          action: () => openWorkspacePage("admin", systemStatusRef)
+        }
+      ];
+    }
+
+    return [
       {
         key: "welcome" as const,
         title: t("onboarding.welcome_title"),
@@ -1066,32 +1091,31 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
         title: t("onboarding.settings_title"),
         description: t("onboarding.settings_body"),
         actionLabel: t("onboarding.go_settings"),
-        action: () => openWorkspacePage("settings", householdSettingsRef)
+        action: () => openWorkspacePage("settings", notificationPreferencesRef)
       },
       {
         key: "members" as const,
         title: t("onboarding.members_title"),
         description: t("onboarding.members_body"),
-        actionLabel: t("onboarding.go_members"),
-        action: () => openWorkspacePage("household", membersRef)
+        actionLabel: t("onboarding.go_notifications"),
+        action: () => openWorkspacePage("notifications", notificationsRef)
       },
       {
         key: "chores" as const,
         title: t("onboarding.chores_title"),
         description: t("onboarding.chores_body"),
-        actionLabel: t("onboarding.go_templates"),
-        action: () => openWorkspacePage("templates", templatesRef)
+        actionLabel: t("onboarding.go_chores"),
+        action: () => openWorkspacePage("chores", myChoresRef)
       },
       {
         key: "overview" as const,
         title: t("onboarding.overview_title"),
         description: t("onboarding.overview_body"),
         actionLabel: t("onboarding.go_schedule"),
-        action: () => openWorkspacePage("templates", scheduleRef)
+        action: () => openWorkspacePage("chores", scheduleRef)
       }
-    ],
-    [t]
-  );
+    ];
+  }, [t, workspaceVariant]);
 
   const onboardingIndex = onboardingSteps.findIndex((step) => step.key === onboardingStep);
   const currentOnboardingStep = onboardingSteps[Math.max(onboardingIndex, 0)];
@@ -3133,6 +3157,9 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
         ];
       case "chores":
         return [
+          ...(workspaceVariant === "client" && payload?.currentUser.role !== "child"
+            ? [{ key: "chores-schedule", label: t("panel.schedule_chore"), ref: scheduleRef }]
+            : []),
           ...(payload?.compatibility.takeoverRequests && pendingTakeoverRequests.length > 0
             ? [
                 {
@@ -3147,10 +3174,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
           { key: "chores-history", label: t("panel.chore_history"), ref: choreHistoryRef }
         ];
       case "templates":
-        return [
-          { key: "templates-list", label: t("panel.chore_templates"), ref: templatesRef },
-          { key: "templates-schedule", label: t("panel.schedule_chore"), ref: scheduleRef }
-        ];
+        return [{ key: "templates-list", label: t("panel.chore_templates"), ref: templatesRef }];
       case "household":
         return [{ key: "household-members", label: t("panel.household_members"), ref: membersRef }];
       case "notifications":
@@ -3169,29 +3193,36 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                   ref: notificationDevicesRef
                 }
               ]
-            : []),
-          ...(payload?.currentUser.role === "admin"
-            ? [
-                ...(payload?.compatibility.notificationHealth
-                  ? [
-                      {
-                        key: "notifications-health",
-                        label: t("panel.household_notification_health"),
-                        ref: notificationHealthRef
-                      }
-                    ]
-                  : [])
-              ]
             : [])
         ];
       case "settings":
-        return [
-          { key: "settings-general", label: t("settings.section_general"), ref: generalSettingsRef },
-          { key: "settings-oidc", label: t("settings.section_oidc"), ref: oidcSettingsRef },
-          { key: "settings-smtp", label: t("settings.section_smtp"), ref: smtpSettingsRef }
-        ];
+        return workspaceVariant === "client"
+          ? [
+              {
+                key: "settings-preferences",
+                label: t("panel.notification_preferences"),
+                ref: notificationPreferencesRef
+              },
+              ...(payload?.compatibility.notificationDevices
+                ? [
+                    {
+                      key: "settings-devices",
+                      label: t("panel.mobile_push_devices"),
+                      ref: notificationDevicesRef
+                    }
+                  ]
+                : [])
+            ]
+          : [
+              { key: "settings-general", label: t("settings.section_general"), ref: generalSettingsRef },
+              { key: "settings-oidc", label: t("settings.section_oidc"), ref: oidcSettingsRef },
+              { key: "settings-smtp", label: t("settings.section_smtp"), ref: smtpSettingsRef }
+            ];
       case "admin":
         return [
+          ...(payload?.compatibility.notificationHealth
+            ? [{ key: "admin-notification-health", label: t("panel.household_notification_health"), ref: notificationHealthRef }]
+            : []),
           ...(payload?.compatibility.backupReadiness
             ? [{ key: "admin-backup", label: t("panel.backup_readiness"), ref: backupReadinessRef }]
             : []),
@@ -3222,7 +3253,8 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     payload?.compatibility.systemStatus,
     payload?.compatibility.takeoverRequests,
     pendingTakeoverRequests.length,
-    t
+    t,
+    workspaceVariant
   ]);
 
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
@@ -3290,6 +3322,182 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     } finally {
       setBusyAction(null);
     }
+  }
+
+  function renderScheduleChorePanel(pageClassName: string) {
+    if (!payload) {
+      return null;
+    }
+
+    const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
+    const selectedTemplateRepeats =
+      !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
+
+    return (
+      <article className={`panel page-panel ${pageClassName}`} ref={scheduleRef}>
+        <div className="section-heading">
+          <h2>{t("panel.schedule_chore")}</h2>
+          <span className="section-kicker">{visibleHouseholdChores.length}</span>
+        </div>
+        <form className="login-form member-form" onSubmit={handleCreateInstance}>
+          <label>
+            <span>{t("instances.template")}</span>
+            <select
+              value={instanceForm.templateId}
+              onChange={(event) =>
+                setInstanceForm((current) => ({
+                  ...current,
+                  templateId: event.target.value,
+                  variantId: undefined
+                }))
+              }
+            >
+              {payload.templates.map((template) => (
+                <option key={template.id} value={template.id}>
+                  {template.title}
+                </option>
+              ))}
+            </select>
+          </label>
+          {(() => {
+            const selectedTemplateWithVariants = payload.templates.find(
+              (template) => template.id === instanceForm.templateId
+            );
+            if ((selectedTemplateWithVariants?.variants?.length ?? 0) === 0) {
+              return null;
+            }
+
+            return (
+              <label>
+                <span>{t("instances.subtype")}</span>
+                <select
+                  required
+                  value={instanceForm.variantId ?? ""}
+                  onChange={(event) =>
+                    setInstanceForm((current) => ({
+                      ...current,
+                      variantId: event.target.value || undefined
+                    }))
+                  }
+                >
+                  <option value="">{t("instances.select_subtype")}</option>
+                  {selectedTemplateWithVariants!.variants.map((variant) => (
+                    <option key={variant.id} value={variant.id}>
+                      {variant.label}
+                    </option>
+                  ))}
+                </select>
+                <small className="inline-message">{t("instances.subtype_required")}</small>
+              </label>
+            );
+          })()}
+          <label>
+            <span>{t("instances.assignee")}</span>
+            <select
+              value={instanceForm.assigneeId ?? ""}
+              onChange={(event) =>
+                setInstanceForm((current) => ({ ...current, assigneeId: event.target.value }))
+              }
+            >
+              <option value="">{t("instances.unassigned")}</option>
+              {payload.household.members.map((member) => (
+                <option key={member.id} value={member.id}>
+                  {member.displayName}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
+            <span>{t("instances.title_override")}</span>
+            <input
+              type="text"
+              value={instanceForm.title ?? ""}
+              onChange={(event) =>
+                setInstanceForm((current) => ({ ...current, title: event.target.value }))
+              }
+            />
+          </label>
+          <label>
+            <span>{t("instances.due_at")}</span>
+            <input
+              type="datetime-local"
+              value={instanceForm.dueAt}
+              onChange={(event) =>
+                setInstanceForm((current) => ({ ...current, dueAt: event.target.value }))
+              }
+              required
+            />
+          </label>
+          {selectedTemplateRepeats ? (
+            <>
+              <label>
+                <span>{t("instances.repeat_duration")}</span>
+                <select
+                  value={instanceForm.recurrenceEndMode ?? "never"}
+                  onChange={(event) =>
+                    setInstanceForm((current) => ({
+                      ...current,
+                      recurrenceEndMode: event.target.value as InstanceFormState["recurrenceEndMode"]
+                    }))
+                  }
+                >
+                  <option value="never">{t("instances.repeat_forever")}</option>
+                  <option value="after_occurrences">{t("instances.repeat_after_occurrences")}</option>
+                  <option value="on_date">{t("instances.repeat_until_date")}</option>
+                </select>
+              </label>
+              {instanceForm.recurrenceEndMode === "after_occurrences" ? (
+                <label>
+                  <span>{t("instances.repeat_occurrence_count")}</span>
+                  <input
+                    type="number"
+                    min={1}
+                    value={instanceForm.recurrenceOccurrences ?? ""}
+                    onChange={(event) =>
+                      setInstanceForm((current) => ({
+                        ...current,
+                        recurrenceOccurrences: event.target.value
+                          ? Math.max(1, Math.floor(Number(event.target.value)))
+                          : undefined
+                      }))
+                    }
+                    required
+                  />
+                </label>
+              ) : null}
+              {instanceForm.recurrenceEndMode === "on_date" ? (
+                <label>
+                  <span>{t("instances.repeat_end_date")}</span>
+                  <input
+                    type="datetime-local"
+                    value={instanceForm.recurrenceEndsAt ?? ""}
+                    onChange={(event) =>
+                      setInstanceForm((current) => ({
+                        ...current,
+                        recurrenceEndsAt: event.target.value
+                      }))
+                    }
+                    required
+                  />
+                </label>
+              ) : null}
+            </>
+          ) : null}
+          <button
+            className="primary-button"
+            type="submit"
+            disabled={busyAction === "create-instance" || payload.templates.length === 0}
+          >
+            {editingInstanceId ? t("instances.save") : t("instances.create")}
+          </button>
+          {editingInstanceId ? (
+            <button className="ghost-button" type="button" onClick={resetInstanceForm}>
+              {t("common.cancel")}
+            </button>
+          ) : null}
+        </form>
+      </article>
+    );
   }
 
   return (
@@ -3968,6 +4176,10 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
               )}
             </article>
 
+            {workspaceVariant === "client" && payload.currentUser.role !== "child"
+              ? renderScheduleChorePanel("page-chores")
+              : null}
+
             <article className="panel page-panel page-overview">
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
@@ -4108,7 +4320,9 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
             </article>
 
             {payload.currentUser.role !== "child" ? (
-              <article className="panel page-panel page-overview">
+              <article
+                className={`panel page-panel ${workspaceVariant === "admin" ? "page-admin" : "page-overview"}`}
+              >
                 <div className="section-heading">
                   <h2>{t("panel.audit_log")}</h2>
                   <span className="section-kicker">{payload.auditLog.length}</span>
@@ -4427,7 +4641,12 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
             </article>
 
             {notificationPreferencesDraft ? (
-              <article className="panel page-panel page-notifications" ref={notificationPreferencesRef}>
+              <article
+                className={`panel page-panel ${
+                  workspaceVariant === "client" ? "page-settings" : "page-notifications"
+                }`}
+                ref={notificationPreferencesRef}
+              >
                 <div className="section-heading">
                   <h2>{t("panel.notification_preferences")}</h2>
                   <span className="section-kicker">{t("settings.member_level")}</span>
@@ -4508,7 +4727,12 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
             ) : null}
 
             {payload.compatibility.notificationDevices ? (
-              <article className="panel page-panel page-notifications" ref={notificationDevicesRef}>
+              <article
+                className={`panel page-panel ${
+                  workspaceVariant === "client" ? "page-settings" : "page-notifications"
+                }`}
+                ref={notificationDevicesRef}
+              >
                 <div className="section-heading">
                   <h2>{t("panel.mobile_push_devices")}</h2>
                   <span className="section-kicker">{formatNumber(pushReadyDeviceCount)}</span>
@@ -4577,7 +4801,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
             ) : null}
 
             {payload.currentUser.role === "admin" && payload.compatibility.notificationHealth ? (
-              <article className="panel page-panel page-notifications" ref={notificationHealthRef}>
+              <article className="panel page-panel page-admin" ref={notificationHealthRef}>
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
                   <span className="section-kicker">{formatNumber(householdPushReadyCount)}</span>
@@ -6082,174 +6306,6 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                   </form>
                 </article>
 
-                <article className="panel page-panel page-templates" ref={scheduleRef}>
-                  <div className="section-heading">
-                    <h2>{t("panel.schedule_chore")}</h2>
-                    <span className="section-kicker">{visibleHouseholdChores.length}</span>
-                  </div>
-                  <form className="login-form member-form" onSubmit={handleCreateInstance}>
-                    {(() => {
-                      const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
-                      const selectedTemplateRepeats =
-                        !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
-
-                      return (
-                        <>
-                    <label>
-                      <span>{t("instances.template")}</span>
-                      <select
-                        value={instanceForm.templateId}
-                        onChange={(event) =>
-                          setInstanceForm((current) => ({
-                            ...current,
-                            templateId: event.target.value,
-                            variantId: undefined
-                          }))
-                        }
-                      >
-                        {payload.templates.map((template) => (
-                          <option key={template.id} value={template.id}>
-                            {template.title}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    {(() => {
-                      const selectedTemplate = payload.templates.find((t) => t.id === instanceForm.templateId);
-                      if ((selectedTemplate?.variants?.length ?? 0) > 0) {
-                        return (
-                          <label>
-                            <span>{t("instances.subtype")}</span>
-                            <select
-                              required
-                              value={instanceForm.variantId ?? ""}
-                              onChange={(event) =>
-                                setInstanceForm((current) => ({
-                                  ...current,
-                                  variantId: event.target.value || undefined
-                                }))
-                              }
-                            >
-                              <option value="">{t("instances.select_subtype")}</option>
-                              {selectedTemplate!.variants.map((v) => (
-                                <option key={v.id} value={v.id}>{v.label}</option>
-                              ))}
-                            </select>
-                            <small className="inline-message">{t("instances.subtype_required")}</small>
-                          </label>
-                        );
-                      }
-                      return null;
-                    })()}
-                    <label>
-                      <span>{t("instances.assignee")}</span>
-                      <select
-                        value={instanceForm.assigneeId ?? ""}
-                        onChange={(event) =>
-                          setInstanceForm((current) => ({ ...current, assigneeId: event.target.value }))
-                        }
-                      >
-                        <option value="">{t("instances.unassigned")}</option>
-                        {payload.household.members.map((member) => (
-                          <option key={member.id} value={member.id}>
-                            {member.displayName}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>{t("instances.title_override")}</span>
-                      <input
-                        type="text"
-                        value={instanceForm.title ?? ""}
-                        onChange={(event) =>
-                          setInstanceForm((current) => ({ ...current, title: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("instances.due_at")}</span>
-                      <input
-                        type="datetime-local"
-                        value={instanceForm.dueAt}
-                        onChange={(event) =>
-                          setInstanceForm((current) => ({ ...current, dueAt: event.target.value }))
-                        }
-                        required
-                      />
-                    </label>
-                    {selectedTemplateRepeats ? (
-                      <>
-                        <label>
-                          <span>{t("instances.repeat_duration")}</span>
-                          <select
-                            value={instanceForm.recurrenceEndMode ?? "never"}
-                            onChange={(event) =>
-                              setInstanceForm((current) => ({
-                                ...current,
-                                recurrenceEndMode: event.target.value as InstanceFormState["recurrenceEndMode"]
-                              }))
-                            }
-                          >
-                            <option value="never">{t("instances.repeat_forever")}</option>
-                            <option value="after_occurrences">{t("instances.repeat_after_occurrences")}</option>
-                            <option value="on_date">{t("instances.repeat_until_date")}</option>
-                          </select>
-                        </label>
-                        {instanceForm.recurrenceEndMode === "after_occurrences" ? (
-                          <label>
-                            <span>{t("instances.repeat_occurrence_count")}</span>
-                            <input
-                              type="number"
-                              min={1}
-                              value={instanceForm.recurrenceOccurrences ?? ""}
-                              onChange={(event) =>
-                                setInstanceForm((current) => ({
-                                  ...current,
-                                  recurrenceOccurrences: event.target.value
-                                    ? Math.max(1, Math.floor(Number(event.target.value)))
-                                    : undefined
-                                }))
-                              }
-                              required
-                            />
-                          </label>
-                        ) : null}
-                        {instanceForm.recurrenceEndMode === "on_date" ? (
-                          <label>
-                            <span>{t("instances.repeat_end_date")}</span>
-                            <input
-                              type="datetime-local"
-                              value={instanceForm.recurrenceEndsAt ?? ""}
-                              onChange={(event) =>
-                                setInstanceForm((current) => ({
-                                  ...current,
-                                  recurrenceEndsAt: event.target.value
-                                }))
-                              }
-                              required
-                            />
-                          </label>
-                        ) : null}
-                      </>
-                    ) : null}
-                    <button
-                      className="primary-button"
-                      type="submit"
-                      disabled={busyAction === "create-instance" || payload.templates.length === 0}
-                    >
-                      {editingInstanceId ? t("instances.save") : t("instances.create")}
-                    </button>
-                    {editingInstanceId ? (
-                      <button className="ghost-button" type="button" onClick={resetInstanceForm}>
-                        {t("common.cancel")}
-                      </button>
-                    ) : null}
-                        </>
-                      );
-                    })()}
-                  </form>
-                </article>
               </>
             ) : null}
 

@@ -69,6 +69,8 @@
   "onboarding.go_settings": "Beállítások megnyitása",
   "onboarding.go_members": "Tagok megnyitása",
   "onboarding.go_templates": "Sablonok megnyitása",
+  "onboarding.go_notifications": "Értesítések megnyitása",
+  "onboarding.go_chores": "Feladatok megnyitása",
   "onboarding.go_schedule": "Ütemező megnyitása",
   "onboarding.back": "Vissza",
   "onboarding.next": "Tovább",

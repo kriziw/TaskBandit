@@ -71,7 +71,7 @@ export class AppConfigService {
   }
 
   get serveEmbeddedWeb(): boolean {
-    return this.configService.get<string>("TASKBANDIT_SERVE_EMBEDDED_WEB", "true") === "true";
+    return this.configService.get<string>("TASKBANDIT_SERVE_EMBEDDED_WEB", "false") === "true";
   }
 
   get reverseProxyPathBase(): string {

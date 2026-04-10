@@ -33,6 +33,7 @@ import type {
   WebPushPublicKeyResponse
 } from "../types/taskbandit";
 import type { AppLanguage } from "../i18n/I18nProvider";
+import { resolveApiBaseUrl } from "../runtimeConfig";
 
 type RequestOptions = {
   method?: "GET" | "POST" | "PUT" | "DELETE";
@@ -67,20 +68,6 @@ function buildHeaders(token: string | null | undefined, language: AppLanguage) {
   }
 
   return headers;
-}
-
-export function resolveApiBaseUrl() {
-  const configured = import.meta.env.VITE_TASKBANDIT_API_BASE_URL?.trim();
-  if (configured) {
-    return configured.replace(/\/+$/, "");
-  }
-
-  const cleanedPath = window.location.pathname
-    .replace(/index\.html$/, "")
-    .replace(/\/+$/, "");
-  const inferredBasePath = cleanedPath && cleanedPath !== "/" ? cleanedPath : "";
-
-  return `${window.location.origin.replace(/\/+$/, "")}${inferredBasePath}`;
 }
 
 async function request<T>(path: string, options: RequestOptions): Promise<T> {

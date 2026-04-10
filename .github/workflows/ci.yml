@@ -25,6 +25,10 @@ jobs:
         run: npm install
       - name: Build web app
         run: npm run build
+      - name: Build admin web app
+        run: npm run build:admin
+      - name: Build client web app
+        run: npm run build:client
 
   server:
     runs-on: ubuntu-latest
@@ -64,3 +68,32 @@ jobs:
           gradle-version: "9.4.1"
       - name: Assemble debug APK
         run: gradle :app:assembleDebug
+
+  docker:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: server
+            file: ./apps/server/Dockerfile
+            target: runtime
+          - name: admin-web
+            file: ./apps/web/Dockerfile
+            target: admin-runtime
+          - name: client-web
+            file: ./apps/web/Dockerfile
+            target: client-runtime
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image (${{ matrix.name }})
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ${{ matrix.file }}
+          target: ${{ matrix.target }}
+          push: false
+          build-args: |
+            TASKBANDIT_RELEASE_VERSION=ci
+            TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}
+            TASKBANDIT_COMMIT_SHA=${{ github.sha }}
