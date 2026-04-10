@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.28.1](https://github.com/kriziw/TaskBandit/compare/v0.28.0...v0.28.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* **android:** move secondary chore actions into overflow ([#161](https://github.com/kriziw/TaskBandit/issues/161)) ([52ed7cc](https://github.com/kriziw/TaskBandit/commit/52ed7cc6cd3b51c8b52775b73731e3c90657fa9e))
+
 ## [0.28.0](https://github.com/kriziw/TaskBandit/compare/v0.27.2...v0.28.0) (2026-04-10)
 
 
