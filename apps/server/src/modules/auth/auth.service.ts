@@ -27,6 +27,12 @@ type AuthTokenPayload = {
   email?: string;
 };
 
+type DashboardSyncTokenPayload = {
+  purpose: "dashboard-sync";
+  sub: string;
+  householdId: string;
+};
+
 type OidcStatePayload = {
   purpose: "oidc-state";
   nonce: string;
@@ -330,6 +336,69 @@ export class AuthService {
           identities: true
         }
       });
+
+      const preferredIdentity =
+        user.identities.find((identity) => identity.provider === AuthProvider.LOCAL && identity.email) ??
+        user.identities.find((identity) => Boolean(identity.email));
+
+      return {
+        id: user.id,
+        householdId: user.householdId,
+        displayName: user.displayName,
+        role: this.mapRole(user.role),
+        email: preferredIdentity?.email ?? null,
+        points: user.points,
+        currentStreak: user.currentStreak
+      };
+    } catch {
+      throw new UnauthorizedException({
+        message: this.i18nService.translate("auth.unauthorized", language)
+      });
+    }
+  }
+
+  createDashboardSyncToken(user: AuthenticatedUser) {
+    return sign(
+      {
+        purpose: "dashboard-sync",
+        sub: user.id,
+        householdId: user.householdId
+      } satisfies DashboardSyncTokenPayload,
+      this.appConfigService.jwtSecret as Secret,
+      {
+        expiresIn: "15m"
+      }
+    );
+  }
+
+  async getCurrentUserFromDashboardSyncToken(
+    token: string | undefined,
+    language: SupportedLanguage
+  ): Promise<AuthenticatedUser> {
+    if (!token) {
+      throw new UnauthorizedException({
+        message: this.i18nService.translate("auth.unauthorized", language)
+      });
+    }
+
+    try {
+      const payload = verify(token, this.appConfigService.jwtSecret) as Partial<DashboardSyncTokenPayload>;
+      if (payload.purpose !== "dashboard-sync" || !payload.sub || !payload.householdId) {
+        throw new Error("Invalid dashboard sync token.");
+      }
+
+      const user = await this.prisma.user.findUniqueOrThrow({
+        where: {
+          id: payload.sub
+        },
+        include: {
+          identities: true
+        }
+      });
+
+      if (user.householdId !== payload.householdId) {
+        throw new Error("Dashboard sync token household mismatch.");
+      }
 
       const preferredIdentity =
         user.identities.find((identity) => identity.provider === AuthProvider.LOCAL && identity.email) ??

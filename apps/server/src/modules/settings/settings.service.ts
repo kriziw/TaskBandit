@@ -39,6 +39,15 @@ export class SettingsService {
     return this.repository.getNotificationDevices(user.householdId, user.id);
   }
 
+  getWebPushPublicKey(user: AuthenticatedUser) {
+    return {
+      supported: this.appConfigService.webPushEnabled,
+      publicKey: this.appConfigService.webPushConfig?.publicKey ?? null,
+      platform: "web_push" as const,
+      householdId: user.householdId
+    };
+  }
+
   getHouseholdNotificationHealth(user: AuthenticatedUser) {
     return this.repository.getHouseholdNotificationHealth(user.householdId);
   }

@@ -8,7 +8,8 @@
 
 TaskBandit is a self-hosted, heavily gamified household chore manager with:
 
-- a server component that exposes the API and serves the production web UI from the same container
+- a server component that exposes the API and can either serve the embedded combined web UI or sit behind separate admin/client web frontends
+- a client-facing web PWA for installable browser-based daily use
 - a native Android application for daily use, offline actions, photo proof, and widgets
 
 ## AI Disclaimer
@@ -42,6 +43,7 @@ This repository is in the initial implementation phase. The current scaffold inc
 - per-member notification preferences respected by reminder and activity notifications
 - Android installations now register notification devices with the server, and mobile push is the primary household notification channel
 - optional Firebase Cloud Messaging delivery is now wired on the server and Android can register real FCM tokens when Firebase is configured at build/runtime
+- optional Web Push delivery is now wired for the client PWA when VAPID keys are configured on the server
 - optional SMTP settings configurable from the admin UI, with built-in connection testing
 - optional SMTP-backed fallback delivery for notifications when no push-ready mobile device is available
 - local-account password reset via SMTP-backed email links
@@ -106,6 +108,7 @@ Recommended GitHub release secret:
 ## Deployment Notes
 
 TaskBandit is intended to support self-hosting behind reverse proxies such as Nginx or Traefik. See `docs/reverse-proxy.md` for the initial configuration guidance.
+The split admin/client rollout model, session strategy, and coexistence rules are documented in `docs/dual-web-clients.md`.
 
 Upgrade order for private self-hosted installs:
 
@@ -145,6 +148,7 @@ Manual setup:
    `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true` is the emergency recovery switch that keeps local sign-in available even if the UI setting disables it.
    If you enable it, configure your provider redirect URI as `http(s)://<your-taskbandit-base-url>/api/auth/oidc/callback`.
    FCM is also optional. Leave `TASKBANDIT_FCM_ENABLED=false` unless you are actively wiring Firebase Admin delivery for Android push notifications.
+   Web Push is optional too. Leave `TASKBANDIT_WEB_PUSH_*` blank unless you want browser push for the client PWA.
 3. Start TaskBandit from the repository root:
    `docker compose up -d`
 4. Open `http://localhost:<TASKBANDIT_PORT>`.
@@ -175,6 +179,9 @@ Manual setup:
 - Android clients now register a durable installation ID with the server so notification-device records move with the data volume and can later be upgraded to real push delivery providers.
 - `TASKBANDIT_FCM_ENABLED=false` keeps server-side Firebase Cloud Messaging off entirely.
 - `TASKBANDIT_FCM_SERVICE_ACCOUNT_BASE64` is the preferred way to pass a Firebase service-account JSON into Docker Compose for push delivery. `TASKBANDIT_FCM_SERVICE_ACCOUNT_JSON` also works if you prefer a raw JSON env value.
+- `TASKBANDIT_WEB_PUSH_PUBLIC_KEY`, `TASKBANDIT_WEB_PUSH_PRIVATE_KEY`, and `TASKBANDIT_WEB_PUSH_SUBJECT` enable browser Web Push for the client PWA. If they are left blank, the client PWA still gets foreground live sync while open, but background browser notifications stay disabled.
+- `TASKBANDIT_SERVE_EMBEDDED_WEB=true` keeps the bundled combined web UI served from the server container. Set it to `false` when you want to host admin/client frontends separately.
+- `TASKBANDIT_CORS_ALLOWED_ORIGINS=` accepts a comma-separated allowlist of browser origins for split admin/client frontend deployments.
 - UI-managed configuration and household state now live under the bind-mounted `TASKBANDIT_DATA_ROOT` folder:
   PostgreSQL data is stored in `${TASKBANDIT_DATA_ROOT}/postgres`, and app-managed files such as uploads and runtime logs are stored in `${TASKBANDIT_DATA_ROOT}/taskbandit`.
   If you migrate that folder to another host and bring the stack up again, the household settings and other UI-managed data come with it.

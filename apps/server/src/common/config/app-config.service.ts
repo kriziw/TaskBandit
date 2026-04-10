@@ -10,6 +10,12 @@ type FirebaseServiceAccount = {
   privateKey: string;
 };
 
+type WebPushConfig = {
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+};
+
 @Injectable()
 export class AppConfigService {
   constructor(private readonly configService: ConfigService) {}
@@ -62,6 +68,10 @@ export class AppConfigService {
 
   get reverseProxyEnabled(): boolean {
     return this.configService.get<string>("TASKBANDIT_REVERSE_PROXY_ENABLED", "false") === "true";
+  }
+
+  get serveEmbeddedWeb(): boolean {
+    return this.configService.get<string>("TASKBANDIT_SERVE_EMBEDDED_WEB", "true") === "true";
   }
 
   get reverseProxyPathBase(): string {
@@ -120,6 +130,14 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_ENV_FILE_HINT", "./.env").trim();
   }
 
+  get corsAllowedOrigins(): string[] {
+    return this.configService
+      .get<string>("TASKBANDIT_CORS_ALLOWED_ORIGINS", "")
+      .split(",")
+      .map((value) => value.trim())
+      .filter(Boolean);
+  }
+
   get runtimeLogFilePath(): string {
     return path.resolve(this.storageRootPath, "logs", "taskbandit-runtime.log");
   }
@@ -161,6 +179,26 @@ export class AppConfigService {
     } catch {
       return null;
     }
+  }
+
+  get webPushConfig(): WebPushConfig | null {
+    const publicKey = this.configService.get<string>("TASKBANDIT_WEB_PUSH_PUBLIC_KEY", "").trim();
+    const privateKey = this.configService.get<string>("TASKBANDIT_WEB_PUSH_PRIVATE_KEY", "").trim();
+    const subject = this.configService.get<string>("TASKBANDIT_WEB_PUSH_SUBJECT", "").trim();
+
+    if (!publicKey || !privateKey || !subject) {
+      return null;
+    }
+
+    return {
+      publicKey,
+      privateKey,
+      subject
+    };
+  }
+
+  get webPushEnabled(): boolean {
+    return this.webPushConfig !== null;
   }
 
   get jwtSecret(): string {

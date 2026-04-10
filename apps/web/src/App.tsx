@@ -1,8 +1,14 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { RefObject } from "react";
-import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
+import { resolveApiBaseUrl, taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
+import {
+  enableClientWebPush,
+  getClientWebPushSupportStatus,
+  syncClientWebPushRegistration,
+  type ClientWebPushStatus
+} from "./pwa/clientPush";
 import type {
   AdminSystemStatus,
   AuditLogEntry,
@@ -25,6 +31,7 @@ import type {
   HouseholdSettings,
   LocalizedTemplateTranslation,
   NotificationDevice,
+  NotificationDeviceProvider,
   NotificationRecovery,
   NotificationPreferences,
   NotificationEntry,
@@ -40,9 +47,10 @@ import type {
   UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
-const tokenStorageKey = "taskbandit-access-token";
+const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
+const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
 type WorkspaceVariant = "combined" | "admin" | "client";
 
 type DashboardPayload = {
@@ -251,8 +259,69 @@ function createEmptyMemberEditForm(): MemberEditFormState {
   };
 }
 
-function readStoredToken() {
-  return window.localStorage.getItem(tokenStorageKey);
+function getTokenStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? legacyTokenStorageKey : `${legacyTokenStorageKey}-${variant}`;
+}
+
+function getTokenMigrationKey(variant: WorkspaceVariant) {
+  return `${getTokenStorageKey(variant)}-migrated`;
+}
+
+function getTokenStorage(variant: WorkspaceVariant) {
+  if (variant === "admin") {
+    return window.sessionStorage;
+  }
+
+  return window.localStorage;
+}
+
+function readStoredToken(variant: WorkspaceVariant) {
+  const storage = getTokenStorage(variant);
+  const storageKey = getTokenStorageKey(variant);
+  const directValue = storage.getItem(storageKey);
+  if (directValue) {
+    return directValue;
+  }
+
+  if (variant !== "combined") {
+    const migrationKey = getTokenMigrationKey(variant);
+    if (window.localStorage.getItem(migrationKey) === "true") {
+      return null;
+    }
+
+    const legacyValue = window.localStorage.getItem(legacyTokenStorageKey);
+    if (legacyValue) {
+      storage.setItem(storageKey, legacyValue);
+      window.localStorage.setItem(migrationKey, "true");
+      return legacyValue;
+    }
+  }
+
+  return null;
+}
+
+function writeStoredToken(variant: WorkspaceVariant, token: string) {
+  const storage = getTokenStorage(variant);
+  storage.setItem(getTokenStorageKey(variant), token);
+  if (variant !== "combined") {
+    window.localStorage.setItem(getTokenMigrationKey(variant), "true");
+  }
+}
+
+function clearStoredToken(variant: WorkspaceVariant) {
+  const storage = getTokenStorage(variant);
+  storage.removeItem(getTokenStorageKey(variant));
+  if (variant !== "combined") {
+    window.localStorage.setItem(getTokenMigrationKey(variant), "true");
+  }
+}
+
+function getDismissedUpdateStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? dismissedUpdateStorageKey : `${dismissedUpdateStorageKey}-${variant}`;
+}
+
+function getDismissedPwaInstallStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? dismissedPwaInstallKey : `${dismissedPwaInstallKey}-${variant}`;
 }
 
 function isWorkspacePage(value: string | null): value is WorkspacePage {
@@ -339,6 +408,12 @@ function formatReleaseLabel(release: ReleaseInfo) {
   return `v${release.releaseVersion} · build ${release.buildNumber}`;
 }
 
+type BeforeInstallPromptEvent = Event & {
+  readonly platforms: string[];
+  prompt: () => Promise<void>;
+  userChoice: Promise<{ outcome: "accepted" | "dismissed"; platform: string }>;
+};
+
 function isOptionalFeatureUnavailable(error: unknown) {
   return error instanceof TaskBanditApiError && [404, 405, 501].includes(error.status);
 }
@@ -361,6 +436,24 @@ async function loadOptionalFeature<T>(loader: () => Promise<T>, fallbackValue: T
   }
 }
 
+function getInitialClientWebPushStatus(): ClientWebPushStatus {
+  if (!getClientWebPushSupportStatus()) {
+    return {
+      supported: false,
+      enabled: false,
+      permission: "unsupported",
+      needsPrompt: false
+    };
+  }
+
+  return {
+    supported: true,
+    enabled: false,
+    permission: Notification.permission,
+    needsPrompt: Notification.permission === "default"
+  };
+}
+
 const currentWebReleaseInfo: ReleaseInfo = {
   releaseVersion: import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION ?? "0.0.0-dev",
   buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
@@ -369,10 +462,14 @@ const currentWebReleaseInfo: ReleaseInfo = {
 
 export function App({ workspaceVariant = "combined" }: { workspaceVariant?: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
-  const [token, setToken] = useState<string | null>(() => readStoredToken());
+  const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
-    window.localStorage.getItem(dismissedUpdateStorageKey)
+    window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant))
+  );
+  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
+  const [installPromptDismissed, setInstallPromptDismissed] = useState<boolean>(() =>
+    window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
   );
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
@@ -444,6 +541,9 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [clientWebPushStatus, setClientWebPushStatus] = useState<ClientWebPushStatus>(
+    getInitialClientWebPushStatus
+  );
   const householdSettingsRef = useRef<HTMLElement | null>(null);
   const membersRef = useRef<HTMLElement | null>(null);
   const templatesRef = useRef<HTMLElement | null>(null);
@@ -495,7 +595,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
     }
 
     if (oidcToken) {
-      window.localStorage.setItem(tokenStorageKey, oidcToken);
+      writeStoredToken(workspaceVariant, oidcToken);
       setToken(oidcToken);
       setLoginError(null);
       setNotice(t("auth.oidc_success"));
@@ -533,6 +633,115 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     void refreshDashboard(token, { silent: false });
   }, [token, language]);
+
+  useEffect(() => {
+    if (!token || workspaceVariant !== "client") {
+      setClientWebPushStatus(getInitialClientWebPushStatus());
+      return;
+    }
+
+    let cancelled = false;
+    void syncClientWebPushRegistration({
+      token,
+      language,
+      appVersion: `${currentWebReleaseInfo.releaseVersion}+${currentWebReleaseInfo.buildNumber}`
+    })
+      .then((status) => {
+        if (!cancelled) {
+          setClientWebPushStatus(status);
+        }
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setClientWebPushStatus(getInitialClientWebPushStatus());
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [language, token, workspaceVariant]);
+
+  useEffect(() => {
+    if (!token || workspaceVariant !== "client") {
+      return;
+    }
+
+    let cancelled = false;
+    let eventSource: EventSource | null = null;
+
+    const connect = async () => {
+      try {
+        const syncToken = await taskBanditApi.getDashboardSyncToken(token, language);
+        if (cancelled) {
+          return;
+        }
+
+        const streamUrl = new URL(`${resolveApiBaseUrl()}/api/dashboard/sync/client-stream`);
+        streamUrl.searchParams.set("token", syncToken.token);
+        eventSource = new EventSource(streamUrl.toString());
+        eventSource.addEventListener("chore-sync", () => {
+          void refreshDashboard(token, { silent: true });
+        });
+        eventSource.addEventListener("heartbeat", () => {
+          // keepalive only
+        });
+        eventSource.onerror = () => {
+          eventSource?.close();
+          eventSource = null;
+          if (!cancelled) {
+            window.setTimeout(() => {
+              if (!cancelled) {
+                void connect();
+              }
+            }, 3000);
+          }
+        };
+      } catch {
+        if (!cancelled) {
+          window.setTimeout(() => {
+            if (!cancelled) {
+              void connect();
+            }
+          }, 3000);
+        }
+      }
+    };
+
+    void connect();
+
+    return () => {
+      cancelled = true;
+      eventSource?.close();
+    };
+  }, [language, token, workspaceVariant]);
+
+  useEffect(() => {
+    if (workspaceVariant !== "client" || !("serviceWorker" in navigator)) {
+      return;
+    }
+
+    const onServiceWorkerMessage = (event: MessageEvent<{ type?: string; payload?: { path?: string } }>) => {
+      if (event.data?.type === "taskbandit-push") {
+        setNotice(t("pwa.foreground_notification_received"));
+        if (token) {
+          void refreshDashboard(token, { silent: true });
+        }
+      }
+
+      if (event.data?.type === "taskbandit-notification-click" && event.data.payload?.path) {
+        window.location.hash = "notifications";
+        if (token) {
+          void refreshDashboard(token, { silent: true });
+        }
+      }
+    };
+
+    navigator.serviceWorker.addEventListener("message", onServiceWorkerMessage);
+    return () => {
+      navigator.serviceWorker.removeEventListener("message", onServiceWorkerMessage);
+    };
+  }, [t, token, workspaceVariant]);
 
   useEffect(() => {
     if (payload) {
@@ -798,6 +1007,50 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   const activePageDescription = isAdminVariantAccessDenied
     ? t("workspace.admin_only_body")
     : pageDescriptions[activePage];
+  const isClientVariant = workspaceVariant === "client";
+  const isStandaloneDisplayMode =
+    window.matchMedia("(display-mode: standalone)").matches ||
+    window.matchMedia("(display-mode: window-controls-overlay)").matches ||
+    (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
+  const showInstallPrompt =
+    isClientVariant &&
+    !isStandaloneDisplayMode &&
+    !installPromptDismissed &&
+    installPromptEvent !== null;
+
+  useEffect(() => {
+    if (!isClientVariant) {
+      return;
+    }
+
+    const onBeforeInstallPrompt = (event: Event) => {
+      event.preventDefault();
+      setInstallPromptEvent(event as BeforeInstallPromptEvent);
+    };
+
+    const onAppInstalled = () => {
+      setInstallPromptEvent(null);
+      window.localStorage.setItem(getDismissedPwaInstallStorageKey(workspaceVariant), "true");
+      setInstallPromptDismissed(true);
+      setNotice(t("pwa.install_success"));
+    };
+
+    window.addEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+    window.addEventListener("appinstalled", onAppInstalled);
+
+    return () => {
+      window.removeEventListener("beforeinstallprompt", onBeforeInstallPrompt);
+      window.removeEventListener("appinstalled", onAppInstalled);
+    };
+  }, [isClientVariant, t]);
+
+  useEffect(() => {
+    setToken(readStoredToken(workspaceVariant));
+    setDismissedUpdateKey(window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant)));
+    setInstallPromptDismissed(
+      window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
+    );
+  }, [workspaceVariant]);
 
   const onboardingSteps = useMemo(
     () => [
@@ -1534,7 +1787,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
   }
 
   function handleLogout(message?: string) {
-    window.localStorage.removeItem(tokenStorageKey);
+    clearStoredToken(workspaceVariant);
     setToken(null);
     setPayload(null);
     setRuntimeLogs([]);
@@ -1551,7 +1804,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     try {
       const response = await taskBanditApi.login(loginForm.email, loginForm.password, language);
-      window.localStorage.setItem(tokenStorageKey, response.accessToken);
+      writeStoredToken(workspaceVariant, response.accessToken);
       setToken(response.accessToken);
       setNotice(t("auth.login_success"));
     } catch (error) {
@@ -1568,7 +1821,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
 
     try {
       const response = await taskBanditApi.signup(signupForm, language);
-      window.localStorage.setItem(tokenStorageKey, response.accessToken);
+      writeStoredToken(workspaceVariant, response.accessToken);
       setToken(response.accessToken);
       setSignupForm({
         displayName: "",
@@ -1643,7 +1896,7 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
         bootstrapForm.ownerPassword,
         language
       );
-      window.localStorage.setItem(tokenStorageKey, authResponse.accessToken);
+      writeStoredToken(workspaceVariant, authResponse.accessToken);
       setToken(authResponse.accessToken);
       setBootstrapStatus({
         isBootstrapped: true,
@@ -2986,12 +3239,61 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
       return;
     }
 
-    window.localStorage.setItem(dismissedUpdateStorageKey, availableUpdateKey);
+    window.localStorage.setItem(getDismissedUpdateStorageKey(workspaceVariant), availableUpdateKey);
     setDismissedUpdateKey(availableUpdateKey);
   }
 
+  async function handleInstallPwa() {
+    if (!installPromptEvent) {
+      return;
+    }
+
+    await installPromptEvent.prompt();
+    const choice = await installPromptEvent.userChoice;
+    if (choice.outcome === "accepted") {
+      setInstallPromptEvent(null);
+      setNotice(t("pwa.install_success"));
+      return;
+    }
+
+    setInstallPromptEvent(null);
+  }
+
+  function handleDismissInstallPrompt() {
+    window.localStorage.setItem(getDismissedPwaInstallStorageKey(workspaceVariant), "true");
+    setInstallPromptDismissed(true);
+    setInstallPromptEvent(null);
+  }
+
+  async function handleEnableBrowserNotifications() {
+    if (!token) {
+      return;
+    }
+
+    setBusyAction("enable-browser-notifications");
+    try {
+      const status = await enableClientWebPush({
+        token,
+        language,
+        appVersion: `${currentWebReleaseInfo.releaseVersion}+${currentWebReleaseInfo.buildNumber}`
+      });
+      setClientWebPushStatus(status);
+
+      if (status.enabled) {
+        setNotice(t("pwa.browser_notifications_enabled"));
+        await refreshDashboard(token, { silent: true });
+      } else if (status.permission === "denied") {
+        setPageError(t("pwa.browser_notifications_denied"));
+      }
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("pwa.browser_notifications_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   return (
-    <main className="app-shell">
+    <main className={`app-shell variant-${workspaceVariant}`} data-variant={workspaceVariant}>
       <section className="toolbar">
         <div className="toolbar-group">
           {payload?.currentUser ? (
@@ -3062,6 +3364,40 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
           <button className="ghost-button" type="button" onClick={handleDismissAvailableUpdate}>
             {t("release.dismiss_update")}
           </button>
+        </div>
+      ) : null}
+      {showInstallPrompt ? (
+        <div className="notice-banner info update-banner">
+          <div>
+            <strong>{t("pwa.install_title")}</strong>
+            <p>{t("pwa.install_body")}</p>
+          </div>
+          <div className="button-row">
+            <button className="secondary-button" type="button" onClick={() => void handleInstallPwa()}>
+              {t("pwa.install_action")}
+            </button>
+            <button className="ghost-button" type="button" onClick={handleDismissInstallPrompt}>
+              {t("pwa.install_later")}
+            </button>
+          </div>
+        </div>
+      ) : null}
+      {workspaceVariant === "client" && token && clientWebPushStatus.supported && clientWebPushStatus.needsPrompt ? (
+        <div className="notice-banner info update-banner">
+          <div>
+            <strong>{t("pwa.browser_notifications_title")}</strong>
+            <p>{t("pwa.browser_notifications_body")}</p>
+          </div>
+          <div className="button-row">
+            <button
+              className="secondary-button"
+              type="button"
+              disabled={busyAction === "enable-browser-notifications"}
+              onClick={() => void handleEnableBrowserNotifications()}
+            >
+              {t("pwa.browser_notifications_action")}
+            </button>
+          </div>
         </div>
       ) : null}
 
@@ -4188,7 +4524,12 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                     {payload.notificationDevices.map((device) => (
                       <div className="task-row compact" key={device.id}>
                         <div className="task-row-header">
-                          <strong>{device.deviceName || t("settings.notification_device_android")}</strong>
+                          <strong>
+                            {device.deviceName ||
+                              (device.platform === "web"
+                                ? t("settings.notification_device_browser")
+                                : t("settings.notification_device_android"))}
+                          </strong>
                           <span
                             className={`status-pill ${device.pushTokenConfigured ? "state-completed" : "state-open"}`}
                           >
@@ -4201,7 +4542,9 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                           {t("settings.notification_device_provider")}:{" "}
                           {device.provider === "fcm"
                             ? t("settings.notification_device_provider_fcm")
-                            : t("settings.notification_device_provider_generic")}
+                            : device.provider === "web_push"
+                              ? t("settings.notification_device_provider_web_push")
+                              : t("settings.notification_device_provider_generic")}
                         </p>
                         <p>
                           {t("settings.notification_device_last_seen")}: {formatDate(device.lastSeenAt)}
@@ -4468,6 +4811,18 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                         {t("system_status.listen_port")}: {payload.systemStatus.application.port}
                       </p>
                       <p>
+                        {t("system_status.embedded_web")}:{" "}
+                        {payload.systemStatus.application.serveEmbeddedWeb
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.cors_origins")}:{" "}
+                        {payload.systemStatus.application.corsAllowedOrigins.length > 0
+                          ? payload.systemStatus.application.corsAllowedOrigins.join(", ")
+                          : t("system_status.cors_open")}
+                      </p>
+                      <p>
                         {t("system_status.reverse_proxy")}:{" "}
                         {payload.systemStatus.application.reverseProxyEnabled
                           ? t("common.enabled")
@@ -4564,6 +4919,12 @@ export function App({ workspaceVariant = "combined" }: { workspaceVariant?: Work
                       <p>
                         {t("system_status.service_account")}:{" "}
                         {payload.systemStatus.push.serviceAccountConfigured
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("system_status.web_push_enabled")}:{" "}
+                        {payload.systemStatus.push.serverWebPushEnabled
                           ? t("common.enabled")
                           : t("common.disabled")}
                       </p>

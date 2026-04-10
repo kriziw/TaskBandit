@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { EmailDeliveryWorkerService } from "./email-delivery-worker.service";
 import { PushDeliveryWorkerService } from "./push-delivery-worker.service";
@@ -18,6 +19,7 @@ export class DashboardService {
     private readonly appConfigService: AppConfigService,
     private readonly appLogService: AppLogService,
     private readonly prisma: PrismaService,
+    private readonly authService: AuthService,
     private readonly reminderWorkerService: ReminderWorkerService,
     private readonly emailDeliveryWorkerService: EmailDeliveryWorkerService,
     private readonly pushDeliveryWorkerService: PushDeliveryWorkerService
@@ -33,6 +35,10 @@ export class DashboardService {
 
   getNotifications(user: AuthenticatedUser) {
     return this.repository.getNotifications(user.householdId, user.id);
+  }
+
+  createSyncToken(user: AuthenticatedUser) {
+    return this.authService.createDashboardSyncToken(user);
   }
 
   markNotificationRead(user: AuthenticatedUser, notificationId: string) {
@@ -258,10 +264,10 @@ export class DashboardService {
       (entry) => entry.deliveryMode === "none"
     ).length;
     const serviceAccountConfigured = Boolean(this.appConfigService.fcmServiceAccount);
+    const webPushConfigured = this.appConfigService.webPushEnabled;
     const pushStatus =
       household.settings.enablePushNotifications &&
-      this.appConfigService.fcmEnabled &&
-      serviceAccountConfigured &&
+      ((this.appConfigService.fcmEnabled && serviceAccountConfigured) || webPushConfigured) &&
       pushReadyDeviceCount > 0
         ? "ready"
         : household.settings.enablePushNotifications
@@ -277,6 +283,8 @@ export class DashboardService {
       application: {
         status: "ready",
         port: this.appConfigService.port,
+        serveEmbeddedWeb: this.appConfigService.serveEmbeddedWeb,
+        corsAllowedOrigins: this.appConfigService.corsAllowedOrigins,
         reverseProxyEnabled: this.appConfigService.reverseProxyEnabled,
         reverseProxyPathBase: this.appConfigService.reverseProxyPathBase || null
       },
@@ -313,6 +321,7 @@ export class DashboardService {
         householdPushEnabled: household.settings.enablePushNotifications,
         serverFcmEnabled: this.appConfigService.fcmEnabled,
         serviceAccountConfigured,
+        serverWebPushEnabled: webPushConfigured,
         registeredDeviceCount,
         pushReadyDeviceCount,
         membersWithPushReadyDevices,

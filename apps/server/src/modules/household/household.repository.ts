@@ -386,10 +386,7 @@ export class HouseholdRepository {
     return members.map((member) => {
       const registeredDeviceCount = member.notificationDevices.length;
       const pushReadyDeviceCount = member.notificationDevices.filter(
-        (device) =>
-          device.notificationsEnabled &&
-          Boolean(device.pushToken) &&
-          device.provider === NotificationDeviceProvider.FCM
+        (device) => this.isNotificationDevicePushReady(device)
       ).length;
       const fallbackEmail = member.identities.find((identity) => Boolean(identity.email))?.email ?? null;
       const emailFallbackEligible = smtpFallbackAvailable && Boolean(fallbackEmail);
@@ -429,6 +426,8 @@ export class HouseholdRepository {
         platform,
         provider,
         pushToken: dto.pushToken?.trim() || null,
+        webPushP256dh: dto.webPushP256dh?.trim() || null,
+        webPushAuth: dto.webPushAuth?.trim() || null,
         deviceName: dto.deviceName?.trim() || null,
         appVersion: dto.appVersion?.trim() || null,
         locale: dto.locale?.trim() || null,
@@ -441,6 +440,8 @@ export class HouseholdRepository {
         platform,
         provider,
         pushToken: dto.pushToken?.trim() || null,
+        webPushP256dh: dto.webPushP256dh?.trim() || null,
+        webPushAuth: dto.webPushAuth?.trim() || null,
         deviceName: dto.deviceName?.trim() || null,
         appVersion: dto.appVersion?.trim() || null,
         locale: dto.locale?.trim() || null,
@@ -579,6 +580,8 @@ export class HouseholdRepository {
       entityId: delivery.notification.entityId,
       provider: delivery.notificationDevice.provider,
       pushToken: delivery.notificationDevice.pushToken,
+      webPushP256dh: delivery.notificationDevice.webPushP256dh,
+      webPushAuth: delivery.notificationDevice.webPushAuth,
       deviceName: delivery.notificationDevice.deviceName
     }));
   }
@@ -4644,7 +4647,7 @@ export class HouseholdRepository {
       installationId: device.installationId,
       platform: device.platform.toLowerCase(),
       provider: device.provider.toLowerCase(),
-      pushTokenConfigured: Boolean(device.pushToken),
+      pushTokenConfigured: this.isNotificationDevicePushReady(device),
       deviceName: device.deviceName,
       appVersion: device.appVersion,
       locale: device.locale,
@@ -4653,6 +4656,27 @@ export class HouseholdRepository {
       createdAt: device.createdAtUtc,
       updatedAt: device.updatedAtUtc
     };
+  }
+
+  private isNotificationDevicePushReady(
+    device: Pick<
+      Prisma.NotificationDeviceGetPayload<object>,
+      "notificationsEnabled" | "provider" | "pushToken" | "webPushP256dh" | "webPushAuth"
+    >
+  ) {
+    if (!device.notificationsEnabled) {
+      return false;
+    }
+
+    switch (device.provider) {
+      case NotificationDeviceProvider.FCM:
+        return Boolean(device.pushToken);
+      case NotificationDeviceProvider.WEB_PUSH:
+        return Boolean(device.pushToken && device.webPushP256dh && device.webPushAuth);
+      case NotificationDeviceProvider.GENERIC:
+      default:
+        return false;
+    }
   }
 
   private buildDailySummaryMessage(
@@ -4892,12 +4916,26 @@ export class HouseholdRepository {
     return {
       userId: recipientUserId,
       notificationsEnabled: true,
-      pushToken: {
-        not: null
-      },
-      provider: {
-        in: [NotificationDeviceProvider.FCM]
-      }
+      OR: [
+        {
+          provider: NotificationDeviceProvider.FCM,
+          pushToken: {
+            not: null
+          }
+        },
+        {
+          provider: NotificationDeviceProvider.WEB_PUSH,
+          pushToken: {
+            not: null
+          },
+          webPushP256dh: {
+            not: null
+          },
+          webPushAuth: {
+            not: null
+          }
+        }
+      ]
     };
   }
 
@@ -4936,6 +4974,8 @@ export class HouseholdRepository {
 
   private mapNotificationDevicePlatform(platform?: string) {
     switch (platform) {
+      case "web":
+        return NotificationDevicePlatform.WEB;
       case "android":
       default:
         return NotificationDevicePlatform.ANDROID;
@@ -4944,6 +4984,8 @@ export class HouseholdRepository {
 
   private mapNotificationDeviceProvider(provider?: string) {
     switch (provider) {
+      case "web_push":
+        return NotificationDeviceProvider.WEB_PUSH;
       case "fcm":
         return NotificationDeviceProvider.FCM;
       case "generic":

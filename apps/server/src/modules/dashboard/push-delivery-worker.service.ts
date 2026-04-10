@@ -85,6 +85,8 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
       const result = await this.pushDeliveryService.deliver({
         provider: delivery.provider,
         pushToken: delivery.pushToken,
+        webPushP256dh: delivery.webPushP256dh,
+        webPushAuth: delivery.webPushAuth,
         title: delivery.title,
         message: delivery.message,
         entityType: delivery.entityType,

@@ -42,6 +42,11 @@
   "workspace.variant_client": "Kliens munkatér",
   "workspace.admin_only_title": "Admin hozzáférés szükséges",
   "workspace.admin_only_body": "Ez a belépési felület csak admin fiókoknak készült. A mindennapi háztartási használathoz a kliens munkateret használd.",
+  "pwa.install_title": "Telepítsd a TaskBanditet erre az eszközre",
+  "pwa.install_body": "Add hozzá a kliens munkateret a kezdőképernyődhöz a letisztultabb, alkalmazásszerű használathoz.",
+  "pwa.install_action": "App telepítése",
+  "pwa.install_later": "Később",
+  "pwa.install_success": "A TaskBandit hozzá lett adva az eszközhöz, vagy már telepített appként megnyitható.",
   "page.overview_description": "Innen látod a háztartás állapotát, a jóváhagyásokat és a leggyorsabb utakat a napi munkához.",
   "page.chores_description": "Intézd a saját feladataidat, majd válts a háztartási tábla, naptár vagy jóváhagyási nézetre.",
   "page.templates_description": "Itt készíthetsz sablonokat, állíthatod az ismétlődést és a bizonyíték szabályait, majd ütemezhetsz valódi feladatokat.",
@@ -84,7 +89,7 @@
   "panel.leaderboard": "Rangsor",
   "panel.notifications": "Értesítések",
   "panel.notification_preferences": "Értesítési beállítások",
-  "panel.mobile_push_devices": "Mobil push eszközök",
+  "panel.mobile_push_devices": "Push eszközök",
   "panel.household_notification_health": "Háztartási értesítési állapot",
   "panel.backup_readiness": "Backup készenlét",
   "panel.system_status": "Rendszerállapot",
@@ -257,6 +262,9 @@
   "system_status.push": "Push kézbesítés",
   "system_status.email_fallback": "E-mail tartalék",
   "system_status.listen_port": "Figyelt port",
+  "system_status.embedded_web": "Beágyazott webes felület",
+  "system_status.cors_origins": "Engedélyezett böngésző originök",
+  "system_status.cors_open": "Nyitott / nincs korlátozva",
   "system_status.reverse_proxy": "Fordított proxy",
   "system_status.path_base": "Alap útvonal",
   "system_status.database_hint": "Adatbázis ellenőrzés",
@@ -560,4 +568,16 @@
   ,"instances.repeat_end_date": "Befejezes datuma"
   ,"instances.repeat_occurrences_required": "Add meg, hogy osszesen hany alkalommal fusson ez az ismetlodo feladat."
   ,"instances.repeat_end_date_required": "Valaszd ki a datumot, amikor ez az ismetlodo feladat alljon le."
+  ,"pwa.browser_notifications_title": "Bongeszos ertesitesek bekapcsolasa"
+  ,"pwa.browser_notifications_body": "Kapcsold be a bongeszos ertesiteseket, hogy a kliens munkater a hatterben is tudjon jelezni."
+  ,"pwa.browser_notifications_action": "Ertesitesek bekapcsolasa"
+  ,"pwa.browser_notifications_enabled": "A bongeszos ertesitesek most mar engedelyezve vannak ezen az eszkozön."
+  ,"pwa.browser_notifications_failed": "A TaskBandit nem tudta bekapcsolni a bongeszos ertesiteseket ezen az eszkozön."
+  ,"pwa.browser_notifications_denied": "A bongeszos ertesitesek le vannak tiltva ennél az oldalnal. Ha kesobb szeretned bekapcsolni, modositd a bongeszo engedelyet."
+  ,"pwa.foreground_notification_received": "Uj haztartasi aktivitas erkezett."
+  ,"system_status.web_push_enabled": "Szerveres Web Push engedelyezve"
+  ,"settings.push_primary_hint": "A TaskBandit a push ertesiteseket tekinti az elsodleges haztartasi csatornanak. Jelentkezz be az Android alkalmazasba, vagy kapcsold be az ertesiteseket a kliens webappban, hogy ez az eszkoz elo emlekeztetoket es jovahagyasi frissiteseket kapjon."
+  ,"settings.no_notification_devices": "Ehhez a fiokhoz meg nincs regisztralva push-kepes eszkoz. Jelentkezz be az Android alkalmazasba, vagy kapcsold be az ertesiteseket a kliens webappban egy eszkoz csatlakoztatasahoz."
+  ,"settings.notification_device_browser": "Bongeszos kliens"
+  ,"settings.notification_device_provider_web_push": "Web Push"
 }
