@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.25.12](https://github.com/kriziw/TaskBandit/compare/v0.25.11...v0.25.12) (2026-04-10)
+
+
+### Bug Fixes
+
+* **server:** make chore completion idempotent ([#146](https://github.com/kriziw/TaskBandit/issues/146)) ([d5bfb57](https://github.com/kriziw/TaskBandit/commit/d5bfb573ceb7375931bff28d14c5b9124b2dada9))
+
 ## [0.25.11](https://github.com/kriziw/TaskBandit/compare/v0.25.10...v0.25.11) (2026-04-09)
 
 
