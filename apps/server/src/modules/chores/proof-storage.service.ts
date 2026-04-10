@@ -81,11 +81,23 @@ export class ProofStorageService {
   }
 
   private sanitizeFilename(filename: string) {
-    return filename
+    const sanitized = filename
       .trim()
       .replace(/[^a-zA-Z0-9._-]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 255) || "proof-image";
+      .slice(0, 255);
+
+    let start = 0;
+    let end = sanitized.length;
+
+    while (start < end && sanitized[start] === "-") {
+      start += 1;
+    }
+
+    while (end > start && sanitized[end - 1] === "-") {
+      end -= 1;
+    }
+
+    return sanitized.slice(start, end) || "proof-image";
   }
 
   private resolveExtensionFromMimeType(mimeType: string) {
