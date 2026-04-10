@@ -22,6 +22,7 @@ data class MobileLeaderboardEntry(
 
 data class MobileChore(
     val id: String,
+    val cycleId: String? = null,
     val title: String,
     val typeTitle: String,
     val subtypeLabel: String? = null,

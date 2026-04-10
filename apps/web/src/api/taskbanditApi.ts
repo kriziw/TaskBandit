@@ -441,6 +441,16 @@ export const taskBanditApi = {
       language
     });
   },
+  closeCycle(token: string, language: AppLanguage, instanceId: string) {
+    return request<{ cycleId: string; cancelledCount: number; cancelledIds: string[] }>(
+      `/api/chores/instances/${instanceId}/close-cycle`,
+      {
+        method: "POST",
+        token,
+        language
+      }
+    );
+  },
   startInstance(token: string, language: AppLanguage, instanceId: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/start`, {
       method: "POST",

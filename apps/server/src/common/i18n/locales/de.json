@@ -28,6 +28,7 @@
   "chores.takeover_request_already_pending": "Für dieses Mitglied ist bereits eine Übernahmeanfrage offen.",
   "chores.takeover_request_invalid_target": "Wähle ein anderes Haushaltsmitglied für diese Übernahmeanfrage aus.",
   "chores.invalid_cancel_state": "Nur aktive Aufgaben konnen storniert werden.",
+  "chores.cycle_close_not_available": "Diese Aufgabe gehort nicht zu einem wiederkehrenden Ablauf.",
   "chores.invalid_edit_state": "Diese Aufgabe kann in ihrem aktuellen Status nicht mehr bearbeitet werden.",
   "chores.invalid_start_state": "Nur offene oder zur Nachbesserung markierte Aufgaben konnen gestartet werden.",
   "chores.invalid_review_state": "Nur Aufgaben, die auf Freigabe warten, koennen ueberprueft werden.",

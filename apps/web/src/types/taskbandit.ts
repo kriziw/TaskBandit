@@ -11,6 +11,8 @@ export type RecurrenceType =
   | "every_x_days"
   | "custom_weekly";
 
+export type RecurrenceEndMode = "never" | "after_occurrences" | "on_date";
+
 export type ChoreState =
   | "open"
   | "assigned"
@@ -409,6 +411,7 @@ export type ChoreAttachment = {
 export type ChoreInstance = {
   id: string;
   templateId: string;
+  cycleId: string | null;
   title: string;
   typeTitle: string;
   subtypeLabel: string | null;
@@ -509,6 +512,13 @@ export type CreateChoreInstanceInput = {
   title?: string;
   dueAt: string;
   variantId?: string;
+  assignmentStrategy?: AssignmentStrategy;
+  recurrenceType?: RecurrenceType;
+  recurrenceIntervalDays?: number;
+  recurrenceEndMode?: RecurrenceEndMode;
+  recurrenceOccurrences?: number;
+  recurrenceEndsAt?: string;
+  suppressRecurrence?: boolean;
 };
 
 export type BootstrapStatus = {

@@ -401,7 +401,10 @@ export function App() {
     templateId: "",
     assigneeId: "",
     title: "",
-    dueAt: ""
+    dueAt: "",
+    recurrenceEndMode: "never",
+    recurrenceOccurrences: 3,
+    recurrenceEndsAt: ""
   });
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
@@ -1253,6 +1256,18 @@ export function App() {
             >
               {t("instances.cancel")}
             </button>
+            {instance.cycleId ? (
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={busyAction === `close-cycle:${instance.id}`}
+                onClick={() => void handleCloseCycle(instance.id)}
+              >
+                {busyAction === `close-cycle:${instance.id}`
+                  ? t("instances.closing_cycle")
+                  : t("instances.close_cycle")}
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -1354,6 +1369,18 @@ export function App() {
           >
             {t("submission.submit")}
           </button>
+          {payload?.currentUser.role !== "child" && instance.cycleId ? (
+            <button
+              className="ghost-button"
+              type="button"
+              disabled={busyAction === `close-cycle:${instance.id}`}
+              onClick={() => void handleCloseCycle(instance.id)}
+            >
+              {busyAction === `close-cycle:${instance.id}`
+                ? t("instances.closing_cycle")
+                : t("instances.close_cycle")}
+            </button>
+          ) : null}
         </div>
       </div>
     );
@@ -2084,8 +2111,28 @@ export function App() {
     }
 
     const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
+    const supportsRecurrenceEnd =
+      !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
     if ((selectedTemplate?.variants?.length ?? 0) > 0 && !instanceForm.variantId) {
       setPageError(t("instances.subtype_required"));
+      return;
+    }
+
+    if (
+      supportsRecurrenceEnd &&
+      instanceForm.recurrenceEndMode === "after_occurrences" &&
+      (!instanceForm.recurrenceOccurrences || instanceForm.recurrenceOccurrences <= 0)
+    ) {
+      setPageError(t("instances.repeat_occurrences_required"));
+      return;
+    }
+
+    if (
+      supportsRecurrenceEnd &&
+      instanceForm.recurrenceEndMode === "on_date" &&
+      !instanceForm.recurrenceEndsAt
+    ) {
+      setPageError(t("instances.repeat_end_date_required"));
       return;
     }
 
@@ -2096,7 +2143,16 @@ export function App() {
         assigneeId: instanceForm.assigneeId || undefined,
         title: instanceForm.title?.trim() || undefined,
         dueAt: new Date(instanceForm.dueAt).toISOString(),
-        variantId: instanceForm.variantId || undefined
+        variantId: instanceForm.variantId || undefined,
+        recurrenceEndMode: supportsRecurrenceEnd ? instanceForm.recurrenceEndMode : undefined,
+        recurrenceOccurrences:
+          supportsRecurrenceEnd && instanceForm.recurrenceEndMode === "after_occurrences"
+            ? instanceForm.recurrenceOccurrences
+            : undefined,
+        recurrenceEndsAt:
+          supportsRecurrenceEnd && instanceForm.recurrenceEndMode === "on_date" && instanceForm.recurrenceEndsAt
+            ? new Date(instanceForm.recurrenceEndsAt).toISOString()
+            : undefined
       };
       const savedInstance = editingInstanceId
         ? await taskBanditApi.updateInstance(token, language, editingInstanceId, instancePayload)
@@ -2122,6 +2178,28 @@ export function App() {
       setPageError(
         readErrorMessage(error, editingInstanceId ? t("instances.update_failed") : t("instances.create_failed"))
       );
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleCloseCycle(instanceId: string) {
+    if (!token) {
+      return;
+    }
+
+    if (!window.confirm(t("instances.close_cycle_confirm"))) {
+      return;
+    }
+
+    setBusyAction(`close-cycle:${instanceId}`);
+    try {
+      await taskBanditApi.closeCycle(token, language, instanceId);
+      await refreshDashboard(token, { silent: true });
+      setNotice(t("instances.cycle_closed"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.close_cycle_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -2619,7 +2697,10 @@ export function App() {
       ...current,
       assigneeId: "",
       title: "",
-      dueAt: ""
+      dueAt: "",
+      recurrenceEndMode: "never",
+      recurrenceOccurrences: 3,
+      recurrenceEndsAt: ""
     }));
   }
 
@@ -2707,7 +2788,10 @@ export function App() {
       templateId: instance.templateId,
       assigneeId: instance.assigneeId ?? "",
       title: instance.title,
-      dueAt: formatDateTimeLocal(instance.dueAt)
+      dueAt: formatDateTimeLocal(instance.dueAt),
+      recurrenceEndMode: "never",
+      recurrenceOccurrences: 3,
+      recurrenceEndsAt: ""
     });
   }
 
@@ -5595,6 +5679,13 @@ export function App() {
                     <span className="section-kicker">{visibleHouseholdChores.length}</span>
                   </div>
                   <form className="login-form member-form" onSubmit={handleCreateInstance}>
+                    {(() => {
+                      const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
+                      const selectedTemplateRepeats =
+                        !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
+
+                      return (
+                        <>
                     <label>
                       <span>{t("instances.template")}</span>
                       <select
@@ -5678,6 +5769,61 @@ export function App() {
                         required
                       />
                     </label>
+                    {selectedTemplateRepeats ? (
+                      <>
+                        <label>
+                          <span>{t("instances.repeat_duration")}</span>
+                          <select
+                            value={instanceForm.recurrenceEndMode ?? "never"}
+                            onChange={(event) =>
+                              setInstanceForm((current) => ({
+                                ...current,
+                                recurrenceEndMode: event.target.value as InstanceFormState["recurrenceEndMode"]
+                              }))
+                            }
+                          >
+                            <option value="never">{t("instances.repeat_forever")}</option>
+                            <option value="after_occurrences">{t("instances.repeat_after_occurrences")}</option>
+                            <option value="on_date">{t("instances.repeat_until_date")}</option>
+                          </select>
+                        </label>
+                        {instanceForm.recurrenceEndMode === "after_occurrences" ? (
+                          <label>
+                            <span>{t("instances.repeat_occurrence_count")}</span>
+                            <input
+                              type="number"
+                              min={1}
+                              value={instanceForm.recurrenceOccurrences ?? ""}
+                              onChange={(event) =>
+                                setInstanceForm((current) => ({
+                                  ...current,
+                                  recurrenceOccurrences: event.target.value
+                                    ? Math.max(1, Math.floor(Number(event.target.value)))
+                                    : undefined
+                                }))
+                              }
+                              required
+                            />
+                          </label>
+                        ) : null}
+                        {instanceForm.recurrenceEndMode === "on_date" ? (
+                          <label>
+                            <span>{t("instances.repeat_end_date")}</span>
+                            <input
+                              type="datetime-local"
+                              value={instanceForm.recurrenceEndsAt ?? ""}
+                              onChange={(event) =>
+                                setInstanceForm((current) => ({
+                                  ...current,
+                                  recurrenceEndsAt: event.target.value
+                                }))
+                              }
+                              required
+                            />
+                          </label>
+                        ) : null}
+                      </>
+                    ) : null}
                     <button
                       className="primary-button"
                       type="submit"
@@ -5690,6 +5836,9 @@ export function App() {
                         {t("common.cancel")}
                       </button>
                     ) : null}
+                        </>
+                      );
+                    })()}
                   </form>
                 </article>
               </>

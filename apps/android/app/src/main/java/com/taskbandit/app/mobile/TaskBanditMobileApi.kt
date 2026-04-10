@@ -82,6 +82,7 @@ class TaskBanditMobileApi {
                 add(
                     MobileChore(
                         id = entry.optString("id"),
+                        cycleId = entry.optString("cycleId").ifBlank { null },
                         title = entry.optString("title"),
                         typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
                         subtypeLabel = entry.optString("subtypeLabel")
@@ -244,6 +245,16 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun closeChoreCycle(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/close-cycle",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
     fun requestTakeover(
         baseUrl: String,
         token: String,
@@ -313,6 +324,9 @@ class TaskBanditMobileApi {
         assignmentStrategy: String? = null,
         recurrenceType: String? = null,
         recurrenceIntervalDays: Int? = null,
+        recurrenceEndMode: String? = null,
+        recurrenceOccurrences: Int? = null,
+        recurrenceEndsAtIsoUtc: String? = null,
         suppressRecurrence: Boolean = false,
         variantId: String? = null
     ) {
@@ -335,6 +349,18 @@ class TaskBanditMobileApi {
 
         if (recurrenceIntervalDays != null) {
             payload.put("recurrenceIntervalDays", recurrenceIntervalDays)
+        }
+
+        if (!recurrenceEndMode.isNullOrBlank()) {
+            payload.put("recurrenceEndMode", recurrenceEndMode)
+        }
+
+        if (recurrenceOccurrences != null) {
+            payload.put("recurrenceOccurrences", recurrenceOccurrences)
+        }
+
+        if (!recurrenceEndsAtIsoUtc.isNullOrBlank()) {
+            payload.put("recurrenceEndsAt", recurrenceEndsAtIsoUtc)
         }
 
         if (!variantId.isNullOrBlank()) {

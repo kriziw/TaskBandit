@@ -122,6 +122,32 @@ export class ChoresService {
     return cancelledInstance;
   }
 
+  async closeCycle(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (!instance.cycleId) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.cycle_close_not_available", language)
+      );
+    }
+
+    const result = await this.repository.closeCycle(
+      instanceId,
+      user.householdId,
+      user.id,
+      language
+    );
+
+    result.cancelledIds.forEach((cancelledId) => {
+      this.publishSyncEvent(user, "instance.cancelled", "instance", cancelledId);
+    });
+
+    return result;
+  }
+
   async startInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {

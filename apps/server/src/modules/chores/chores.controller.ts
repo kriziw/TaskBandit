@@ -138,6 +138,20 @@ export class ChoresController {
     );
   }
 
+  @Post("instances/:id/close-cycle")
+  @Roles("admin", "parent")
+  closeCycle(
+    @Param("id") instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.closeCycle(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
   @Post("instances/:id/start")
   start(
     @Param("id") instanceId: string,

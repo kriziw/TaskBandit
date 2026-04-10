@@ -270,4 +270,20 @@
     <string name="mobile_takeover_request_decline_confirm_action">Igen, elutasítom</string>
     <string name="mobile_photo_step_start">1 · Indítás</string>
     <string name="mobile_photo_step_proof">2 · Bizonyíték hozzáadása</string>
+    <string name="mobile_create_repeat_duration">Ismétlődés időtartama</string>
+    <string name="mobile_create_repeat_forever">Ismétlődjön, amíg kézzel le nem zárom</string>
+    <string name="mobile_create_repeat_after_occurrences">Leállítás N ismétlés után</string>
+    <string name="mobile_create_repeat_until_date">Leállítás egy megadott napon</string>
+    <string name="mobile_create_repeat_occurrence_count">Összes előfordulás</string>
+    <string name="mobile_create_occurrences_invalid">Add meg, hogy összesen hány alkalommal fusson ez az ismétlődő feladat.</string>
+    <string name="mobile_create_end_date_pick">Befejezési dátum</string>
+    <string name="mobile_create_end_time_pick">Befejezési idő</string>
+    <string name="mobile_create_end_date_required">Válassz a feladat esedékességénél későbbi befejezési időt.</string>
+    <string name="mobile_close_cycle">Ciklus lezárása</string>
+    <string name="mobile_closing_cycle">Ciklus lezárása folyamatban...</string>
+    <string name="mobile_cycle_closed">Az ismétlődő ciklus lezárva.</string>
+    <string name="mobile_close_cycle_failed">A TaskBandit nem tudta lezárni az ismétlődő ciklust.</string>
+    <string name="mobile_close_cycle_confirm_title">Lezárod ezt a ciklust?</string>
+    <string name="mobile_close_cycle_confirm_body">Lezárod a(z) „%1$s” ismétlődő ciklusát, és törlöd benne az összes még nyitott feladatot?</string>
+    <string name="mobile_close_cycle_confirm_action">Igen, lezárom</string>
 </resources>
