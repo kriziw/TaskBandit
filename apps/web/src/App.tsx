@@ -3742,70 +3742,6 @@ export function App() {
                   ) : null}
                 </div>
               </div>
-              <div className="household-filter-bar export-filter-bar">
-                <label>
-                  <span>{t("exports.assignment_filter")}</span>
-                  <select
-                    value={exportAssigneeFilter}
-                    onChange={(event) => setExportAssigneeFilter(event.target.value)}
-                  >
-                    <option value="all">{t("filters.all_members")}</option>
-                    <option value="mine">{t("exports.assignment_mine")}</option>
-                    <option value="assigned_elsewhere">{t("exports.assignment_assigned_elsewhere")}</option>
-                    <option value="unassigned">{t("filters.unassigned")}</option>
-                    {payload.household.members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t("exports.status_filter")}</span>
-                  <select
-                    value={exportStatusFilter}
-                    onChange={(event) => setExportStatusFilter(event.target.value as ChoreExportStatusFilter)}
-                  >
-                    <option value="all">{t("filters.all_states")}</option>
-                    <option value="active">{t("exports.status_active")}</option>
-                    <option value="historic">{t("exports.status_historic")}</option>
-                    {householdBoardStateOrder.map((state) => (
-                      <option key={state} value={state}>
-                        {t(`state.${state}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t("exports.date_from")}</span>
-                  <input
-                    type="date"
-                    value={exportDateFrom}
-                    onChange={(event) => setExportDateFrom(event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>{t("exports.date_to")}</span>
-                  <input
-                    type="date"
-                    value={exportDateTo}
-                    onChange={(event) => setExportDateTo(event.target.value)}
-                  />
-                </label>
-                <div className="export-actions">
-                  <p className="inline-message">
-                    {t("exports.matching_results").replace("{count}", String(exportableChores.length))}
-                  </p>
-                  <button
-                    className="ghost-button"
-                    type="button"
-                    disabled={busyAction === "download-chores-export" || exportableChores.length === 0}
-                    onClick={() => void handleDownloadChoresExport()}
-                  >
-                    {t("exports.download_chores")}
-                  </button>
-                </div>
-              </div>
               <div className="household-filter-bar">
                 <label>
                   <span>{t("filters.view")}</span>
@@ -3923,6 +3859,70 @@ export function App() {
                       .replace("{page}", String(historyPage))
                       .replace("{pages}", String(historyPageCount))}
                   </span>
+                </div>
+              </div>
+              <div className="household-filter-bar export-filter-bar">
+                <label>
+                  <span>{t("exports.assignment_filter")}</span>
+                  <select
+                    value={exportAssigneeFilter}
+                    onChange={(event) => setExportAssigneeFilter(event.target.value)}
+                  >
+                    <option value="all">{t("filters.all_members")}</option>
+                    <option value="mine">{t("exports.assignment_mine")}</option>
+                    <option value="assigned_elsewhere">{t("exports.assignment_assigned_elsewhere")}</option>
+                    <option value="unassigned">{t("filters.unassigned")}</option>
+                    {payload.household.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("exports.status_filter")}</span>
+                  <select
+                    value={exportStatusFilter}
+                    onChange={(event) => setExportStatusFilter(event.target.value as ChoreExportStatusFilter)}
+                  >
+                    <option value="all">{t("filters.all_states")}</option>
+                    <option value="active">{t("exports.status_active")}</option>
+                    <option value="historic">{t("exports.status_historic")}</option>
+                    {householdBoardStateOrder.map((state) => (
+                      <option key={state} value={state}>
+                        {t(`state.${state}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("exports.date_from")}</span>
+                  <input
+                    type="date"
+                    value={exportDateFrom}
+                    onChange={(event) => setExportDateFrom(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>{t("exports.date_to")}</span>
+                  <input
+                    type="date"
+                    value={exportDateTo}
+                    onChange={(event) => setExportDateTo(event.target.value)}
+                  />
+                </label>
+                <div className="export-actions">
+                  <p className="inline-message">
+                    {t("exports.matching_results").replace("{count}", String(exportableChores.length))}
+                  </p>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={busyAction === "download-chores-export" || exportableChores.length === 0}
+                    onClick={() => void handleDownloadChoresExport()}
+                  >
+                    {t("exports.download_chores")}
+                  </button>
                 </div>
               </div>
               {historicChores.length === 0 ? (
