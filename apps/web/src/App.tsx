@@ -82,6 +82,7 @@ type InstanceFormState = CreateChoreInstanceInput;
 type BootstrapFormState = BootstrapHouseholdInput;
 type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
+type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
 type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
 type WorkspacePage = "overview" | "chores" | "templates" | "household" | "notifications" | "settings" | "admin";
 type WorkspaceSectionLink = {
@@ -110,6 +111,18 @@ const householdBoardStateOrder: ChoreState[] = [
   "completed",
   "cancelled"
 ];
+
+const activeChoreStates: ChoreState[] = [
+  "open",
+  "assigned",
+  "in_progress",
+  "pending_approval",
+  "needs_fixes",
+  "overdue"
+];
+
+const historicChoreStates: ChoreState[] = ["completed", "cancelled"];
+const choreHistoryPageSize = 25;
 
 const recurrenceWeekdayOrder = [
   "SUNDAY",
@@ -395,6 +408,11 @@ export function App() {
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
+  const [historyPage, setHistoryPage] = useState(1);
+  const [exportAssigneeFilter, setExportAssigneeFilter] = useState<string>("all");
+  const [exportStatusFilter, setExportStatusFilter] = useState<ChoreExportStatusFilter>("all");
+  const [exportDateFrom, setExportDateFrom] = useState("");
+  const [exportDateTo, setExportDateTo] = useState("");
   const [activePage, setActivePage] = useState<WorkspacePage>(() => readStoredWorkspacePage());
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -412,6 +430,7 @@ export function App() {
   const takeoverRequestsRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
+  const choreHistoryRef = useRef<HTMLElement | null>(null);
   const notificationsRef = useRef<HTMLElement | null>(null);
   const notificationPreferencesRef = useRef<HTMLElement | null>(null);
   const notificationDevicesRef = useRef<HTMLElement | null>(null);
@@ -515,7 +534,7 @@ export function App() {
         : {
             ...current,
             templateId: payload.templates[0].id
-          }
+      }
     );
   }, [payload]);
 
@@ -625,19 +644,22 @@ export function App() {
       payload.currentUser.role === "child"
   );
 
+  const activeInstances = useMemo(
+    () => payload?.instances.filter((instance) => activeChoreStates.includes(instance.state)) ?? [],
+    [payload]
+  );
+
   const myChores = useMemo(() => {
     if (!payload) {
       return [];
     }
 
-    return payload.instances.filter((instance) => {
-      if (instance.assigneeId !== payload.currentUser.id) {
-        return false;
-      }
-
-      return ["open", "assigned", "in_progress", "needs_fixes", "overdue"].includes(instance.state);
-    });
-  }, [payload]);
+    return activeInstances.filter(
+      (instance) =>
+        instance.assigneeId === payload.currentUser.id &&
+        ["open", "assigned", "in_progress", "needs_fixes", "overdue"].includes(instance.state)
+    );
+  }, [activeInstances, payload]);
 
   const myNeedsFixesChores = useMemo(
     () => myChores.filter((instance) => instance.state === "needs_fixes"),
@@ -782,8 +804,9 @@ export function App() {
   const currentOnboardingStep = onboardingSteps[Math.max(onboardingIndex, 0)];
 
   const visibleHouseholdChores = useMemo(() => {
-    const instances = payload?.instances ?? [];
-    return [...instances]
+    const currentUserId = payload?.currentUser.id;
+    return [...activeInstances]
+      .filter((instance) => instance.assigneeId !== currentUserId)
       .filter((instance) => {
         if (householdStateFilter !== "all" && instance.state !== householdStateFilter) {
           return false;
@@ -800,7 +823,17 @@ export function App() {
         return instance.assigneeId === householdAssigneeFilter;
       })
       .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime());
-  }, [payload, householdAssigneeFilter, householdStateFilter]);
+  }, [activeInstances, householdAssigneeFilter, householdStateFilter, payload]);
+
+  const visibleUnassignedHouseholdChores = useMemo(
+    () => visibleHouseholdChores.filter((instance) => !instance.assigneeId),
+    [visibleHouseholdChores]
+  );
+
+  const visibleAssignedElsewhereChores = useMemo(
+    () => visibleHouseholdChores.filter((instance) => Boolean(instance.assigneeId)),
+    [visibleHouseholdChores]
+  );
 
   const householdBoardColumns = useMemo(
     () =>
@@ -830,6 +863,94 @@ export function App() {
         chores
       }));
   }, [visibleHouseholdChores]);
+
+  const historicChores = useMemo(
+    () =>
+      [...(payload?.instances.filter((instance) => historicChoreStates.includes(instance.state)) ?? [])].sort(
+        (left, right) =>
+          new Date(getHistoricChoreDate(right)).getTime() - new Date(getHistoricChoreDate(left)).getTime()
+      ),
+    [payload]
+  );
+
+  const historyPageCount = Math.max(1, Math.ceil(historicChores.length / choreHistoryPageSize));
+  const paginatedHistoricChores = useMemo(
+    () =>
+      historicChores.slice(
+        (historyPage - 1) * choreHistoryPageSize,
+        historyPage * choreHistoryPageSize
+      ),
+    [historicChores, historyPage]
+  );
+
+  useEffect(() => {
+    setHistoryPage((current) => Math.min(current, historyPageCount));
+  }, [historyPageCount]);
+
+  const exportableChores = useMemo(() => {
+    if (!payload) {
+      return [];
+    }
+
+    return payload.instances.filter((instance) => {
+      if (exportStatusFilter !== "all") {
+        if (exportStatusFilter === "active" && !activeChoreStates.includes(instance.state)) {
+          return false;
+        }
+
+        if (exportStatusFilter === "historic" && !historicChoreStates.includes(instance.state)) {
+          return false;
+        }
+
+        if (
+          exportStatusFilter !== "active" &&
+          exportStatusFilter !== "historic" &&
+          instance.state !== exportStatusFilter
+        ) {
+          return false;
+        }
+      }
+
+      if (exportAssigneeFilter === "mine" && instance.assigneeId !== payload.currentUser.id) {
+        return false;
+      }
+
+      if (
+        exportAssigneeFilter === "assigned_elsewhere" &&
+        (!instance.assigneeId || instance.assigneeId === payload.currentUser.id)
+      ) {
+        return false;
+      }
+
+      if (exportAssigneeFilter === "unassigned" && instance.assigneeId) {
+        return false;
+      }
+
+      if (
+        !["all", "mine", "assigned_elsewhere", "unassigned"].includes(exportAssigneeFilter) &&
+        instance.assigneeId !== exportAssigneeFilter
+      ) {
+        return false;
+      }
+
+      const relevantDateValue = new Date(getExportRelevantDate(instance)).getTime();
+      if (exportDateFrom) {
+        const fromValue = new Date(`${exportDateFrom}T00:00:00`).getTime();
+        if (relevantDateValue < fromValue) {
+          return false;
+        }
+      }
+
+      if (exportDateTo) {
+        const toValue = new Date(`${exportDateTo}T23:59:59.999`).getTime();
+        if (relevantDateValue > toValue) {
+          return false;
+        }
+      }
+
+      return true;
+    });
+  }, [exportAssigneeFilter, exportDateFrom, exportDateTo, exportStatusFilter, payload]);
 
   const assignmentStrategyOptions: Array<{
     value: TemplateFormState["assignmentStrategy"];
@@ -1069,7 +1190,7 @@ export function App() {
     }
   }
 
-  function renderHouseholdChoreCard(instance: ChoreInstance) {
+  function renderHouseholdChoreCard(instance: ChoreInstance, options?: { historic?: boolean }) {
     const choreHeading = (
       <div>
         <strong>{instance.typeTitle || instance.title}</strong>
@@ -1092,14 +1213,16 @@ export function App() {
               : t("common.unassigned")}
         </p>
         <p>
-          {t("task.due")}: {formatDate(instance.dueAt)}
+          {options?.historic ? t("task.completed") : t("task.due")}:{" "}
+          {formatDate(options?.historic ? getHistoricChoreDate(instance) : instance.dueAt)}
         </p>
         {!restrictHouseholdDetails ? (
           <p>
             {t("task.difficulty")}: {t(`difficulty.${instance.difficulty}`)}
           </p>
         ) : null}
-        {payload?.currentUser.role !== "child" &&
+        {!options?.historic &&
+          payload?.currentUser.role !== "child" &&
           instance.state !== "completed" &&
           instance.state !== "cancelled" ? (
             <div className="button-row">
@@ -1247,6 +1370,22 @@ export function App() {
           <p className="empty-state">{emptyMessage}</p>
         ) : (
           <div className="stack-list">{items.map((instance) => renderMyChoreCard(instance))}</div>
+        )}
+      </section>
+    );
+  }
+
+  function renderCompactChoreSection(title: string, items: ChoreInstance[], emptyMessage: string) {
+    return (
+      <section className="my-chore-section">
+        <div className="section-heading section-heading-compact">
+          <h3>{title}</h3>
+          <span className="section-kicker">{items.length}</span>
+        </div>
+        {items.length === 0 ? (
+          <p className="empty-state">{emptyMessage}</p>
+        ) : (
+          <div className="stack-list">{items.map((instance) => renderHouseholdChoreCard(instance))}</div>
         )}
       </section>
     );
@@ -1989,15 +2128,53 @@ export function App() {
   }
 
   async function handleDownloadChoresExport() {
-    if (!token) {
+    if (!payload) {
       return;
     }
 
     setBusyAction("download-chores-export");
     try {
-      const blob = await taskBanditApi.downloadChoresCsv(token, language);
+      const header = [
+        "id",
+        "type",
+        "subtype",
+        "title",
+        "state",
+        "assignee",
+        "dueAt",
+        "completedAt",
+        "difficulty",
+        "basePoints",
+        "awardedPoints",
+        "requirePhotoProof",
+        "attachmentCount",
+        "submittedAt",
+        "reviewedAt"
+      ];
+      const rows = exportableChores.map((instance) => [
+        instance.id,
+        instance.typeTitle || "",
+        instance.subtypeLabel ?? "",
+        instance.title,
+        instance.state,
+        instance.assigneeId ? memberLookup.get(instance.assigneeId) ?? "" : "",
+        instance.dueAt,
+        instance.completedAt ?? "",
+        instance.difficulty,
+        String(instance.basePoints),
+        String(instance.awardedPoints),
+        instance.requirePhotoProof ? "true" : "false",
+        String(instance.attachmentCount),
+        instance.submittedAt ?? "",
+        instance.reviewedAt ?? ""
+      ]);
+      const csv = [header, ...rows]
+        .map((row) => row.map((value) => escapeCsvValue(String(value))).join(","))
+        .join("\n");
+      const blob = new Blob([csv], { type: "text/csv;charset=utf-8" });
       downloadBlob(blob, "taskbandit-chores.csv");
       setNotice(t("exports.chores_downloaded"));
+      setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("exports.chores_failed")));
     } finally {
@@ -2592,7 +2769,8 @@ export function App() {
               ]
             : []),
           { key: "chores-mine", label: t("panel.my_chores"), ref: myChoresRef },
-          { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef }
+          { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef },
+          { key: "chores-history", label: t("panel.chore_history"), ref: choreHistoryRef }
         ];
       case "templates":
         return [
@@ -3552,14 +3730,6 @@ export function App() {
                 <h2>{t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
                   <span className="section-kicker">{visibleHouseholdChores.length}</span>
-                  <button
-                    className="ghost-button"
-                    type="button"
-                    disabled={busyAction === "download-chores-export"}
-                    onClick={() => void handleDownloadChoresExport()}
-                  >
-                    {t("exports.download_chores")}
-                  </button>
                   {payload.currentUser.role === "admin" ? (
                     <button
                       className="ghost-button"
@@ -3570,6 +3740,70 @@ export function App() {
                       {t("exports.download_household_snapshot")}
                     </button>
                   ) : null}
+                </div>
+              </div>
+              <div className="household-filter-bar export-filter-bar">
+                <label>
+                  <span>{t("exports.assignment_filter")}</span>
+                  <select
+                    value={exportAssigneeFilter}
+                    onChange={(event) => setExportAssigneeFilter(event.target.value)}
+                  >
+                    <option value="all">{t("filters.all_members")}</option>
+                    <option value="mine">{t("exports.assignment_mine")}</option>
+                    <option value="assigned_elsewhere">{t("exports.assignment_assigned_elsewhere")}</option>
+                    <option value="unassigned">{t("filters.unassigned")}</option>
+                    {payload.household.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("exports.status_filter")}</span>
+                  <select
+                    value={exportStatusFilter}
+                    onChange={(event) => setExportStatusFilter(event.target.value as ChoreExportStatusFilter)}
+                  >
+                    <option value="all">{t("filters.all_states")}</option>
+                    <option value="active">{t("exports.status_active")}</option>
+                    <option value="historic">{t("exports.status_historic")}</option>
+                    {householdBoardStateOrder.map((state) => (
+                      <option key={state} value={state}>
+                        {t(`state.${state}`)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <label>
+                  <span>{t("exports.date_from")}</span>
+                  <input
+                    type="date"
+                    value={exportDateFrom}
+                    onChange={(event) => setExportDateFrom(event.target.value)}
+                  />
+                </label>
+                <label>
+                  <span>{t("exports.date_to")}</span>
+                  <input
+                    type="date"
+                    value={exportDateTo}
+                    onChange={(event) => setExportDateTo(event.target.value)}
+                  />
+                </label>
+                <div className="export-actions">
+                  <p className="inline-message">
+                    {t("exports.matching_results").replace("{count}", String(exportableChores.length))}
+                  </p>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={busyAction === "download-chores-export" || exportableChores.length === 0}
+                    onClick={() => void handleDownloadChoresExport()}
+                  >
+                    {t("exports.download_chores")}
+                  </button>
                 </div>
               </div>
               <div className="household-filter-bar">
@@ -3608,7 +3842,7 @@ export function App() {
                     }
                   >
                     <option value="all">{t("filters.all_states")}</option>
-                    {householdBoardStateOrder.map((state) => (
+                    {activeChoreStates.map((state) => (
                       <option key={state} value={state}>
                         {t(`state.${state}`)}
                       </option>
@@ -3623,19 +3857,30 @@ export function App() {
                   >
                     <option value="all">{t("filters.all_members")}</option>
                     <option value="unassigned">{t("filters.unassigned")}</option>
-                    {payload.household.members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.displayName}
-                      </option>
-                    ))}
+                    {payload.household.members
+                      .filter((member) => member.id !== payload.currentUser.id)
+                      .map((member) => (
+                        <option key={member.id} value={member.id}>
+                          {member.displayName}
+                        </option>
+                      ))}
                   </select>
                 </label>
               </div>
               {visibleHouseholdChores.length === 0 ? (
                 <p className="empty-state">{t("empty.filtered_chores")}</p>
               ) : householdViewMode === "list" ? (
-                <div className="stack-list">
-                  {visibleHouseholdChores.map((instance) => renderHouseholdChoreCard(instance))}
+                <div className="stack-list my-chore-groups">
+                  {renderCompactChoreSection(
+                    t("panel.assigned_elsewhere"),
+                    visibleAssignedElsewhereChores,
+                    t("chores.empty_assigned_elsewhere")
+                  )}
+                  {renderCompactChoreSection(
+                    t("panel.unassigned_chores"),
+                    visibleUnassignedHouseholdChores,
+                    t("chores.empty_unassigned")
+                  )}
                 </div>
               ) : householdViewMode === "board" ? (
                 <div className="board-grid">
@@ -3665,6 +3910,51 @@ export function App() {
                     </section>
                   ))}
                 </div>
+              )}
+            </article>
+
+            <article className="panel panel-wide page-panel page-chores" ref={choreHistoryRef}>
+              <div className="section-heading">
+                <h2>{t("panel.chore_history")}</h2>
+                <div className="toolbar-group">
+                  <span className="section-kicker">{historicChores.length}</span>
+                  <span className="inline-message">
+                    {t("history.page_indicator")
+                      .replace("{page}", String(historyPage))
+                      .replace("{pages}", String(historyPageCount))}
+                  </span>
+                </div>
+              </div>
+              {historicChores.length === 0 ? (
+                <p className="empty-state">{t("history.empty")}</p>
+              ) : (
+                <>
+                  <div className="stack-list">
+                    {paginatedHistoricChores.map((instance) =>
+                      renderHouseholdChoreCard(instance, { historic: true })
+                    )}
+                  </div>
+                  <div className="pagination-bar">
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={historyPage <= 1}
+                      onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
+                    >
+                      {t("history.previous_page")}
+                    </button>
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      disabled={historyPage >= historyPageCount}
+                      onClick={() =>
+                        setHistoryPage((current) => Math.min(historyPageCount, current + 1))
+                      }
+                    >
+                      {t("history.next_page")}
+                    </button>
+                  </div>
+                </>
               )}
             </article>
 
@@ -5446,6 +5736,22 @@ function downloadBlob(blob: Blob, filename: string) {
   link.click();
   link.remove();
   window.URL.revokeObjectURL(objectUrl);
+}
+
+function getHistoricChoreDate(instance: ChoreInstance) {
+  return instance.completedAt ?? instance.reviewedAt ?? instance.submittedAt ?? instance.dueAt;
+}
+
+function getExportRelevantDate(instance: ChoreInstance) {
+  return historicChoreStates.includes(instance.state) ? getHistoricChoreDate(instance) : instance.dueAt;
+}
+
+function escapeCsvValue(value: string) {
+  if (/[",\n]/.test(value)) {
+    return `"${value.replace(/"/g, "\"\"")}"`;
+  }
+
+  return value;
 }
 
 function scrollToSection(targetRef: RefObject<HTMLElement | null>) {

@@ -422,6 +422,7 @@ export type ChoreInstance = {
   completedChecklistItems: number;
   isOverdue: boolean;
   attachmentCount: number;
+  completedAt: string | null;
   submittedAt: string | null;
   submittedById: string | null;
   submissionNote: string | null;
