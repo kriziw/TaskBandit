@@ -61,6 +61,12 @@ enum RecurrenceStartStrategy {
   COMPLETED_AT
 }
 
+enum RecurrenceEndMode {
+  NEVER
+  AFTER_OCCURRENCES
+  ON_DATE
+}
+
 enum NotificationType {
   CHORE_ASSIGNED
   CHORE_TAKEOVER_REQUEST
@@ -237,6 +243,7 @@ model ChoreInstance {
   id              String        @id @default(uuid()) @db.Uuid
   householdId     String        @db.Uuid
   templateId      String        @db.Uuid
+  cycleId         String?       @db.Uuid
   title           String
   subtypeLabel    String?
   requirePhotoProofOverride Boolean?
@@ -249,6 +256,9 @@ model ChoreInstance {
   recurrenceIntervalDaysOverride Int?
   recurrenceWeekdaysOverride String[] @default([])
   recurrenceStartStrategyOverride RecurrenceStartStrategy?
+  recurrenceEndModeOverride RecurrenceEndMode?
+  recurrenceRemainingOccurrencesOverride Int?
+  recurrenceEndsAtUtcOverride DateTime?
   variantId              String?       @db.Uuid
   variant                ChoreTemplateVariant? @relation(fields: [variantId], references: [id], onDelete: SetNull)
   awardedPoints   Int           @default(0)
@@ -270,6 +280,8 @@ model ChoreInstance {
   checklistCompletions ChoreChecklistCompletion[]
   attachments     ChoreAttachment[]
   takeoverRequests ChoreTakeoverRequest[]
+
+  @@index([householdId, cycleId, state], map: "chore_instance_household_cycle_state_idx")
 }
 
 model ChoreTakeoverRequest {

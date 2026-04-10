@@ -20,11 +20,13 @@ import {
   NotificationDeviceProvider,
   NotificationPushDeliveryStatus,
   NotificationType,
+  RecurrenceEndMode,
   RecurrenceStartStrategy,
   RecurrenceType,
   Prisma
 } from "@prisma/client";
 import { hash } from "bcryptjs";
+import { randomUUID } from "crypto";
 import {
   fallbackLanguage,
   supportedLanguages,
@@ -1948,6 +1950,11 @@ export class HouseholdRepository {
       },
       include: {
         checklistItems: true,
+        dependencies: {
+          select: {
+            id: true
+          }
+        },
         variants: true
       }
     });
@@ -1975,6 +1982,9 @@ export class HouseholdRepository {
       effectiveRecurrenceType === RecurrenceType.CUSTOM_WEEKLY
         ? dto.recurrenceWeekdays ?? template.recurrenceWeekdays
         : [];
+    const shouldTrackCycle = effectiveRecurrenceType !== RecurrenceType.NONE || template.dependencies.length > 0;
+    const cycleId = shouldTrackCycle ? randomUUID() : null;
+    const recurrenceEndSettings = this.resolveRecurrenceEndSettings(dto, effectiveRecurrenceType);
     const resolvedAssigneeId = dto.assigneeId
       ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
       : await this.resolveAssigneeForTemplate(
@@ -1989,6 +1999,7 @@ export class HouseholdRepository {
         data: {
           householdId,
           templateId: template.id,
+          cycleId,
           subtypeLabel,
           requirePhotoProofOverride: template.requirePhotoProof,
           title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
@@ -2010,7 +2021,10 @@ export class HouseholdRepository {
             effectiveRecurrenceType === RecurrenceType.CUSTOM_WEEKLY &&
             JSON.stringify(effectiveRecurrenceWeekdays) !== JSON.stringify(template.recurrenceWeekdays)
               ? effectiveRecurrenceWeekdays
-              : []
+              : [],
+          recurrenceEndModeOverride: recurrenceEndSettings.mode,
+          recurrenceRemainingOccurrencesOverride: recurrenceEndSettings.remainingOccurrences,
+          recurrenceEndsAtUtcOverride: recurrenceEndSettings.endsAtUtc
         },
         include: {
           template: {
@@ -3244,6 +3258,111 @@ export class HouseholdRepository {
     return this.mapInstance(updatedInstance, undefined, language);
   }
 
+  async closeCycle(
+    instanceId: string,
+    householdId: string,
+    actorUserId?: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    const targetInstance = await this.prisma.choreInstance.findFirstOrThrow({
+      where: {
+        id: instanceId,
+        householdId
+      },
+      select: {
+        id: true,
+        cycleId: true
+      }
+    });
+
+    if (!targetInstance.cycleId) {
+      throw new ConflictException({
+        message: "This chore is not part of a repeatable cycle."
+      });
+    }
+
+    const activeCycleInstances = await this.prisma.choreInstance.findMany({
+      where: {
+        householdId,
+        cycleId: targetInstance.cycleId,
+        state: {
+          notIn: [ChoreState.COMPLETED, ChoreState.CANCELLED]
+        }
+      },
+      select: {
+        id: true,
+        title: true,
+        assigneeId: true
+      }
+    });
+
+    if (activeCycleInstances.length === 0) {
+      return {
+        cycleId: targetInstance.cycleId,
+        cancelledCount: 0,
+        cancelledIds: []
+      };
+    }
+
+    const cancelledIds = activeCycleInstances.map((instance) => instance.id);
+
+    await this.prisma.$transaction(async (tx) => {
+      await tx.choreInstance.updateMany({
+        where: {
+          id: {
+            in: cancelledIds
+          }
+        },
+        data: {
+          state: ChoreState.CANCELLED
+        }
+      });
+
+      await tx.choreTakeoverRequest.updateMany({
+        where: {
+          householdId,
+          choreInstanceId: {
+            in: cancelledIds
+          },
+          status: ChoreTakeoverRequestStatus.PENDING
+        },
+        data: {
+          status: ChoreTakeoverRequestStatus.CANCELLED,
+          respondedAtUtc: new Date()
+        }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId,
+        actorUserId,
+        action: "cycle.closed",
+        entityType: "chore_cycle",
+        entityId: targetInstance.cycleId,
+        summary: `Closed chore cycle with ${cancelledIds.length} active chore(s).`
+      });
+
+      for (const instance of activeCycleInstances) {
+        if (instance.assigneeId && instance.assigneeId !== actorUserId) {
+          await this.recordNotification(tx, {
+            householdId,
+            recipientUserId: instance.assigneeId,
+            type: NotificationType.CHORE_CANCELLED,
+            title: "Chore cycle closed",
+            message: `"${instance.title}" was cancelled because its recurring cycle was closed.`,
+            entityType: "chore_instance",
+            entityId: instance.id
+          });
+        }
+      }
+    });
+
+    return {
+      cycleId: targetInstance.cycleId,
+      cancelledCount: cancelledIds.length,
+      cancelledIds
+    };
+  }
+
   throwNotFound(message: string): never {
     throw new NotFoundException({ message });
   }
@@ -3614,6 +3733,7 @@ export class HouseholdRepository {
     const carriedSubtypeLabel = (instance as any).subtypeLabel ?? null;
     const carriedRequirePhotoProof =
       (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
+    const cycleId = (instance as any).cycleId ?? instance.id;
 
     await this.prisma.$transaction(async (tx) => {
       for (const dependency of dependencies) {
@@ -3646,6 +3766,7 @@ export class HouseholdRepository {
           data: {
             householdId: instance.householdId,
             templateId: template.id,
+            cycleId,
             title: followUpTitle,
             subtypeLabel: carriedSubtypeLabel,
             requirePhotoProofOverride: effectiveFollowUpRequirePhotoProof,
@@ -3707,6 +3828,13 @@ export class HouseholdRepository {
         ? instance.recurrenceWeekdaysOverride
         : template.recurrenceWeekdays;
     const effectiveStartStrategy = template.recurrenceStartStrategy;
+    const effectiveRecurrenceEndMode = (instance as any).recurrenceEndModeOverride ?? RecurrenceEndMode.NEVER;
+    const remainingOccurrences = (instance as any).recurrenceRemainingOccurrencesOverride ?? null;
+    const recurrenceEndsAtUtc = (instance as any).recurrenceEndsAtUtcOverride ?? null;
+
+    if (effectiveRecurrenceEndMode === RecurrenceEndMode.AFTER_OCCURRENCES && (remainingOccurrences ?? 0) <= 0) {
+      return;
+    }
 
     // Choose base date based on strategy
     const baseDate =
@@ -3722,6 +3850,10 @@ export class HouseholdRepository {
     );
 
     if (!nextDueAt) {
+      return;
+    }
+
+    if (effectiveRecurrenceEndMode === RecurrenceEndMode.ON_DATE && recurrenceEndsAtUtc && nextDueAt > recurrenceEndsAtUtc) {
       return;
     }
 
@@ -3753,6 +3885,11 @@ export class HouseholdRepository {
     const requirePhotoProof =
       (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
     const instanceTitle = this.composeChoreTitle(template.title, subtypeLabel);
+    const cycleId = (instance as any).cycleId ?? instance.id;
+    const nextRemainingOccurrences =
+      effectiveRecurrenceEndMode === RecurrenceEndMode.AFTER_OCCURRENCES && remainingOccurrences != null
+        ? Math.max(remainingOccurrences - 1, 0)
+        : null;
 
     await this.prisma.$transaction(async (tx) => {
       const assigneeId = await this.resolveAssigneeForTemplate(
@@ -3766,6 +3903,7 @@ export class HouseholdRepository {
         data: {
           householdId: instance.householdId,
           templateId: template.id,
+          cycleId,
           title: instanceTitle,
           state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
           assigneeId,
@@ -3777,7 +3915,11 @@ export class HouseholdRepository {
           assignmentStrategyOverride: instance.assignmentStrategyOverride,
           recurrenceTypeOverride: instance.recurrenceTypeOverride,
           recurrenceIntervalDaysOverride: instance.recurrenceIntervalDaysOverride,
-          recurrenceWeekdaysOverride: instance.recurrenceWeekdaysOverride
+          recurrenceWeekdaysOverride: instance.recurrenceWeekdaysOverride,
+          recurrenceEndModeOverride:
+            effectiveRecurrenceEndMode === RecurrenceEndMode.NEVER ? null : effectiveRecurrenceEndMode,
+          recurrenceRemainingOccurrencesOverride: nextRemainingOccurrences,
+          recurrenceEndsAtUtcOverride: recurrenceEndsAtUtc
         }
       });
 
@@ -3811,6 +3953,61 @@ export class HouseholdRepository {
     }
 
     return new Date(completedAtUtc.getTime() + delayHours * 60 * 60 * 1000);
+  }
+
+  private resolveRecurrenceEndSettings(
+    dto: CreateChoreInstanceDto,
+    effectiveRecurrenceType: RecurrenceType
+  ) {
+    if (effectiveRecurrenceType === RecurrenceType.NONE) {
+      return {
+        mode: null as RecurrenceEndMode | null,
+        remainingOccurrences: null as number | null,
+        endsAtUtc: null as Date | null
+      };
+    }
+
+    const requestedMode = dto.recurrenceEndMode ?? RecurrenceEndMode.NEVER;
+
+    if (requestedMode === RecurrenceEndMode.AFTER_OCCURRENCES) {
+      if (!dto.recurrenceOccurrences) {
+        throw new BadRequestException({
+          message: "A repeat count is required when the recurrence ends after a set number of occurrences."
+        });
+      }
+
+      return {
+        mode: RecurrenceEndMode.AFTER_OCCURRENCES,
+        remainingOccurrences: Math.max(dto.recurrenceOccurrences - 1, 0),
+        endsAtUtc: null as Date | null
+      };
+    }
+
+    if (requestedMode === RecurrenceEndMode.ON_DATE) {
+      if (!dto.recurrenceEndsAt) {
+        throw new BadRequestException({
+          message: "An end date is required when the recurrence should stop on a specific date."
+        });
+      }
+
+      if (dto.recurrenceEndsAt.getTime() <= dto.dueAt.getTime()) {
+        throw new BadRequestException({
+          message: "The recurrence end date must be later than the current chore due date."
+        });
+      }
+
+      return {
+        mode: RecurrenceEndMode.ON_DATE,
+        remainingOccurrences: null as number | null,
+        endsAtUtc: dto.recurrenceEndsAt
+      };
+    }
+
+    return {
+      mode: null as RecurrenceEndMode | null,
+      remainingOccurrences: null as number | null,
+      endsAtUtc: null as Date | null
+    };
   }
 
   private calculateRecurringDueAt(
@@ -4035,6 +4232,7 @@ export class HouseholdRepository {
       return {
         id: instance.id,
         templateId: instance.templateId,
+        cycleId: (instance as any).cycleId ?? null,
         title: localizedTitle,
         typeTitle: localizedTypeTitle,
         subtypeLabel: localizedSubtypeLabel,
@@ -4069,6 +4267,7 @@ export class HouseholdRepository {
     return {
       id: instance.id,
       templateId: instance.templateId,
+      cycleId: (instance as any).cycleId ?? null,
       title: localizedTitle,
       typeTitle: localizedTypeTitle,
       subtypeLabel: localizedSubtypeLabel,

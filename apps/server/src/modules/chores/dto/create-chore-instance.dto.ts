@@ -1,4 +1,4 @@
-import { AssignmentStrategyType, RecurrenceType } from "@prisma/client";
+import { AssignmentStrategyType, RecurrenceEndMode, RecurrenceType } from "@prisma/client";
 import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
 import { Type } from "class-transformer";
 import { Transform } from "class-transformer";
@@ -41,6 +41,30 @@ export class CreateChoreInstanceDto {
   @Min(1)
   @Max(365)
   recurrenceIntervalDays?: number;
+
+  @ApiPropertyOptional({ enum: RecurrenceEndMode, enumName: "RecurrenceEndMode" })
+  @Transform(({ value }) =>
+    typeof value === "string"
+      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
+      : value
+  )
+  @IsOptional()
+  @IsEnum(RecurrenceEndMode)
+  recurrenceEndMode?: RecurrenceEndMode;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(365)
+  recurrenceOccurrences?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Date)
+  @IsDate()
+  recurrenceEndsAt?: Date;
 
   @ApiPropertyOptional({ type: [String] })
   @IsOptional()
