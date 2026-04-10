@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.26.1](https://github.com/kriziw/TaskBandit/compare/v0.26.0...v0.26.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* **security:** remediate dependency vulnerabilities ([#150](https://github.com/kriziw/TaskBandit/issues/150)) ([b0a02a2](https://github.com/kriziw/TaskBandit/commit/b0a02a227e2a7e372b1df653aa124567c755849d))
+
 ## [0.26.0](https://github.com/kriziw/TaskBandit/compare/v0.25.12...v0.26.0) (2026-04-10)
 
 
