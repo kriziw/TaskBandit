@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.27.1](https://github.com/kriziw/TaskBandit/compare/v0.27.0...v0.27.1) (2026-04-10)
+
+
+### Bug Fixes
+
+* **web:** move chore export controls into history ([#154](https://github.com/kriziw/TaskBandit/issues/154)) ([97e8609](https://github.com/kriziw/TaskBandit/commit/97e86095b2b4f72da083205580b7f44f789b5402))
+
 ## [0.27.0](https://github.com/kriziw/TaskBandit/compare/v0.26.1...v0.27.0) (2026-04-10)
 
 
