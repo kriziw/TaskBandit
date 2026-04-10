@@ -1,0 +1,25 @@
+{
+  "name": "TaskBandit Client",
+  "short_name": "TaskBandit",
+  "description": "Installable TaskBandit client for chores, notifications, and household progress.",
+  "start_url": "./client.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff7e8",
+  "theme_color": "#243043",
+  "lang": "en",
+  "icons": [
+    {
+      "src": "./pwa/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./pwa/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
