@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.27.0](https://github.com/kriziw/TaskBandit/compare/v0.26.1...v0.27.0) (2026-04-10)
+
+
+### Features
+
+* **android:** group chores by due window ([#152](https://github.com/kriziw/TaskBandit/issues/152)) ([b544ac9](https://github.com/kriziw/TaskBandit/commit/b544ac9447efabe87bb470fbea3764aab186bdab))
+
 ## [0.26.1](https://github.com/kriziw/TaskBandit/compare/v0.26.0...v0.26.1) (2026-04-10)
 
 
