@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.28.2](https://github.com/kriziw/TaskBandit/compare/v0.28.1...v0.28.2) (2026-04-10)
+
+
+### Bug Fixes
+
+* **ci:** pass Firebase values into Android builds ([#172](https://github.com/kriziw/TaskBandit/issues/172)) ([6cddb4e](https://github.com/kriziw/TaskBandit/commit/6cddb4eed56d6bf7881512765c4e8f0567c85e7e))
+
 ## [0.28.1](https://github.com/kriziw/TaskBandit/compare/v0.28.0...v0.28.1) (2026-04-10)
 
 
