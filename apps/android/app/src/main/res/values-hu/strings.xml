@@ -66,6 +66,9 @@
     <string name="mobile_chores_title">Feladatok</string>
     <string name="mobile_chores_hint">A lista sorrendje: először a neked kiosztott feladatok, majd a kiosztatlanok, végül a másokhoz rendelt feladatok.</string>
     <string name="mobile_chores_mine">Hozzám rendelve</string>
+    <string name="mobile_chores_due_today">Ma esedékes</string>
+    <string name="mobile_chores_due_this_week">Ezen a héten esedékes</string>
+    <string name="mobile_chores_due_later">Később esedékes</string>
     <string name="mobile_chores_unassigned">Kiosztatlan</string>
     <string name="mobile_chores_others">Máshoz rendelve</string>
     <string name="mobile_chore_assigned_to_you">Hozzád rendelve</string>

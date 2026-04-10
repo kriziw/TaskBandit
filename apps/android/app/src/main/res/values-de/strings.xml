@@ -66,6 +66,9 @@
     <string name="mobile_chores_title">Aufgaben</string>
     <string name="mobile_chores_hint">Deine Liste ist so sortiert: erst dir zugewiesene Aufgaben, dann nicht zugewiesene Aufgaben und danach Aufgaben anderer.</string>
     <string name="mobile_chores_mine">Mir zugewiesen</string>
+    <string name="mobile_chores_due_today">Heute fällig</string>
+    <string name="mobile_chores_due_this_week">Diese Woche fällig</string>
+    <string name="mobile_chores_due_later">Später fällig</string>
     <string name="mobile_chores_unassigned">Nicht zugewiesen</string>
     <string name="mobile_chores_others">Jemand anderem zugewiesen</string>
     <string name="mobile_chore_assigned_to_you">Dir zugewiesen</string>
