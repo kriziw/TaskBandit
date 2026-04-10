@@ -51,6 +51,7 @@ import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Tune
@@ -61,10 +62,12 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.OutlinedButton
@@ -3044,6 +3047,7 @@ private fun ChoreCard(
     var showApproveConfirm by remember { mutableStateOf(false) }
     var showRejectConfirm by remember { mutableStateOf(false) }
     var showCloseCycleConfirm by remember { mutableStateOf(false) }
+    var showManageMenu by remember { mutableStateOf(false) }
 
     if (showApproveConfirm) {
         AlertDialog(
@@ -3113,6 +3117,7 @@ private fun ChoreCard(
     val requiresTakeOver = supportsTakeoverRequests && section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
     val canRequestTakeover = supportsTakeoverRequests && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
+    val hasSecondaryActions = canCloseCycle || canRequestTakeover
     val outgoingTakeoverFirstName = outgoingTakeoverRequest?.requested?.displayName?.let(::firstNameFromDisplayName)
     val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
     val accentContainerColor = when (section) {
@@ -3191,6 +3196,64 @@ private fun ChoreCard(
                         }
                     )
                 }
+                if (hasSecondaryActions) {
+                    Box {
+                        IconButton(
+                            onClick = { showManageMenu = true },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = stringResource(R.string.mobile_more_actions)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showManageMenu,
+                            onDismissRequest = { showManageMenu = false }
+                        ) {
+                            if (canRequestTakeover) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeTakeoverRequestAction?.startsWith("request:${chore.id}:") == true) {
+                                                    R.string.mobile_request_takeover_sending
+                                                } else {
+                                                    R.string.mobile_request_takeover
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeTakeoverRequestAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        onRequestTakeover(chore.id)
+                                    }
+                                )
+                            }
+                            if (canCloseCycle) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeCloseCycleAction == "close-cycle:${chore.id}") {
+                                                    R.string.mobile_closing_cycle
+                                                } else {
+                                                    R.string.mobile_close_cycle
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeCloseCycleAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        showCloseCycleConfirm = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
             }
 
             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
@@ -3264,25 +3327,6 @@ private fun ChoreCard(
                                 R.string.mobile_hide_task_tools
                             } else {
                                 R.string.mobile_work_task
-                            }
-                        )
-                    )
-                }
-            }
-
-            if (requiresTakeOver && canCloseCycle) {
-                OutlinedButton(
-                    onClick = { showCloseCycleConfirm = true },
-                    enabled = activeCloseCycleAction == null,
-                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
-                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                ) {
-                    Text(
-                        stringResource(
-                            if (activeCloseCycleAction == "close-cycle:${chore.id}") {
-                                R.string.mobile_closing_cycle
-                            } else {
-                                R.string.mobile_close_cycle
                             }
                         )
                     )
@@ -3432,45 +3476,10 @@ private fun ChoreCard(
                                         )
                                     )
                                 }
-                            } else if (canRequestTakeover) {
-                                OutlinedButton(
-                                    onClick = { onRequestTakeover(chore.id) },
-                                    enabled = activeTakeoverRequestAction == null,
-                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
-                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                ) {
-                                    Text(
-                                        stringResource(
-                                            if (activeTakeoverRequestAction?.startsWith("request:${chore.id}:") == true) {
-                                                R.string.mobile_request_takeover_sending
-                                            } else {
-                                                R.string.mobile_request_takeover
-                                            }
-                                        )
-                                    )
-                                }
                             }
                         }
                     }
 
-                    if (canCloseCycle) {
-                        OutlinedButton(
-                            onClick = { showCloseCycleConfirm = true },
-                            enabled = activeCloseCycleAction == null,
-                            modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
-                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                        ) {
-                            Text(
-                                stringResource(
-                                    if (activeCloseCycleAction == "close-cycle:${chore.id}") {
-                                        R.string.mobile_closing_cycle
-                                    } else {
-                                        R.string.mobile_close_cycle
-                                    }
-                                )
-                            )
-                        }
-                    }
                 }
             }
         }

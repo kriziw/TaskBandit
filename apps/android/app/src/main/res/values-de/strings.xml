@@ -281,6 +281,7 @@
     <string name="mobile_photo_step_proof">2 Â· Nachweis hinzufÃ¼gen</string>
         <string name="mobile_close_cycle">Ablauf beenden</string>
     <string name="mobile_closing_cycle">Ablauf wird beendet...</string>
+    <string name="mobile_more_actions">Weitere Aktionen</string>
     <string name="mobile_cycle_closed">Wiederkehrender Ablauf beendet.</string>
     <string name="mobile_close_cycle_failed">Der wiederkehrende Ablauf konnte nicht beendet werden.</string>
     <string name="mobile_close_cycle_confirm_title">Diesen Ablauf beenden?</string>
