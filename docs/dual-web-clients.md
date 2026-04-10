@@ -54,6 +54,25 @@ In this mode:
 
 The frontends should point at the API through `VITE_TASKBANDIT_API_BASE_URL`.
 
+## Client PWA Notifications
+
+The client PWA uses two different delivery paths:
+
+- foreground live updates while the app is open
+- background browser notifications through Web Push when the browser allows it
+
+To enable background browser notifications, configure these server env vars:
+
+- `TASKBANDIT_WEB_PUSH_PUBLIC_KEY`
+- `TASKBANDIT_WEB_PUSH_PRIVATE_KEY`
+- `TASKBANDIT_WEB_PUSH_SUBJECT`
+
+If those values are not set:
+
+- the client PWA still works as an installable app shell
+- live sync while open still works
+- background browser notifications remain unavailable
+
 ## Session Strategy
 
 TaskBandit now uses variant-aware browser storage for web sessions:
