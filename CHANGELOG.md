@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.27.2](https://github.com/kriziw/TaskBandit/compare/v0.27.1...v0.27.2) (2026-04-10)
+
+
+### Bug Fixes
+
+* **security:** resolve code scanning alerts ([#155](https://github.com/kriziw/TaskBandit/issues/155)) ([1f0ec17](https://github.com/kriziw/TaskBandit/commit/1f0ec175db4036dae3b781e188769547e67edfb0))
+
 ## [0.27.1](https://github.com/kriziw/TaskBandit/compare/v0.27.0...v0.27.1) (2026-04-10)
 
 
