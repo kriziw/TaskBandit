@@ -66,6 +66,9 @@
     <string name="mobile_chores_title">Chores</string>
     <string name="mobile_chores_hint">Your list is ordered by chores assigned to you first, then unassigned chores, then chores assigned elsewhere.</string>
     <string name="mobile_chores_mine">Assigned to me</string>
+    <string name="mobile_chores_due_today">Due today</string>
+    <string name="mobile_chores_due_this_week">Due this week</string>
+    <string name="mobile_chores_due_later">Due later</string>
     <string name="mobile_chores_unassigned">Unassigned</string>
     <string name="mobile_chores_others">Assigned to someone else</string>
     <string name="mobile_chore_assigned_to_you">Assigned to you</string>
