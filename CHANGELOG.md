@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.30.0](https://github.com/kriziw/TaskBandit/compare/v0.29.0...v0.30.0) (2026-04-10)
+
+
+### Features
+
+* **web:** bring dual web clients to main ([#186](https://github.com/kriziw/TaskBandit/issues/186)) ([cde9311](https://github.com/kriziw/TaskBandit/commit/cde9311fa5ee8edac348f935e24344e2fbe9a118))
+
 ## [0.29.0](https://github.com/kriziw/TaskBandit/compare/v0.28.2...v0.29.0) (2026-04-10)
 
 
