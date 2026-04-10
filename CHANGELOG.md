@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.31.0](https://github.com/kriziw/TaskBandit/compare/v0.30.0...v0.31.0) (2026-04-10)
+
+
+### Features
+
+* **web:** split admin and client containers ([#188](https://github.com/kriziw/TaskBandit/issues/188)) ([796a8de](https://github.com/kriziw/TaskBandit/commit/796a8deea01b322e6fb46cedc4619be9e165181f))
+
 ## [0.30.0](https://github.com/kriziw/TaskBandit/compare/v0.29.0...v0.30.0) (2026-04-10)
 
 
