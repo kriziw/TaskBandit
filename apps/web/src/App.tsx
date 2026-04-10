@@ -43,6 +43,7 @@ import type {
 const tokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
+type WorkspaceVariant = "combined" | "admin" | "client";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -258,18 +259,34 @@ function isWorkspacePage(value: string | null): value is WorkspacePage {
   return value !== null && workspacePageOrder.includes(value as WorkspacePage);
 }
 
-function readStoredWorkspacePage() {
+function getWorkspacePageStorageKey(variant: WorkspaceVariant) {
+  return variant === "combined" ? workspacePageStorageKey : `${workspacePageStorageKey}-${variant}`;
+}
+
+function getDefaultWorkspacePage(variant: WorkspaceVariant): WorkspacePage {
+  if (variant === "admin") {
+    return "admin";
+  }
+
+  if (variant === "client") {
+    return "chores";
+  }
+
+  return "overview";
+}
+
+function readStoredWorkspacePage(variant: WorkspaceVariant) {
   const hashValue = window.location.hash.replace(/^#/, "").trim();
   if (isWorkspacePage(hashValue)) {
     return hashValue;
   }
 
-  const stored = window.localStorage.getItem(workspacePageStorageKey);
+  const stored = window.localStorage.getItem(getWorkspacePageStorageKey(variant));
   if (isWorkspacePage(stored)) {
     return stored;
   }
 
-  return "overview";
+  return getDefaultWorkspacePage(variant);
 }
 
 function formatNumber(value: number) {
@@ -350,7 +367,7 @@ const currentWebReleaseInfo: ReleaseInfo = {
   commitSha: import.meta.env.VITE_TASKBANDIT_COMMIT_SHA ?? "local"
 };
 
-export function App() {
+export function App({ workspaceVariant = "combined" }: { workspaceVariant?: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
   const [token, setToken] = useState<string | null>(() => readStoredToken());
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
@@ -416,7 +433,9 @@ export function App() {
   const [exportStatusFilter, setExportStatusFilter] = useState<ChoreExportStatusFilter>("all");
   const [exportDateFrom, setExportDateFrom] = useState("");
   const [exportDateTo, setExportDateTo] = useState("");
-  const [activePage, setActivePage] = useState<WorkspacePage>(() => readStoredWorkspacePage());
+  const [activePage, setActivePage] = useState<WorkspacePage>(() =>
+    readStoredWorkspacePage(workspaceVariant)
+  );
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
@@ -560,13 +579,13 @@ export function App() {
   }, [activePage, language, payload?.currentUser.role, token]);
 
   useEffect(() => {
-    window.localStorage.setItem(workspacePageStorageKey, activePage);
+    window.localStorage.setItem(getWorkspacePageStorageKey(workspaceVariant), activePage);
     const currentUrl = new URL(window.location.href);
     if (currentUrl.hash !== `#${activePage}`) {
       currentUrl.hash = activePage;
       window.history.replaceState({}, document.title, currentUrl.toString());
     }
-  }, [activePage]);
+  }, [activePage, workspaceVariant]);
 
   useEffect(() => {
     const onHashChange = () => {
@@ -704,8 +723,16 @@ export function App() {
       !onboardingDismissed
   );
 
+  const isAdminVariantAccessDenied = Boolean(
+    payload && workspaceVariant === "admin" && payload.currentUser.role !== "admin"
+  );
+
   const availablePages = useMemo(() => {
     if (!payload) {
+      return [];
+    }
+
+    if (workspaceVariant === "admin" && payload.currentUser.role !== "admin") {
       return [];
     }
 
@@ -719,14 +746,14 @@ export function App() {
       pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
     }
 
-    if (payload.currentUser.role === "admin") {
+    if (workspaceVariant !== "client" && payload.currentUser.role === "admin") {
       pages.splice(3, 0, { key: "household", label: t("nav.household") });
       pages.push({ key: "settings", label: t("nav.settings") });
       pages.push({ key: "admin", label: t("nav.admin") });
     }
 
     return pages;
-  }, [payload, t]);
+  }, [payload, t, workspaceVariant]);
 
   useEffect(() => {
     if (!availablePages.length) {
@@ -738,8 +765,15 @@ export function App() {
     }
   }, [activePage, availablePages]);
 
-  const activePageLabel =
-    availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
+  const workspaceVariantLabel =
+    workspaceVariant === "admin"
+      ? t("workspace.variant_admin")
+      : workspaceVariant === "client"
+        ? t("workspace.variant_client")
+        : t("workspace.variant_combined");
+  const activePageLabel = isAdminVariantAccessDenied
+    ? t("workspace.admin_only_title")
+    : availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
   const availableUpdate = useMemo(() => {
     if (!serverReleaseInfo) {
       return null;
@@ -761,6 +795,9 @@ export function App() {
     settings: t("page.settings_description"),
     admin: t("page.admin_description")
   };
+  const activePageDescription = isAdminVariantAccessDenied
+    ? t("workspace.admin_only_body")
+    : pageDescriptions[activePage];
 
   const onboardingSteps = useMemo(
     () => [
@@ -3332,31 +3369,34 @@ export function App() {
         </section>
       ) : (
         <div className="workspace-shell">
-          <aside className="workspace-sidebar">
-            <div className="panel workspace-sidebar-panel">
-              <p className="workspace-nav-kicker">{t("nav.workspace")}</p>
-              <div className="workspace-nav">
-                {availablePages.map((page) => (
-                  <button
-                    key={page.key}
-                    className={`workspace-nav-button ${page.key === activePage ? "active" : ""}`}
-                    type="button"
-                    onClick={() => openWorkspacePage(page.key)}
-                  >
-                    {page.label}
-                  </button>
-                ))}
+          {availablePages.length > 0 ? (
+            <aside className="workspace-sidebar">
+              <div className="panel workspace-sidebar-panel">
+                <p className="workspace-nav-kicker">{t("nav.workspace")}</p>
+                <div className="workspace-nav">
+                  {availablePages.map((page) => (
+                    <button
+                      key={page.key}
+                      className={`workspace-nav-button ${page.key === activePage ? "active" : ""}`}
+                      type="button"
+                      onClick={() => openWorkspacePage(page.key)}
+                    >
+                      {page.label}
+                    </button>
+                  ))}
+                </div>
               </div>
-            </div>
-          </aside>
+            </aside>
+          ) : null}
           <div className="workspace-main" data-page={activePage}>
             <section className="panel workspace-page-header">
               <div>
                 <p className="workspace-nav-kicker">{payload.household.name}</p>
                 <h2>{activePageLabel}</h2>
-                <p className="workspace-page-copy">{pageDescriptions[activePage]}</p>
+                <p className="workspace-page-copy">{activePageDescription}</p>
               </div>
               <div className="workspace-page-meta">
+                <span className="status-pill">{workspaceVariantLabel}</span>
                 <span className="status-pill">{t(`role.${payload.currentUser.role}`)}</span>
                 <span className="status-pill">
                   {formatNumber(payload.currentUser.points)} {t("user.points")}
@@ -3367,7 +3407,15 @@ export function App() {
               </div>
             </section>
 
-            {pageSectionLinks.length > 0 ? (
+            {isAdminVariantAccessDenied ? (
+              <section className="panel page-panel">
+                <div className="section-heading">
+                  <h2>{t("workspace.admin_only_title")}</h2>
+                  <span className="section-kicker">{t("workspace.variant_admin")}</span>
+                </div>
+                <p>{t("workspace.admin_only_body")}</p>
+              </section>
+            ) : pageSectionLinks.length > 0 ? (
               <section className="panel workspace-subnav-panel">
                 <span className="section-kicker">{t("nav.jump_to")}</span>
                 <div className="workspace-subnav">
@@ -3385,7 +3433,7 @@ export function App() {
               </section>
             ) : null}
 
-          {showOnboarding && activePage === "overview" ? (
+          {isAdminVariantAccessDenied ? null : showOnboarding && activePage === "overview" ? (
             <section className="onboarding-shell">
               <article className="panel onboarding-panel">
                 <div className="section-heading">

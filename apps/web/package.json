@@ -5,8 +5,14 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:admin": "vite --mode admin --port 5174",
+    "dev:client": "vite --mode client --port 5173",
     "build": "tsc --noEmit && vite build",
-    "preview": "vite preview"
+    "build:admin": "tsc --noEmit && vite build --mode admin",
+    "build:client": "tsc --noEmit && vite build --mode client",
+    "preview": "vite preview",
+    "preview:admin": "vite preview --mode admin --port 4174",
+    "preview:client": "vite preview --mode client --port 4173"
   },
   "dependencies": {
     "react": "^18.3.1",
