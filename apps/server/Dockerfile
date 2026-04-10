@@ -33,7 +33,7 @@ ENV VITE_TASKBANDIT_COMMIT_SHA=${TASKBANDIT_COMMIT_SHA}
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm ci
 
-COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html ./
+COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html apps/web/admin.html apps/web/client.html ./
 COPY apps/web/public ./public
 COPY apps/web/src ./src
 RUN npm run build
