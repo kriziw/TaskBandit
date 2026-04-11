@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.33.0](https://github.com/kriziw/TaskBandit/compare/v0.32.1...v0.33.0) (2026-04-11)
+
+
+### Features
+
+* add chore completion celebrations ([#196](https://github.com/kriziw/TaskBandit/issues/196)) ([8882e45](https://github.com/kriziw/TaskBandit/commit/8882e45e4aed6a3d4f69153f031f27149bfbe876))
+
 ## [0.32.1](https://github.com/kriziw/TaskBandit/compare/v0.32.0...v0.32.1) (2026-04-11)
 
 
