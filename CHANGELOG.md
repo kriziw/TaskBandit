@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.33.2](https://github.com/kriziw/TaskBandit/compare/v0.33.1...v0.33.2) (2026-04-11)
+
+
+### Bug Fixes
+
+* improve recurring chore cancellation UX ([#200](https://github.com/kriziw/TaskBandit/issues/200)) ([a6639da](https://github.com/kriziw/TaskBandit/commit/a6639dac1cdaf0046056f1e6668cf16177c752d6))
+
 ## [0.33.1](https://github.com/kriziw/TaskBandit/compare/v0.33.0...v0.33.1) (2026-04-11)
 
 
