@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
@@ -3576,13 +3577,27 @@ private fun CompletionCelebrationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
-                CelebrationConfettiBurst()
-                CelebrationConfettiStrip()
-                Image(
-                    painter = painterResource(R.drawable.ic_taskbandit_mark),
-                    contentDescription = stringResource(R.string.brand_mark_description),
-                    modifier = Modifier.size(116.dp)
-                )
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(176.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CelebrationConfettiBurst(
+                        modifier = Modifier.fillMaxSize()
+                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        CelebrationConfettiStrip()
+                        Image(
+                            painter = painterResource(R.drawable.ic_taskbandit_mark),
+                            contentDescription = stringResource(R.string.brand_mark_description),
+                            modifier = Modifier.size(116.dp)
+                        )
+                    }
+                }
                 Surface(
                     shape = RoundedCornerShape(999.dp),
                     color = MaterialTheme.colorScheme.primaryContainer
@@ -3618,13 +3633,13 @@ private fun CompletionCelebrationDialog(
 }
 
 @Composable
-private fun CelebrationConfettiBurst() {
+private fun CelebrationConfettiBurst(modifier: Modifier = Modifier) {
     val transition = rememberInfiniteTransition(label = "celebration-confetti")
     val progress = transition.animateFloat(
         initialValue = 0f,
         targetValue = 1f,
         animationSpec = infiniteRepeatable(
-            animation = tween(durationMillis = 1800, easing = LinearEasing),
+            animation = tween(durationMillis = 1500, easing = LinearEasing),
             repeatMode = RepeatMode.Restart
         ),
         label = "celebration-confetti-progress"
@@ -3637,33 +3652,51 @@ private fun CelebrationConfettiBurst() {
         Color(0xFFFCCC3D)
     )
     val particles = listOf(
-        Triple(0.12f, 0.02f, 0f),
-        Triple(0.24f, 0.18f, 0.13f),
-        Triple(0.37f, 0.08f, 0.31f),
-        Triple(0.51f, 0.14f, 0.48f),
-        Triple(0.64f, 0.04f, 0.62f),
-        Triple(0.78f, 0.16f, 0.75f),
-        Triple(0.9f, 0.01f, 0.87f)
+        Triple(0.08f, 0.05f, 0.00f),
+        Triple(0.14f, 0.09f, 0.07f),
+        Triple(0.21f, 0.07f, 0.15f),
+        Triple(0.29f, 0.12f, 0.23f),
+        Triple(0.36f, 0.06f, 0.31f),
+        Triple(0.44f, 0.11f, 0.39f),
+        Triple(0.52f, 0.07f, 0.47f),
+        Triple(0.61f, 0.1f, 0.55f),
+        Triple(0.69f, 0.05f, 0.63f),
+        Triple(0.77f, 0.1f, 0.71f),
+        Triple(0.84f, 0.06f, 0.79f),
+        Triple(0.92f, 0.09f, 0.87f)
     )
 
     Canvas(
-        modifier = Modifier
-            .fillMaxWidth()
-            .heightIn(min = 84.dp)
+        modifier = modifier
     ) {
         particles.forEachIndexed { index, (xFraction, driftFraction, offset) ->
             val particleProgress = (progress.value + offset) % 1f
-            val centerX = size.width * (xFraction + driftFraction * kotlin.math.sin((particleProgress * 6.28318f)).toFloat())
-            val centerY = size.height * particleProgress
-            val width = if (index % 2 == 0) size.minDimension * 0.085f else size.minDimension * 0.05f
-            val height = if (index % 2 == 0) size.minDimension * 0.03f else size.minDimension * 0.05f
-            rotate(degrees = particleProgress * 540f + index * 18f, pivot = androidx.compose.ui.geometry.Offset(centerX, centerY)) {
-                drawRoundRect(
-                    color = colors[index % colors.size],
-                    topLeft = androidx.compose.ui.geometry.Offset(centerX - width / 2f, centerY - height / 2f),
-                    size = androidx.compose.ui.geometry.Size(width, height),
-                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(width * 0.28f, width * 0.28f)
+            val sway = kotlin.math.sin((particleProgress * 6.28318f * 2f) + index).toFloat()
+            val centerX = size.width * (xFraction + driftFraction * sway)
+            val centerY = size.height * (-0.12f + particleProgress * 1.22f)
+            val alpha = 0.95f - (particleProgress * 0.22f)
+            val color = colors[index % colors.size].copy(alpha = alpha)
+
+            if (index % 3 == 0) {
+                drawCircle(
+                    color = color,
+                    radius = size.minDimension * 0.03f,
+                    center = androidx.compose.ui.geometry.Offset(centerX, centerY)
                 )
+            } else {
+                val width = if (index % 2 == 0) size.minDimension * 0.11f else size.minDimension * 0.075f
+                val height = if (index % 2 == 0) size.minDimension * 0.035f else size.minDimension * 0.055f
+                rotate(
+                    degrees = particleProgress * 620f + index * 24f,
+                    pivot = androidx.compose.ui.geometry.Offset(centerX, centerY)
+                ) {
+                    drawRoundRect(
+                        color = color,
+                        topLeft = androidx.compose.ui.geometry.Offset(centerX - width / 2f, centerY - height / 2f),
+                        size = androidx.compose.ui.geometry.Size(width, height),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(width * 0.28f, width * 0.28f)
+                    )
+                }
             }
         }
     }
