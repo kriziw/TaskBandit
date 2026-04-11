@@ -3586,17 +3586,11 @@ private fun CompletionCelebrationDialog(
                     CelebrationConfettiBurst(
                         modifier = Modifier.fillMaxSize()
                     )
-                    Column(
-                        horizontalAlignment = Alignment.CenterHorizontally,
-                        verticalArrangement = Arrangement.spacedBy(10.dp)
-                    ) {
-                        CelebrationConfettiStrip()
-                        Image(
-                            painter = painterResource(R.drawable.ic_taskbandit_mark),
-                            contentDescription = stringResource(R.string.brand_mark_description),
-                            modifier = Modifier.size(116.dp)
-                        )
-                    }
+                    Image(
+                        painter = painterResource(R.drawable.ic_taskbandit_mark),
+                        contentDescription = stringResource(R.string.brand_mark_description),
+                        modifier = Modifier.size(116.dp)
+                    )
                 }
                 Surface(
                     shape = RoundedCornerShape(999.dp),
@@ -3698,35 +3692,6 @@ private fun CelebrationConfettiBurst(modifier: Modifier = Modifier) {
                     )
                 }
             }
-        }
-    }
-}
-
-@Composable
-private fun CelebrationConfettiStrip() {
-    val colors = listOf(
-        Color(0xFFD8B77E),
-        Color(0xFF9B5218),
-        Color(0xFF637052),
-        Color(0xFF73C9F4),
-        Color(0xFFFCCC3D)
-    )
-
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Center,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        colors.forEachIndexed { index, color ->
-            Box(
-                modifier = Modifier
-                    .padding(horizontal = 4.dp)
-                    .size(
-                        width = if (index % 2 == 0) 18.dp else 8.dp,
-                        height = if (index % 2 == 0) 6.dp else 8.dp
-                    )
-                    .background(color, if (index % 2 == 0) RoundedCornerShape(999.dp) else CircleShape)
-            )
         }
     }
 }
