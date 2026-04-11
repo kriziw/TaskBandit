@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.34.0](https://github.com/kriziw/TaskBandit/compare/v0.33.4...v0.34.0) (2026-04-11)
+
+
+### Features
+
+* add takeover points setting ([#209](https://github.com/kriziw/TaskBandit/issues/209)) ([e30a8cc](https://github.com/kriziw/TaskBandit/commit/e30a8cc815a0fe40e942085706876431a2217b93))
+
 ## [0.33.4](https://github.com/kriziw/TaskBandit/compare/v0.33.3...v0.33.4) (2026-04-11)
 
 
