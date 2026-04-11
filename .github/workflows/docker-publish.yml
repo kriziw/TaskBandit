@@ -27,14 +27,10 @@ jobs:
             image: kriziw/taskbandit
             file: ./apps/server/Dockerfile
             target: runtime
-          - name: admin-web
-            image: kriziw/taskbandit-admin
+          - name: web
+            image: kriziw/taskbandit-web
             file: ./apps/web/Dockerfile
-            target: admin-runtime
-          - name: client-web
-            image: kriziw/taskbandit-client
-            file: ./apps/web/Dockerfile
-            target: client-runtime
+            target: runtime
     permissions:
       contents: read
     steps:

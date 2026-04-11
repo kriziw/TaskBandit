@@ -26,8 +26,8 @@
 - The backend also exposes bootstrap endpoints for checking initialization state and creating the first household when demo seeding is disabled.
 - Local authentication foundations are in place with JWT-based login endpoints and Authentik-oriented OIDC configuration settings.
 - The repository now includes an initial Prisma migration snapshot under `apps/server/prisma/migrations`.
-- Docker Compose now pulls three images in the split deployment model:
-  `kriziw/taskbandit`, `kriziw/taskbandit-admin`, and `kriziw/taskbandit-client`.
+- Docker Compose now pulls two images in the split deployment model:
+  `kriziw/taskbandit` and `kriziw/taskbandit-web`.
 - The Android project currently includes Gradle files but not a checked-in wrapper yet.
 - Authentik is the target OIDC provider for the first external identity integration.
 - Reverse proxy support is built in through trusted proxy handling and optional path-base configuration.

@@ -21,20 +21,16 @@ COPY apps/web/public ./public
 COPY apps/web/src ./src
 RUN npm run build
 
-FROM nginx:1.27-alpine AS web-base
+FROM nginx:1.27-alpine AS runtime
 WORKDIR /usr/share/nginx/html
 
 COPY apps/web/docker/40-generate-runtime-config.sh /docker-entrypoint.d/40-generate-runtime-config.sh
+COPY apps/web/docker/nginx-web.conf /etc/nginx/conf.d/default.conf
 RUN chmod +x /docker-entrypoint.d/40-generate-runtime-config.sh
 
 ENV TASKBANDIT_API_BASE_URL=http://localhost:8080
-ENV TASKBANDIT_ADMIN_BASE_URL=http://localhost:4174
+ENV TASKBANDIT_ADMIN_BASE_URL=http://localhost:4173/admin
 ENV TASKBANDIT_CLIENT_BASE_URL=http://localhost:4173
 
-FROM web-base AS admin-runtime
-COPY apps/web/docker/nginx-admin.conf /etc/nginx/conf.d/default.conf
-COPY --from=build /workspace/apps/web/dist-admin/ /usr/share/nginx/html/
-
-FROM web-base AS client-runtime
-COPY apps/web/docker/nginx-client.conf /etc/nginx/conf.d/default.conf
 COPY --from=build /workspace/apps/web/dist-client/ /usr/share/nginx/html/
+COPY --from=build /workspace/apps/web/dist-admin/ /usr/share/nginx/html/admin/
