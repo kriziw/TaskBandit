@@ -148,6 +148,7 @@ private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
 private const val syncDisconnectNoticeDelayMs = 3500L
 private const val mutationReconnectWindowMs = 5000L
 private const val mutationReconnectRetryDelayMs = 750L
+private val historicChoreStates = setOf("completed", "approved", "rejected", "cancelled")
 
 private enum class MobileDashboardTab {
     CHORES,
@@ -1485,12 +1486,12 @@ private fun DashboardScreen(
     }
     val sortedChores = remember(dashboard?.chores, currentUserId) {
         dashboard?.chores.orEmpty()
-            .filter { it.state !in setOf("completed", "approved", "rejected") }
+            .filter { it.state !in historicChoreStates }
             .sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
     }
     val historicChores = remember(dashboard?.chores) {
         dashboard?.chores.orEmpty()
-            .filter { it.state in setOf("completed", "approved", "rejected") }
+            .filter { it.state in historicChoreStates }
             .sortedByDescending { parseInstantForSort(it.dueAt) }
             .take(2)
     }

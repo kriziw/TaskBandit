@@ -2538,7 +2538,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     setBusyAction(`close-cycle:${instanceId}`);
     try {
-      await taskBanditApi.closeCycle(token, language, instanceId);
+      const closedCycle = await taskBanditApi.closeCycle(token, language, instanceId);
+      const cancelledIds = new Set(closedCycle.cancelledIds);
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              instances: current.instances.map((instance) =>
+                cancelledIds.has(instance.id) ? { ...instance, state: "cancelled" } : instance
+              )
+            }
+          : current
+      );
       await refreshDashboard(token, { silent: true });
       setNotice(t("instances.cycle_closed"));
       setPageError(null);
