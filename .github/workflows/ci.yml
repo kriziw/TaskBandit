@@ -78,12 +78,9 @@ jobs:
           - name: server
             file: ./apps/server/Dockerfile
             target: runtime
-          - name: admin-web
+          - name: web
             file: ./apps/web/Dockerfile
-            target: admin-runtime
-          - name: client-web
-            file: ./apps/web/Dockerfile
-            target: client-runtime
+            target: runtime
     steps:
       - uses: actions/checkout@v4
       - name: Build Docker image (${{ matrix.name }})

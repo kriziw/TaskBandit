@@ -33,7 +33,9 @@ export function resolveApiBaseUrl() {
     .replace(/admin\.html$/, "")
     .replace(/client\.html$/, "")
     .replace(/\/+$/, "");
-  const inferredBasePath = cleanedPath && cleanedPath !== "/" ? cleanedPath : "";
+  const adminMountMatch = cleanedPath.match(/^(.*)\/admin(?:\/.*)?$/);
+  const pathWithoutAdminMount = adminMountMatch ? adminMountMatch[1] : cleanedPath;
+  const inferredBasePath = pathWithoutAdminMount && pathWithoutAdminMount !== "/" ? pathWithoutAdminMount : "";
 
   return `${window.location.origin.replace(/\/+$/, "")}${inferredBasePath}`;
 }

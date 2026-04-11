@@ -48,7 +48,7 @@ services:
       TASKBANDIT_WEB_PUSH_PRIVATE_KEY: ${TASKBANDIT_WEB_PUSH_PRIVATE_KEY:-}
       TASKBANDIT_WEB_PUSH_SUBJECT: ${TASKBANDIT_WEB_PUSH_SUBJECT:-}
       TASKBANDIT_SERVE_EMBEDDED_WEB: ${TASKBANDIT_SERVE_EMBEDDED_WEB:-false}
-      TASKBANDIT_CORS_ALLOWED_ORIGINS: ${TASKBANDIT_CORS_ALLOWED_ORIGINS:-http://localhost:4174,http://localhost:4173}
+      TASKBANDIT_CORS_ALLOWED_ORIGINS: ${TASKBANDIT_CORS_ALLOWED_ORIGINS:-http://localhost:4173}
       TASKBANDIT_REVERSE_PROXY_ENABLED: ${TASKBANDIT_REVERSE_PROXY_ENABLED:-false}
       TASKBANDIT_REVERSE_PROXY_PATH_BASE: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
       TASKBANDIT_STORAGE_ROOT: ${TASKBANDIT_STORAGE_ROOT:-/var/lib/taskbandit/storage}
@@ -74,29 +74,15 @@ services:
     volumes:
       - ${TASKBANDIT_DATA_ROOT:-./data}/taskbandit:/var/lib/taskbandit
 
-  admin-web:
-    image: kriziw/taskbandit-admin:${TASKBANDIT_IMAGE_TAG:-latest}
-    container_name: taskbandit-admin-web
+  web:
+    image: kriziw/taskbandit-web:${TASKBANDIT_IMAGE_TAG:-latest}
+    container_name: taskbandit-web
     environment:
       TASKBANDIT_API_BASE_URL: ${TASKBANDIT_PUBLIC_API_BASE_URL:-http://localhost:8080}
-      TASKBANDIT_ADMIN_BASE_URL: ${TASKBANDIT_PUBLIC_ADMIN_BASE_URL:-http://localhost:4174}
+      TASKBANDIT_ADMIN_BASE_URL: ${TASKBANDIT_PUBLIC_ADMIN_BASE_URL:-http://localhost:4173/admin}
       TASKBANDIT_CLIENT_BASE_URL: ${TASKBANDIT_PUBLIC_CLIENT_BASE_URL:-http://localhost:4173}
     ports:
-      - "${TASKBANDIT_ADMIN_PORT:-4174}:80"
-    depends_on:
-      server:
-        condition: service_healthy
-    pull_policy: always
-
-  client-web:
-    image: kriziw/taskbandit-client:${TASKBANDIT_IMAGE_TAG:-latest}
-    container_name: taskbandit-client-web
-    environment:
-      TASKBANDIT_API_BASE_URL: ${TASKBANDIT_PUBLIC_API_BASE_URL:-http://localhost:8080}
-      TASKBANDIT_ADMIN_BASE_URL: ${TASKBANDIT_PUBLIC_ADMIN_BASE_URL:-http://localhost:4174}
-      TASKBANDIT_CLIENT_BASE_URL: ${TASKBANDIT_PUBLIC_CLIENT_BASE_URL:-http://localhost:4173}
-    ports:
-      - "${TASKBANDIT_CLIENT_PORT:-4173}:80"
+      - "${TASKBANDIT_WEB_PORT:-4173}:80"
     depends_on:
       server:
         condition: service_healthy

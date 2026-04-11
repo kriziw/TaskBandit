@@ -13,6 +13,8 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 - a client-facing web UI that works in a normal desktop/mobile browser and can also be installed as a PWA
 - a native Android application for daily use, offline actions, photo proof, and widgets
 
+Public documentation is hosted at [taskbandit.github.io](https://taskbandit.github.io/).
+
 ## AI Disclaimer
 
 This repository is developed with AI assistance, but AI is used here as a tool, not as an autonomous maintainer. Humans stay in control of every meaningful step: setting direction, reviewing and editing output, validating behavior, and deciding what is merged, released, and deployed.
@@ -87,7 +89,7 @@ TaskBandit now uses `release-please` as the main release-preparation workflow.
 - The intended workflow is to do day-to-day work on branches and merge via PRs, with `main` treated as the release branch.
 - If you keep pushing feature work directly to `main`, `release-please` will quite reasonably keep preparing the next release PR after releasable commits such as `feat:` and `fix:`.
 - PRs targeting `main` now validate their title format so squash merges stay release-please-safe. Use conventional titles such as `feat: ...`, `fix: ...`, or `chore: ...`.
-- When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned server/admin/client Docker images.
+- When that release PR is merged, the workflow creates the GitHub release, builds and attaches the Android APK, and publishes versioned server/web Docker images.
 - The workflow now also verifies that the release tag exists after a successful release creation, so future releases do not drift into the old missing-tag state that caused repeated historical release notes.
 - The separate `android-release` workflow is manual-only, so the release APK is not built twice for the same release event.
 - The `simple` release strategy tracks the root [CHANGELOG.md](C:/Users/krist/Documents/GitHub/Chore%20Manager/CHANGELOG.md) and [version.txt](C:/Users/krist/Documents/GitHub/Chore%20Manager/version.txt).
@@ -113,14 +115,13 @@ The split admin/client deployment model, runtime config contract, session strate
 
 Upgrade order for private self-hosted installs:
 
-- update the server, admin-web, and client-web containers together from the same image tag
+- update the server and web containers together from the same image tag
 - update Android clients after the server is running the newer version
 - TaskBandit now degrades gracefully when newer clients meet an older server for some optional features, but server-first upgrades remain the safest path for avoiding mixed-version surprises
 
-Docker Compose is configured to pull three images from Docker Hub:
+Docker Compose is configured to pull two images from Docker Hub:
 - `kriziw/taskbandit`
-- `kriziw/taskbandit-admin`
-- `kriziw/taskbandit-client`
+- `kriziw/taskbandit-web`
 
 Use `TASKBANDIT_IMAGE_TAG` to pin a specific published tag across the whole split stack if you do not want `latest`.
 The publishing workflow and required GitHub secrets are documented in `docs/docker-publishing.md`.
@@ -157,8 +158,8 @@ Manual setup:
    Web Push is optional too. Leave `TASKBANDIT_WEB_PUSH_*` blank unless you want browser push for the client PWA.
 3. Start TaskBandit from the repository root:
    `docker compose up -d`
-4. Open the client UI at `http://localhost:<TASKBANDIT_CLIENT_PORT>` for day-to-day use.
-5. Open the admin UI at `http://localhost:<TASKBANDIT_ADMIN_PORT>` for setup, templates, and system configuration.
+4. Open the client UI at `http://localhost:<TASKBANDIT_WEB_PORT>` for day-to-day use.
+5. Open the admin UI at `http://localhost:<TASKBANDIT_WEB_PORT>/admin` for setup, templates, and system configuration.
 6. If demo seeding is enabled, sign in with:
    `alex@taskbandit.local` / `TaskBandit123!`
    `maya@taskbandit.local` / `TaskBandit123!`
@@ -170,9 +171,8 @@ Manual setup:
 
 - `TASKBANDIT_IMAGE_TAG=latest` pulls the latest published Docker image from Docker Hub.
 - `TASKBANDIT_PORT=8080` controls both the port the app listens on inside Docker and the host port published by Docker Compose.
-- `TASKBANDIT_ADMIN_PORT=4174` publishes the admin web UI on the host.
-- `TASKBANDIT_CLIENT_PORT=4173` publishes the client web UI on the host.
-- `TASKBANDIT_PUBLIC_API_BASE_URL`, `TASKBANDIT_PUBLIC_ADMIN_BASE_URL`, and `TASKBANDIT_PUBLIC_CLIENT_BASE_URL` are injected into the split web containers at runtime so the same images can be reused without rebuilding.
+- `TASKBANDIT_WEB_PORT=4173` publishes the shared web UI container on the host; the client UI/PWA is at `/` and the admin UI is at `/admin`.
+- `TASKBANDIT_PUBLIC_API_BASE_URL`, `TASKBANDIT_PUBLIC_ADMIN_BASE_URL`, and `TASKBANDIT_PUBLIC_CLIENT_BASE_URL` are injected into the web container at runtime so the same image can be reused without rebuilding.
 - The server health endpoint is always available at `/health`, even when `TASKBANDIT_REVERSE_PROXY_PATH_BASE` is set.
 - `TASKBANDIT_DB_HOST_PORT=5432` controls which host port PostgreSQL is exposed on. The container still uses port `5432` internally.
 - `TASKBANDIT_DATA_ROOT=./data` is the host folder Docker Compose binds into the stack for durable migration-friendly data.
@@ -190,8 +190,8 @@ Manual setup:
 - `TASKBANDIT_FCM_ENABLED=false` keeps server-side Firebase Cloud Messaging off entirely.
 - `TASKBANDIT_FCM_SERVICE_ACCOUNT_BASE64` is the preferred way to pass a Firebase service-account JSON into Docker Compose for push delivery. `TASKBANDIT_FCM_SERVICE_ACCOUNT_JSON` also works if you prefer a raw JSON env value.
 - `TASKBANDIT_WEB_PUSH_PUBLIC_KEY`, `TASKBANDIT_WEB_PUSH_PRIVATE_KEY`, and `TASKBANDIT_WEB_PUSH_SUBJECT` enable browser Web Push for the client PWA. If they are left blank, the client PWA still gets foreground live sync while open, but background browser notifications stay disabled.
-- `TASKBANDIT_SERVE_EMBEDDED_WEB=false` is the recommended split deployment mode. Leave it off so the server stays API-only while `admin-web` and `client-web` are served separately.
-- `TASKBANDIT_CORS_ALLOWED_ORIGINS=` accepts a comma-separated allowlist of browser origins for the admin and client frontends.
+- `TASKBANDIT_SERVE_EMBEDDED_WEB=false` is the recommended split deployment mode. Leave it off so the server stays API-only while the shared web container serves the client UI at `/` and the admin UI at `/admin`.
+- `TASKBANDIT_CORS_ALLOWED_ORIGINS=` accepts a comma-separated allowlist of browser origins for the web frontend.
 - UI-managed configuration and household state now live under the bind-mounted `TASKBANDIT_DATA_ROOT` folder:
   PostgreSQL data is stored in `${TASKBANDIT_DATA_ROOT}/postgres`, and app-managed files such as uploads and runtime logs are stored in `${TASKBANDIT_DATA_ROOT}/taskbandit`.
   If you migrate that folder to another host and bring the stack up again, the household settings and other UI-managed data come with it.

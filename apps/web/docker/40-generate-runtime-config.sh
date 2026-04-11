@@ -1,13 +1,16 @@
 #!/bin/sh
 set -eu
 
-template_path="/usr/share/nginx/html/taskbandit-runtime-config.template.js"
-target_path="/usr/share/nginx/html/taskbandit-runtime-config.js"
+for template_path in \
+  /usr/share/nginx/html/taskbandit-runtime-config.template.js \
+  /usr/share/nginx/html/admin/taskbandit-runtime-config.template.js
+do
+  if [ ! -f "$template_path" ]; then
+    continue
+  fi
 
-if [ ! -f "$template_path" ]; then
-  exit 0
-fi
-
-envsubst '${TASKBANDIT_API_BASE_URL} ${TASKBANDIT_ADMIN_BASE_URL} ${TASKBANDIT_CLIENT_BASE_URL}' \
-  < "$template_path" \
-  > "$target_path"
+  target_path="${template_path%.template.js}.js"
+  envsubst '${TASKBANDIT_API_BASE_URL} ${TASKBANDIT_ADMIN_BASE_URL} ${TASKBANDIT_CLIENT_BASE_URL}' \
+    < "$template_path" \
+    > "$target_path"
+done
