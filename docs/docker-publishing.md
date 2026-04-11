@@ -1,42 +1,7 @@
 # Docker Publishing
 
-TaskBandit publishes two Docker images to Docker Hub:
+The canonical Docker publishing and release artifact guide now lives on the public documentation site:
 
-- `kriziw/taskbandit` for the API server
-- `kriziw/taskbandit-web` for the shared web UI container, serving the client UI/PWA at `/` and the admin UI at `/admin`
+[TaskBandit releases guide](https://kriziw.github.io/taskbandit/releases.html)
 
-## GitHub Actions Secrets
-
-Set these repository secrets in GitHub:
-
-- `DOCKERHUB_USERNAME`
-- `DOCKERHUB_TOKEN`
-
-The token should be a Docker Hub access token with permission to push to the TaskBandit image set.
-
-## Published Tags
-
-The current workflow publishes matching tags for both images:
-
-- `latest` from the default branch
-- `prerelease` when `PRE_RELEASE_SETTING` is truthy
-
-Versioned release tags like `0.9.2` and `v0.9.2` are published by the controlled release workflow (`release-please.yml`).
-
-The automatic Docker publish workflow runs on pushes to `main` that touch the deployable image inputs, including:
-
-- `apps/server/**`
-- `apps/web/**`
-- `infra/docker/**`
-- `.dockerignore`
-
-You can also run the workflow manually from GitHub Actions if you want to refresh Docker Hub without creating a release.
-
-## Docker Compose
-
-The compose stack uses the same shared image tag for:
-
-- `kriziw/taskbandit:${TASKBANDIT_IMAGE_TAG:-latest}`
-- `kriziw/taskbandit-web:${TASKBANDIT_IMAGE_TAG:-latest}`
-
-Set `TASKBANDIT_IMAGE_TAG` in `.env` if you want to pin a specific published build across the whole split stack.
+Keep this repository-local file as a lightweight pointer so source references do not break.
