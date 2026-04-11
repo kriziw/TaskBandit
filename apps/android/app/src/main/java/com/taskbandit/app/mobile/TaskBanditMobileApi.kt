@@ -575,27 +575,32 @@ class TaskBanditMobileApi {
         }
     }
 
+    private fun JSONObject.optNullableString(key: String): String? {
+        return optString(key)
+            .trim()
+            .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+    }
+
     private fun parseChore(entry: JSONObject): MobileChore {
         return MobileChore(
             id = entry.optString("id"),
-            cycleId = entry.optString("cycleId").ifBlank { null },
+            cycleId = entry.optNullableString("cycleId"),
             title = entry.optString("title"),
             typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
-            subtypeLabel = entry.optString("subtypeLabel")
-                .trim()
-                .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
+            subtypeLabel = entry.optNullableString("subtypeLabel"),
             state = entry.optString("state"),
-            assigneeId = entry.optString("assigneeId").ifBlank { null },
-            assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
+            assigneeId = entry.optNullableString("assigneeId"),
+            assigneeDisplayName = entry.optNullableString("assigneeDisplayName"),
             dueAt = entry.optString("dueAt"),
-            completedAt = entry.optString("completedAt").ifBlank { null },
+            completedAt = entry.optNullableString("completedAt"),
+            cancelledAt = entry.optNullableString("cancelledAt"),
             isOverdue = entry.optBoolean("isOverdue"),
             requirePhotoProof = entry.optBoolean("requirePhotoProof"),
             basePoints = entry.optInt("basePoints"),
             awardedPoints = entry.optInt("awardedPoints"),
             checklist = parseChecklist(entry.optJSONArray("checklist")),
             completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
-            variantId = entry.optString("variantId").ifBlank { null }
+            variantId = entry.optNullableString("variantId")
         )
     }
 

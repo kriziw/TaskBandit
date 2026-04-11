@@ -161,6 +161,33 @@ const completionCelebrationPhraseKeys = [
   "celebration.phrase_5"
 ];
 
+function pickRandomCelebrationPhraseKey(previousKey?: string | null) {
+  if (completionCelebrationPhraseKeys.length === 1) {
+    return completionCelebrationPhraseKeys[0];
+  }
+
+  let nextKey = completionCelebrationPhraseKeys[getRandomNumber(completionCelebrationPhraseKeys.length)];
+  while (nextKey === previousKey) {
+    nextKey = completionCelebrationPhraseKeys[getRandomNumber(completionCelebrationPhraseKeys.length)];
+  }
+
+  return nextKey;
+}
+
+function getRandomNumber(max: number) {
+  if (max <= 1) {
+    return 0;
+  }
+
+  if (typeof window !== "undefined" && window.crypto?.getRandomValues) {
+    const randomValues = new Uint32Array(1);
+    window.crypto.getRandomValues(randomValues);
+    return randomValues[0] % max;
+  }
+
+  return Math.floor(Math.random() * max);
+}
+
 function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): TemplateFormState {
   return {
     defaultLocale,
@@ -543,7 +570,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
-  const [completionCelebrationIndex, setCompletionCelebrationIndex] = useState(0);
+  const [lastCompletionCelebrationPhraseKey, setLastCompletionCelebrationPhraseKey] = useState<string | null>(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -1545,7 +1572,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               : t("common.unassigned")}
         </p>
         <p>
-          {options?.historic ? t("task.completed") : t("task.due")}:{" "}
+          {options?.historic ? t(getHistoricChoreDateLabelKey(instance)) : t("task.due")}:{" "}
           {formatDate(options?.historic ? getHistoricChoreDate(instance) : instance.dueAt)}
         </p>
         {!restrictHouseholdDetails ? (
@@ -1577,17 +1604,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 {t("common.edit")}
               </button>
             ) : null}
-            <button
-              className="secondary-button"
-              type="button"
-              disabled={busyAction === `cancel:${instance.id}`}
-              onClick={() => void handleCancelInstance(instance.id)}
-            >
-              {t("instances.cancel")}
-            </button>
-            {instance.cycleId ? (
+            {!instance.cycleId ? (
               <button
-                className="ghost-button"
+                className="secondary-button"
+                type="button"
+                disabled={busyAction === `cancel:${instance.id}`}
+                onClick={() => void handleCancelInstance(instance.id)}
+              >
+                {t("instances.cancel")}
+              </button>
+            ) : (
+              <button
+                className="secondary-button"
                 type="button"
                 disabled={busyAction === `close-cycle:${instance.id}`}
                 onClick={() => void handleCloseCycle(instance.id)}
@@ -1596,7 +1624,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   ? t("instances.closing_cycle")
                   : t("instances.close_cycle")}
               </button>
-            ) : null}
+            )}
           </div>
         ) : null}
       </div>
@@ -1992,18 +2020,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         note: submitNotes[instanceId]
       });
       if (submittedChore.state === "completed") {
-        const phraseKey =
-          completionCelebrationPhraseKeys[
-            completionCelebrationIndex % completionCelebrationPhraseKeys.length
-          ];
+        const phraseKey = pickRandomCelebrationPhraseKey(lastCompletionCelebrationPhraseKey);
         setCompletionCelebration({
           points: Math.max(0, submittedChore.awardedPoints),
           choreTitle: submittedChore.typeTitle || submittedChore.title,
           phraseKey
         });
-        setCompletionCelebrationIndex(
-          (current) => (current + 1) % completionCelebrationPhraseKeys.length
-        );
+        setLastCompletionCelebrationPhraseKey(phraseKey);
       }
       setNotice(t("submission.success"));
       setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
@@ -2545,7 +2568,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           ? {
               ...current,
               instances: current.instances.map((instance) =>
-                cancelledIds.has(instance.id) ? { ...instance, state: "cancelled" } : instance
+                cancelledIds.has(instance.id)
+                  ? { ...instance, state: "cancelled", cancelledAt: closedCycle.cancelledAt }
+                  : instance
               )
             }
           : current
@@ -2576,6 +2601,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         "assignee",
         "dueAt",
         "completedAt",
+        "cancelledAt",
         "difficulty",
         "basePoints",
         "awardedPoints",
@@ -2593,6 +2619,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         instance.assigneeId ? memberLookup.get(instance.assigneeId) ?? "" : "",
         instance.dueAt,
         instance.completedAt ?? "",
+        instance.cancelledAt ?? "",
         instance.difficulty,
         String(instance.basePoints),
         String(instance.awardedPoints),
@@ -6433,7 +6460,13 @@ function downloadBlob(blob: Blob, filename: string) {
 }
 
 function getHistoricChoreDate(instance: ChoreInstance) {
-  return instance.completedAt ?? instance.reviewedAt ?? instance.submittedAt ?? instance.dueAt;
+  return instance.state === "cancelled"
+    ? instance.cancelledAt ?? instance.completedAt ?? instance.reviewedAt ?? instance.submittedAt ?? instance.dueAt
+    : instance.completedAt ?? instance.reviewedAt ?? instance.submittedAt ?? instance.dueAt;
+}
+
+function getHistoricChoreDateLabelKey(instance: ChoreInstance) {
+  return instance.state === "cancelled" ? "task.cancelled" : "task.completed";
 }
 
 function getExportRelevantDate(instance: ChoreInstance) {
