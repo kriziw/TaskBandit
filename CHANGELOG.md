@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.33.1](https://github.com/kriziw/TaskBandit/compare/v0.33.0...v0.33.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* move cancelled cycle chores to history ([#198](https://github.com/kriziw/TaskBandit/issues/198)) ([e957b2c](https://github.com/kriziw/TaskBandit/commit/e957b2cebeb1b325e08def65b4219ceb5b09b6b3))
+
 ## [0.33.0](https://github.com/kriziw/TaskBandit/compare/v0.32.1...v0.33.0) (2026-04-11)
 
 
