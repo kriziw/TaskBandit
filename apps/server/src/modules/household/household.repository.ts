@@ -3223,7 +3223,8 @@ export class HouseholdRepository {
         id: instanceId
       },
       data: {
-        state: ChoreState.CANCELLED
+        state: ChoreState.CANCELLED,
+        cancelledAtUtc: new Date()
       },
       include: {
         template: {
@@ -3303,11 +3304,14 @@ export class HouseholdRepository {
       return {
         cycleId: targetInstance.cycleId,
         cancelledCount: 0,
-        cancelledIds: []
+        cancelledIds: [],
+        cancelledAt: null
       };
     }
 
     const cancelledIds = activeCycleInstances.map((instance) => instance.id);
+
+    const cancelledAt = new Date();
 
     await this.prisma.$transaction(async (tx) => {
       await tx.choreInstance.updateMany({
@@ -3317,7 +3321,8 @@ export class HouseholdRepository {
           }
         },
         data: {
-          state: ChoreState.CANCELLED
+          state: ChoreState.CANCELLED,
+          cancelledAtUtc: cancelledAt
         }
       });
 
@@ -3362,7 +3367,8 @@ export class HouseholdRepository {
     return {
       cycleId: targetInstance.cycleId,
       cancelledCount: cancelledIds.length,
-      cancelledIds
+      cancelledIds,
+      cancelledAt
     };
   }
 
@@ -4254,6 +4260,7 @@ export class HouseholdRepository {
         attachmentCount: 0,
         overduePenaltyPoints: 0,
         completedAt: null,
+        cancelledAt: null,
         submittedAt: null,
         submittedById: null,
         submissionNote: null,
@@ -4290,6 +4297,7 @@ export class HouseholdRepository {
       attachmentCount: instance.attachmentCount,
       overduePenaltyPoints: instance.overduePenaltyPoints,
       completedAt: instance.completedAtUtc,
+      cancelledAt: (instance as any).cancelledAtUtc ?? null,
       submittedAt: instance.submittedAtUtc,
       submittedById: instance.submittedById,
       submissionNote: instance.submissionNote,

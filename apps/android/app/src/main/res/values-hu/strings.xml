@@ -89,6 +89,7 @@
     <string name="mobile_pending_approvals">Várakozó jóváhagyások</string>
     <string name="mobile_due_at">Határidő: %1$s</string>
     <string name="mobile_completed_at">Elvégezve: %1$s</string>
+    <string name="mobile_cancelled_at">Törölve: %1$s</string>
     <string name="mobile_requested_at">Kérés ideje: %1$s</string>
     <string name="mobile_state_overdue">Lejárt</string>
     <string name="mobile_show_details">Feladat megnyitása</string>
@@ -287,12 +288,12 @@
     <string name="mobile_create_end_date_pick">Befejezési dátum</string>
     <string name="mobile_create_end_time_pick">Befejezési idő</string>
     <string name="mobile_create_end_date_required">Válassz a feladat esedékességénél későbbi befejezési időt.</string>
-    <string name="mobile_close_cycle">Ciklus lezárása</string>
-    <string name="mobile_closing_cycle">Ciklus lezárása folyamatban...</string>
-    <string name="mobile_cycle_closed">Az ismétlődő ciklus lezárva.</string>
-    <string name="mobile_close_cycle_failed">A TaskBandit nem tudta lezárni az ismétlődő ciklust.</string>
-    <string name="mobile_close_cycle_confirm_title">Lezárod ezt a ciklust?</string>
-    <string name="mobile_close_cycle_confirm_body">Lezárod a(z) „%1$s” ismétlődő ciklusát, és törlöd benne az összes még nyitott feladatot?</string>
-    <string name="mobile_close_cycle_confirm_action">Igen, lezárom</string>
+    <string name="mobile_close_cycle">Feladat törlése</string>
+    <string name="mobile_closing_cycle">Feladat törlése folyamatban...</string>
+    <string name="mobile_cycle_closed">Feladat törölve.</string>
+    <string name="mobile_close_cycle_failed">A TaskBandit nem tudta törölni az ismétlődő feladatot.</string>
+    <string name="mobile_close_cycle_confirm_title">Törlöd ezt a feladatot?</string>
+    <string name="mobile_close_cycle_confirm_body">Törlöd a(z) „%1$s” feladatot, és leállítod a jövőbeli ismétléseket? Ezzel az ismétlés összes még nyitott feladata törlődik.</string>
+    <string name="mobile_close_cycle_confirm_action">Igen, törlöm</string>
     <string name="mobile_more_actions">További műveletek</string>
 </resources>

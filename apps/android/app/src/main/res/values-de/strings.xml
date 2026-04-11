@@ -89,6 +89,7 @@
     <string name="mobile_pending_approvals">Offene Freigaben</string>
     <string name="mobile_due_at">FÃ¤llig %1$s</string>
     <string name="mobile_completed_at">Erledigt %1$s</string>
+    <string name="mobile_cancelled_at">Storniert %1$s</string>
     <string name="mobile_requested_at">Angefragt %1$s</string>
     <string name="mobile_state_overdue">ÃœberfÃ¤llig</string>
     <string name="mobile_show_details">Aufgabe Ã¶ffnen</string>
@@ -287,14 +288,14 @@
     <string name="mobile_takeover_request_decline_confirm_action">Ja, ablehnen</string>
     <string name="mobile_photo_step_start">1 Â· Starten</string>
     <string name="mobile_photo_step_proof">2 Â· Nachweis hinzufÃ¼gen</string>
-        <string name="mobile_close_cycle">Ablauf beenden</string>
-    <string name="mobile_closing_cycle">Ablauf wird beendet...</string>
+        <string name="mobile_close_cycle">Aufgabe stornieren</string>
+    <string name="mobile_closing_cycle">Aufgabe wird storniert...</string>
     <string name="mobile_more_actions">Weitere Aktionen</string>
-    <string name="mobile_cycle_closed">Wiederkehrender Ablauf beendet.</string>
-    <string name="mobile_close_cycle_failed">Der wiederkehrende Ablauf konnte nicht beendet werden.</string>
-    <string name="mobile_close_cycle_confirm_title">Diesen Ablauf beenden?</string>
-    <string name="mobile_close_cycle_confirm_body">Den wiederkehrenden Ablauf fuer "%1$s" beenden und alle noch offenen Aufgaben darin abbrechen?</string>
-    <string name="mobile_close_cycle_confirm_action">Ja, Ablauf beenden</string>
+    <string name="mobile_cycle_closed">Aufgabe storniert.</string>
+    <string name="mobile_close_cycle_failed">Die wiederkehrende Aufgabe konnte nicht storniert werden.</string>
+    <string name="mobile_close_cycle_confirm_title">Diese Aufgabe stornieren?</string>
+    <string name="mobile_close_cycle_confirm_body">"%1$s" stornieren und kuenftige Wiederholungen stoppen? Dadurch werden alle noch offenen Aufgaben dieser Wiederholung storniert.</string>
+    <string name="mobile_close_cycle_confirm_action">Ja, Aufgabe stornieren</string>
 </resources>
 
 

@@ -22,6 +22,7 @@ import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -76,6 +77,12 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -91,6 +98,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -143,6 +151,7 @@ import java.time.temporal.WeekFields
 import java.io.File
 import java.util.Locale
 import java.util.UUID
+import kotlin.random.Random
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
 private const val syncDisconnectNoticeDelayMs = 3500L
@@ -188,6 +197,19 @@ private data class MobileCompletionCelebration(
     val choreTitle: String,
     val phraseIndex: Int
 )
+
+private fun pickRandomCelebrationPhraseIndex(previousIndex: Int): Int {
+    if (previousIndex !in 0..4) {
+        return Random.nextInt(5)
+    }
+
+    var nextIndex = Random.nextInt(5)
+    while (nextIndex == previousIndex) {
+        nextIndex = Random.nextInt(5)
+    }
+
+    return nextIndex
+}
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -296,7 +318,7 @@ private fun TaskBanditApp(
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(0) }
     var completionCelebration by remember { mutableStateOf<MobileCompletionCelebration?>(null) }
-    var completionCelebrationIndex by remember { mutableIntStateOf(0) }
+    var lastCompletionCelebrationPhraseIndex by remember { mutableIntStateOf(-1) }
     var notificationsPermissionGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -752,12 +774,13 @@ private fun TaskBanditApp(
                     }
                 }
                 if (submittedChore.state == "completed") {
+                    val phraseIndex = pickRandomCelebrationPhraseIndex(lastCompletionCelebrationPhraseIndex)
                     completionCelebration = MobileCompletionCelebration(
                         points = submittedChore.awardedPoints.coerceAtLeast(0),
                         choreTitle = submittedChore.typeTitle.ifBlank { submittedChore.title },
-                        phraseIndex = completionCelebrationIndex
+                        phraseIndex = phraseIndex
                     )
-                    completionCelebrationIndex = (completionCelebrationIndex + 1) % 5
+                    lastCompletionCelebrationPhraseIndex = phraseIndex
                 }
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
@@ -2963,6 +2986,16 @@ private fun HistoricChoreCard(
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
+    val historicDate = if (chore.state == "cancelled") {
+        chore.cancelledAt ?: chore.completedAt ?: chore.dueAt
+    } else {
+        chore.completedAt ?: chore.dueAt
+    }
+    val historicDateLabelResId = if (chore.state == "cancelled") {
+        R.string.mobile_cancelled_at
+    } else {
+        R.string.mobile_completed_at
+    }
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp)
@@ -2999,12 +3032,12 @@ private fun HistoricChoreCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     CompactChoreMeta(
-                        dueAt = chore.completedAt ?: chore.dueAt,
+                        dueAt = historicDate,
                         subtypeLabel = subtypeLabel,
                         assignmentLabel = stringResource(R.string.mobile_chores_history),
                         requirePhotoProof = chore.requirePhotoProof,
                         includeWeekdayInDueDate = false,
-                        dueLabelResId = R.string.mobile_completed_at
+                        dueLabelResId = historicDateLabelResId
                     )
                 }
                 Surface(
@@ -3543,6 +3576,7 @@ private fun CompletionCelebrationDialog(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(10.dp)
             ) {
+                CelebrationConfettiBurst()
                 CelebrationConfettiStrip()
                 Image(
                     painter = painterResource(R.drawable.ic_taskbandit_mark),
@@ -3581,6 +3615,58 @@ private fun CompletionCelebrationDialog(
             }
         }
     )
+}
+
+@Composable
+private fun CelebrationConfettiBurst() {
+    val transition = rememberInfiniteTransition(label = "celebration-confetti")
+    val progress = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1800, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "celebration-confetti-progress"
+    )
+    val colors = listOf(
+        Color(0xFFD8B77E),
+        Color(0xFF9B5218),
+        Color(0xFF637052),
+        Color(0xFF73C9F4),
+        Color(0xFFFCCC3D)
+    )
+    val particles = listOf(
+        Triple(0.12f, 0.02f, 0f),
+        Triple(0.24f, 0.18f, 0.13f),
+        Triple(0.37f, 0.08f, 0.31f),
+        Triple(0.51f, 0.14f, 0.48f),
+        Triple(0.64f, 0.04f, 0.62f),
+        Triple(0.78f, 0.16f, 0.75f),
+        Triple(0.9f, 0.01f, 0.87f)
+    )
+
+    Canvas(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 84.dp)
+    ) {
+        particles.forEachIndexed { index, (xFraction, driftFraction, offset) ->
+            val particleProgress = (progress.value + offset) % 1f
+            val centerX = size.width * (xFraction + driftFraction * kotlin.math.sin((particleProgress * 6.28318f)).toFloat())
+            val centerY = size.height * particleProgress
+            val width = if (index % 2 == 0) size.minDimension * 0.085f else size.minDimension * 0.05f
+            val height = if (index % 2 == 0) size.minDimension * 0.03f else size.minDimension * 0.05f
+            rotate(degrees = particleProgress * 540f + index * 18f, pivot = androidx.compose.ui.geometry.Offset(centerX, centerY)) {
+                drawRoundRect(
+                    color = colors[index % colors.size],
+                    topLeft = androidx.compose.ui.geometry.Offset(centerX - width / 2f, centerY - height / 2f),
+                    size = androidx.compose.ui.geometry.Size(width, height),
+                    cornerRadius = androidx.compose.ui.geometry.CornerRadius(width * 0.28f, width * 0.28f)
+                )
+            }
+        }
+    }
 }
 
 @Composable

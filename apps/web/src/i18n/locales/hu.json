@@ -206,6 +206,7 @@
   "task.submitted": "Beküldve",
   "task.due": "Határidő",
   "task.completed": "Befejezve",
+  "task.cancelled": "Törölve",
   "task.note": "Megjegyzés",
   "task.points": "Pont",
   "task.required": "kötelező",
@@ -566,13 +567,13 @@
   ,"takeover.approved_notice": "Az átvételi kérés jóváhagyva, a feladat újra lett osztva."
   ,"takeover.declined_notice": "Az átvételi kérés elutasítva."
   ,"takeover.action_failed": "A TaskBandit nem tudta feldolgozni az átvételi kérést."
-  ,"instances.close_cycle": "Ciklus lezarasa"
-  ,"instances.closing_cycle": "Ciklus lezarasa folyamatban..."
-  ,"instances.cycle_closed": "Az ismetlodo ciklus lezarva."
-  ,"instances.close_cycle_failed": "A TaskBandit nem tudta lezarni az ismetlodo ciklust."
-  ,"instances.close_cycle_confirm": "Lezarod ezt az ismetlodo ciklust, es torlod az osszes meg nyitott feladatot benne?"
+  ,"instances.close_cycle": "Feladat törlése"
+  ,"instances.closing_cycle": "Feladat törlése folyamatban..."
+  ,"instances.cycle_closed": "Feladat törölve."
+  ,"instances.close_cycle_failed": "A TaskBandit nem tudta törölni az ismétlődő feladatot."
+  ,"instances.close_cycle_confirm": "Törlöd ezt a feladatot, és leállítod a jövőbeli ismétléseket? Ezzel az ismétlés összes még nyitott feladata törlődik."
   ,"instances.repeat_duration": "Ismetlodes idotartama"
-  ,"instances.repeat_forever": "Ismetlodjon addig, amig kezzel le nem zarom"
+  ,"instances.repeat_forever": "Ismétlődjön addig, amíg kézzel nem törlöm"
   ,"instances.repeat_after_occurrences": "Leallitas adott szamu ismetles utan"
   ,"instances.repeat_until_date": "Leallitas egy megadott napon"
   ,"instances.repeat_occurrence_count": "Osszes elofordulas"

@@ -274,6 +274,7 @@ model ChoreInstance {
   submissionNote  String?
   completedAtUtc  DateTime?
   completedById   String?       @db.Uuid
+  cancelledAtUtc  DateTime?
   reviewedAtUtc   DateTime?
   reviewedById    String?       @db.Uuid
   reviewNote      String?

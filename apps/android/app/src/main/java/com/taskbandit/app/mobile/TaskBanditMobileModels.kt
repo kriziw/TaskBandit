@@ -31,6 +31,7 @@ data class MobileChore(
     val assigneeDisplayName: String? = null,
     val dueAt: String,
     val completedAt: String? = null,
+    val cancelledAt: String? = null,
     val isOverdue: Boolean,
     val requirePhotoProof: Boolean,
     val basePoints: Int = 0,
