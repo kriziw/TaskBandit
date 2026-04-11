@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.33.4](https://github.com/kriziw/TaskBandit/compare/v0.33.3...v0.33.4) (2026-04-11)
+
+
+### Bug Fixes
+
+* remove static android confetti strip ([#204](https://github.com/kriziw/TaskBandit/issues/204)) ([8b83fa6](https://github.com/kriziw/TaskBandit/commit/8b83fa68c550d9e9bc6fbfbbcccd0a9addd9466b))
+
 ## [0.33.3](https://github.com/kriziw/TaskBandit/compare/v0.33.2...v0.33.3) (2026-04-11)
 
 
