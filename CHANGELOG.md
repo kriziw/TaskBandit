@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.32.0](https://github.com/kriziw/TaskBandit/compare/v0.31.0...v0.32.0) (2026-04-11)
+
+
+### Features
+
+* **web:** consolidate split frontend container ([#190](https://github.com/kriziw/TaskBandit/issues/190)) ([93e491a](https://github.com/kriziw/TaskBandit/commit/93e491a31dfac4caa2dfb65432af11b5e2fcaaa2))
+
 ## [0.31.0](https://github.com/kriziw/TaskBandit/compare/v0.30.0...v0.31.0) (2026-04-10)
 
 
