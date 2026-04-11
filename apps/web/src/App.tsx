@@ -5690,6 +5690,41 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             }
                           />
                         </label>
+                        <label>
+                          <span>{t("settings.takeover_points_delta")}</span>
+                          <input
+                            type="number"
+                            min={-1000}
+                            max={1000}
+                            step={1}
+                            value={settingsDraft.takeoverPointsDelta}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current
+                                  ? {
+                                      ...current,
+                                      takeoverPointsDelta:
+                                        Number.parseInt(event.target.value || "0", 10) || 0
+                                    }
+                                  : current
+                              )
+                            }
+                          />
+                        </label>
+                        <p className="inline-message">{t("settings.takeover_points_hint")}</p>
+                        <p className="inline-message">
+                          {settingsDraft.takeoverPointsDelta === 0
+                            ? t("settings.takeover_points_disabled")
+                            : settingsDraft.takeoverPointsDelta > 0
+                              ? t("settings.takeover_points_reward").replace(
+                                  "{points}",
+                                  formatNumber(settingsDraft.takeoverPointsDelta)
+                                )
+                              : t("settings.takeover_points_penalty").replace(
+                                  "{points}",
+                                  formatNumber(Math.abs(settingsDraft.takeoverPointsDelta))
+                                )}
+                        </p>
                         <label className="toggle-row">
                           <span>{t("settings.local_auth_enabled")}</span>
                           <input

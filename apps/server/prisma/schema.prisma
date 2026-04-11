@@ -134,6 +134,7 @@ model HouseholdSettings {
   membersCanSeeFullHouseholdChoreDetails Boolean   @default(true)
   enablePushNotifications                Boolean   @default(true)
   enableOverduePenalties                 Boolean   @default(true)
+  takeoverPointsDelta                    Int       @default(0)
   localAuthEnabled                       Boolean   @default(true)
   oidcEnabled                            Boolean   @default(false)
   oidcAuthority                          String?

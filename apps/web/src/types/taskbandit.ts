@@ -173,6 +173,7 @@ export type HouseholdSettings = {
   membersCanSeeFullHouseholdChoreDetails: boolean;
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;
+  takeoverPointsDelta: number;
   localAuthEnabled: boolean;
   localAuthForcedByConfig: boolean;
   localAuthEffective: boolean;
