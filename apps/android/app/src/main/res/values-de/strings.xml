@@ -232,6 +232,14 @@
     <string name="mobile_selected_photos">%1$d Foto(s) ausgewÃ¤hlt</string>
     <string name="mobile_submission_sent">Aufgabe wurde von Android eingereicht.</string>
     <string name="mobile_submission_queued">Gerade keine Verbindung. Die Aufgabe wurde zum Synchronisieren vorgemerkt.</string>
+    <string name="mobile_celebration_title">Stark gemacht!</string>
+    <string name="mobile_celebration_points">Du hast %1$d Punkte bekommen.</string>
+    <string name="mobile_celebration_close">Zurück zu den Aufgaben</string>
+    <string name="mobile_celebration_phrase_1">Kleine Pfoten, großer Sieg.</string>
+    <string name="mobile_celebration_phrase_2">Bandit nickt sehr zufrieden.</string>
+    <string name="mobile_celebration_phrase_3">Diese Aufgabe hatte keine Chance.</string>
+    <string name="mobile_celebration_phrase_4">Heimlicher Aufräumsieg gesichert.</string>
+    <string name="mobile_celebration_phrase_5">Haushaltshelden-Level steigt.</string>
     <string name="mobile_queued_submissions">%1$d vorgemerkte Aufgabe(n) warten auf Synchronisierung</string>
     <string name="mobile_syncing_queue">Vorgemerkte Aufgaben werden synchronisiert...</string>
     <string name="mobile_queue_synced">%1$d vorgemerkte Aufgabe(n) wurden synchronisiert.</string>

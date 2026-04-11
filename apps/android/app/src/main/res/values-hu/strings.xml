@@ -223,6 +223,14 @@
     <string name="mobile_selected_photos">%1$d fotó kiválasztva</string>
     <string name="mobile_submission_sent">A feladat Androidról be lett küldve.</string>
     <string name="mobile_submission_queued">Jelenleg nincs kapcsolat. A feladat sorba lett állítva szinkronizálásra.</string>
+    <string name="mobile_celebration_title">Szép munka!</string>
+    <string name="mobile_celebration_points">%1$d pontot szereztél.</string>
+    <string name="mobile_celebration_close">Vissza a feladatokhoz</string>
+    <string name="mobile_celebration_phrase_1">Kis mancsok, nagy győzelem.</string>
+    <string name="mobile_celebration_phrase_2">Bandit nagyon büszke rád.</string>
+    <string name="mobile_celebration_phrase_3">Ennek a feladatnak esélye sem volt.</string>
+    <string name="mobile_celebration_phrase_4">Titkos rendrakó győzelem.</string>
+    <string name="mobile_celebration_phrase_5">Háztartási hősszinted emelkedik.</string>
     <string name="mobile_queued_submissions">%1$d sorba állított beküldés vár szinkronizálásra</string>
     <string name="mobile_syncing_queue">A sorba állított feladatok szinkronizálása folyamatban...</string>
     <string name="mobile_queue_synced">%1$d sorba állított feladat szinkronizálva lett.</string>

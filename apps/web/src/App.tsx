@@ -73,6 +73,12 @@ type DashboardPayload = {
   compatibility: ServerCompatibility;
 };
 
+type CompletionCelebration = {
+  points: number;
+  choreTitle: string;
+  phraseKey: string;
+};
+
 type LoginFormState = {
   email: string;
   password: string;
@@ -147,6 +153,13 @@ const recurrenceWeekdayOrder = [
 const defaultDependencyDelayValue = 1;
 const defaultDependencyDelayUnit: FollowUpDelayUnit = "hours";
 const templateTranslationLocales: AppLanguage[] = ["en", "de", "hu"];
+const completionCelebrationPhraseKeys = [
+  "celebration.phrase_1",
+  "celebration.phrase_2",
+  "celebration.phrase_3",
+  "celebration.phrase_4",
+  "celebration.phrase_5"
+];
 
 function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): TemplateFormState {
   return {
@@ -529,6 +542,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
+  const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
+  const [completionCelebrationIndex, setCompletionCelebrationIndex] = useState(0);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
@@ -1819,6 +1834,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setNotificationPreferencesDraft(null);
     setLoginError(message ?? null);
     setNotice(null);
+    setCompletionCelebration(null);
   }
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
@@ -1970,11 +1986,25 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             )
           : [];
 
-      await taskBanditApi.submitChore(token, language, instanceId, {
+      const submittedChore = await taskBanditApi.submitChore(token, language, instanceId, {
         completedChecklistItemIds: selectedChecklistIds,
         attachments,
         note: submitNotes[instanceId]
       });
+      if (submittedChore.state === "completed") {
+        const phraseKey =
+          completionCelebrationPhraseKeys[
+            completionCelebrationIndex % completionCelebrationPhraseKeys.length
+          ];
+        setCompletionCelebration({
+          points: Math.max(0, submittedChore.awardedPoints),
+          choreTitle: submittedChore.typeTitle || submittedChore.title,
+          phraseKey
+        });
+        setCompletionCelebrationIndex(
+          (current) => (current + 1) % completionCelebrationPhraseKeys.length
+        );
+      }
       setNotice(t("submission.success"));
       setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
       setSubmitSelections((current) => ({ ...current, [instanceId]: [] }));
@@ -3556,6 +3586,45 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           <p>{payload ? t("hero.mascot_ready") : t("hero.mascot")}</p>
         </div>
       </section>
+
+      {completionCelebration ? (
+        <div className="celebration-backdrop" role="presentation">
+          <section
+            className="celebration-dialog"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="completion-celebration-title"
+          >
+            <div className="celebration-confetti" aria-hidden="true">
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+              <span />
+            </div>
+            <img className="celebration-mascot" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
+            <div className="celebration-copy">
+              <p className="eyebrow">{t("celebration.eyebrow")}</p>
+              <h2 id="completion-celebration-title">{t("celebration.title")}</h2>
+              <p className="celebration-points">
+                {t("celebration.points").replace("{points}", formatNumber(completionCelebration.points))}
+              </p>
+              <p className="celebration-chore">{completionCelebration.choreTitle}</p>
+              <p className="celebration-quote">{t(completionCelebration.phraseKey)}</p>
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => setCompletionCelebration(null)}
+              >
+                {t("celebration.close")}
+              </button>
+            </div>
+          </section>
+        </div>
+      ) : null}
 
       {notice ? <div className="notice-banner success">{notice}</div> : null}
       {pageError ? <div className="notice-banner error">{pageError}</div> : null}

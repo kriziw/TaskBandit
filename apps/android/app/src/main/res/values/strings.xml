@@ -261,6 +261,14 @@
     <string name="mobile_photo_step_proof">2 · Add proof</string>
     <string name="mobile_submission_sent">Chore submitted from Android.</string>
     <string name="mobile_submission_queued">No connection right now. The chore was queued for sync.</string>
+    <string name="mobile_celebration_title">Nice work!</string>
+    <string name="mobile_celebration_points">You earned %1$d points.</string>
+    <string name="mobile_celebration_close">Back to chores</string>
+    <string name="mobile_celebration_phrase_1">Tiny paws, big win.</string>
+    <string name="mobile_celebration_phrase_2">Bandit approves this sparkle.</string>
+    <string name="mobile_celebration_phrase_3">That chore never saw you coming.</string>
+    <string name="mobile_celebration_phrase_4">Sneaky tidy victory secured.</string>
+    <string name="mobile_celebration_phrase_5">Household legend status rising.</string>
     <string name="mobile_queued_submissions">%1$d queued submission(s) waiting to sync</string>
     <string name="mobile_syncing_queue">Syncing queued chores...</string>
     <string name="mobile_queue_synced">Synced %1$d queued chore(s).</string>

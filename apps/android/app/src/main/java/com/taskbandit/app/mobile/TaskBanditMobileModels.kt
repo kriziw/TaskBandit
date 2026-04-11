@@ -33,6 +33,8 @@ data class MobileChore(
     val completedAt: String? = null,
     val isOverdue: Boolean,
     val requirePhotoProof: Boolean,
+    val basePoints: Int = 0,
+    val awardedPoints: Int = 0,
     val checklist: List<MobileChecklistItem>,
     val completedChecklistIds: List<String>,
     val variantId: String? = null
