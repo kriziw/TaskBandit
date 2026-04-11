@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.33.3](https://github.com/kriziw/TaskBandit/compare/v0.33.2...v0.33.3) (2026-04-11)
+
+
+### Bug Fixes
+
+* strengthen android celebration confetti ([#202](https://github.com/kriziw/TaskBandit/issues/202)) ([058422e](https://github.com/kriziw/TaskBandit/commit/058422e3ff883a136f78945229a689387f43c405))
+
 ## [0.33.2](https://github.com/kriziw/TaskBandit/compare/v0.33.1...v0.33.2) (2026-04-11)
 
 
