@@ -30,7 +30,25 @@ mkdir -p taskbandit
 cd taskbandit
 wget -O docker-compose.yml https://raw.githubusercontent.com/kriziw/TaskBandit/main/docker-compose.yml
 wget -O .env https://raw.githubusercontent.com/kriziw/TaskBandit/main/.env.example
+mkdir -p data/postgres data/taskbandit
 docker compose up -d
+```
+
+Before first real use, edit `.env`:
+
+- change `TASKBANDIT_DB_PASSWORD` and `TASKBANDIT_JWT_SECRET`
+- keep `TASKBANDIT_DATA_ROOT=./data` unless you intentionally want another persistent storage path
+- set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=false` if you do not want demo accounts
+- if users access the app through a domain or reverse proxy, set `TASKBANDIT_PUBLIC_CLIENT_BASE_URL`, `TASKBANDIT_PUBLIC_ADMIN_BASE_URL`, `TASKBANDIT_PUBLIC_API_BASE_URL`, `TASKBANDIT_CORS_ALLOWED_ORIGINS`, and `TASKBANDIT_REVERSE_PROXY_ENABLED=true`
+
+Example domain setup:
+
+```env
+TASKBANDIT_PUBLIC_CLIENT_BASE_URL=https://taskbandit.example.com
+TASKBANDIT_PUBLIC_ADMIN_BASE_URL=https://taskbandit.example.com/admin
+TASKBANDIT_PUBLIC_API_BASE_URL=https://api.taskbandit.example.com
+TASKBANDIT_CORS_ALLOWED_ORIGINS=https://taskbandit.example.com
+TASKBANDIT_REVERSE_PROXY_ENABLED=true
 ```
 
 Then open:
