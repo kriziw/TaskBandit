@@ -79,27 +79,7 @@ class TaskBanditMobileApi {
         val chores = buildList {
             for (index in 0 until choresJson.length()) {
                 val entry = choresJson.optJSONObject(index) ?: continue
-                add(
-                    MobileChore(
-                        id = entry.optString("id"),
-                        cycleId = entry.optString("cycleId").ifBlank { null },
-                        title = entry.optString("title"),
-                        typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
-                        subtypeLabel = entry.optString("subtypeLabel")
-                            .trim()
-                            .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
-                        state = entry.optString("state"),
-                        assigneeId = entry.optString("assigneeId").ifBlank { null },
-                        assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
-                        dueAt = entry.optString("dueAt"),
-                        completedAt = entry.optString("completedAt").ifBlank { null },
-                        isOverdue = entry.optBoolean("isOverdue"),
-                        requirePhotoProof = entry.optBoolean("requirePhotoProof"),
-                        checklist = parseChecklist(entry.optJSONArray("checklist")),
-                        completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
-                        variantId = entry.optString("variantId").ifBlank { null }
-                    )
-                )
+                add(parseChore(entry))
             }
         }
 
@@ -383,7 +363,7 @@ class TaskBanditMobileApi {
         completedChecklistItemIds: List<String>,
         attachments: List<MobileUploadedProof> = emptyList(),
         note: String? = null
-    ) {
+    ): MobileChore {
         val payload = JSONObject()
             .put("completedChecklistItemIds", JSONArray(completedChecklistItemIds))
             .put(
@@ -401,12 +381,14 @@ class TaskBanditMobileApi {
             )
             .put("note", note ?: "")
 
-        requestJson(
-            baseUrl = baseUrl,
-            path = "/api/chores/instances/$instanceId/submit",
-            token = token,
-            method = "POST",
-            body = payload
+        return parseChore(
+            requestJson(
+                baseUrl = baseUrl,
+                path = "/api/chores/instances/$instanceId/submit",
+                token = token,
+                method = "POST",
+                body = payload
+            )
         )
     }
 
@@ -591,6 +573,30 @@ class TaskBanditMobileApi {
                 )
             }
         }
+    }
+
+    private fun parseChore(entry: JSONObject): MobileChore {
+        return MobileChore(
+            id = entry.optString("id"),
+            cycleId = entry.optString("cycleId").ifBlank { null },
+            title = entry.optString("title"),
+            typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
+            subtypeLabel = entry.optString("subtypeLabel")
+                .trim()
+                .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) },
+            state = entry.optString("state"),
+            assigneeId = entry.optString("assigneeId").ifBlank { null },
+            assigneeDisplayName = entry.optString("assigneeDisplayName").ifBlank { null },
+            dueAt = entry.optString("dueAt"),
+            completedAt = entry.optString("completedAt").ifBlank { null },
+            isOverdue = entry.optBoolean("isOverdue"),
+            requirePhotoProof = entry.optBoolean("requirePhotoProof"),
+            basePoints = entry.optInt("basePoints"),
+            awardedPoints = entry.optInt("awardedPoints"),
+            checklist = parseChecklist(entry.optJSONArray("checklist")),
+            completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
+            variantId = entry.optString("variantId").ifBlank { null }
+        )
     }
 
     private fun parseStringList(entries: JSONArray?): List<String> {

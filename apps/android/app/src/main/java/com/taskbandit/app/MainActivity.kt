@@ -182,6 +182,12 @@ private data class MobileChoiceOption(
     val onClick: () -> Unit
 )
 
+private data class MobileCompletionCelebration(
+    val points: Int,
+    val choreTitle: String,
+    val phraseIndex: Int
+)
+
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
@@ -288,6 +294,8 @@ private fun TaskBanditApp(
     var pendingPhotoCaptureUriString by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(0) }
+    var completionCelebration by remember { mutableStateOf<MobileCompletionCelebration?>(null) }
+    var completionCelebrationIndex by remember { mutableIntStateOf(0) }
     var notificationsPermissionGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -384,6 +392,7 @@ private fun TaskBanditApp(
         noticeMessage = null
         pendingReconnectActionLabel = null
         validationDialogMessage = null
+        completionCelebration = null
     }
 
     suspend fun <T> runMutationWithReconnectWindow(
@@ -730,7 +739,7 @@ private fun TaskBanditApp(
 
         coroutineScope.launch {
             try {
-                withContext(Dispatchers.IO) {
+                val submittedChore = withContext(Dispatchers.IO) {
                     runMutationWithReconnectWindow(submittingMessage) {
                         submitDraft(
                             api = api,
@@ -740,6 +749,14 @@ private fun TaskBanditApp(
                             contentResolver = context.contentResolver
                         )
                     }
+                }
+                if (submittedChore.state == "completed") {
+                    completionCelebration = MobileCompletionCelebration(
+                        points = submittedChore.awardedPoints.coerceAtLeast(0),
+                        choreTitle = submittedChore.typeTitle.ifBlank { submittedChore.title },
+                        phraseIndex = completionCelebrationIndex
+                    )
+                    completionCelebrationIndex = (completionCelebrationIndex + 1) % 5
                 }
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
@@ -1026,8 +1043,10 @@ private fun TaskBanditApp(
                     noticeMessage = noticeMessage,
                     pendingReconnectActionLabel = pendingReconnectActionLabel,
                     validationDialogMessage = validationDialogMessage,
+                    completionCelebration = completionCelebration,
                     queuedSubmissionCount = queuedSubmissionCount,
                     onDismissValidationDialog = { validationDialogMessage = null },
+                    onDismissCompletionCelebration = { completionCelebration = null },
                     onDismissUpdate = ::dismissUpdateNotice,
                     onRefresh = ::requestDashboardRefresh,
                     onLogout = ::logout,
@@ -1383,8 +1402,10 @@ private fun DashboardScreen(
     noticeMessage: String?,
     pendingReconnectActionLabel: String?,
     validationDialogMessage: String?,
+    completionCelebration: MobileCompletionCelebration?,
     queuedSubmissionCount: Int,
     onDismissValidationDialog: () -> Unit,
+    onDismissCompletionCelebration: () -> Unit,
     onDismissUpdate: () -> Unit,
     onRefresh: () -> Unit,
     onLogout: () -> Unit,
@@ -1693,6 +1714,13 @@ private fun DashboardScreen(
                     Text(stringResource(R.string.mobile_validation_confirm))
                 }
             }
+        )
+    }
+
+    if (completionCelebration != null) {
+        CompletionCelebrationDialog(
+            celebration = completionCelebration,
+            onDismiss = onDismissCompletionCelebration
         )
     }
 
@@ -3487,6 +3515,103 @@ private fun ChoreCard(
 }
 
 @Composable
+private fun CompletionCelebrationDialog(
+    celebration: MobileCompletionCelebration,
+    onDismiss: () -> Unit
+) {
+    val phraseResource = when (celebration.phraseIndex % 5) {
+        0 -> R.string.mobile_celebration_phrase_1
+        1 -> R.string.mobile_celebration_phrase_2
+        2 -> R.string.mobile_celebration_phrase_3
+        3 -> R.string.mobile_celebration_phrase_4
+        else -> R.string.mobile_celebration_phrase_5
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(R.string.mobile_celebration_title),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                CelebrationConfettiStrip()
+                Image(
+                    painter = painterResource(R.drawable.ic_taskbandit_mark),
+                    contentDescription = stringResource(R.string.brand_mark_description),
+                    modifier = Modifier.size(116.dp)
+                )
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_celebration_points, celebration.points),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    text = celebration.choreTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = stringResource(phraseResource),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text(stringResource(R.string.mobile_celebration_close))
+            }
+        }
+    )
+}
+
+@Composable
+private fun CelebrationConfettiStrip() {
+    val colors = listOf(
+        Color(0xFFD8B77E),
+        Color(0xFF9B5218),
+        Color(0xFF637052),
+        Color(0xFF73C9F4),
+        Color(0xFFFCCC3D)
+    )
+
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.Center,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        colors.forEachIndexed { index, color ->
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 4.dp)
+                    .size(
+                        width = if (index % 2 == 0) 18.dp else 8.dp,
+                        height = if (index % 2 == 0) 6.dp else 8.dp
+                    )
+                    .background(color, if (index % 2 == 0) RoundedCornerShape(999.dp) else CircleShape)
+            )
+        }
+    }
+}
+
+@Composable
 private fun MobileChoiceRow(options: List<MobileChoiceOption>) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         options.chunked(2).forEach { rowOptions ->
@@ -4236,7 +4361,7 @@ private fun submitDraft(
     token: String,
     draft: MobileChoreSubmissionDraft,
     contentResolver: ContentResolver
-) {
+): MobileChore {
     val uploadedProofs = draft.proofUriStrings.map { uriString ->
         val proofInput = readProofInput(contentResolver, uriString)
         api.uploadProof(
@@ -4248,7 +4373,7 @@ private fun submitDraft(
         )
     }
 
-    api.submitChore(
+    return api.submitChore(
         baseUrl = baseUrl,
         token = token,
         instanceId = draft.choreId,
