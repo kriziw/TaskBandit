@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.32.1](https://github.com/kriziw/TaskBandit/compare/v0.32.0...v0.32.1) (2026-04-11)
+
+
+### Bug Fixes
+
+* refresh TaskBandit logo assets ([#194](https://github.com/kriziw/TaskBandit/issues/194)) ([3781592](https://github.com/kriziw/TaskBandit/commit/378159212b94749abc657e72803c0d2575a8cd78))
+
 ## [0.32.0](https://github.com/kriziw/TaskBandit/compare/v0.31.0...v0.32.0) (2026-04-11)
 
 
