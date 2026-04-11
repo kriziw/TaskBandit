@@ -29,6 +29,13 @@ export class UpdateSettingsDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsInt()
+  @Min(-1000)
+  @Max(1000)
+  takeoverPointsDelta?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   localAuthEnabled?: boolean;
 

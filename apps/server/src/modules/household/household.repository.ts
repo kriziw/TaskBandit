@@ -195,6 +195,8 @@ export class HouseholdRepository {
           dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
         enableOverduePenalties:
           dto.enableOverduePenalties ?? household.settings?.enableOverduePenalties,
+        takeoverPointsDelta:
+          dto.takeoverPointsDelta ?? household.settings?.takeoverPointsDelta ?? 0,
         localAuthEnabled: dto.localAuthEnabled ?? household.settings?.localAuthEnabled ?? true,
         oidcEnabled: dto.oidcEnabled ?? household.settings?.oidcEnabled ?? false,
         oidcAuthority:
@@ -2539,6 +2541,15 @@ export class HouseholdRepository {
     ]);
 
     const request = await this.prisma.$transaction(async (tx) => {
+      const householdSettings = await tx.householdSettings.findUnique({
+        where: {
+          householdId: input.householdId
+        },
+        select: {
+          takeoverPointsDelta: true
+        }
+      });
+      const takeoverPointsDelta = householdSettings?.takeoverPointsDelta ?? 0;
       const createdRequest = await tx.choreTakeoverRequest.create({
         data: {
           householdId: input.householdId,
@@ -2571,6 +2582,41 @@ export class HouseholdRepository {
         }
       });
 
+      let appliedPenalty = 0;
+      if (takeoverPointsDelta < 0) {
+        const requesterPoints = await tx.user.findUniqueOrThrow({
+          where: {
+            id: input.requesterUserId
+          },
+          select: {
+            points: true
+          }
+        });
+
+        appliedPenalty = Math.min(requesterPoints.points, Math.abs(takeoverPointsDelta));
+
+        if (appliedPenalty > 0) {
+          await tx.user.update({
+            where: {
+              id: input.requesterUserId
+            },
+            data: {
+              points: {
+                decrement: appliedPenalty
+              }
+            }
+          });
+
+          await this.recordPointsLedgerEntry(tx, {
+            householdId: input.householdId,
+            userId: input.requesterUserId,
+            choreInstanceId: input.instanceId,
+            amount: -appliedPenalty,
+            reason: `Requested takeover for "${choreInstance.title}".`
+          });
+        }
+      }
+
       await this.recordNotification(tx, {
         householdId: input.householdId,
         recipientUserId: input.requestedUserId,
@@ -2587,7 +2633,10 @@ export class HouseholdRepository {
         action: "instance.takeover_requested",
         entityType: "chore_instance",
         entityId: choreInstance.id,
-        summary: `Requested that "${requestedUser.displayName}" takes over chore "${choreInstance.title}".`
+        summary:
+          appliedPenalty > 0
+            ? `Requested that "${requestedUser.displayName}" takes over chore "${choreInstance.title}" and applied ${appliedPenalty} takeover penalty points.`
+            : `Requested that "${requestedUser.displayName}" takes over chore "${choreInstance.title}".`
       });
 
       return createdRequest;
@@ -2660,6 +2709,15 @@ export class HouseholdRepository {
     }
 
     const updatedInstance = await this.prisma.$transaction(async (tx) => {
+      const householdSettings = await tx.householdSettings.findUnique({
+        where: {
+          householdId: input.householdId
+        },
+        select: {
+          takeoverPointsDelta: true
+        }
+      });
+      const takeoverPointsDelta = householdSettings?.takeoverPointsDelta ?? 0;
       await tx.choreTakeoverRequest.update({
         where: {
           id: request.id
@@ -2705,6 +2763,27 @@ export class HouseholdRepository {
         }
       });
 
+      if (takeoverPointsDelta > 0) {
+        await tx.user.update({
+          where: {
+            id: input.actingUserId
+          },
+          data: {
+            points: {
+              increment: takeoverPointsDelta
+            }
+          }
+        });
+
+        await this.recordPointsLedgerEntry(tx, {
+          householdId: input.householdId,
+          userId: input.actingUserId,
+          choreInstanceId: request.choreInstanceId,
+          amount: takeoverPointsDelta,
+          reason: `Accepted takeover for "${request.choreInstance.title}".`
+        });
+      }
+
       await this.recordNotification(tx, {
         householdId: input.householdId,
         recipientUserId: request.requesterUserId,
@@ -2721,7 +2800,10 @@ export class HouseholdRepository {
         action: "instance.takeover_approved",
         entityType: "chore_instance",
         entityId: request.choreInstanceId,
-        summary: `Accepted takeover request for chore "${request.choreInstance.title}".`
+        summary:
+          takeoverPointsDelta > 0
+            ? `Accepted takeover request for chore "${request.choreInstance.title}" and awarded ${takeoverPointsDelta} takeover points.`
+            : `Accepted takeover request for chore "${request.choreInstance.title}".`
       });
 
       return reassigned;
@@ -4111,6 +4193,7 @@ export class HouseholdRepository {
           household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
+        takeoverPointsDelta: household.settings?.takeoverPointsDelta ?? 0,
         localAuthEnabled: household.settings?.localAuthEnabled ?? true,
         localAuthForcedByConfig: false,
         localAuthEffective: household.settings?.localAuthEnabled ?? true,
