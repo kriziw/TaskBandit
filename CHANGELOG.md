@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.34.1](https://github.com/kriziw/TaskBandit/compare/v0.34.0...v0.34.1) (2026-04-12)
+
+
+### Bug Fixes
+
+* restore admin web route ([#211](https://github.com/kriziw/TaskBandit/issues/211)) ([cc998e7](https://github.com/kriziw/TaskBandit/commit/cc998e7c1e84bd48379ef7abd508d24d0d53138c))
+
 ## [0.34.0](https://github.com/kriziw/TaskBandit/compare/v0.33.4...v0.34.0) (2026-04-11)
 
 
