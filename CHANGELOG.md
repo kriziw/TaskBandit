@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.34.3](https://github.com/kriziw/TaskBandit/compare/v0.34.2...v0.34.3) (2026-04-12)
+
+
+### Bug Fixes
+
+* simplify web login flow ([#216](https://github.com/kriziw/TaskBandit/issues/216)) ([822b49a](https://github.com/kriziw/TaskBandit/commit/822b49a4658b8e8cfba712d189a1f349e2dfbdf4))
+
 ## [0.34.2](https://github.com/kriziw/TaskBandit/compare/v0.34.1...v0.34.2) (2026-04-12)
 
 
