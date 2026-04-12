@@ -10,7 +10,7 @@ do
   fi
 
   target_path="${template_path%.template.js}.js"
-  envsubst '${TASKBANDIT_API_BASE_URL} ${TASKBANDIT_ADMIN_BASE_URL} ${TASKBANDIT_CLIENT_BASE_URL}' \
+  envsubst '${TASKBANDIT_API_BASE_URL} ${TASKBANDIT_WEB_BASE_URL} ${TASKBANDIT_ADMIN_BASE_URL} ${TASKBANDIT_CLIENT_BASE_URL}' \
     < "$template_path" \
     > "$target_path"
 done

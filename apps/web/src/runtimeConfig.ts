@@ -1,5 +1,6 @@
 type TaskBanditRuntimeConfig = {
   apiBaseUrl?: string;
+  webBaseUrl?: string;
   adminBaseUrl?: string;
   clientBaseUrl?: string;
 };
@@ -15,6 +16,10 @@ function normalizeBaseUrl(value: string | undefined) {
 
 function readRuntimeConfig(): TaskBanditRuntimeConfig {
   return window.__TASKBANDIT_RUNTIME_CONFIG__ ?? {};
+}
+
+function resolveWebBaseUrl() {
+  return normalizeBaseUrl(readRuntimeConfig().webBaseUrl);
 }
 
 export function resolveApiBaseUrl() {
@@ -42,10 +47,14 @@ export function resolveApiBaseUrl() {
 
 export function resolveAdminBaseUrl() {
   return normalizeBaseUrl(readRuntimeConfig().adminBaseUrl) ??
-    normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_ADMIN_BASE_URL);
+    normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_ADMIN_BASE_URL) ??
+    (resolveWebBaseUrl() ? `${resolveWebBaseUrl()}/admin` : undefined);
 }
 
 export function resolveClientBaseUrl() {
-  return normalizeBaseUrl(readRuntimeConfig().clientBaseUrl) ??
-    normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_CLIENT_BASE_URL);
+  return (
+    normalizeBaseUrl(readRuntimeConfig().clientBaseUrl) ??
+    normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_CLIENT_BASE_URL) ??
+    resolveWebBaseUrl()
+  );
 }

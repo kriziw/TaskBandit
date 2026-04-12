@@ -29,6 +29,7 @@ COPY apps/web/docker/nginx-web.conf /etc/nginx/conf.d/default.conf
 RUN chmod +x /docker-entrypoint.d/40-generate-runtime-config.sh
 
 ENV TASKBANDIT_API_BASE_URL=http://localhost:8080
+ENV TASKBANDIT_WEB_BASE_URL=http://localhost:4173
 ENV TASKBANDIT_ADMIN_BASE_URL=http://localhost:4173/admin
 ENV TASKBANDIT_CLIENT_BASE_URL=http://localhost:4173
 
