@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.34.2](https://github.com/kriziw/TaskBandit/compare/v0.34.1...v0.34.2) (2026-04-12)
+
+
+### Bug Fixes
+
+* simplify self-hosted env setup ([#214](https://github.com/kriziw/TaskBandit/issues/214)) ([fab43d1](https://github.com/kriziw/TaskBandit/commit/fab43d12087b2288b2376b71afc80a0ace31ed6e))
+
 ## [0.34.1](https://github.com/kriziw/TaskBandit/compare/v0.34.0...v0.34.1) (2026-04-12)
 
 
