@@ -116,7 +116,7 @@
   "panel.schedule_chore": "Schedule Chore",
   "panel.quick_actions": "Quick Actions",
   "panel.providers": "Sign-In Providers",
-  "panel.providers_hint": "Local auth works now, and OIDC can be enabled for Authentik-style sign-in.",
+  "panel.providers_hint": "Local auth is ready. OIDC is optional.",
   "panel.demo_accounts": "Demo Accounts",
   "panel.demo_password": "Password: TaskBandit123!",
   "panel.strategy_live": "Live server options",

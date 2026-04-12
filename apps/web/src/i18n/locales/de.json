@@ -116,7 +116,7 @@
   "panel.schedule_chore": "Aufgabe planen",
   "panel.quick_actions": "Schnellzugriffe",
   "panel.providers": "Anmeldeanbieter",
-  "panel.providers_hint": "Lokale Anmeldung funktioniert jetzt, und OIDC kann fuer eine Authentik-aehnliche Anmeldung aktiviert werden.",
+  "panel.providers_hint": "Lokale Anmeldung ist bereit. OIDC ist optional.",
   "panel.demo_accounts": "Demo-Konten",
   "panel.demo_password": "Passwort: TaskBandit123!",
   "panel.strategy_live": "Live-Serveroptionen",
