@@ -20,6 +20,28 @@ type WebPushConfig = {
 export class AppConfigService {
   constructor(private readonly configService: ConfigService) {}
 
+  private normalizeBaseUrl(value: string | undefined) {
+    const trimmedValue = value?.trim();
+    if (!trimmedValue) {
+      return "";
+    }
+
+    return trimmedValue.replace(/\/+$/, "");
+  }
+
+  private isRemotePublicUrl(value: string) {
+    if (!value) {
+      return false;
+    }
+
+    try {
+      const parsed = new URL(value);
+      return !["localhost", "127.0.0.1", "::1"].includes(parsed.hostname) && !parsed.hostname.endsWith(".local");
+    } catch {
+      return false;
+    }
+  }
+
   private readRepositoryVersionFile(): string {
     const candidatePaths = [
       path.resolve(process.cwd(), "version.txt"),
@@ -67,7 +89,12 @@ export class AppConfigService {
   }
 
   get reverseProxyEnabled(): boolean {
-    return this.configService.get<string>("TASKBANDIT_REVERSE_PROXY_ENABLED", "false") === "true";
+    const explicitValue = this.configService.get<string>("TASKBANDIT_REVERSE_PROXY_ENABLED")?.trim();
+    if (explicitValue) {
+      return explicitValue === "true";
+    }
+
+    return this.isRemotePublicUrl(this.publicWebBaseUrl) || this.isRemotePublicUrl(this.publicApiBaseUrl);
   }
 
   get serveEmbeddedWeb(): boolean {
@@ -131,11 +158,26 @@ export class AppConfigService {
   }
 
   get corsAllowedOrigins(): string[] {
-    return this.configService
-      .get<string>("TASKBANDIT_CORS_ALLOWED_ORIGINS", "")
-      .split(",")
-      .map((value) => value.trim())
-      .filter(Boolean);
+    const explicitOrigins = this.configService.get<string>("TASKBANDIT_CORS_ALLOWED_ORIGINS", "").trim();
+    if (explicitOrigins) {
+      return explicitOrigins
+        .split(",")
+        .map((value) => value.trim())
+        .filter(Boolean);
+    }
+
+    return this.publicWebBaseUrl ? [this.publicWebBaseUrl] : [];
+  }
+
+  get publicWebBaseUrl(): string {
+    return (
+      this.normalizeBaseUrl(this.configService.get<string>("TASKBANDIT_PUBLIC_WEB_BASE_URL")) ||
+      this.normalizeBaseUrl(this.configService.get<string>("TASKBANDIT_PUBLIC_CLIENT_BASE_URL"))
+    );
+  }
+
+  get publicApiBaseUrl(): string {
+    return this.normalizeBaseUrl(this.configService.get<string>("TASKBANDIT_PUBLIC_API_BASE_URL"));
   }
 
   get runtimeLogFilePath(): string {
