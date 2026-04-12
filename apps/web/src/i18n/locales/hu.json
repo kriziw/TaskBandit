@@ -108,7 +108,7 @@
   "panel.schedule_chore": "Feladat ütemezése",
   "panel.quick_actions": "Gyors műveletek",
   "panel.providers": "Bejelentkezési módok",
-  "panel.providers_hint": "A helyi bejelentkezés már működik, az OIDC pedig bekapcsolható Authentik-szerű belépéshez.",
+  "panel.providers_hint": "A helyi bejelentkezes keszen all. Az OIDC opcionalis.",
   "panel.demo_accounts": "Demó fiókok",
   "panel.demo_password": "Jelszó: TaskBandit123!",
   "panel.strategy_live": "Élő szerver opciók",
