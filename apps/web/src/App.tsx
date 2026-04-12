@@ -3665,9 +3665,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
       <section className="hero">
         <div className="hero-copy">
-          <p className="eyebrow">{payload ? t("hero.authenticated_eyebrow") : t("hero.eyebrow")}</p>
-          <h1>{payload ? t("hero.authenticated_title") : t("hero.title")}</h1>
-          <p className="lede">{payload ? t("hero.authenticated_lede") : t("hero.lede")}</p>
+          <p className="eyebrow">
+            {payload
+              ? t("hero.authenticated_eyebrow")
+              : workspaceVariant === "admin"
+                ? t("workspace.variant_admin")
+                : t("workspace.variant_client")}
+          </p>
+          <h1>
+            {payload
+              ? t("hero.authenticated_title")
+              : workspaceVariant === "admin"
+                ? t("hero.login_admin_title")
+                : t("hero.login_client_title")}
+          </h1>
+          <p className="lede">
+            {payload
+              ? t("hero.authenticated_lede")
+              : workspaceVariant === "admin"
+                ? t("hero.login_admin_lede")
+                : t("hero.login_client_lede")}
+          </p>
           {payload?.household ? (
             <div className="hero-meta">
               <span>{payload.household.name}</span>
@@ -3682,7 +3700,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         </div>
         <div className="mascot-card" aria-label="TaskBandit mascot placeholder">
           <img className="mascot-art" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
-          <p>{payload ? t("hero.mascot_ready") : t("hero.mascot")}</p>
+          <p>
+            {payload
+              ? t("hero.mascot_ready")
+              : workspaceVariant === "admin"
+                ? t("hero.login_admin_mascot")
+                : t("hero.login_client_mascot")}
+          </p>
         </div>
       </section>
 
