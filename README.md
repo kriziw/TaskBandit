@@ -49,6 +49,12 @@ TASKBANDIT_PUBLIC_WEB_BASE_URL=https://taskbandit.example.com
 TASKBANDIT_PUBLIC_API_BASE_URL=https://api.taskbandit.example.com
 ```
 
+If you use Nginx Proxy Manager, the quick rule is:
+
+- `taskbandit.example.com` -> `taskbandit-web:4173`
+- `api.taskbandit.example.com` -> `taskbandit-server:8080`
+- keep `/admin` on the web host; do not create a separate upstream for it
+
 Then open:
 
 - client UI/PWA: `http://localhost:4173/`
