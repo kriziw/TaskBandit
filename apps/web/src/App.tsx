@@ -104,7 +104,15 @@ type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
 type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
-type WorkspacePage = "overview" | "chores" | "templates" | "household" | "notifications" | "settings" | "admin";
+type WorkspacePage =
+  | "overview"
+  | "chores"
+  | "templates"
+  | "household"
+  | "notifications"
+  | "settings"
+  | "admin"
+  | "logs";
 type WorkspaceSectionLink = {
   key: string;
   label: string;
@@ -118,7 +126,8 @@ const workspacePageOrder: WorkspacePage[] = [
   "household",
   "notifications",
   "settings",
-  "admin"
+  "admin",
+  "logs"
 ];
 
 const householdBoardStateOrder: ChoreState[] = [
@@ -241,6 +250,19 @@ function normalizeTemplateDependencyRules(
   }
 
   return [...normalized.values()];
+}
+
+function normalizeLabelToken(value?: string | null) {
+  return value?.trim().toLocaleLowerCase() ?? "";
+}
+
+function hasTemplateTranslationCoverage(template: ChoreTemplate, locale: TemplateTranslationLocale) {
+  if (locale === template.defaultLocale) {
+    return true;
+  }
+
+  const translation = template.translations.find((entry) => entry.locale === locale);
+  return Boolean(translation?.groupTitle?.trim() && translation?.title?.trim());
 }
 
 function createTemporaryPassword(length = 16) {
@@ -587,6 +609,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateEditorLocale, setTemplateEditorLocale] = useState<TemplateTranslationLocale>(language);
   const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
+  const [selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup] = useState("");
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
@@ -613,6 +636,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
   const householdSettingsRef = useRef<HTMLElement | null>(null);
   const membersRef = useRef<HTMLElement | null>(null);
+  const memberCreateRef = useRef<HTMLElement | null>(null);
   const templatesRef = useRef<HTMLElement | null>(null);
   const scheduleRef = useRef<HTMLElement | null>(null);
   const approvalQueueRef = useRef<HTMLElement | null>(null);
@@ -626,6 +650,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const notificationHealthRef = useRef<HTMLElement | null>(null);
   const backupReadinessRef = useRef<HTMLElement | null>(null);
   const systemStatusRef = useRef<HTMLElement | null>(null);
+  const auditLogRef = useRef<HTMLElement | null>(null);
   const runtimeLogsRef = useRef<HTMLElement | null>(null);
   const notificationRecoveryRef = useRef<HTMLElement | null>(null);
   const generalSettingsRef = useRef<HTMLElement | null>(null);
@@ -1108,6 +1133,32 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       .filter((entry) => entry.templates.length > 0);
   }, [normalizedTemplateSearch, templateGroups]);
 
+  const templateBrowserGroupOptions = useMemo(
+    () => filteredTemplateGroups.map((entry) => entry.groupTitle),
+    [filteredTemplateGroups]
+  );
+
+  useEffect(() => {
+    if (templateBrowserGroupOptions.length === 0) {
+      if (selectedTemplateBrowserGroup) {
+        setSelectedTemplateBrowserGroup("");
+      }
+      return;
+    }
+
+    if (!templateBrowserGroupOptions.includes(selectedTemplateBrowserGroup)) {
+      setSelectedTemplateBrowserGroup(templateBrowserGroupOptions[0]);
+    }
+  }, [selectedTemplateBrowserGroup, templateBrowserGroupOptions]);
+
+  const visibleTemplateBrowserGroup = selectedTemplateBrowserGroup || templateBrowserGroupOptions[0] || "";
+
+  const visibleTemplateBrowserTemplates = useMemo(
+    () =>
+      filteredTemplateGroups.find((entry) => entry.groupTitle === visibleTemplateBrowserGroup)?.templates ?? [],
+    [filteredTemplateGroups, visibleTemplateBrowserGroup]
+  );
+
   const visibleScheduleTemplateGroup =
     selectedTemplateGroup ||
     payload?.templates.find((template) => template.id === instanceForm.templateId)?.groupTitle ||
@@ -1125,6 +1176,55 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     return payload.templates.filter((template) => template.groupTitle === visibleScheduleTemplateGroup);
   }, [payload, visibleScheduleTemplateGroup]);
+
+  const selectedTemplateDependencyRules = useMemo(
+    () =>
+      normalizeTemplateDependencyRules(templateForm.dependencyRules, templateForm.dependencyTemplateIds).sort(
+        (left, right) => {
+          const leftTemplate = payload?.templates.find((template) => template.id === left.templateId);
+          const rightTemplate = payload?.templates.find((template) => template.id === right.templateId);
+          return (leftTemplate?.title ?? "").localeCompare(rightTemplate?.title ?? "", language);
+        }
+      ),
+    [language, payload?.templates, templateForm.dependencyRules, templateForm.dependencyTemplateIds]
+  );
+
+  const sameGroupFollowUpCandidates = useMemo(() => {
+    if (!payload) {
+      return [];
+    }
+
+    const activeGroupTitle = templateForm.groupTitle.trim();
+    if (!activeGroupTitle) {
+      return [];
+    }
+
+    const normalizedGroupTitle = normalizeLabelToken(activeGroupTitle);
+    return payload.templates
+      .filter(
+        (template) =>
+          template.id !== editingTemplateId &&
+          normalizeLabelToken(template.groupTitle) === normalizedGroupTitle
+      )
+      .sort((left, right) => left.title.localeCompare(right.title, language));
+  }, [editingTemplateId, language, payload, templateForm.groupTitle]);
+
+  useEffect(() => {
+    const allowedDependencyIds = new Set(sameGroupFollowUpCandidates.map((template) => template.id));
+    setTemplateForm((current) => {
+      const currentRules = normalizeTemplateDependencyRules(current.dependencyRules, current.dependencyTemplateIds);
+      const nextRules = currentRules.filter((rule) => allowedDependencyIds.has(rule.templateId));
+      if (nextRules.length === currentRules.length) {
+        return current;
+      }
+
+      return {
+        ...current,
+        dependencyRules: nextRules,
+        dependencyTemplateIds: nextRules.map((rule) => rule.templateId)
+      };
+    });
+  }, [sameGroupFollowUpCandidates]);
 
   const pendingApprovals = useMemo(
     () => payload?.instances.filter((instance) => instance.state === "pending_approval") ?? [],
@@ -1242,7 +1342,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         { key: "templates", label: t("nav.templates") },
         { key: "household", label: t("nav.household") },
         { key: "settings", label: t("nav.settings") },
-        { key: "admin", label: t("nav.admin") }
+        { key: "admin", label: t("nav.admin") },
+        { key: "logs", label: t("nav.logs") }
       ];
     }
 
@@ -1288,7 +1389,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     household: t("page.household_description"),
     notifications: t("page.notifications_description"),
     settings: t("page.settings_description"),
-    admin: t("page.admin_description")
+    admin: t("page.admin_description"),
+    logs: t("page.logs_description")
   };
   const activePageDescription = isAdminVariantAccessDenied
     ? t("workspace.admin_only_body")
@@ -3200,10 +3302,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     return t("language.english");
   }
 
-  function formatTemplateDisplayName(template: Pick<ChoreTemplate, "groupTitle" | "title">) {
-    return `${template.groupTitle} / ${template.title}`;
-  }
-
   function getTemplateTranslation(locale: TemplateTranslationLocale) {
     return (templateForm.translations ?? []).find((entry) => entry.locale === locale);
   }
@@ -3369,23 +3467,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }));
   }
 
-  function toggleTemplateDependencyRule(templateId: string, enabled: boolean) {
+  function setTemplateDependencySelection(nextTemplateIds: string[]) {
     setTemplateForm((current) => {
       const currentRules = normalizeTemplateDependencyRules(
         current.dependencyRules,
         current.dependencyTemplateIds
       );
-
-      const nextRules = enabled
-        ? [
-            ...currentRules.filter((dependencyRule) => dependencyRule.templateId !== templateId),
-            {
-              templateId,
-              delayValue: defaultDependencyDelayValue,
-              delayUnit: defaultDependencyDelayUnit
-            }
-          ]
-        : currentRules.filter((dependencyRule) => dependencyRule.templateId !== templateId);
+      const uniqueTemplateIds = [...new Set(nextTemplateIds)];
+      const nextRules = uniqueTemplateIds.map(
+        (templateId) =>
+          currentRules.find((dependencyRule) => dependencyRule.templateId === templateId) ?? {
+            templateId,
+            delayValue: defaultDependencyDelayValue,
+            delayUnit: defaultDependencyDelayUnit
+          }
+      );
 
       return {
         ...current,
@@ -3393,6 +3489,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         dependencyTemplateIds: nextRules.map((dependencyRule) => dependencyRule.templateId)
       };
     });
+  }
+
+  function toggleTemplateDependencyRule(templateId: string, enabled: boolean) {
+    const nextSelectedIds = enabled
+      ? [...selectedTemplateDependencyRules.map((dependencyRule) => dependencyRule.templateId), templateId]
+      : selectedTemplateDependencyRules
+          .map((dependencyRule) => dependencyRule.templateId)
+          .filter((dependencyId) => dependencyId !== templateId);
+    setTemplateDependencySelection(nextSelectedIds);
   }
 
   function updateTemplateDependencyRule(
@@ -3457,6 +3562,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setEditingTemplateId(template.id);
     setTemplateSearch(template.title);
     setTemplateEditorLocale(template.defaultLocale);
+    setSelectedTemplateBrowserGroup(template.groupTitle);
     setTemplateForm({
       defaultLocale: template.defaultLocale,
       groupTitle: template.groupTitle,
@@ -3614,7 +3720,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       case "templates":
         return [{ key: "templates-list", label: t("panel.chore_templates"), ref: templatesRef }];
       case "household":
-        return [{ key: "household-members", label: t("panel.household_members"), ref: membersRef }];
+        return [
+          { key: "household-members", label: t("members.manage_section"), ref: membersRef },
+          { key: "household-members-create", label: t("members.create_section"), ref: memberCreateRef }
+        ];
       case "notifications":
         return [
           { key: "notifications-inbox", label: t("panel.notifications"), ref: notificationsRef },
@@ -3667,7 +3776,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           ...(payload?.compatibility.systemStatus
             ? [{ key: "admin-system", label: t("panel.system_status"), ref: systemStatusRef }]
             : []),
-          { key: "admin-logs", label: t("panel.runtime_logs"), ref: runtimeLogsRef },
           ...(payload?.compatibility.notificationRecovery
             ? [
                 {
@@ -3678,11 +3786,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ]
             : [])
         ];
+      case "logs":
+        return [
+          { key: "logs-audit", label: t("panel.audit_log"), ref: auditLogRef },
+          { key: "logs-runtime", label: t("panel.runtime_logs"), ref: runtimeLogsRef }
+        ];
       default:
         return [];
     }
   }, [
     activePage,
+    auditLogRef,
+    memberCreateRef,
     payload?.currentUser.role,
     payload?.compatibility.backupReadiness,
     payload?.compatibility.notificationDevices,
@@ -5047,7 +5162,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {payload.currentUser.role !== "child" ? (
               <article
-                className={`panel page-panel ${workspaceVariant === "admin" ? "page-admin" : "page-overview"}`}
+                className={`panel page-panel ${workspaceVariant === "admin" ? "page-logs" : "page-overview"}`}
+                ref={workspaceVariant === "admin" ? auditLogRef : undefined}
               >
                 <div className="section-heading">
                   <h2>{t("panel.audit_log")}</h2>
@@ -5080,7 +5196,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-admin" ref={runtimeLogsRef}>
+              <article className="panel page-panel page-logs" ref={runtimeLogsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.runtime_logs")}</h2>
                   <div className="toolbar-group">
@@ -6395,190 +6511,204 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <h2>{t("panel.household_members")}</h2>
                     <span className="section-kicker">{payload.household.members.length}</span>
                   </div>
-                  <div className="stack-list">
-                    {payload.household.members.map((member) => (
-                      <div key={member.id}>
-                        <div className="leader-row member-row">
-                          <div>
-                            <strong>{member.displayName}</strong>
-                            <p>
-                              {t(`role.${member.role}`)} - {member.email ?? t("common.none")}
-                            </p>
-                            <div className="member-provider-row">
-                              {member.authProviders.map((provider) => (
-                                <span className="status-pill member-provider-pill" key={provider}>
-                                  {t(`members.provider_${provider}`)}
-                                </span>
-                              ))}
-                              <span className="member-provider-note">
-                                {member.localAuthConfigured
-                                  ? t("members.local_recovery_ready")
-                                  : t("members.local_recovery_missing")}
-                              </span>
-                            </div>
-                          </div>
-                          <div className="member-row-actions">
-                            <strong>
-                              {formatNumber(member.points)} {t("user.points")}
-                            </strong>
-                            <button
-                              className="ghost-button"
-                              type="button"
-                              onClick={() => beginEditingMember(member)}
-                              disabled={busyAction === `update-member:${member.id}`}
-                            >
-                              {t("common.edit")}
-                            </button>
-                          </div>
-                        </div>
-                        {editingMemberId === member.id ? (
-                          <form className="login-form member-form member-edit-form" onSubmit={handleUpdateHouseholdMember}>
-                            <label>
-                              <span>{t("members.display_name")}</span>
-                              <input
-                                type="text"
-                                value={memberEditForm.displayName}
-                                onChange={(event) =>
-                                  setMemberEditForm((current) => ({
-                                    ...current,
-                                    displayName: event.target.value
-                                  }))
-                                }
-                              />
-                            </label>
-                            <label>
-                              <span>{t("members.role")}</span>
-                              <select
-                                value={member.role === "admin" ? "parent" : memberEditForm.role}
-                                disabled={member.role === "admin"}
-                                onChange={(event) =>
-                                  setMemberEditForm((current) => ({
-                                    ...current,
-                                    role: event.target.value as "parent" | "child"
-                                  }))
-                                }
-                              >
-                                <option value="child">{t("role.child")}</option>
-                                <option value="parent">{t("role.parent")}</option>
-                              </select>
-                            </label>
-                            {member.role === "admin" ? (
-                              <p className="inline-message">{t("members.admin_role_locked")}</p>
-                            ) : null}
-                            {!member.localAuthConfigured ? (
-                              <p className="inline-message">{t("members.password_adds_local_auth")}</p>
-                            ) : null}
-                            <label>
-                              <span>{t("members.email")}</span>
-                              <input
-                                type="email"
-                                value={memberEditForm.email}
-                                onChange={(event) =>
-                                  setMemberEditForm((current) => ({
-                                    ...current,
-                                    email: event.target.value
-                                  }))
-                                }
-                                autoComplete="email"
-                              />
-                            </label>
-                            <label>
-                              <span>{t("members.new_password")}</span>
-                              <input
-                                type="password"
-                                value={memberEditForm.password ?? ""}
-                                onChange={(event) =>
-                                  setMemberEditForm((current) => ({
-                                    ...current,
-                                    password: event.target.value
-                                  }))
-                                }
-                                autoComplete="new-password"
-                              />
-                            </label>
-                            <div className="button-row">
-                              <button
-                                className="primary-button"
-                                type="submit"
-                                disabled={busyAction === `update-member:${member.id}`}
-                              >
-                                {t("members.save")}
-                              </button>
-                              <button className="ghost-button" type="button" onClick={cancelEditingMember}>
-                                {t("common.cancel")}
-                              </button>
-                            </div>
-                          </form>
-                        ) : null}
+                  <div className="household-member-layout">
+                    <section className="settings-section household-member-section">
+                      <div className="section-heading section-heading-compact">
+                        <h3>{t("members.manage_section")}</h3>
+                        <span className="section-kicker">{payload.household.members.length}</span>
                       </div>
-                    ))}
+                      <div className="stack-list">
+                        {payload.household.members.map((member) => (
+                          <div key={member.id}>
+                            <div className="leader-row member-row">
+                              <div>
+                                <strong>{member.displayName}</strong>
+                                <p>
+                                  {t(`role.${member.role}`)} - {member.email ?? t("common.none")}
+                                </p>
+                                <div className="member-provider-row">
+                                  {member.authProviders.map((provider) => (
+                                    <span className="status-pill member-provider-pill" key={provider}>
+                                      {t(`members.provider_${provider}`)}
+                                    </span>
+                                  ))}
+                                  <span className="member-provider-note">
+                                    {member.localAuthConfigured
+                                      ? t("members.local_recovery_ready")
+                                      : t("members.local_recovery_missing")}
+                                  </span>
+                                </div>
+                              </div>
+                              <div className="member-row-actions">
+                                <strong>
+                                  {formatNumber(member.points)} {t("user.points")}
+                                </strong>
+                                <button
+                                  className="ghost-button"
+                                  type="button"
+                                  onClick={() => beginEditingMember(member)}
+                                  disabled={busyAction === `update-member:${member.id}`}
+                                >
+                                  {t("common.edit")}
+                                </button>
+                              </div>
+                            </div>
+                            {editingMemberId === member.id ? (
+                              <form className="login-form member-form member-edit-form" onSubmit={handleUpdateHouseholdMember}>
+                                <label>
+                                  <span>{t("members.display_name")}</span>
+                                  <input
+                                    type="text"
+                                    value={memberEditForm.displayName}
+                                    onChange={(event) =>
+                                      setMemberEditForm((current) => ({
+                                        ...current,
+                                        displayName: event.target.value
+                                      }))
+                                    }
+                                  />
+                                </label>
+                                <label>
+                                  <span>{t("members.role")}</span>
+                                  <select
+                                    value={member.role === "admin" ? "parent" : memberEditForm.role}
+                                    disabled={member.role === "admin"}
+                                    onChange={(event) =>
+                                      setMemberEditForm((current) => ({
+                                        ...current,
+                                        role: event.target.value as "parent" | "child"
+                                      }))
+                                    }
+                                  >
+                                    <option value="child">{t("role.child")}</option>
+                                    <option value="parent">{t("role.parent")}</option>
+                                  </select>
+                                </label>
+                                {member.role === "admin" ? (
+                                  <p className="inline-message">{t("members.admin_role_locked")}</p>
+                                ) : null}
+                                {!member.localAuthConfigured ? (
+                                  <p className="inline-message">{t("members.password_adds_local_auth")}</p>
+                                ) : null}
+                                <label>
+                                  <span>{t("members.email")}</span>
+                                  <input
+                                    type="email"
+                                    value={memberEditForm.email}
+                                    onChange={(event) =>
+                                      setMemberEditForm((current) => ({
+                                        ...current,
+                                        email: event.target.value
+                                      }))
+                                    }
+                                    autoComplete="email"
+                                  />
+                                </label>
+                                <label>
+                                  <span>{t("members.new_password")}</span>
+                                  <input
+                                    type="password"
+                                    value={memberEditForm.password ?? ""}
+                                    onChange={(event) =>
+                                      setMemberEditForm((current) => ({
+                                        ...current,
+                                        password: event.target.value
+                                      }))
+                                    }
+                                    autoComplete="new-password"
+                                  />
+                                </label>
+                                <div className="button-row">
+                                  <button
+                                    className="primary-button"
+                                    type="submit"
+                                    disabled={busyAction === `update-member:${member.id}`}
+                                  >
+                                    {t("members.save")}
+                                  </button>
+                                  <button className="ghost-button" type="button" onClick={cancelEditingMember}>
+                                    {t("common.cancel")}
+                                  </button>
+                                </div>
+                              </form>
+                            ) : null}
+                          </div>
+                        ))}
+                      </div>
+                    </section>
+                    <section className="settings-section household-member-section" ref={memberCreateRef}>
+                      <div className="section-heading section-heading-compact">
+                        <h3>{t("members.create_section")}</h3>
+                      </div>
+                      <p className="inline-message">{t("members.create_section_hint")}</p>
+                      <form className="login-form member-form household-member-create-form" onSubmit={handleCreateHouseholdMember}>
+                        <label>
+                          <span>{t("members.display_name")}</span>
+                          <input
+                            type="text"
+                            value={memberForm.displayName}
+                            onChange={(event) =>
+                              setMemberForm((current) => ({ ...current, displayName: event.target.value }))
+                            }
+                          />
+                        </label>
+                        <label>
+                          <span>{t("members.role")}</span>
+                          <select
+                            value={memberForm.role}
+                            onChange={(event) =>
+                              setMemberForm((current) => ({
+                                ...current,
+                                role: event.target.value as "parent" | "child"
+                              }))
+                            }
+                          >
+                            <option value="child">{t("role.child")}</option>
+                            <option value="parent">{t("role.parent")}</option>
+                          </select>
+                        </label>
+                        <label>
+                          <span>{t("members.email")}</span>
+                          <input
+                            type="email"
+                            value={memberForm.email}
+                            onChange={(event) =>
+                              setMemberForm((current) => ({ ...current, email: event.target.value }))
+                            }
+                            autoComplete="email"
+                          />
+                        </label>
+                        <label>
+                          <span>{t("members.password")}</span>
+                          <input
+                            type="password"
+                            value={memberForm.password}
+                            onChange={(event) =>
+                              setMemberForm((current) => ({ ...current, password: event.target.value }))
+                            }
+                            autoComplete="new-password"
+                          />
+                        </label>
+                        <p className="inline-message">{t("members.password_generated_hint")}</p>
+                        <label className="toggle-row">
+                          <span>{t("members.send_invite_email")}</span>
+                          <input
+                            type="checkbox"
+                            checked={Boolean(memberForm.sendInviteEmail)}
+                            onChange={(event) =>
+                              setMemberForm((current) => ({
+                                ...current,
+                                sendInviteEmail: event.target.checked
+                              }))
+                            }
+                          />
+                        </label>
+                        <button className="primary-button" type="submit" disabled={busyAction === "create-member"}>
+                          {t("members.create")}
+                        </button>
+                      </form>
+                    </section>
                   </div>
-                  <form className="login-form member-form" onSubmit={handleCreateHouseholdMember}>
-                    <label>
-                      <span>{t("members.display_name")}</span>
-                      <input
-                        type="text"
-                        value={memberForm.displayName}
-                        onChange={(event) =>
-                          setMemberForm((current) => ({ ...current, displayName: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("members.role")}</span>
-                      <select
-                        value={memberForm.role}
-                        onChange={(event) =>
-                          setMemberForm((current) => ({
-                            ...current,
-                            role: event.target.value as "parent" | "child"
-                          }))
-                        }
-                      >
-                        <option value="child">{t("role.child")}</option>
-                        <option value="parent">{t("role.parent")}</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>{t("members.email")}</span>
-                      <input
-                        type="email"
-                        value={memberForm.email}
-                        onChange={(event) =>
-                          setMemberForm((current) => ({ ...current, email: event.target.value }))
-                        }
-                        autoComplete="email"
-                      />
-                    </label>
-                    <label>
-                      <span>{t("members.password")}</span>
-                      <input
-                        type="password"
-                        value={memberForm.password}
-                        onChange={(event) =>
-                          setMemberForm((current) => ({ ...current, password: event.target.value }))
-                        }
-                        autoComplete="new-password"
-                      />
-                    </label>
-                    <p className="inline-message">{t("members.password_generated_hint")}</p>
-                    <label className="toggle-row">
-                      <span>{t("members.send_invite_email")}</span>
-                      <input
-                        type="checkbox"
-                        checked={Boolean(memberForm.sendInviteEmail)}
-                        onChange={(event) =>
-                          setMemberForm((current) => ({
-                            ...current,
-                            sendInviteEmail: event.target.checked
-                          }))
-                        }
-                      />
-                    </label>
-                    <button className="primary-button" type="submit" disabled={busyAction === "create-member"}>
-                      {t("members.create")}
-                    </button>
-                  </form>
                 </article>
 
                 <article className="panel panel-wide page-panel page-templates" ref={templatesRef}>
@@ -6588,16 +6718,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                   <div className="template-admin-layout">
                     <div className="stack-list template-browser-panel">
-                      <label>
-                        <span>{t("templates.search")}</span>
-                        <input
-                          type="search"
-                          value={templateSearch}
-                          onChange={(event) => setTemplateSearch(event.target.value)}
-                          placeholder={t("templates.search_placeholder")}
-                        />
-                      </label>
-                      <div className="button-row">
+                      <div className="template-browser-toolbar">
+                        <label>
+                          <span>{t("templates.search")}</span>
+                          <input
+                            type="search"
+                            value={templateSearch}
+                            onChange={(event) => setTemplateSearch(event.target.value)}
+                            placeholder={t("templates.search_placeholder")}
+                          />
+                        </label>
                         <button
                           className="ghost-button"
                           type="button"
@@ -6612,67 +6742,101 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       {filteredTemplateGroups.length === 0 ? (
                         <p className="inline-message">{t("templates.search_empty")}</p>
                       ) : (
-                        filteredTemplateGroups.map((group) => (
-                          <section className="template-group-block" key={group.groupTitle}>
+                        <>
+                          <div className="template-group-selector">
+                            {templateBrowserGroupOptions.map((groupTitle) => {
+                              const group = filteredTemplateGroups.find((entry) => entry.groupTitle === groupTitle);
+                              return (
+                                <button
+                                  key={groupTitle}
+                                  className={`template-group-chip ${
+                                    visibleTemplateBrowserGroup === groupTitle ? "active" : ""
+                                  }`}
+                                  type="button"
+                                  onClick={() => setSelectedTemplateBrowserGroup(groupTitle)}
+                                >
+                                  <span>{groupTitle}</span>
+                                  <span className="section-kicker">{group?.templates.length ?? 0}</span>
+                                </button>
+                              );
+                            })}
+                          </div>
+                          <section className="template-group-block" key={visibleTemplateBrowserGroup}>
                             <div className="section-heading">
-                              <h3>{group.groupTitle}</h3>
-                              <span className="section-kicker">{group.templates.length}</span>
+                              <h3>{visibleTemplateBrowserGroup}</h3>
+                              <span className="section-kicker">{visibleTemplateBrowserTemplates.length}</span>
                             </div>
                             <div className="stack-list compact-stack">
-                              {group.templates.map((template) => (
-                                <button
-                                  className={`template-browser-card ${
-                                    editingTemplateId === template.id ? "active" : ""
-                                  }`}
-                                  key={template.id}
-                                  type="button"
-                                  onClick={() => startEditingTemplate(template)}
-                                >
-                                  <div className="task-row-header align-start">
-                                    <div>
+                              {visibleTemplateBrowserTemplates.map((template) => {
+                                const dependencyRules = normalizeTemplateDependencyRules(
+                                  template.dependencyRules,
+                                  template.dependencyTemplateIds
+                                );
+                                return (
+                                  <button
+                                    className={`template-browser-card template-browser-card-compact ${
+                                      editingTemplateId === template.id ? "active" : ""
+                                    }`}
+                                    key={template.id}
+                                    type="button"
+                                    onClick={() => startEditingTemplate(template)}
+                                  >
+                                    <div className="template-browser-card-main">
                                       <strong>{template.title}</strong>
-                                      <p className="inline-message">{template.description}</p>
+                                      <div className="template-browser-flags">
+                                        <span className="status-pill">{t(`difficulty.${template.difficulty}`)}</span>
+                                        {template.requirePhotoProof ? (
+                                          <span className="status-pill">{t("templates.photo_required_short")}</span>
+                                        ) : null}
+                                        {template.checklist.length > 0 ? (
+                                          <span className="status-pill">
+                                            {t("templates.checklist_short").replace(
+                                              "{count}",
+                                              String(template.checklist.length)
+                                            )}
+                                          </span>
+                                        ) : null}
+                                        {template.variants.length > 0 ? (
+                                          <span className="status-pill">
+                                            {t("templates.subtypes_short").replace(
+                                              "{count}",
+                                              String(template.variants.length)
+                                            )}
+                                          </span>
+                                        ) : null}
+                                        {dependencyRules.length > 0 ? (
+                                          <span className="status-pill">
+                                            {t("templates.follow_ups_short").replace(
+                                              "{count}",
+                                              String(dependencyRules.length)
+                                            )}
+                                          </span>
+                                        ) : null}
+                                      </div>
                                     </div>
-                                    <span className="status-pill">{t(`difficulty.${template.difficulty}`)}</span>
-                                  </div>
-                                  <p>
-                                    {t("templates.recurrence")}: {formatTemplateRecurrence(template)}
-                                  </p>
-                                  <p>
-                                    {template.requirePhotoProof
-                                      ? t("templates.photo_required")
-                                      : t("templates.photo_optional")}
-                                  </p>
-                                  {normalizeTemplateDependencyRules(
-                                    template.dependencyRules,
-                                    template.dependencyTemplateIds
-                                  ).length > 0 ? (
-                                    <p>
-                                      {t("templates.follow_ups")}:{" "}
-                                      {normalizeTemplateDependencyRules(
-                                        template.dependencyRules,
-                                        template.dependencyTemplateIds
-                                      )
-                                        .map((dependencyRule) => {
-                                          const followUpTemplateName =
-                                            payload.templates.find(
-                                              (candidate) => candidate.id === dependencyRule.templateId
-                                            )?.title ?? t("common.unknown");
-
-                                          return `${followUpTemplateName} (+${formatFollowUpDelayLabel(
-                                            dependencyRule
-                                          )})`;
-                                        })
-                                        .join(", ")}
-                                    </p>
-                                  ) : (
-                                    <p className="inline-message">{t("templates.no_follow_ups")}</p>
-                                  )}
-                                </button>
-                              ))}
+                                    <div className="template-browser-translations" aria-label={t("templates.translations")}>
+                                      {templateTranslationLocales.map((locale) => (
+                                        <span
+                                          key={`${template.id}-${locale}`}
+                                          className={`translation-flag ${
+                                            locale === template.defaultLocale
+                                              ? "is-default"
+                                              : hasTemplateTranslationCoverage(template, locale)
+                                                ? "is-complete"
+                                                : "is-missing"
+                                          }`}
+                                          title={locale.toUpperCase()}
+                                        >
+                                          {locale.toUpperCase()}
+                                        </span>
+                                      ))}
+                                    </div>
+                                  </button>
+                                );
+                              })}
                             </div>
                           </section>
-                        ))
+                        </>
                       )}
                     </div>
                   <form className="login-form member-form template-editor-panel" onSubmit={handleCreateTemplate}>
@@ -6985,77 +7149,87 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <div className="stack-list">
                       <div className="section-heading">
                         <h3>{t("templates.follow_ups")}</h3>
-                        <span className="section-kicker">
-                          {normalizeTemplateDependencyRules(
-                            templateForm.dependencyRules,
-                            templateForm.dependencyTemplateIds
-                          ).length}
-                        </span>
+                        <span className="section-kicker">{selectedTemplateDependencyRules.length}</span>
                       </div>
-                      {payload.templates.length === 0 ? (
-                        <p className="inline-message">{t("templates.follow_up_hint")}</p>
+                      {!templateForm.groupTitle.trim() ? (
+                        <p className="inline-message">{t("templates.follow_up_group_required")}</p>
+                      ) : sameGroupFollowUpCandidates.length === 0 ? (
+                        <p className="inline-message">{t("templates.follow_up_same_group_empty")}</p>
                       ) : (
-                        payload.templates.map((template) => {
-                          const dependencyRules = normalizeTemplateDependencyRules(
-                            templateForm.dependencyRules,
-                            templateForm.dependencyTemplateIds
-                          );
-                          const selectedRule = dependencyRules.find(
-                            (dependencyRule) => dependencyRule.templateId === template.id
-                          );
-                          const selected = Boolean(selectedRule);
-
-                          if (template.id === editingTemplateId) {
-                            return null;
-                          }
-
-                          return (
-                            <div className="task-row compact" key={template.id}>
-                              <label className="toggle-row">
-                                <span>{formatTemplateDisplayName(template)}</span>
-                                <input
-                                  type="checkbox"
-                                  checked={selected}
-                                  onChange={(event) =>
-                                    toggleTemplateDependencyRule(template.id, event.target.checked)
-                                  }
-                                />
-                              </label>
-                              {selectedRule ? (
-                                <div className="button-row">
-                                  <label>
-                                    <span>{t("templates.follow_up_delay")}</span>
+                        <>
+                          <p className="inline-message">{t("templates.follow_up_same_group_hint")}</p>
+                          <details className="multi-select-menu">
+                            <summary>
+                              {t("templates.follow_up_summary").replace(
+                                "{count}",
+                                String(selectedTemplateDependencyRules.length)
+                              )}
+                            </summary>
+                            <div className="stack-list compact-stack">
+                              {sameGroupFollowUpCandidates.map((template) => {
+                                const selected = selectedTemplateDependencyRules.some(
+                                  (dependencyRule) => dependencyRule.templateId === template.id
+                                );
+                                return (
+                                  <label className="toggle-row" key={template.id}>
+                                    <span>{template.title}</span>
                                     <input
-                                      type="number"
-                                      min={1}
-                                      max={365}
-                                      value={selectedRule.delayValue}
+                                      type="checkbox"
+                                      checked={selected}
                                       onChange={(event) =>
-                                        updateTemplateDependencyRule(template.id, {
-                                          delayValue: Number(event.target.value || 1)
-                                        })
+                                        toggleTemplateDependencyRule(template.id, event.target.checked)
                                       }
                                     />
                                   </label>
-                                  <label>
-                                    <span>{t("templates.follow_up_delay_unit")}</span>
-                                    <select
-                                      value={selectedRule.delayUnit}
-                                      onChange={(event) =>
-                                        updateTemplateDependencyRule(template.id, {
-                                          delayUnit: event.target.value as FollowUpDelayUnit
-                                        })
-                                      }
-                                    >
-                                      <option value="hours">{t("templates.delay_hours")}</option>
-                                      <option value="days">{t("templates.delay_days")}</option>
-                                    </select>
-                                  </label>
-                                </div>
-                              ) : null}
+                                );
+                              })}
                             </div>
-                          );
-                        })
+                          </details>
+                          {selectedTemplateDependencyRules.length === 0 ? (
+                            <p className="inline-message">{t("templates.no_follow_ups")}</p>
+                          ) : (
+                            selectedTemplateDependencyRules.map((selectedRule) => {
+                              const followUpTemplate = sameGroupFollowUpCandidates.find(
+                                (template) => template.id === selectedRule.templateId
+                              );
+                              return (
+                                <div className="task-row compact template-follow-up-rule" key={selectedRule.templateId}>
+                                  <strong>{followUpTemplate?.title ?? t("common.unknown")}</strong>
+                                  <div className="button-row">
+                                    <label>
+                                      <span>{t("templates.follow_up_delay")}</span>
+                                      <input
+                                        type="number"
+                                        min={1}
+                                        max={365}
+                                        value={selectedRule.delayValue}
+                                        onChange={(event) =>
+                                          updateTemplateDependencyRule(selectedRule.templateId, {
+                                            delayValue: Number(event.target.value || 1)
+                                          })
+                                        }
+                                      />
+                                    </label>
+                                    <label>
+                                      <span>{t("templates.follow_up_delay_unit")}</span>
+                                      <select
+                                        value={selectedRule.delayUnit}
+                                        onChange={(event) =>
+                                          updateTemplateDependencyRule(selectedRule.templateId, {
+                                            delayUnit: event.target.value as FollowUpDelayUnit
+                                          })
+                                        }
+                                      >
+                                        <option value="hours">{t("templates.delay_hours")}</option>
+                                        <option value="days">{t("templates.delay_days")}</option>
+                                      </select>
+                                    </label>
+                                  </div>
+                                </div>
+                              );
+                            })
+                          )}
+                        </>
                       )}
                     </div>
                     <div className="stack-list">

@@ -1720,6 +1720,7 @@ export class HouseholdRepository {
   ) {
     const dependencyRules = this.normalizeDependencyRules(dto);
     const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
+    const normalizedGroupTitle = dto.groupTitle.trim();
     const normalizedDefaultLocale = this.normalizeSupportedLanguage(dto.defaultLocale);
     const groupTitleTranslations = this.normalizeTemplateGroupTranslations(
       dto.translations,
@@ -1746,7 +1747,8 @@ export class HouseholdRepository {
           }
         },
         select: {
-          id: true
+          id: true,
+          groupTitle: true
         }
       });
 
@@ -1755,6 +1757,8 @@ export class HouseholdRepository {
           message: "One or more follow-up templates could not be found."
         });
       }
+
+      this.ensureDependencyTemplatesShareGroup(availableDependencies, normalizedGroupTitle);
     }
 
     const template = await this.prisma.$transaction(async (tx) => {
@@ -1762,7 +1766,7 @@ export class HouseholdRepository {
         data: {
           householdId,
           defaultLocale: normalizedDefaultLocale,
-          groupTitle: dto.groupTitle.trim(),
+          groupTitle: normalizedGroupTitle,
           groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
@@ -1853,6 +1857,7 @@ export class HouseholdRepository {
     const normalizedDefaultLocale = this.normalizeSupportedLanguage(
       dto.defaultLocale ?? existingTemplate.defaultLocale
     );
+    const normalizedGroupTitle = dto.groupTitle.trim();
     const groupTitleTranslations = this.normalizeTemplateGroupTranslations(
       dto.translations,
       normalizedDefaultLocale,
@@ -1878,7 +1883,8 @@ export class HouseholdRepository {
           }
         },
         select: {
-          id: true
+          id: true,
+          groupTitle: true
         }
       });
 
@@ -1887,6 +1893,8 @@ export class HouseholdRepository {
           message: "One or more follow-up templates could not be found."
         });
       }
+
+      this.ensureDependencyTemplatesShareGroup(availableDependencies, normalizedGroupTitle);
     }
 
     const template = await this.prisma.$transaction(async (tx) => {
@@ -1957,7 +1965,7 @@ export class HouseholdRepository {
         },
         data: {
           defaultLocale: normalizedDefaultLocale,
-          groupTitle: dto.groupTitle.trim(),
+          groupTitle: normalizedGroupTitle,
           groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
@@ -3790,6 +3798,22 @@ export class HouseholdRepository {
         followUpDelayValue: 1,
         followUpDelayUnit: FollowUpDelayUnit.HOURS
       }));
+  }
+
+  private ensureDependencyTemplatesShareGroup(
+    templates: Array<{ id: string; groupTitle?: string | null }>,
+    sourceGroupTitle: string
+  ) {
+    const normalizedSourceGroupTitle = sourceGroupTitle.trim().toLocaleLowerCase();
+    const invalidTemplate = templates.find(
+      (template) => template.groupTitle?.trim().toLocaleLowerCase() !== normalizedSourceGroupTitle
+    );
+
+    if (invalidTemplate) {
+      throw new BadRequestException({
+        message: "Follow-up chores must belong to the same group as the source template."
+      });
+    }
   }
 
   private async validateAssignee(
