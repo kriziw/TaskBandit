@@ -166,6 +166,10 @@ export class AuthController {
 
     try {
       const candidateUrl = new URL(requestedReturnTo, requestOrigin);
+      if (this.isTrustedNativeReturnTo(candidateUrl)) {
+        return candidateUrl.toString();
+      }
+
       if (candidateUrl.origin !== fallbackUrl.origin) {
         return `${fallbackUrl.pathname}${fallbackUrl.search}${fallbackUrl.hash}`;
       }
@@ -174,6 +178,14 @@ export class AuthController {
     } catch {
       return `${fallbackUrl.pathname}${fallbackUrl.search}${fallbackUrl.hash}`;
     }
+  }
+
+  private isTrustedNativeReturnTo(candidateUrl: URL) {
+    return (
+      candidateUrl.protocol === "taskbandit:" &&
+      candidateUrl.hostname === "auth" &&
+      candidateUrl.pathname === "/callback"
+    );
   }
 
   private appendOidcTokenToReturnUrl(returnTo: string, request: Request, accessToken: string) {
