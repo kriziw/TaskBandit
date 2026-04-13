@@ -213,11 +213,54 @@ select {
   gap: 12px;
   flex-wrap: wrap;
   margin-bottom: 14px;
+  position: sticky;
+  top: 12px;
+  z-index: 20;
+  padding: 8px;
+  border: 1px solid var(--line);
+  border-radius: 24px;
+  background: rgba(255, 248, 232, 0.82);
+  backdrop-filter: blur(14px);
+  box-shadow: 0 16px 36px rgba(36, 48, 67, 0.1);
 }
 
 .toolbar-group {
   gap: 10px;
   flex-wrap: wrap;
+}
+
+.toolbar-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 12px 6px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.72);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.toolbar-brand div {
+  display: grid;
+  gap: 1px;
+}
+
+.toolbar-brand strong {
+  font-family: var(--font-brand);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.toolbar-brand span {
+  color: rgba(36, 48, 67, 0.68);
+  font-size: 0.76rem;
+  font-weight: 800;
+}
+
+.toolbar-brand-mascot {
+  width: 34px;
+  height: 34px;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 10px rgba(36, 48, 67, 0.12));
 }
 
 .toolbar-pill,
@@ -318,9 +361,10 @@ h4,
 
 .hero {
   display: grid;
-  grid-template-columns: 1.45fr 0.9fr;
-  gap: 24px;
+  grid-template-columns: minmax(0, 1fr) 220px;
+  gap: 18px;
   align-items: center;
+  margin-top: 14px;
 }
 
 .onboarding-shell {
@@ -396,15 +440,15 @@ h4,
 
 .hero h1 {
   margin: 0;
-  font-size: clamp(2.6rem, 6vw, 4.5rem);
-  line-height: 0.96;
+  font-size: clamp(2rem, 4vw, 3.5rem);
+  line-height: 1;
   letter-spacing: 0.01em;
 }
 
 .lede {
   max-width: 62ch;
-  font-size: 1.05rem;
-  line-height: 1.7;
+  font-size: 1rem;
+  line-height: 1.55;
 }
 
 .hero-meta {
@@ -443,9 +487,9 @@ h4,
 .mascot-card {
   display: grid;
   place-items: center;
-  gap: 12px;
-  min-height: 320px;
-  padding: 20px;
+  gap: 8px;
+  min-height: 210px;
+  padding: 14px;
 }
 
 .mascot-card p {
@@ -454,7 +498,7 @@ h4,
 }
 
 .mascot-art {
-  width: min(100%, 210px);
+  width: min(100%, 145px);
   height: auto;
   filter: drop-shadow(0 18px 30px rgba(36, 48, 67, 0.18));
 }
@@ -691,6 +735,57 @@ h4,
 
 .login-grid {
   align-items: start;
+  grid-template-columns: minmax(320px, 560px);
+  justify-content: center;
+}
+
+.bootstrap-grid {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.bootstrap-panel {
+  width: 100%;
+}
+
+.bootstrap-panel .login-form {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  align-items: start;
+}
+
+.bootstrap-panel .login-form > .toggle-row,
+.bootstrap-panel .login-form > .compact-stack,
+.bootstrap-panel .login-form > .primary-button {
+  grid-column: 1 / -1;
+}
+
+.bootstrap-panel .compact-stack {
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  align-items: start;
+}
+
+.bootstrap-panel .compact-stack > .section-heading,
+.bootstrap-panel .compact-stack > .inline-message {
+  grid-column: 1 / -1;
+}
+
+.bootstrap-panel .compact-stack .stack-list {
+  gap: 6px;
+}
+
+.bootstrap-panel .task-row.compact {
+  align-self: stretch;
+  padding: 12px;
+}
+
+.bootstrap-panel .toggle-row {
+  gap: 8px;
+  padding: 8px 0;
+}
+
+.bootstrap-panel small.inline-message {
+  display: block;
+  margin-top: 4px;
+  width: auto;
 }
 
 .dashboard-grid {
@@ -1440,6 +1535,11 @@ h4,
 
   .panel-wide {
     grid-column: span 1;
+  }
+
+  .bootstrap-panel .login-form,
+  .bootstrap-panel .compact-stack {
+    grid-template-columns: 1fr;
   }
 
   .app-shell.variant-client .workspace-sidebar-panel {
