@@ -209,6 +209,25 @@ export class AppConfigService {
     return Number(this.configService.get("TASKBANDIT_RUNTIME_LOG_BUFFER_SIZE") ?? 1000);
   }
 
+  get runtimeLogMaxFileSizeBytes(): number {
+    const configuredValue = Number(
+      this.configService.get("TASKBANDIT_RUNTIME_LOG_MAX_FILE_SIZE_MB") ?? 100
+    );
+    const resolvedMegabytes = Number.isFinite(configuredValue) && configuredValue > 0 ? configuredValue : 100;
+    return Math.round(resolvedMegabytes * 1024 * 1024);
+  }
+
+  get runtimeLogMaxTotalSizeBytes(): number {
+    const configuredValue = Number(
+      this.configService.get("TASKBANDIT_RUNTIME_LOG_MAX_TOTAL_SIZE_MB") ?? 500
+    );
+    const resolvedMegabytes = Number.isFinite(configuredValue) && configuredValue > 0 ? configuredValue : 500;
+    return Math.max(
+      Math.round(resolvedMegabytes * 1024 * 1024),
+      this.runtimeLogMaxFileSizeBytes
+    );
+  }
+
   get fcmEnabled(): boolean {
     return this.configService.get<string>("TASKBANDIT_FCM_ENABLED", "false") === "true";
   }

@@ -41,6 +41,7 @@ Before first real use, edit `.env`:
 - keep `TASKBANDIT_DATA_ROOT=./data` unless you intentionally want another persistent storage path
 - set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` only if you want demo accounts for testing
 - for most installs, only set `TASKBANDIT_PUBLIC_WEB_BASE_URL` and `TASKBANDIT_PUBLIC_API_BASE_URL`; TaskBandit derives the admin URL automatically and now also derives CORS/reverse-proxy behavior from those public URLs
+- leave the default log safety limits in place unless you have a reason to change them: the persistent runtime log rotates at `100 MB` with a `500 MB` total cap, and Docker container logs rotate at `100 MB` with `5` retained files per container
 - use the legacy overrides (`TASKBANDIT_PUBLIC_ADMIN_BASE_URL`, `TASKBANDIT_PUBLIC_CLIENT_BASE_URL`, `TASKBANDIT_CORS_ALLOWED_ORIGINS`, `TASKBANDIT_REVERSE_PROXY_ENABLED`) only if you intentionally need custom behavior
 
 Example domain setup:
@@ -71,6 +72,24 @@ If demo seeding is enabled, the sample accounts use the password `TaskBandit123!
 - `luca@taskbandit.local`
 
 For a real install, copy `.env.example` to `.env`, change the secrets and public URLs, and follow the [configuration guide](https://kriziw.github.io/taskbandit/configuration.html).
+
+## Logging Safety Defaults
+
+TaskBandit now protects disk usage in two layers by default:
+
+- the application runtime log under `data/taskbandit/storage/logs` rotates at `100 MB` and keeps up to `500 MB` total across the active log plus rotated archives
+- Docker `json-file` logs for the `postgres`, `server`, and `web` containers rotate at `100 MB` and keep `5` files per container
+
+The related `.env` settings are:
+
+```env
+TASKBANDIT_RUNTIME_LOG_MAX_FILE_SIZE_MB=100
+TASKBANDIT_RUNTIME_LOG_MAX_TOTAL_SIZE_MB=500
+TASKBANDIT_DOCKER_LOG_MAX_SIZE=100m
+TASKBANDIT_DOCKER_LOG_MAX_FILES=5
+```
+
+If you change these values later, recreate the containers so Docker picks up the updated container log policy.
 
 ## Repository Layout
 
