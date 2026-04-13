@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.1](https://github.com/kriziw/TaskBandit/compare/v0.35.0...v0.35.1) (2026-04-13)
+
+
+### Bug Fixes
+
+* reduce setup and admin branding space ([#226](https://github.com/kriziw/TaskBandit/issues/226)) ([94d1705](https://github.com/kriziw/TaskBandit/commit/94d17053a509ac9ffc01506b6d730dac5e697362))
+
 ## [0.35.0](https://github.com/kriziw/TaskBandit/compare/v0.34.5...v0.35.0) (2026-04-13)
 
 
