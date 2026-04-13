@@ -3873,9 +3873,19 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   return (
-    <main className={`app-shell variant-${workspaceVariant}`} data-variant={workspaceVariant}>
+    <main
+      className={`app-shell variant-${workspaceVariant} ${payload ? "is-authenticated" : "is-auth-entry"}`}
+      data-variant={workspaceVariant}
+    >
       <section className="toolbar">
         <div className="toolbar-group">
+          <div className="toolbar-brand" aria-label="TaskBandit">
+            <img className="toolbar-brand-mascot" src="./taskbandit-raccoon.svg" alt="" aria-hidden="true" />
+            <div>
+              <strong>TaskBandit</strong>
+              <span>{workspaceVariantLabel}</span>
+            </div>
+          </div>
           {payload?.currentUser ? (
             <div className="user-badge">
               <strong>{payload.currentUser.displayName}</strong>
@@ -3906,52 +3916,23 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         </div>
       </section>
 
-      <section className="hero">
-        <div className="hero-copy">
-          <p className="eyebrow">
-            {payload
-              ? t("hero.authenticated_eyebrow")
-              : workspaceVariant === "admin"
-                ? t("workspace.variant_admin")
-                : t("workspace.variant_client")}
-          </p>
-          <h1>
-            {payload
-              ? t("hero.authenticated_title")
-              : workspaceVariant === "admin"
-                ? t("hero.login_admin_title")
-                : t("hero.login_client_title")}
-          </h1>
-          <p className="lede">
-            {payload
-              ? t("hero.authenticated_lede")
-              : workspaceVariant === "admin"
-                ? t("hero.login_admin_lede")
-                : t("hero.login_client_lede")}
-          </p>
-          {payload?.household ? (
-            <div className="hero-meta">
-              <span>{payload.household.name}</span>
-              <span>
-                {payload.household.members.length} {t("household.members")}
-              </span>
-              <span>
-                {formatNumber(payload.currentUser.currentStreak)} {t("user.streak")}
-              </span>
-            </div>
-          ) : null}
-        </div>
-        <div className="mascot-card" aria-label="TaskBandit mascot placeholder">
-          <img className="mascot-art" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
-          <p>
-            {payload
-              ? t("hero.mascot_ready")
-              : workspaceVariant === "admin"
-                ? t("hero.login_admin_mascot")
-                : t("hero.login_client_mascot")}
-          </p>
-        </div>
-      </section>
+      {!payload ? (
+        <section className="hero">
+          <div className="hero-copy">
+            <p className="eyebrow">
+              {workspaceVariant === "admin" ? t("workspace.variant_admin") : t("workspace.variant_client")}
+            </p>
+            <h1>{workspaceVariant === "admin" ? t("hero.login_admin_title") : t("hero.login_client_title")}</h1>
+            <p className="lede">
+              {workspaceVariant === "admin" ? t("hero.login_admin_lede") : t("hero.login_client_lede")}
+            </p>
+          </div>
+          <div className="mascot-card" aria-label="TaskBandit mascot placeholder">
+            <img className="mascot-art" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
+            <p>{workspaceVariant === "admin" ? t("hero.login_admin_mascot") : t("hero.login_client_mascot")}</p>
+          </div>
+        </section>
+      ) : null}
 
       {completionCelebration ? (
         <div className="celebration-backdrop" role="presentation">
@@ -4045,7 +4026,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ) : null}
 
       {!payload ? (
-        <section className="content-grid login-grid">
+        <section
+          className={`content-grid login-grid ${
+            bootstrapStatus?.isBootstrapped === false ? "bootstrap-grid" : ""
+          }`}
+        >
           {isAuthEntryLoading ? (
             <article className="panel login-panel">
               <div className="section-heading">
@@ -4068,7 +4053,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
             </article>
           ) : bootstrapStatus?.isBootstrapped === false ? (
-            <article className="panel login-panel">
+            <article className="panel login-panel bootstrap-panel">
               <div className="section-heading">
                 <h2>{t("bootstrap.title")}</h2>
                 <span className="section-kicker">{t("bootstrap.kicker")}</span>
