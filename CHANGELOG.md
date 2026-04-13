@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.6](https://github.com/kriziw/TaskBandit/compare/v0.35.5...v0.35.6) (2026-04-13)
+
+
+### Bug Fixes
+
+* keep admin sidebar below sticky header ([#236](https://github.com/kriziw/TaskBandit/issues/236)) ([e080df0](https://github.com/kriziw/TaskBandit/commit/e080df0f7a21c068b24890e0b5c3fa86e3bd796d))
+
 ## [0.35.5](https://github.com/kriziw/TaskBandit/compare/v0.35.4...v0.35.5) (2026-04-13)
 
 
