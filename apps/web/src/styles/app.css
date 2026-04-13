@@ -82,7 +82,7 @@ select {
 
 .workspace-shell {
   display: grid;
-  grid-template-columns: 250px minmax(0, 1fr);
+  grid-template-columns: 224px minmax(0, 1fr);
   gap: 16px;
   align-items: start;
   margin-top: 18px;
@@ -94,7 +94,7 @@ select {
 }
 
 .workspace-sidebar-panel {
-  padding: 14px;
+  padding: 12px;
 }
 
 .workspace-nav-kicker,
@@ -112,18 +112,18 @@ select {
 
 .workspace-nav {
   display: grid;
-  gap: 8px;
+  gap: 6px;
 }
 
 .workspace-nav-button {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.75);
   color: var(--ink);
-  border-radius: 18px;
-  padding: 11px 14px;
+  border-radius: 16px;
+  padding: 9px 12px;
   text-align: left;
   font-family: var(--font-brand);
-  font-size: 0.96rem;
+  font-size: 0.92rem;
   cursor: pointer;
   transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
 }
@@ -144,7 +144,7 @@ select {
 }
 
 .workspace-subnav-panel {
-  margin-top: 14px;
+  margin-top: 12px;
 }
 
 .workspace-subnav {
@@ -180,6 +180,19 @@ select {
 .workspace-page-header h2 {
   margin: 0 0 6px;
   font-size: 1.8rem;
+}
+
+.app-shell.variant-admin .workspace-page-header {
+  padding: 14px 16px;
+}
+
+.app-shell.variant-admin .workspace-page-header h2 {
+  margin-bottom: 0;
+  font-size: 1.55rem;
+}
+
+.app-shell.variant-admin .workspace-page-meta {
+  gap: 6px;
 }
 
 .workspace-page-meta {
@@ -930,6 +943,11 @@ h4,
   padding: 18px;
 }
 
+.app-shell.variant-admin .panel,
+.app-shell.variant-admin .metric-card {
+  padding: 16px;
+}
+
 .panel-wide {
   grid-column: span 1;
 }
@@ -952,6 +970,11 @@ h4,
 .section-heading {
   gap: 10px;
   margin-bottom: 10px;
+}
+
+.app-shell.variant-admin .section-heading {
+  gap: 8px;
+  margin-bottom: 8px;
 }
 
 .section-heading h2,
@@ -1090,22 +1113,22 @@ h4,
 }
 
 .member-row {
-  gap: 12px;
+  gap: 10px;
 }
 
 .member-row-actions {
   display: grid;
   justify-items: end;
-  gap: 8px;
+  gap: 6px;
   flex-shrink: 0;
 }
 
 .member-provider-row {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 4px;
   flex-wrap: wrap;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 .member-provider-pill {
@@ -1113,12 +1136,12 @@ h4,
 }
 
 .member-provider-note {
-  font-size: 0.88rem;
+  font-size: 0.82rem;
   color: rgba(36, 48, 67, 0.78);
 }
 
 .member-edit-form {
-  padding: 14px;
+  padding: 12px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.64);
   border: 1px dashed rgba(36, 48, 67, 0.14);
@@ -1334,6 +1357,12 @@ h4,
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.54);
   border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.app-shell.variant-admin .task-row,
+.app-shell.variant-admin .leader-row {
+  padding: 11px 12px;
+  border-radius: 20px;
 }
 
 .task-row.compact p,
@@ -1679,6 +1708,11 @@ h4,
   align-items: center;
 }
 
+.template-editor-grid {
+  display: grid;
+  gap: 10px;
+}
+
 .template-editor-panel {
   min-width: 0;
   display: grid;
@@ -1695,6 +1729,42 @@ h4,
 
 .template-editor-panel textarea {
   min-height: 72px;
+}
+
+.template-advanced-panel {
+  border: 1px solid rgba(36, 48, 67, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.52);
+  padding: 10px 12px;
+}
+
+.template-advanced-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+  font-family: var(--font-brand);
+  font-weight: 700;
+}
+
+.template-advanced-summary::-webkit-details-marker {
+  display: none;
+}
+
+.template-advanced-body {
+  margin-top: 10px;
+}
+
+.template-editor-actions {
+  position: sticky;
+  bottom: -1px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding-top: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 247, 232, 0), rgba(255, 247, 232, 0.96) 28%);
 }
 
 @media (min-width: 1100px) {
@@ -1717,6 +1787,10 @@ h4,
     overflow: auto;
     padding-right: 6px;
   }
+
+  .template-editor-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .inline-message {
@@ -1735,7 +1809,7 @@ h4,
 }
 
 .log-entry {
-  padding: 12px 14px;
+  padding: 10px 12px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -1744,9 +1818,9 @@ h4,
 .log-meta {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: 6px;
   align-items: center;
-  font-size: 0.82rem;
+  font-size: 0.78rem;
   font-weight: 700;
 }
 
@@ -1771,9 +1845,9 @@ h4,
 
 .log-message,
 .log-stack {
-  margin: 8px 0 0;
+  margin: 6px 0 0;
   font-family: "Courier New", monospace;
-  font-size: 0.92rem;
+  font-size: 0.88rem;
   white-space: pre-wrap;
   word-break: break-word;
 }
