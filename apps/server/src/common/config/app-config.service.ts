@@ -29,6 +29,23 @@ export class AppConfigService {
     return trimmedValue.replace(/\/+$/, "");
   }
 
+  private normalizeOrigin(value: string | undefined) {
+    const normalizedBaseUrl = this.normalizeBaseUrl(value);
+    if (!normalizedBaseUrl) {
+      return "";
+    }
+
+    try {
+      return new URL(normalizedBaseUrl).origin;
+    } catch {
+      return normalizedBaseUrl;
+    }
+  }
+
+  private uniqueConfiguredOrigins(values: Array<string | undefined>) {
+    return [...new Set(values.map((value) => this.normalizeOrigin(value)).filter(Boolean))];
+  }
+
   private isRemotePublicUrl(value: string) {
     if (!value) {
       return false;
@@ -160,13 +177,17 @@ export class AppConfigService {
   get corsAllowedOrigins(): string[] {
     const explicitOrigins = this.configService.get<string>("TASKBANDIT_CORS_ALLOWED_ORIGINS", "").trim();
     if (explicitOrigins) {
-      return explicitOrigins
-        .split(",")
-        .map((value) => value.trim())
-        .filter(Boolean);
+      return this.uniqueConfiguredOrigins(explicitOrigins.split(",").map((value) => value.trim()));
     }
 
-    return this.publicWebBaseUrl ? [this.publicWebBaseUrl] : [];
+    return this.uniqueConfiguredOrigins([
+      this.configService.get<string>("TASKBANDIT_PUBLIC_WEB_BASE_URL"),
+      this.configService.get<string>("TASKBANDIT_PUBLIC_CLIENT_BASE_URL"),
+      this.configService.get<string>("TASKBANDIT_PUBLIC_ADMIN_BASE_URL"),
+      this.configService.get<string>("TASKBANDIT_WEB_BASE_URL"),
+      this.configService.get<string>("TASKBANDIT_CLIENT_BASE_URL"),
+      this.configService.get<string>("TASKBANDIT_ADMIN_BASE_URL")
+    ]);
   }
 
   get publicWebBaseUrl(): string {

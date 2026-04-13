@@ -21,12 +21,7 @@ async function bootstrap() {
   if (corsAllowedOrigins.length > 0) {
     app.enableCors({
       origin: (origin, callback) => {
-        if (!origin || corsAllowedOrigins.includes(origin)) {
-          callback(null, true);
-          return;
-        }
-
-        callback(new Error("Origin is not allowed by TaskBandit CORS settings."));
+        callback(null, !origin || corsAllowedOrigins.includes(origin));
       }
     });
   } else {
