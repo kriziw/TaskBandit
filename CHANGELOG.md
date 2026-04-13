@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.8](https://github.com/kriziw/TaskBandit/compare/v0.35.7...v0.35.8) (2026-04-13)
+
+
+### Bug Fixes
+
+* harden client auth entry and android login errors ([#241](https://github.com/kriziw/TaskBandit/issues/241)) ([b6713ec](https://github.com/kriziw/TaskBandit/commit/b6713ec6bedc691eecc1f91e863c52750cf08a56))
+* show log limits in admin status ([#240](https://github.com/kriziw/TaskBandit/issues/240)) ([cfbcd55](https://github.com/kriziw/TaskBandit/commit/cfbcd552dbd9583a2c37f3a98e61f599eea0f16e))
+
 ## [0.35.7](https://github.com/kriziw/TaskBandit/compare/v0.35.6...v0.35.7) (2026-04-13)
 
 
