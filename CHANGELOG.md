@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.34.5](https://github.com/kriziw/TaskBandit/compare/v0.34.4...v0.34.5) (2026-04-13)
+
+
+### Bug Fixes
+
+* unblock auth setup flow ([#222](https://github.com/kriziw/TaskBandit/issues/222)) ([f183e2e](https://github.com/kriziw/TaskBandit/commit/f183e2e327adaabaa303beb7392a01b89065aece))
+
 ## [0.34.4](https://github.com/kriziw/TaskBandit/compare/v0.34.3...v0.34.4) (2026-04-13)
 
 
