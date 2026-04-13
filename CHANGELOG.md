@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.9](https://github.com/kriziw/TaskBandit/compare/v0.35.8...v0.35.9) (2026-04-13)
+
+
+### Bug Fixes
+
+* add Android auth provider discovery and OIDC sign-in ([#243](https://github.com/kriziw/TaskBandit/issues/243)) ([d342428](https://github.com/kriziw/TaskBandit/commit/d342428148e42b54238bc1235c4941e6e3593754))
+
 ## [0.35.8](https://github.com/kriziw/TaskBandit/compare/v0.35.7...v0.35.8) (2026-04-13)
 
 
