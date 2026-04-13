@@ -39,7 +39,7 @@ Before first real use, edit `.env`:
 - change `TASKBANDIT_DB_PASSWORD` and `TASKBANDIT_JWT_SECRET`
 - keep `TASKBANDIT_DATA_ROOT=./data` unless you intentionally want another persistent storage path
 - set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=false` if you do not want demo accounts
-- for most installs, only set `TASKBANDIT_PUBLIC_WEB_BASE_URL` and `TASKBANDIT_PUBLIC_API_BASE_URL`; TaskBandit derives the admin URL automatically and will default CORS to the public web URL
+- for most installs, only set `TASKBANDIT_PUBLIC_WEB_BASE_URL` and `TASKBANDIT_PUBLIC_API_BASE_URL`; TaskBandit derives the admin URL automatically and now also derives CORS/reverse-proxy behavior from those public URLs
 - use the legacy overrides (`TASKBANDIT_PUBLIC_ADMIN_BASE_URL`, `TASKBANDIT_PUBLIC_CLIENT_BASE_URL`, `TASKBANDIT_CORS_ALLOWED_ORIGINS`, `TASKBANDIT_REVERSE_PROXY_ENABLED`) only if you intentionally need custom behavior
 
 Example domain setup:
