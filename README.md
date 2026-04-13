@@ -12,6 +12,7 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 - an admin-facing web UI for templates, household configuration, translation, and system operations
 - a client-facing web UI that works in a normal desktop/mobile browser and can also be installed as a PWA
 - a native Android application for daily use, offline actions, photo proof, and widgets
+- chore templates built around group, type, and optional sub-type layers so chores stay clear in both admin setup and client views
 
 ## Documentation
 
@@ -60,6 +61,8 @@ Then open:
 - client UI/PWA: `http://localhost:4173/`
 - admin UI: `http://localhost:4173/admin`
 - API health check: `http://localhost:8080/health`
+
+On a fresh install, the first household setup can optionally import the built-in starter templates. These are translated into English, German, and Hungarian and include linked follow-up tasks for common routines such as laundry, cleaning, kitchen, waste, bedroom, and plant care.
 
 If demo seeding is enabled, the sample accounts use the password `TaskBandit123!`:
 

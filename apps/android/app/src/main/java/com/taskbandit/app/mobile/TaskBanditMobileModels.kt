@@ -24,6 +24,7 @@ data class MobileChore(
     val id: String,
     val cycleId: String? = null,
     val title: String,
+    val groupTitle: String,
     val typeTitle: String,
     val subtypeLabel: String? = null,
     val state: String,
@@ -137,6 +138,7 @@ data class MobileTemplateVariant(
 
 data class MobileChoreTemplate(
     val id: String,
+    val groupTitle: String,
     val title: String,
     val description: String,
     val assignmentStrategy: String,

@@ -1459,6 +1459,7 @@ private fun DashboardScreen(
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
     var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedTemplateGroupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
     var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
     var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -1469,6 +1470,7 @@ private fun DashboardScreen(
     var createRecurrenceEndsAtMillis by rememberSaveable { mutableLongStateOf(defaultCreateRecurrenceEndsAtMillis()) }
     var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
     var expandedHistoricChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var templateGroupDropdownExpanded by remember { mutableStateOf(false) }
     var templateDropdownExpanded by remember { mutableStateOf(false) }
     var recurrenceTypeDropdownExpanded by remember { mutableStateOf(false) }
     var assignmentStrategyDropdownExpanded by remember { mutableStateOf(false) }
@@ -1483,6 +1485,21 @@ private fun DashboardScreen(
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
+    val templateGroups = remember(templates) {
+        templates.map { it.groupTitle }.distinct().sorted()
+    }
+    val visibleTemplateGroupTitle = remember(templateGroups, templates, selectedTemplateId, selectedTemplateGroupTitle) {
+        selectedTemplateGroupTitle
+            ?: templates.firstOrNull { it.id == selectedTemplateId }?.groupTitle
+            ?: templateGroups.firstOrNull()
+    }
+    val visibleTemplates = remember(templates, visibleTemplateGroupTitle) {
+        if (visibleTemplateGroupTitle.isNullOrBlank()) {
+            templates
+        } else {
+            templates.filter { it.groupTitle == visibleTemplateGroupTitle }
+        }
+    }
     val members = dashboard?.members.orEmpty()
     val pendingTakeoverRequests = dashboard?.takeoverRequests.orEmpty()
     val supportsTakeoverRequests = dashboard?.compatibility?.takeoverRequestsSupported ?: true
@@ -1502,8 +1519,11 @@ private fun DashboardScreen(
                 .associateBy { it.choreId }
         }
     }
-    val selectedTemplate = remember(templates, selectedTemplateId) {
-        templates.firstOrNull { it.id == selectedTemplateId } ?: templates.firstOrNull()
+    val selectedTemplate = remember(visibleTemplates, templates, selectedTemplateId) {
+        visibleTemplates.firstOrNull { it.id == selectedTemplateId }
+            ?: templates.firstOrNull { it.id == selectedTemplateId }
+            ?: visibleTemplates.firstOrNull()
+            ?: templates.firstOrNull()
     }
     val eligibleTakeoverMembers = remember(members, currentUserId) {
         members.filter { it.id != currentUserId }
@@ -1573,9 +1593,13 @@ private fun DashboardScreen(
             !noticeMessage.isNullOrBlank() ||
             !errorMessage.isNullOrBlank()
 
-    LaunchedEffect(templates) {
-        if (templates.isNotEmpty() && templates.none { it.id == selectedTemplateId }) {
-            selectedTemplateId = templates.first().id
+    LaunchedEffect(templateGroups, visibleTemplates, selectedTemplateId) {
+        if (!visibleTemplateGroupTitle.isNullOrBlank() && selectedTemplateGroupTitle != visibleTemplateGroupTitle) {
+            selectedTemplateGroupTitle = visibleTemplateGroupTitle
+        }
+
+        if (visibleTemplates.isNotEmpty() && visibleTemplates.none { it.id == selectedTemplateId }) {
+            selectedTemplateId = visibleTemplates.first().id
         }
     }
 
@@ -1610,6 +1634,7 @@ private fun DashboardScreen(
         createRecurrenceEndsAtMillis = defaultCreateRecurrenceEndsAtMillis(createDueAtMillis)
         createAssigneeId = null
         createVariantId = null
+        templateGroupDropdownExpanded = false
         templateDropdownExpanded = false
         recurrenceTypeDropdownExpanded = false
         assignmentStrategyDropdownExpanded = false
@@ -2110,6 +2135,16 @@ private fun DashboardScreen(
                                     verticalArrangement = Arrangement.spacedBy(16.dp)
                                 ) {
                                     CreateTemplateAndSchedulePanel(
+                                        selectedTemplateGroupTitle = visibleTemplateGroupTitle,
+                                        templateGroupDropdownExpanded = templateGroupDropdownExpanded,
+                                        onTemplateGroupDropdownExpandedChange = { templateGroupDropdownExpanded = it },
+                                        onTemplateGroupSelected = {
+                                            selectedTemplateGroupTitle = it
+                                            selectedTemplateId = templates.firstOrNull { template -> template.groupTitle == it }?.id
+                                            createVariantId = null
+                                            templateGroupDropdownExpanded = false
+                                        },
+                                        templateGroups = templateGroups,
                                         selectedTemplate = selectedTemplate,
                                         templateDropdownExpanded = templateDropdownExpanded,
                                         onTemplateDropdownExpandedChange = { templateDropdownExpanded = it },
@@ -2117,7 +2152,7 @@ private fun DashboardScreen(
                                             selectedTemplateId = it
                                             templateDropdownExpanded = false
                                         },
-                                        templates = templates,
+                                        templates = visibleTemplates,
                                         createDueAtMillis = createDueAtMillis,
                                         onPickDate = { datePickerDialog.show() },
                                         onPickTime = { timePickerDialog.show() }
@@ -2211,6 +2246,16 @@ private fun DashboardScreen(
                             Card(shape = RoundedCornerShape(24.dp)) {
                                 Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
                                     CreateTemplateAndSchedulePanel(
+                                        selectedTemplateGroupTitle = visibleTemplateGroupTitle,
+                                        templateGroupDropdownExpanded = templateGroupDropdownExpanded,
+                                        onTemplateGroupDropdownExpandedChange = { templateGroupDropdownExpanded = it },
+                                        onTemplateGroupSelected = {
+                                            selectedTemplateGroupTitle = it
+                                            selectedTemplateId = templates.firstOrNull { template -> template.groupTitle == it }?.id
+                                            createVariantId = null
+                                            templateGroupDropdownExpanded = false
+                                        },
+                                        templateGroups = templateGroups,
                                         selectedTemplate = selectedTemplate,
                                         templateDropdownExpanded = templateDropdownExpanded,
                                         onTemplateDropdownExpandedChange = { templateDropdownExpanded = it },
@@ -2218,7 +2263,7 @@ private fun DashboardScreen(
                                             selectedTemplateId = it
                                             templateDropdownExpanded = false
                                         },
-                                        templates = templates,
+                                        templates = visibleTemplates,
                                         createDueAtMillis = createDueAtMillis,
                                         onPickDate = { datePickerDialog.show() },
                                         onPickTime = { timePickerDialog.show() }
@@ -3026,6 +3071,11 @@ private fun HistoricChoreCard(
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
                     Text(
+                        text = chore.groupTitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
                         text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
@@ -3226,6 +3276,11 @@ private fun ChoreCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    Text(
+                        text = chore.groupTitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                     Text(
                         text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
@@ -3781,6 +3836,11 @@ private fun CreatePanelCard(modifier: Modifier = Modifier, title: String, conten
 
 @Composable
 private fun CreateTemplateAndSchedulePanel(
+    selectedTemplateGroupTitle: String?,
+    templateGroupDropdownExpanded: Boolean,
+    onTemplateGroupDropdownExpandedChange: (Boolean) -> Unit,
+    onTemplateGroupSelected: (String) -> Unit,
+    templateGroups: List<String>,
     selectedTemplate: com.taskbandit.app.mobile.MobileChoreTemplate?,
     templateDropdownExpanded: Boolean,
     onTemplateDropdownExpandedChange: (Boolean) -> Unit,
@@ -3791,6 +3851,31 @@ private fun CreateTemplateAndSchedulePanel(
     onPickTime: () -> Unit
 ) {
     CreatePanelCard(title = stringResource(R.string.mobile_create_title)) {
+        Text(text = stringResource(R.string.mobile_create_group), style = MaterialTheme.typography.titleSmall)
+        ExposedDropdownMenuBox(
+            expanded = templateGroupDropdownExpanded,
+            onExpandedChange = onTemplateGroupDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = selectedTemplateGroupTitle ?: stringResource(R.string.mobile_create_select_group_prompt),
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = templateGroupDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = templateGroupDropdownExpanded,
+                onDismissRequest = { onTemplateGroupDropdownExpandedChange(false) }
+            ) {
+                templateGroups.forEach { groupTitle ->
+                    DropdownMenuItem(
+                        text = { Text(groupTitle) },
+                        onClick = { onTemplateGroupSelected(groupTitle) }
+                    )
+                }
+            }
+        }
+
         Text(text = stringResource(R.string.mobile_create_template), style = MaterialTheme.typography.titleSmall)
         ExposedDropdownMenuBox(
             expanded = templateDropdownExpanded,

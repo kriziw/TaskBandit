@@ -34,6 +34,11 @@ import {
 } from "../../common/i18n/supported-languages";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import {
+  getStarterTemplateDefinitionsByKey,
+  getStarterTemplateTranslations,
+  StarterTemplateDefinition
+} from "../bootstrap/starter-templates.catalog";
 import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto";
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
@@ -70,54 +75,171 @@ export class HouseholdRepository {
     ownerDisplayName: string,
     ownerEmail: string,
     ownerPasswordHash: string,
-    selfSignupEnabled: boolean
+    selfSignupEnabled: boolean,
+    starterTemplateKeys?: string[],
+    language: SupportedLanguage = fallbackLanguage
   ) {
     const normalizedEmail = ownerEmail.trim().toLowerCase();
-    const household = await this.prisma.household.create({
-      data: {
-        name: householdName.trim(),
-        settings: {
-          create: {
-            selfSignupEnabled,
-            onboardingCompleted: false,
-            membersCanSeeFullHouseholdChoreDetails: true,
-            enablePushNotifications: true,
-            enableOverduePenalties: true,
-            localAuthEnabled: true,
-            oidcEnabled: false,
-            oidcScope: "openid profile email",
-            smtpEnabled: false,
-            smtpSecure: false
-          }
-        },
-        members: {
-          create: {
-            displayName: ownerDisplayName.trim(),
-            role: HouseholdRole.ADMIN,
-            points: 0,
-            currentStreak: 0,
-            identities: {
-              create: {
-                provider: AuthProvider.LOCAL,
-                providerSubject: normalizedEmail,
-                email: normalizedEmail,
-                passwordHash: ownerPasswordHash
+    const household = await this.prisma.$transaction(async (tx) => {
+      const createdHousehold = await tx.household.create({
+        data: {
+          name: householdName.trim(),
+          settings: {
+            create: {
+              selfSignupEnabled,
+              onboardingCompleted: false,
+              membersCanSeeFullHouseholdChoreDetails: true,
+              enablePushNotifications: true,
+              enableOverduePenalties: true,
+              localAuthEnabled: true,
+              oidcEnabled: false,
+              oidcScope: "openid profile email",
+              smtpEnabled: false,
+              smtpSecure: false
+            }
+          },
+          members: {
+            create: {
+              displayName: ownerDisplayName.trim(),
+              role: HouseholdRole.ADMIN,
+              points: 0,
+              currentStreak: 0,
+              identities: {
+                create: {
+                  provider: AuthProvider.LOCAL,
+                  providerSubject: normalizedEmail,
+                  email: normalizedEmail,
+                  passwordHash: ownerPasswordHash
+                }
               }
             }
           }
-        }
-      },
-      include: {
-        settings: true,
-        members: {
-          include: {
-            identities: true
+        },
+        include: {
+          settings: true,
+          members: {
+            include: {
+              identities: true
+            }
           }
         }
-      }
+      });
+
+      await this.importStarterTemplates(tx, createdHousehold.id, starterTemplateKeys, language);
+
+      return createdHousehold;
     });
 
     return this.mapHousehold(household);
+  }
+
+  private async importStarterTemplates(
+    tx: Prisma.TransactionClient,
+    householdId: string,
+    starterTemplateKeys: string[] | undefined,
+    defaultLocale: SupportedLanguage
+  ) {
+    const starterTemplates = getStarterTemplateDefinitionsByKey(starterTemplateKeys);
+    if (starterTemplates.length === 0) {
+      return;
+    }
+
+    const templateIdByKey = new Map<string, string>();
+
+    for (const template of starterTemplates) {
+      const templateId = randomUUID();
+      templateIdByKey.set(template.key, templateId);
+
+      await tx.choreTemplate.create({
+        data: {
+          id: templateId,
+          householdId,
+          defaultLocale,
+          groupTitle: template.groupTitle[defaultLocale],
+          groupTitleTranslations: this.toPrismaJsonOrNull(
+            this.mapStarterLocalizedText(template.groupTitle, defaultLocale)
+          ),
+          title: template.title[defaultLocale],
+          titleTranslations: this.toPrismaJsonOrNull(
+            this.mapStarterLocalizedText(template.title, defaultLocale)
+          ),
+          description: template.description[defaultLocale],
+          descriptionTranslations: this.toPrismaJsonOrNull(
+            this.mapStarterLocalizedText(template.description, defaultLocale)
+          ),
+          difficulty: template.difficulty,
+          basePoints: this.getBasePoints(template.difficulty),
+          assignmentStrategy: template.assignmentStrategy,
+          recurrenceType: template.recurrenceType,
+          recurrenceIntervalDays:
+            template.recurrenceType === RecurrenceType.EVERY_X_DAYS
+              ? template.recurrenceIntervalDays ?? 1
+              : null,
+          recurrenceWeekdays:
+            template.recurrenceType === RecurrenceType.CUSTOM_WEEKLY
+              ? template.recurrenceWeekdays ?? []
+              : [],
+          requirePhotoProof: template.requirePhotoProof,
+          recurrenceStartStrategy: template.recurrenceStartStrategy,
+          checklistItems: {
+            create:
+              template.checklist?.map((item, index) => ({
+                title: item.title[defaultLocale],
+                required: item.required,
+                sortOrder: index + 1
+              })) ?? []
+          },
+          variants: {
+            create:
+              template.variants?.map((variant, index) => ({
+                label: variant.label[defaultLocale],
+                labelTranslations: this.toPrismaJsonOrNull(
+                  this.mapStarterLocalizedText(variant.label, defaultLocale)
+                ),
+                sortOrder: index + 1
+              })) ?? []
+          }
+        }
+      });
+    }
+
+    for (const template of starterTemplates) {
+      const templateId = templateIdByKey.get(template.key);
+      if (!templateId || !template.followUps?.length) {
+        continue;
+      }
+
+      const followUps = template.followUps
+        .map((followUp) => {
+          const followUpTemplateId = templateIdByKey.get(followUp.key);
+          if (!followUpTemplateId) {
+            return null;
+          }
+
+          return {
+            templateId,
+            followUpTemplateId,
+            followUpDelayValue: followUp.delayValue,
+            followUpDelayUnit: followUp.delayUnit
+          };
+        })
+        .filter((entry): entry is NonNullable<typeof entry> => Boolean(entry));
+
+      if (followUps.length > 0) {
+        await tx.choreTemplateDependency.createMany({
+          data: followUps
+        });
+      }
+    }
+  }
+
+  private mapStarterLocalizedText(
+    value: StarterTemplateDefinition["title"],
+    defaultLocale: SupportedLanguage
+  ): LocalizedTextMap {
+    return Object.fromEntries(
+      getStarterTemplateTranslations(value, defaultLocale).map((entry) => [entry.locale, entry.text])
+    );
   }
 
   async getHousehold(householdId: string) {
@@ -1562,14 +1684,12 @@ export class HouseholdRepository {
         dependencies: true,
         variants: true
       },
-      orderBy: {
-        title: "asc"
-      }
+      orderBy: [{ groupTitle: "asc" }, { title: "asc" }]
     });
 
     return templates
       .map((template) => this.mapTemplate(template, language))
-      .sort((left, right) => left.title.localeCompare(right.title));
+      .sort((left, right) => left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title));
   }
 
   async getTemplateForHousehold(
@@ -1601,6 +1721,11 @@ export class HouseholdRepository {
     const dependencyRules = this.normalizeDependencyRules(dto);
     const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
     const normalizedDefaultLocale = this.normalizeSupportedLanguage(dto.defaultLocale);
+    const groupTitleTranslations = this.normalizeTemplateGroupTranslations(
+      dto.translations,
+      normalizedDefaultLocale,
+      dto.groupTitle
+    );
     const titleTranslations = this.normalizeTemplateTitleTranslations(
       dto.translations,
       normalizedDefaultLocale,
@@ -1637,6 +1762,8 @@ export class HouseholdRepository {
         data: {
           householdId,
           defaultLocale: normalizedDefaultLocale,
+          groupTitle: dto.groupTitle.trim(),
+          groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
@@ -1725,6 +1852,11 @@ export class HouseholdRepository {
 
     const normalizedDefaultLocale = this.normalizeSupportedLanguage(
       dto.defaultLocale ?? existingTemplate.defaultLocale
+    );
+    const groupTitleTranslations = this.normalizeTemplateGroupTranslations(
+      dto.translations,
+      normalizedDefaultLocale,
+      dto.groupTitle
     );
     const titleTranslations = this.normalizeTemplateTitleTranslations(
       dto.translations,
@@ -1825,6 +1957,8 @@ export class HouseholdRepository {
         },
         data: {
           defaultLocale: normalizedDefaultLocale,
+          groupTitle: dto.groupTitle.trim(),
+          groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
@@ -3555,6 +3689,7 @@ export class HouseholdRepository {
           create: [
             {
               id: laundryTemplateId,
+              groupTitle: "Laundry",
               title: "Run the washing machine",
               description: "Load, start, and confirm the wash cycle.",
               difficulty: Difficulty.MEDIUM,
@@ -3579,6 +3714,7 @@ export class HouseholdRepository {
             },
             {
               id: dryingTemplateId,
+              groupTitle: "Laundry",
               title: "Hang clothes to dry",
               description: "Move the washed laundry to the drying rack.",
               difficulty: Difficulty.EASY,
@@ -4258,11 +4394,13 @@ export class HouseholdRepository {
       delayValue: dependency.followUpDelayValue,
       delayUnit: dependency.followUpDelayUnit.toLowerCase()
     }));
+    const localizedGroupTitle = this.resolveTemplateGroupTitle(template, language);
     const localizedTitle = this.resolveTemplateTitle(template, language);
     const localizedDescription = this.resolveTemplateDescription(template, language);
 
     return {
       id: template.id,
+      groupTitle: localizedGroupTitle,
       title: localizedTitle,
       description: localizedDescription,
       defaultLocale: this.normalizeSupportedLanguage(template.defaultLocale),
@@ -4311,6 +4449,7 @@ export class HouseholdRepository {
     },
     language: SupportedLanguage = fallbackLanguage
   ) {
+    const localizedGroupTitle = this.resolveTemplateGroupTitle(instance.template, language);
     const localizedTypeTitle = this.resolveTemplateTitle(instance.template, language);
     const localizedSubtypeLabel =
       this.resolveVariantLabel(
@@ -4325,6 +4464,7 @@ export class HouseholdRepository {
         id: instance.id,
         templateId: instance.templateId,
         cycleId: (instance as any).cycleId ?? null,
+        groupTitle: localizedGroupTitle,
         title: localizedTitle,
         typeTitle: localizedTypeTitle,
         subtypeLabel: localizedSubtypeLabel,
@@ -4361,6 +4501,7 @@ export class HouseholdRepository {
       id: instance.id,
       templateId: instance.templateId,
       cycleId: (instance as any).cycleId ?? null,
+      groupTitle: localizedGroupTitle,
       title: localizedTitle,
       typeTitle: localizedTypeTitle,
       subtypeLabel: localizedSubtypeLabel,
@@ -4434,6 +4575,14 @@ export class HouseholdRepository {
     return Object.fromEntries(normalizedEntries.map(([locale, value]) => [locale, value!.trim()]));
   }
 
+  private normalizeTemplateGroupTranslations(
+    translations: CreateChoreTemplateDto["translations"],
+    defaultLocale: SupportedLanguage,
+    defaultGroupTitle: string
+  ) {
+    return this.normalizeTemplateTranslationEntries(translations, "groupTitle", defaultLocale, defaultGroupTitle);
+  }
+
   private normalizeTemplateTitleTranslations(
     translations: CreateChoreTemplateDto["translations"],
     defaultLocale: SupportedLanguage,
@@ -4452,7 +4601,7 @@ export class HouseholdRepository {
 
   private normalizeTemplateTranslationEntries(
     translations: CreateChoreTemplateDto["translations"],
-    field: "title" | "description",
+    field: "groupTitle" | "title" | "description",
     defaultLocale: SupportedLanguage,
     defaultValue: string
   ) {
@@ -4461,7 +4610,12 @@ export class HouseholdRepository {
 
     for (const entry of translations ?? []) {
       const locale = this.normalizeSupportedLanguage(entry.locale);
-      const value = (field === "title" ? entry.title : entry.description)?.trim();
+      const value =
+        (field === "groupTitle"
+          ? entry.groupTitle
+          : field === "title"
+            ? entry.title
+            : entry.description)?.trim();
       if (!value || locale === defaultLocale || value === trimmedDefaultValue) {
         continue;
       }
@@ -4489,6 +4643,14 @@ export class HouseholdRepository {
     }
 
     return normalized;
+  }
+
+  private resolveTemplateGroupTitle(
+    template: { groupTitle: string; groupTitleTranslations?: Prisma.JsonValue | null },
+    language: SupportedLanguage
+  ) {
+    const translations = this.parseLocalizedTextMap(template.groupTitleTranslations);
+    return translations[language]?.trim() || template.groupTitle;
   }
 
   private resolveTemplateTitle(
@@ -4529,20 +4691,23 @@ export class HouseholdRepository {
 
   private serializeTemplateTranslations(
     template: {
+      groupTitleTranslations?: Prisma.JsonValue | null;
       titleTranslations?: Prisma.JsonValue | null;
       descriptionTranslations?: Prisma.JsonValue | null;
     }
   ) {
+    const groupTitleTranslations = this.parseLocalizedTextMap(template.groupTitleTranslations);
     const titleTranslations = this.parseLocalizedTextMap(template.titleTranslations);
     const descriptionTranslations = this.parseLocalizedTextMap(template.descriptionTranslations);
 
     return supportedLanguages
       .map((locale) => ({
         locale,
+        groupTitle: groupTitleTranslations[locale] ?? "",
         title: titleTranslations[locale] ?? "",
         description: descriptionTranslations[locale] ?? ""
       }))
-      .filter((entry) => entry.title || entry.description);
+      .filter((entry) => entry.groupTitle || entry.title || entry.description);
   }
 
   private serializeVariantTranslations(

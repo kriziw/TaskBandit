@@ -41,6 +41,12 @@ export class CreateLocalizedTemplateTranslationDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  @MaxLength(120)
+  groupTitle?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   @MaxLength(200)
   title?: string;
 
@@ -108,6 +114,12 @@ export class CreateChoreDependencyRuleDto {
 }
 
 export class CreateChoreTemplateDto {
+  @ApiProperty()
+  @IsString()
+  @IsNotEmpty()
+  @MaxLength(120)
+  groupTitle!: string;
+
   @ApiPropertyOptional({ enum: supportedLanguages })
   @IsOptional()
   @IsString()

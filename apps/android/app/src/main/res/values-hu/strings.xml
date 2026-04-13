@@ -96,6 +96,8 @@
     <string name="mobile_hide_details">Feladat bezárása</string>
     <string name="mobile_create_title">Feladatok létrehozása</string>
     <string name="mobile_create_hint">Másodlagos folyamat: hozz létre feladatot sablonból egyetlen koppintással.</string>
+    <string name="mobile_create_group">Csoport</string>
+    <string name="mobile_create_select_group_prompt">Válassz csoportot…</string>
     <string name="mobile_create_select_template_prompt">Válassz típust…</string>
     <string name="mobile_create_repeat_every_x_days_option">Minden X. napon</string>
     <string name="mobile_create_interval_days_label">Intervallum (nap)</string>

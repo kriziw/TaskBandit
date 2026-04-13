@@ -203,6 +203,8 @@ model ChoreTemplate {
   id                 String                       @id @default(uuid()) @db.Uuid
   householdId        String                       @db.Uuid
   defaultLocale      String                       @default("en") @db.VarChar(5)
+  groupTitle         String                       @db.VarChar(120)
+  groupTitleTranslations Json?
   title              String
   titleTranslations  Json?
   description        String

@@ -586,6 +586,7 @@ class TaskBanditMobileApi {
             id = entry.optString("id"),
             cycleId = entry.optNullableString("cycleId"),
             title = entry.optString("title"),
+            groupTitle = entry.optString("groupTitle").ifBlank { "General" },
             typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
             subtypeLabel = entry.optNullableString("subtypeLabel"),
             state = entry.optString("state"),
@@ -652,6 +653,7 @@ class TaskBanditMobileApi {
                 add(
                     MobileChoreTemplate(
                         id = id,
+                        groupTitle = item.optString("groupTitle").ifBlank { "General" },
                         title = title,
                         description = item.optString("description"),
                         assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },

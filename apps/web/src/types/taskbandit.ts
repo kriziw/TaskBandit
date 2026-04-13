@@ -370,6 +370,7 @@ export type FollowUpDelayUnit = "hours" | "days";
 export type TemplateTranslationLocale = "en" | "de" | "hu";
 export type LocalizedTemplateTranslation = {
   locale: TemplateTranslationLocale;
+  groupTitle?: string;
   title?: string;
   description?: string;
 };
@@ -387,6 +388,7 @@ export type ChoreTemplateDependencyRule = {
 
 export type ChoreTemplate = {
   id: string;
+  groupTitle: string;
   title: string;
   description: string;
   defaultLocale: TemplateTranslationLocale;
@@ -420,6 +422,7 @@ export type ChoreInstance = {
   templateId: string;
   cycleId: string | null;
   title: string;
+  groupTitle: string;
   typeTitle: string;
   subtypeLabel: string | null;
   state: ChoreState;
@@ -495,6 +498,7 @@ export type UpdateHouseholdMemberInput = {
 
 export type CreateChoreTemplateInput = {
   defaultLocale?: TemplateTranslationLocale;
+  groupTitle: string;
   title: string;
   description: string;
   translations?: LocalizedTemplateTranslation[];
@@ -540,6 +544,19 @@ export type BootstrapHouseholdInput = {
   ownerEmail: string;
   ownerPassword: string;
   selfSignupEnabled: boolean;
+  starterTemplateKeys?: string[];
+};
+
+export type BootstrapStarterTemplateOption = {
+  key: string;
+  groupTitle: string;
+  title: string;
+  description: string;
+  recommended: boolean;
+  followUps: Array<{
+    key: string;
+    title: string;
+  }>;
 };
 
 export type DashboardSyncToken = {

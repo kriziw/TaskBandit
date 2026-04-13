@@ -30,5 +30,11 @@ export class BootstrapController {
   languages() {
     return this.i18nService.getSupportedLanguages();
   }
+
+  @Get("starter-templates")
+  starterTemplates(@Headers("accept-language") acceptLanguage?: string) {
+    const language = this.i18nService.resolveLanguage(acceptLanguage);
+    return this.bootstrapService.getStarterTemplateOptions(language);
+  }
 }
 
