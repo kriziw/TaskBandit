@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.34.4](https://github.com/kriziw/TaskBandit/compare/v0.34.3...v0.34.4) (2026-04-13)
+
+
+### Bug Fixes
+
+* derive public CORS and proxy defaults ([#220](https://github.com/kriziw/TaskBandit/issues/220)) ([636004b](https://github.com/kriziw/TaskBandit/commit/636004ba58e6d9381e8eccb552e87ffec590ac8e))
+
 ## [0.34.3](https://github.com/kriziw/TaskBandit/compare/v0.34.2...v0.34.3) (2026-04-12)
 
 
