@@ -542,6 +542,7 @@
   "members.send_invite_email": "Send welcome email with sign-in details",
   "templates.title": "Type",
   "templates.group_name": "Group",
+  "templates.edit_language": "Language",
   "templates.default_locale": "Default language",
   "templates.default_title": "Default type name",
   "templates.default_description": "Default description",
