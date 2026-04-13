@@ -5,6 +5,24 @@ data class TaskBanditSession(
     val token: String?
 )
 
+data class MobileLocalAuthProvider(
+    val enabled: Boolean,
+    val forcedByConfig: Boolean,
+    val selfSignupEnabled: Boolean
+)
+
+data class MobileOidcAuthProvider(
+    val enabled: Boolean,
+    val authority: String,
+    val clientId: String,
+    val source: String
+)
+
+data class MobileAuthProviders(
+    val local: MobileLocalAuthProvider,
+    val oidc: MobileOidcAuthProvider
+)
+
 data class MobileUser(
     val id: String,
     val displayName: String,

@@ -45,7 +45,10 @@ import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -87,6 +90,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
@@ -103,12 +107,14 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextAlign
@@ -118,6 +124,7 @@ import androidx.compose.ui.unit.Dp
 import com.taskbandit.app.mobile.MobileDashboard
 import com.taskbandit.app.mobile.MobileDashboardSyncSignal
 import com.taskbandit.app.mobile.MobileChore
+import com.taskbandit.app.mobile.MobileAuthProviders
 import com.taskbandit.app.mobile.MobileChoreTemplate
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
@@ -155,10 +162,16 @@ import java.util.UUID
 import kotlin.random.Random
 
 private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
+private const val androidOidcCallbackUrl = "taskbandit://auth/callback"
 private const val syncDisconnectNoticeDelayMs = 3500L
 private const val mutationReconnectWindowMs = 5000L
 private const val mutationReconnectRetryDelayMs = 750L
 private val historicChoreStates = setOf("completed", "approved", "rejected", "cancelled")
+
+private data class AndroidOidcResult(
+    val accessToken: String? = null,
+    val errorMessage: String? = null
+)
 
 private enum class MobileDashboardTab {
     CHORES,
@@ -213,6 +226,8 @@ private fun pickRandomCelebrationPhraseIndex(previousIndex: Int): Int {
 }
 
 class MainActivity : AppCompatActivity() {
+    private val pendingOidcResult = mutableStateOf<AndroidOidcResult?>(null)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
@@ -227,15 +242,38 @@ class MainActivity : AppCompatActivity() {
 
         AppCompatDelegate.setApplicationLocales(initialLocaleList)
         super.onCreate(savedInstanceState)
+        consumeOidcIntent(intent)
 
         setContent {
             TaskBanditApp(
                 api = TaskBanditMobileApi(),
                 sessionStore = sessionStore,
                 appPreferencesStore = appPreferencesStore,
-                widgetStore = widgetStore
+                widgetStore = widgetStore,
+                pendingOidcResult = pendingOidcResult
             )
         }
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        consumeOidcIntent(intent)
+    }
+
+    private fun consumeOidcIntent(intent: Intent?) {
+        val data = intent?.data ?: return
+        if (data.scheme != "taskbandit" || data.host != "auth" || data.path != "/callback") {
+            return
+        }
+
+        val accessToken = data.getQueryParameter("oidcToken")
+        val errorMessage = data.getQueryParameter("oidcError")
+        pendingOidcResult.value = AndroidOidcResult(
+            accessToken = accessToken?.takeIf { it.isNotBlank() },
+            errorMessage = errorMessage?.takeIf { it.isNotBlank() }
+        )
+        intent.data = null
     }
 }
 
@@ -244,7 +282,8 @@ private fun TaskBanditApp(
     api: TaskBanditMobileApi,
     sessionStore: TaskBanditSessionStore,
     appPreferencesStore: TaskBanditAppPreferencesStore,
-    widgetStore: TaskBanditWidgetStore
+    widgetStore: TaskBanditWidgetStore,
+    pendingOidcResult: MutableState<AndroidOidcResult?>
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -287,8 +326,12 @@ private fun TaskBanditApp(
     val installationId = remember { sessionStore.getOrCreateInstallationId() }
     val dashboardSyncClient = remember { TaskBanditDashboardSyncClient() }
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
-    var email by remember { mutableStateOf("alex@taskbandit.local") }
-    var password by remember { mutableStateOf("TaskBandit123!") }
+    var email by remember { mutableStateOf("") }
+    var password by remember { mutableStateOf("") }
+    var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
+    var authProvidersCheckedBaseUrl by remember { mutableStateOf<String?>(null) }
+    var isAuthProvidersLoading by remember { mutableStateOf(false) }
+    var authProvidersErrorMessage by remember { mutableStateOf<String?>(null) }
     var dashboard by remember { mutableStateOf<MobileDashboard?>(null) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
@@ -398,6 +441,44 @@ private fun TaskBanditApp(
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
+    fun resolveLoginScreenErrorMessage(throwable: Throwable): String {
+        return throwable.message ?: loginFailedMessage
+    }
+
+    fun clearAuthProviderState() {
+        authProviders = null
+        authProvidersCheckedBaseUrl = null
+        authProvidersErrorMessage = null
+        isAuthProvidersLoading = false
+    }
+
+    fun hasFreshAuthProviderState(baseUrl: String) = authProvidersCheckedBaseUrl == baseUrl
+
+    fun refreshAuthProviders(targetBaseUrl: String = normalizedServerUrl()) {
+        if (targetBaseUrl.isBlank()) {
+            clearAuthProviderState()
+            return
+        }
+
+        isAuthProvidersLoading = true
+        authProvidersErrorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.getAuthProviders(targetBaseUrl)
+                }
+            }.onSuccess { providers ->
+                authProviders = providers
+                authProvidersCheckedBaseUrl = targetBaseUrl
+            }.onFailure { throwable ->
+                authProviders = null
+                authProvidersCheckedBaseUrl = targetBaseUrl
+                authProvidersErrorMessage = resolveLoginScreenErrorMessage(throwable)
+            }
+            isAuthProvidersLoading = false
+        }
+    }
+
     fun logout() {
         val baseUrl = normalizedServerUrl()
         sessionStore.clearToken(baseUrl)
@@ -417,6 +498,7 @@ private fun TaskBanditApp(
         pendingReconnectActionLabel = null
         validationDialogMessage = null
         completionCelebration = null
+        clearAuthProviderState()
     }
 
     suspend fun <T> runMutationWithReconnectWindow(
@@ -963,6 +1045,36 @@ private fun TaskBanditApp(
         }
     }
 
+    LaunchedEffect(session.token) {
+        if (session.token != null) {
+            return@LaunchedEffect
+        }
+
+        val baseUrl = normalizedServerUrl()
+        if (!hasFreshAuthProviderState(baseUrl)) {
+            refreshAuthProviders(baseUrl)
+        }
+    }
+
+    LaunchedEffect(pendingOidcResult.value) {
+        val oidcResult = pendingOidcResult.value ?: return@LaunchedEffect
+        pendingOidcResult.value = null
+
+        when {
+            !oidcResult.accessToken.isNullOrBlank() -> {
+                val baseUrl = normalizedServerUrl()
+                serverUrl = baseUrl
+                sessionStore.saveSession(baseUrl, oidcResult.accessToken)
+                session = TaskBanditSession(baseUrl = baseUrl, token = oidcResult.accessToken)
+                errorMessage = null
+                noticeMessage = null
+            }
+            !oidcResult.errorMessage.isNullOrBlank() -> {
+                errorMessage = oidcResult.errorMessage
+            }
+        }
+    }
+
     // Refresh the dashboard whenever the app returns to the foreground (e.g. after an
     // app update is applied while the process is still alive). LaunchedEffect(session.token)
     // only fires when the token value itself changes, so it won't re-trigger if the Activity
@@ -1010,17 +1122,44 @@ private fun TaskBanditApp(
                     currentReleaseLabel = currentReleaseLabel,
                     serverReleaseLabel = serverReleaseLabel,
                     availableUpdate = visibleUpdate,
+                    authProviders = authProviders,
+                    authProvidersCheckedBaseUrl = authProvidersCheckedBaseUrl,
+                    isAuthProvidersLoading = isAuthProvidersLoading,
+                    authProvidersErrorMessage = authProvidersErrorMessage,
                     email = email,
                     password = password,
                     isBusy = isBusy,
                     errorMessage = errorMessage,
                     onDismissUpdate = ::dismissUpdateNotice,
                     onServerUrlChange = {
+                        val previousBaseUrl = normalizedServerUrl()
                         serverUrl = it
-                        sessionStore.saveBaseUrl(it)
+                        sessionStore.saveBaseUrl(it.trim())
+                        val nextBaseUrl = it.trim().ifBlank { defaultApiBaseUrl }
+                        if (previousBaseUrl != nextBaseUrl) {
+                            clearAuthProviderState()
+                        }
                     },
                     onEmailChange = { email = it },
                     onPasswordChange = { password = it },
+                    onCheckSignInMethods = {
+                        refreshAuthProviders()
+                    },
+                    onOidcLogin = {
+                        val baseUrl = normalizedServerUrl()
+                        errorMessage = null
+                        runCatching {
+                            val resolvedLanguageTag =
+                                if (languageTag == "system") Locale.getDefault().toLanguageTag() else languageTag
+                            val oidcIntent = Intent(
+                                Intent.ACTION_VIEW,
+                                Uri.parse(api.getOidcStartUrl(baseUrl, resolvedLanguageTag, androidOidcCallbackUrl))
+                            )
+                            context.startActivity(oidcIntent)
+                        }.onFailure { throwable ->
+                            errorMessage = resolveLoginScreenErrorMessage(throwable)
+                        }
+                    },
                     onLogin = {
                         isBusy = true
                         errorMessage = null
@@ -1035,7 +1174,7 @@ private fun TaskBanditApp(
                                 sessionStore.saveSession(baseUrl, token)
                                 session = TaskBanditSession(baseUrl = baseUrl, token = token)
                             }.onFailure { throwable ->
-                                errorMessage = throwable.message ?: loginFailedMessage
+                                errorMessage = resolveLoginScreenErrorMessage(throwable)
                             }
                             isBusy = false
                         }
@@ -1168,6 +1307,10 @@ private fun LoginScreen(
     currentReleaseLabel: String,
     serverReleaseLabel: String?,
     availableUpdate: MobileReleaseInfo?,
+    authProviders: MobileAuthProviders?,
+    authProvidersCheckedBaseUrl: String?,
+    isAuthProvidersLoading: Boolean,
+    authProvidersErrorMessage: String?,
     email: String,
     password: String,
     isBusy: Boolean,
@@ -1176,8 +1319,23 @@ private fun LoginScreen(
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onCheckSignInMethods: () -> Unit,
+    onOidcLogin: () -> Unit,
     onLogin: () -> Unit
 ) {
+    val emailFocusRequester = remember { FocusRequester() }
+    val passwordFocusRequester = remember { FocusRequester() }
+    val focusManager = LocalFocusManager.current
+    val normalizedServerUrl = serverUrl.trim().ifBlank { defaultApiBaseUrl }
+    val hasCheckedCurrentServer = authProvidersCheckedBaseUrl == normalizedServerUrl
+    val showProviderStatus = hasCheckedCurrentServer || isAuthProvidersLoading || !authProvidersErrorMessage.isNullOrBlank()
+    val showLocalLogin = when {
+        authProviders?.local?.enabled == true -> true
+        !hasCheckedCurrentServer && authProvidersErrorMessage.isNullOrBlank() && !isAuthProvidersLoading -> false
+        else -> authProvidersErrorMessage != null || authProviders == null
+    }
+    val showOidcLogin = authProviders?.oidc?.enabled == true
+
     BoxWithConstraints(
         modifier = Modifier
             .fillMaxSize()
@@ -1260,49 +1418,28 @@ private fun LoginScreen(
                         modifier = Modifier.weight(1.15f),
                         verticalArrangement = Arrangement.spacedBy(12.dp)
                     ) {
-                        OutlinedTextField(
-                            value = serverUrl,
-                            onValueChange = onServerUrlChange,
-                            label = { Text(stringResource(R.string.mobile_server_url)) },
-                            singleLine = true,
-                            supportingText = {
-                                Text(stringResource(R.string.mobile_server_url_hint))
-                            },
-                            modifier = Modifier.fillMaxWidth()
+                        LoginMethodsForm(
+                            serverUrl = serverUrl,
+                            email = email,
+                            password = password,
+                            isBusy = isBusy,
+                            errorMessage = errorMessage,
+                            authProviders = authProviders,
+                            showProviderStatus = showProviderStatus,
+                            showLocalLogin = showLocalLogin,
+                            showOidcLogin = showOidcLogin,
+                            isAuthProvidersLoading = isAuthProvidersLoading,
+                            authProvidersErrorMessage = authProvidersErrorMessage,
+                            emailFocusRequester = emailFocusRequester,
+                            passwordFocusRequester = passwordFocusRequester,
+                            focusManagerClear = { focusManager.clearFocus() },
+                            onServerUrlChange = onServerUrlChange,
+                            onEmailChange = onEmailChange,
+                            onPasswordChange = onPasswordChange,
+                            onCheckSignInMethods = onCheckSignInMethods,
+                            onOidcLogin = onOidcLogin,
+                            onLogin = onLogin
                         )
-                        OutlinedTextField(
-                            value = email,
-                            onValueChange = onEmailChange,
-                            label = { Text(stringResource(R.string.mobile_email)) },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        OutlinedTextField(
-                            value = password,
-                            onValueChange = onPasswordChange,
-                            label = { Text(stringResource(R.string.mobile_password)) },
-                            singleLine = true,
-                            visualTransformation = PasswordVisualTransformation(),
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        if (!errorMessage.isNullOrBlank()) {
-                            Text(
-                                text = errorMessage,
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                        Button(
-                            onClick = onLogin,
-                            enabled = !isBusy,
-                            modifier = Modifier.fillMaxWidth()
-                        ) {
-                            if (isBusy) {
-                                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                            } else {
-                                Text(stringResource(R.string.mobile_login_action))
-                            }
-                        }
                     }
                 }
             } else {
@@ -1357,52 +1494,175 @@ private fun LoginScreen(
                             }
                         }
                     }
-                    OutlinedTextField(
-                        value = serverUrl,
-                        onValueChange = onServerUrlChange,
-                        label = { Text(stringResource(R.string.mobile_server_url)) },
-                        singleLine = true,
-                        supportingText = {
-                            Text(stringResource(R.string.mobile_server_url_hint))
-                        },
-                        modifier = Modifier.fillMaxWidth()
+                    LoginMethodsForm(
+                        serverUrl = serverUrl,
+                        email = email,
+                        password = password,
+                        isBusy = isBusy,
+                        errorMessage = errorMessage,
+                        authProviders = authProviders,
+                        showProviderStatus = showProviderStatus,
+                        showLocalLogin = showLocalLogin,
+                        showOidcLogin = showOidcLogin,
+                        isAuthProvidersLoading = isAuthProvidersLoading,
+                        authProvidersErrorMessage = authProvidersErrorMessage,
+                        emailFocusRequester = emailFocusRequester,
+                        passwordFocusRequester = passwordFocusRequester,
+                        focusManagerClear = { focusManager.clearFocus() },
+                        onServerUrlChange = onServerUrlChange,
+                        onEmailChange = onEmailChange,
+                        onPasswordChange = onPasswordChange,
+                        onCheckSignInMethods = onCheckSignInMethods,
+                        onOidcLogin = onOidcLogin,
+                        onLogin = onLogin
                     )
-                    OutlinedTextField(
-                        value = email,
-                        onValueChange = onEmailChange,
-                        label = { Text(stringResource(R.string.mobile_email)) },
-                        singleLine = true,
-                        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    OutlinedTextField(
-                        value = password,
-                        onValueChange = onPasswordChange,
-                        label = { Text(stringResource(R.string.mobile_password)) },
-                        singleLine = true,
-                        visualTransformation = PasswordVisualTransformation(),
-                        modifier = Modifier.fillMaxWidth()
-                    )
-                    if (!errorMessage.isNullOrBlank()) {
-                        Text(
-                            text = errorMessage,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    Button(
-                        onClick = onLogin,
-                        enabled = !isBusy,
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        if (isBusy) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
-                        } else {
-                            Text(stringResource(R.string.mobile_login_action))
-                        }
-                    }
                 }
             }
         }
+    }
+}
+
+@Composable
+private fun LoginMethodsForm(
+    serverUrl: String,
+    email: String,
+    password: String,
+    isBusy: Boolean,
+    errorMessage: String?,
+    authProviders: MobileAuthProviders?,
+    showProviderStatus: Boolean,
+    showLocalLogin: Boolean,
+    showOidcLogin: Boolean,
+    isAuthProvidersLoading: Boolean,
+    authProvidersErrorMessage: String?,
+    emailFocusRequester: FocusRequester,
+    passwordFocusRequester: FocusRequester,
+    focusManagerClear: () -> Unit,
+    onServerUrlChange: (String) -> Unit,
+    onEmailChange: (String) -> Unit,
+    onPasswordChange: (String) -> Unit,
+    onCheckSignInMethods: () -> Unit,
+    onOidcLogin: () -> Unit,
+    onLogin: () -> Unit
+) {
+    val localAuthEnabled = authProviders?.local?.enabled == true
+    val oidcAuthEnabled = authProviders?.oidc?.enabled == true
+
+    OutlinedTextField(
+        value = serverUrl,
+        onValueChange = onServerUrlChange,
+        label = { Text(stringResource(R.string.mobile_server_url)) },
+        supportingText = { Text(stringResource(R.string.mobile_server_url_hint)) },
+        singleLine = true,
+        keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+        keyboardActions = KeyboardActions(
+            onNext = {
+                onCheckSignInMethods()
+                if (showLocalLogin) {
+                    emailFocusRequester.requestFocus()
+                } else {
+                    focusManagerClear()
+                }
+            }
+        ),
+        modifier = Modifier.fillMaxWidth()
+    )
+    OutlinedButton(
+        onClick = onCheckSignInMethods,
+        enabled = !isBusy && !isAuthProvidersLoading,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(stringResource(R.string.mobile_auth_methods_check_action))
+    }
+    if (showProviderStatus) {
+        Text(
+            text = when {
+                isAuthProvidersLoading -> stringResource(R.string.mobile_auth_methods_loading)
+                !authProvidersErrorMessage.isNullOrBlank() -> authProvidersErrorMessage
+                oidcAuthEnabled && localAuthEnabled ->
+                    stringResource(R.string.mobile_auth_methods_local_and_sso)
+                oidcAuthEnabled ->
+                    stringResource(R.string.mobile_auth_methods_sso_only)
+                localAuthEnabled ->
+                    stringResource(R.string.mobile_auth_methods_local_only)
+                else -> stringResource(R.string.mobile_auth_methods_unavailable)
+            },
+            color = if (!authProvidersErrorMessage.isNullOrBlank()) {
+                MaterialTheme.colorScheme.error
+            } else {
+                MaterialTheme.colorScheme.onSurfaceVariant
+            },
+            style = MaterialTheme.typography.bodySmall
+        )
+    } else {
+        Text(
+            text = stringResource(R.string.mobile_auth_methods_hint),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+    if (showLocalLogin) {
+        OutlinedTextField(
+            value = email,
+            onValueChange = onEmailChange,
+            label = { Text(stringResource(R.string.mobile_email)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            keyboardActions = KeyboardActions(onNext = { passwordFocusRequester.requestFocus() }),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(emailFocusRequester)
+        )
+        OutlinedTextField(
+            value = password,
+            onValueChange = onPasswordChange,
+            label = { Text(stringResource(R.string.mobile_password)) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
+            keyboardActions = KeyboardActions(
+                onDone = {
+                    focusManagerClear()
+                    onLogin()
+                }
+            ),
+            modifier = Modifier
+                .fillMaxWidth()
+                .focusRequester(passwordFocusRequester)
+        )
+        Button(
+            onClick = onLogin,
+            enabled = !isBusy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            if (isBusy) {
+                CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+            } else {
+                Text(stringResource(R.string.mobile_login_action))
+            }
+        }
+    }
+    if (showOidcLogin) {
+        OutlinedButton(
+            onClick = onOidcLogin,
+            enabled = !isBusy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.mobile_login_sso_action))
+        }
+    }
+    if (!showLocalLogin && !showOidcLogin && !isAuthProvidersLoading) {
+        Text(
+            text = stringResource(R.string.mobile_auth_methods_unavailable),
+            color = MaterialTheme.colorScheme.error,
+            style = MaterialTheme.typography.bodySmall
+        )
+    }
+    if (!errorMessage.isNullOrBlank()) {
+        Text(
+            text = errorMessage,
+            color = MaterialTheme.colorScheme.error
+        )
     }
 }
 

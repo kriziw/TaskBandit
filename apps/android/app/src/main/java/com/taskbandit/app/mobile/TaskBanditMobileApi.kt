@@ -10,6 +10,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import org.json.JSONTokener
 import java.io.IOException
+import java.net.URLEncoder
+import java.nio.charset.StandardCharsets
 
 class TaskBanditUnauthorizedException : IllegalStateException()
 class TaskBanditApiException(val status: Int, message: String) : IllegalStateException(message)
@@ -31,6 +33,40 @@ class TaskBanditMobileApi {
             method = "POST",
             body = payload
         ).getString("accessToken")
+    }
+
+    fun getAuthProviders(baseUrl: String): MobileAuthProviders {
+        val responseJson = requestJson(baseUrl, "/api/auth/providers")
+        val localJson = responseJson.optJSONObject("local") ?: JSONObject()
+        val oidcJson = responseJson.optJSONObject("oidc") ?: JSONObject()
+
+        return MobileAuthProviders(
+            local = MobileLocalAuthProvider(
+                enabled = localJson.optBoolean("enabled"),
+                forcedByConfig = localJson.optBoolean("forcedByConfig"),
+                selfSignupEnabled = localJson.optBoolean("selfSignupEnabled")
+            ),
+            oidc = MobileOidcAuthProvider(
+                enabled = oidcJson.optBoolean("enabled"),
+                authority = oidcJson.optString("authority"),
+                clientId = oidcJson.optString("clientId"),
+                source = oidcJson.optString("source")
+            )
+        )
+    }
+
+    fun getOidcStartUrl(baseUrl: String, languageTag: String? = null, returnTo: String? = null): String {
+        val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
+        val queryParts = buildList {
+            if (!languageTag.isNullOrBlank()) {
+                add("language=${URLEncoder.encode(languageTag, StandardCharsets.UTF_8)}")
+            }
+            if (!returnTo.isNullOrBlank()) {
+                add("returnTo=${URLEncoder.encode(returnTo, StandardCharsets.UTF_8)}")
+            }
+        }
+        val query = if (queryParts.isEmpty()) "" else "?${queryParts.joinToString("&")}"
+        return "$normalizedBaseUrl/api/auth/oidc/start$query"
     }
 
     fun getReleaseInfo(baseUrl: String): MobileReleaseInfo {
