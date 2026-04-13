@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.4](https://github.com/kriziw/TaskBandit/compare/v0.35.3...v0.35.4) (2026-04-13)
+
+
+### Bug Fixes
+
+* simplify template language editing ([#232](https://github.com/kriziw/TaskBandit/issues/232)) ([a8abe61](https://github.com/kriziw/TaskBandit/commit/a8abe61c854fc494f5aee9e9e64b2a9aaa9dc681))
+
 ## [0.35.3](https://github.com/kriziw/TaskBandit/compare/v0.35.2...v0.35.3) (2026-04-13)
 
 
