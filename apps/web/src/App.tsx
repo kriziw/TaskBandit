@@ -860,16 +860,30 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }, [activePage, language, payload?.currentUser.role, token]);
 
   useEffect(() => {
-    window.localStorage.setItem(getWorkspacePageStorageKey(workspaceVariant), activePage);
     const currentUrl = new URL(window.location.href);
+
+    if (!payload) {
+      const hashValue = currentUrl.hash.replace(/^#/, "").trim();
+      if (isWorkspacePage(hashValue)) {
+        currentUrl.hash = "";
+        window.history.replaceState({}, document.title, currentUrl.toString());
+      }
+      return;
+    }
+
+    window.localStorage.setItem(getWorkspacePageStorageKey(workspaceVariant), activePage);
     if (currentUrl.hash !== `#${activePage}`) {
       currentUrl.hash = activePage;
       window.history.replaceState({}, document.title, currentUrl.toString());
     }
-  }, [activePage, workspaceVariant]);
+  }, [activePage, payload, workspaceVariant]);
 
   useEffect(() => {
     const onHashChange = () => {
+      if (!payload) {
+        return;
+      }
+
       const hashValue = window.location.hash.replace(/^#/, "").trim();
       if (isWorkspacePage(hashValue)) {
         setActivePage(hashValue);
@@ -878,7 +892,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, []);
+  }, [payload]);
 
   useEffect(() => {
     let cancelled = false;
