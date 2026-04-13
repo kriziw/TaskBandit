@@ -96,6 +96,8 @@
     <string name="mobile_hide_details">Close task</string>
     <string name="mobile_create_title">Create chores</string>
     <string name="mobile_create_hint">Secondary flow: create a chore from a template with one tap.</string>
+    <string name="mobile_create_group">Group</string>
+    <string name="mobile_create_select_group_prompt">Select a group…</string>
     <string name="mobile_create_select_template_prompt">Select a type…</string>
     <string name="mobile_create_repeat_every_x_days_option">Every X days</string>
     <string name="mobile_create_interval_days_label">Interval (days)</string>

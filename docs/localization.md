@@ -22,6 +22,8 @@ TaskBandit now includes a first-pass localization foundation with language files
 - The server uses language files for user-facing API messages such as bootstrap conflicts and language discovery.
 - The web app uses JSON dictionaries with a runtime language picker.
 - The Android app uses localized string resources for the current shell UI.
+- Default starter templates are shipped with English, German, and Hungarian group, type, sub-type, checklist, and follow-up labels so a fresh household can import useful translated templates during first setup.
+- User-created templates remain household data. Admins and parent users maintain their translated group, type, sub-type, and description values in the web admin template editor.
 
 ## Next Steps
 

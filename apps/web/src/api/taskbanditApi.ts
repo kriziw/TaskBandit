@@ -7,6 +7,7 @@ import type {
   AuthResponse,
   BackupReadiness,
   BootstrapHouseholdInput,
+  BootstrapStarterTemplateOption,
   BootstrapStatus,
   ChoreInstance,
   ChoreTemplate,
@@ -124,6 +125,9 @@ export const taskBanditApi = {
   },
   getBootstrapStatus(language: AppLanguage) {
     return request<BootstrapStatus>("/api/bootstrap/status", { language });
+  },
+  getBootstrapStarterTemplates(language: AppLanguage) {
+    return request<BootstrapStarterTemplateOption[]>("/api/bootstrap/starter-templates", { language });
   },
   bootstrapHousehold(language: AppLanguage, input: BootstrapHouseholdInput) {
     return request("/api/bootstrap/household", {

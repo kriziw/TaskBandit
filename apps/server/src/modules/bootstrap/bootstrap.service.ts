@@ -5,6 +5,7 @@ import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { BootstrapHouseholdDto } from "./dto/bootstrap-household.dto";
+import { getStarterTemplateOptionCatalog } from "./starter-templates.catalog";
 
 @Injectable()
 export class BootstrapService implements OnModuleInit {
@@ -23,6 +24,10 @@ export class BootstrapService implements OnModuleInit {
     return this.repository.getBootstrapStatus();
   }
 
+  getStarterTemplateOptions(language: SupportedLanguage) {
+    return getStarterTemplateOptionCatalog(language);
+  }
+
   async bootstrapHousehold(dto: BootstrapHouseholdDto, language: SupportedLanguage) {
     const status = await this.repository.getBootstrapStatus();
     if (status.isBootstrapped) {
@@ -38,7 +43,9 @@ export class BootstrapService implements OnModuleInit {
       dto.ownerDisplayName,
       dto.ownerEmail,
       passwordHash,
-      dto.selfSignupEnabled
+      dto.selfSignupEnabled,
+      dto.starterTemplateKeys,
+      language
     );
   }
 }

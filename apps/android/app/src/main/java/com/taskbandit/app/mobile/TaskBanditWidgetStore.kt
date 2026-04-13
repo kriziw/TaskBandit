@@ -30,6 +30,7 @@ class TaskBanditWidgetStore(
                             JSONObject()
                                 .put("id", chore.id)
                                 .put("title", chore.title)
+                                .put("groupTitle", chore.groupTitle)
                                 .put("typeTitle", chore.typeTitle)
                                 .put("subtypeLabel", chore.subtypeLabel)
                                 .put("state", chore.state)
@@ -77,6 +78,7 @@ class TaskBanditWidgetStore(
                     MobileChore(
                         id = entry.optString("id"),
                         title = entry.optString("title"),
+                        groupTitle = entry.optString("groupTitle").ifBlank { "General" },
                         typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
                         subtypeLabel = entry.optString("subtypeLabel").ifBlank { null },
                         state = entry.optString("state"),

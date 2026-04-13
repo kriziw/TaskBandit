@@ -17,6 +17,8 @@ TaskBandit now includes the first protected submission and review flow for chore
 
 - All chore endpoints require a bearer token.
 - Only `admin` and `parent` users can create chore templates.
+- Templates now use three display layers: group, type, and optional sub-type. The group keeps related work together, the type names the main chore, and the sub-type captures selectable variants such as laundry color or room.
+- Follow-up chores inherit the configured group, type, optional sub-type, checklist, recurrence, proof-photo requirement, and translated labels from their follow-up template.
 - Children can only submit chores assigned to themselves.
 - `admin` and `parent` users can approve or reject chore submissions.
 - Child submissions move to `pending_approval`.
@@ -31,6 +33,8 @@ TaskBandit now includes the first protected submission and review flow for chore
 ## Notes
 
 - This is the first workflow slice, not the final one.
+- Fresh household setup can import a curated starter template catalog with English, German, and Hungarian labels. The import is optional and selected with checkboxes during bootstrap.
+- The admin template editor groups templates by group and uses compact locale tabs so translated group, type, and description text can be maintained without making the editor excessively tall.
 - Submission payloads now persist checklist completion records and attachment metadata.
 - Historic chore views distinguish completed timestamps from cancelled timestamps.
 - Takeover penalty deductions never drive a member's point balance below zero.

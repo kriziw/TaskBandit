@@ -96,6 +96,8 @@
     <string name="mobile_hide_details">Aufgabe schlieÃŸen</string>
     <string name="mobile_create_title">Aufgaben erstellen</string>
     <string name="mobile_create_hint">SekundÃ¤rer Ablauf: Erstelle mit einem Tippen eine Aufgabe aus einer Vorlage.</string>
+    <string name="mobile_create_group">Gruppe</string>
+    <string name="mobile_create_select_group_prompt">Gruppe auswÃ¤hlenâ€¦</string>
     <string name="mobile_create_select_template_prompt">Typ auswÃ¤hlenâ€¦</string>
     <string name="mobile_create_repeat_every_x_days_option">Alle X Tage</string>
     <string name="mobile_create_interval_days_label">Intervall (Tage)</string>

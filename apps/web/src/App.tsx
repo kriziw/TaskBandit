@@ -14,6 +14,7 @@ import type {
   AdminSystemStatus,
   AuditLogEntry,
   BackupReadiness,
+  BootstrapStarterTemplateOption,
   ChoreAttachment,
   AuthProviders,
   AuthenticatedUser,
@@ -95,7 +96,9 @@ type AuthPanelMode = "sign_in" | "password_reset_request" | "sign_up";
 type MemberFormState = CreateHouseholdMemberInput;
 type MemberEditFormState = UpdateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
-type InstanceFormState = CreateChoreInstanceInput;
+type InstanceFormState = CreateChoreInstanceInput & {
+  templateGroupTitle?: string;
+};
 type BootstrapFormState = BootstrapHouseholdInput;
 type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
@@ -192,6 +195,7 @@ function getRandomNumber(max: number) {
 function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): TemplateFormState {
   return {
     defaultLocale,
+    groupTitle: "",
     title: "",
     description: "",
     translations: [],
@@ -487,15 +491,21 @@ function getInitialClientWebPushStatus(): ClientWebPushStatus {
 }
 
 async function fetchAuthEntryState(language: AppLanguage) {
-  const [providers, bootstrapStatus] = await Promise.all([
+  const [providers, bootstrapStatus, starterTemplates] = await Promise.all([
     taskBanditApi.getProviders(language),
-    taskBanditApi.getBootstrapStatus(language)
+    taskBanditApi.getBootstrapStatus(language),
+    taskBanditApi.getBootstrapStarterTemplates(language)
   ]);
 
   return {
     providers,
-    bootstrapStatus
+    bootstrapStatus,
+    starterTemplates
   };
+}
+
+function sortByLabel<T>(items: T[], getLabel: (item: T) => string) {
+  return [...items].sort((left, right) => getLabel(left).localeCompare(getLabel(right)));
 }
 
 const currentWebReleaseInfo: ReleaseInfo = {
@@ -517,6 +527,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
   const [providers, setProviders] = useState<AuthProviders | null>(null);
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
+  const [bootstrapStarterTemplates, setBootstrapStarterTemplates] = useState<BootstrapStarterTemplateOption[]>([]);
   const [isAuthEntryLoading, setIsAuthEntryLoading] = useState<boolean>(() => !readStoredToken(workspaceVariant));
   const [didAuthEntryLoadFail, setDidAuthEntryLoadFail] = useState(false);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
@@ -543,7 +554,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     ownerDisplayName: "",
     ownerEmail: "",
     ownerPassword: "",
-    selfSignupEnabled: false
+    selfSignupEnabled: false,
+    starterTemplateKeys: []
   });
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLogEntry[]>([]);
@@ -569,6 +581,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   });
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
+  const [templateSearch, setTemplateSearch] = useState("");
+  const [templateEditorLocale, setTemplateEditorLocale] = useState<TemplateTranslationLocale>(language);
+  const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
   const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
   const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
@@ -672,6 +687,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
         setProviders(response.providers);
         setBootstrapStatus(response.bootstrapStatus);
+        setBootstrapStarterTemplates(response.starterTemplates);
       })
       .catch(() => {
         if (cancelled) {
@@ -680,6 +696,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
         setProviders(null);
         setBootstrapStatus(null);
+        setBootstrapStarterTemplates([]);
         setDidAuthEntryLoadFail(true);
       })
       .finally(() => {
@@ -699,12 +716,32 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       setRuntimeLogs([]);
       setSettingsDraft(null);
       setNotificationPreferencesDraft(null);
+      setSelectedTemplateGroup("");
       setIsLoading(false);
       return;
     }
 
     void refreshDashboard(token, { silent: false });
   }, [token, language]);
+
+  useEffect(() => {
+    if (token || bootstrapStatus?.isBootstrapped !== false || bootstrapStarterTemplates.length === 0) {
+      return;
+    }
+
+    setBootstrapForm((current) => {
+      if ((current.starterTemplateKeys?.length ?? 0) > 0) {
+        return current;
+      }
+
+      return {
+        ...current,
+        starterTemplateKeys: bootstrapStarterTemplates
+          .filter((template) => template.recommended)
+          .map((template) => template.key)
+      };
+    });
+  }, [token, bootstrapStatus?.isBootstrapped, bootstrapStarterTemplates]);
 
   useEffect(() => {
     if (!token || workspaceVariant !== "client") {
@@ -831,15 +868,49 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return;
     }
 
+    const firstGroupTitle = payload.templates[0].groupTitle;
+    setSelectedTemplateGroup((current) => current || firstGroupTitle);
+
     setInstanceForm((current) =>
       current.templateId
         ? current
         : {
             ...current,
-            templateId: payload.templates[0].id
+            templateId: payload.templates[0].id,
+            templateGroupTitle: firstGroupTitle
       }
     );
   }, [payload]);
+
+  useEffect(() => {
+    if (!payload) {
+      return;
+    }
+
+    const activeGroupTitle =
+      selectedTemplateGroup ||
+      payload.templates.find((template) => template.id === instanceForm.templateId)?.groupTitle ||
+      payload.templates[0]?.groupTitle ||
+      "";
+    const matchingTemplates = payload.templates.filter(
+      (template) => !activeGroupTitle || template.groupTitle === activeGroupTitle
+    );
+    if (matchingTemplates.length === 0) {
+      return;
+    }
+
+    const templateStillVisible = matchingTemplates.some((template) => template.id === instanceForm.templateId);
+    if (templateStillVisible) {
+      return;
+    }
+
+    setInstanceForm((current) => ({
+      ...current,
+      templateId: matchingTemplates[0].id,
+      templateGroupTitle: activeGroupTitle,
+      variantId: undefined
+    }));
+  }, [instanceForm.templateId, payload, selectedTemplateGroup]);
 
   useEffect(() => {
     if (!token || payload?.currentUser.role !== "admin") {
@@ -919,6 +990,82 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const members = payload?.household.members ?? [];
     return new Map(members.map((member) => [member.id, member]));
   }, [payload]);
+
+  const starterTemplatesByGroup = useMemo(() => {
+    const grouped = new Map<string, BootstrapStarterTemplateOption[]>();
+    for (const template of bootstrapStarterTemplates) {
+      const currentTemplates = grouped.get(template.groupTitle) ?? [];
+      currentTemplates.push(template);
+      grouped.set(template.groupTitle, currentTemplates);
+    }
+
+    return sortByLabel(
+      [...grouped.entries()].map(([groupTitle, templates]) => ({
+        groupTitle,
+        templates: sortByLabel(templates, (template) => template.title)
+      })),
+      (entry) => entry.groupTitle
+    );
+  }, [bootstrapStarterTemplates]);
+
+  const templateGroups = useMemo(() => {
+    const grouped = new Map<string, ChoreTemplate[]>();
+    for (const template of payload?.templates ?? []) {
+      const currentTemplates = grouped.get(template.groupTitle) ?? [];
+      currentTemplates.push(template);
+      grouped.set(template.groupTitle, currentTemplates);
+    }
+
+    return sortByLabel(
+      [...grouped.entries()].map(([groupTitle, templates]) => ({
+        groupTitle,
+        templates: sortByLabel(templates, (template) => template.title)
+      })),
+      (entry) => entry.groupTitle
+    );
+  }, [payload?.templates]);
+
+  const templateGroupOptions = useMemo(
+    () => templateGroups.map((entry) => entry.groupTitle),
+    [templateGroups]
+  );
+
+  const normalizedTemplateSearch = templateSearch.trim().toLocaleLowerCase();
+  const filteredTemplateGroups = useMemo(() => {
+    if (!normalizedTemplateSearch) {
+      return templateGroups;
+    }
+
+    return templateGroups
+      .map((entry) => ({
+        ...entry,
+        templates: entry.templates.filter((template) =>
+          [entry.groupTitle, template.title, template.description]
+            .join(" ")
+            .toLocaleLowerCase()
+            .includes(normalizedTemplateSearch)
+        )
+      }))
+      .filter((entry) => entry.templates.length > 0);
+  }, [normalizedTemplateSearch, templateGroups]);
+
+  const visibleScheduleTemplateGroup =
+    selectedTemplateGroup ||
+    payload?.templates.find((template) => template.id === instanceForm.templateId)?.groupTitle ||
+    templateGroupOptions[0] ||
+    "";
+
+  const visibleScheduleTemplates = useMemo(() => {
+    if (!payload) {
+      return [];
+    }
+
+    if (!visibleScheduleTemplateGroup) {
+      return payload.templates;
+    }
+
+    return payload.templates.filter((template) => template.groupTitle === visibleScheduleTemplateGroup);
+  }, [payload, visibleScheduleTemplateGroup]);
 
   const pendingApprovals = useMemo(
     () => payload?.instances.filter((instance) => instance.state === "pending_approval") ?? [],
@@ -1605,6 +1752,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   function renderHouseholdChoreCard(instance: ChoreInstance, options?: { historic?: boolean }) {
     const choreHeading = (
       <div>
+        <p className="inline-message">{instance.groupTitle}</p>
         <strong>{instance.typeTitle || instance.title}</strong>
         {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
       </div>
@@ -1689,6 +1837,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const selectedFiles = selectedProofFiles[instance.id] ?? [];
     const choreHeading = (
       <div>
+        <p className="inline-message">{instance.groupTitle}</p>
         <strong>{instance.typeTitle || instance.title}</strong>
         {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
       </div>
@@ -2483,11 +2632,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const sanitizedTranslations = (templateForm.translations ?? [])
       .map((entry) => ({
         locale: entry.locale,
+        groupTitle: entry.groupTitle?.trim() || undefined,
         title: entry.title?.trim() || undefined,
         description: entry.description?.trim() || undefined
       }))
       .filter((entry) => entry.locale !== templateForm.defaultLocale)
-      .filter((entry) => Boolean(entry.title || entry.description));
+      .filter((entry) => Boolean(entry.groupTitle || entry.title || entry.description));
     const sanitizedVariants = (templateForm.variants ?? [])
       .map((variant) => ({
         id: variant.id,
@@ -2507,6 +2657,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const templatePayload = {
         ...templateForm,
         defaultLocale: templateForm.defaultLocale ?? language,
+        groupTitle: templateForm.groupTitle.trim(),
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
         translations: sanitizedTranslations,
@@ -2527,9 +2678,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               templates: editingTemplateId
                 ? current.templates
                     .map((template) => (template.id === editingTemplateId ? savedTemplate : template))
-                    .sort((left, right) => left.title.localeCompare(right.title))
+                    .sort((left, right) =>
+                      left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title)
+                    )
                 : [...current.templates, savedTemplate].sort((left, right) =>
-                    left.title.localeCompare(right.title)
+                    left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title)
                   )
             }
           : current
@@ -2669,6 +2822,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       const header = [
         "id",
+        "group",
         "type",
         "subtype",
         "title",
@@ -2687,6 +2841,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ];
       const rows = exportableChores.map((instance) => [
         instance.id,
+        instance.groupTitle || "",
         instance.typeTitle || "",
         instance.subtypeLabel ?? "",
         instance.title,
@@ -2986,19 +3141,64 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     return t("language.english");
   }
 
+  function formatTemplateDisplayName(template: Pick<ChoreTemplate, "groupTitle" | "title">) {
+    return `${template.groupTitle} / ${template.title}`;
+  }
+
+  function getTemplateTranslation(locale: TemplateTranslationLocale) {
+    return (templateForm.translations ?? []).find((entry) => entry.locale === locale);
+  }
+
+  function toggleBootstrapStarterTemplate(key: string, enabled: boolean) {
+    setBootstrapForm((current) => {
+      const selectedKeys = new Set(current.starterTemplateKeys ?? []);
+      if (enabled) {
+        selectedKeys.add(key);
+      } else {
+        selectedKeys.delete(key);
+      }
+
+      return {
+        ...current,
+        starterTemplateKeys: [...selectedKeys]
+      };
+    });
+  }
+
+  function setBootstrapStarterGroupSelection(keys: string[], enabled: boolean) {
+    setBootstrapForm((current) => {
+      const selectedKeys = new Set(current.starterTemplateKeys ?? []);
+      for (const key of keys) {
+        if (enabled) {
+          selectedKeys.add(key);
+        } else {
+          selectedKeys.delete(key);
+        }
+      }
+
+      return {
+        ...current,
+        starterTemplateKeys: [...selectedKeys]
+      };
+    });
+  }
+
   function updateTemplateTranslation(
     locale: AppLanguage,
-    nextValue: Partial<Pick<LocalizedTemplateTranslation, "title" | "description">>
+    nextValue: Partial<Pick<LocalizedTemplateTranslation, "groupTitle" | "title" | "description">>
   ) {
     setTemplateForm((current) => {
       const existingEntries = current.translations ?? [];
       const existingEntry = existingEntries.find((entry) => entry.locale === locale);
       const mergedEntry: LocalizedTemplateTranslation = {
         locale,
+        groupTitle: nextValue.groupTitle ?? existingEntry?.groupTitle,
         title: nextValue.title ?? existingEntry?.title,
         description: nextValue.description ?? existingEntry?.description
       };
-      const hasContent = Boolean(mergedEntry.title?.trim() || mergedEntry.description?.trim());
+      const hasContent = Boolean(
+        mergedEntry.groupTitle?.trim() || mergedEntry.title?.trim() || mergedEntry.description?.trim()
+      );
       const filteredEntries = existingEntries.filter((entry) => entry.locale !== locale);
 
       return {
@@ -3145,6 +3345,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function resetTemplateForm() {
     setEditingTemplateId(null);
+    setTemplateEditorLocale(language);
     setTemplateForm(createEmptyTemplateForm(language));
   }
 
@@ -3152,6 +3353,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setEditingInstanceId(null);
     setInstanceForm((current) => ({
       ...current,
+      templateGroupTitle: visibleScheduleTemplateGroup,
       assigneeId: "",
       title: "",
       dueAt: "",
@@ -3163,8 +3365,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function startEditingTemplate(template: ChoreTemplate) {
     setEditingTemplateId(template.id);
+    setTemplateSearch(template.title);
+    setTemplateEditorLocale(template.defaultLocale);
     setTemplateForm({
       defaultLocale: template.defaultLocale,
+      groupTitle: template.groupTitle,
       title: template.title,
       description: template.description,
       translations: template.translations?.map((entry) => ({ ...entry })) ?? [],
@@ -3472,7 +3677,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return null;
     }
 
-    const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
+    const selectedTemplate = visibleScheduleTemplates.find(
+      (template) => template.id === instanceForm.templateId
+    ) ?? payload.templates.find((template) => template.id === instanceForm.templateId);
     const selectedTemplateRepeats =
       !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
 
@@ -3484,6 +3691,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         </div>
         <form className="login-form member-form" onSubmit={handleCreateInstance}>
           <label>
+            <span>{t("instances.group")}</span>
+            <select
+              value={visibleScheduleTemplateGroup}
+              onChange={(event) => {
+                const nextGroupTitle = event.target.value;
+                setSelectedTemplateGroup(nextGroupTitle);
+                setInstanceForm((current) => ({
+                  ...current,
+                  templateGroupTitle: nextGroupTitle,
+                  variantId: undefined
+                }));
+              }}
+            >
+              {templateGroupOptions.map((groupTitle) => (
+                <option key={groupTitle} value={groupTitle}>
+                  {groupTitle}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label>
             <span>{t("instances.template")}</span>
             <select
               value={instanceForm.templateId}
@@ -3491,11 +3719,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 setInstanceForm((current) => ({
                   ...current,
                   templateId: event.target.value,
+                  templateGroupTitle: visibleScheduleTemplateGroup,
                   variantId: undefined
                 }))
               }
             >
-              {payload.templates.map((template) => (
+              {visibleScheduleTemplates.map((template) => (
                 <option key={template.id} value={template.id}>
                   {template.title}
                 </option>
@@ -3897,6 +4126,76 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     }
                   />
                 </label>
+                {starterTemplatesByGroup.length > 0 ? (
+                  <div className="stack-list compact-stack">
+                    <div className="section-heading">
+                      <h3>{t("bootstrap.starter_templates")}</h3>
+                      <span className="section-kicker">
+                        {bootstrapForm.starterTemplateKeys?.length ?? 0}
+                      </span>
+                    </div>
+                    <p className="inline-message">{t("bootstrap.starter_templates_hint")}</p>
+                    {starterTemplatesByGroup.map((group) => {
+                      const groupKeys = group.templates.map((template) => template.key);
+                      const selectedCount = groupKeys.filter((key) =>
+                        (bootstrapForm.starterTemplateKeys ?? []).includes(key)
+                      ).length;
+                      const allSelected = selectedCount === groupKeys.length;
+                      const someSelected = selectedCount > 0 && !allSelected;
+
+                      return (
+                        <div className="task-row compact" key={group.groupTitle}>
+                          <div className="task-row-header align-start">
+                            <div>
+                              <strong>{group.groupTitle}</strong>
+                              <p className="inline-message">
+                                {t("bootstrap.starter_group_selected")
+                                  .replace("{selected}", String(selectedCount))
+                                  .replace("{total}", String(groupKeys.length))}
+                              </p>
+                            </div>
+                            <button
+                              className="ghost-button"
+                              type="button"
+                              onClick={() =>
+                                setBootstrapStarterGroupSelection(groupKeys, !allSelected)
+                              }
+                            >
+                              {allSelected ? t("bootstrap.clear_group") : t("bootstrap.select_group")}
+                            </button>
+                          </div>
+                          <div className="stack-list">
+                            {group.templates.map((template) => {
+                              const checked = (bootstrapForm.starterTemplateKeys ?? []).includes(template.key);
+                              return (
+                                <label className="toggle-row align-start" key={template.key}>
+                                  <span>
+                                    <strong>{template.title}</strong>
+                                    <small className="inline-message">{template.description}</small>
+                                    {template.followUps.length > 0 ? (
+                                      <small className="inline-message">
+                                        {t("bootstrap.starter_follow_ups")}:{" "}
+                                        {template.followUps.map((followUp) => followUp.title).join(", ")}
+                                      </small>
+                                    ) : null}
+                                  </span>
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    aria-checked={someSelected && !checked ? "mixed" : checked}
+                                    onChange={(event) =>
+                                      toggleBootstrapStarterTemplate(template.key, event.target.checked)
+                                    }
+                                  />
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : null}
                 <button className="primary-button" type="submit" disabled={busyAction === "bootstrap"}>
                   {t("bootstrap.create")}
                 </button>
@@ -4291,6 +4590,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       <div className="task-row" key={instance.id}>
                         <div className="task-row-header">
                           <div>
+                            <p className="inline-message">{instance.groupTitle}</p>
                             <strong>{instance.typeTitle || instance.title}</strong>
                             {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
                           </div>
@@ -6077,96 +6377,108 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
                   </div>
-                  <div className="stack-list">
-                    {payload.templates.map((template) => (
-                      <div className="task-row compact" key={template.id}>
-                        <div className="task-row-header">
-                          <strong>{template.title}</strong>
-                          <span className="status-pill">{t(`difficulty.${template.difficulty}`)}</span>
-                        </div>
-                        <p>{template.description}</p>
-                        <p>
-                          {t("templates.strategy")}: {t(`assignment.${template.assignmentStrategy}`)}
-                        </p>
-                        <p>
-                          {t("templates.recurrence")}: {formatTemplateRecurrence(template)}
-                        </p>
-                        <p>
-                          {t("templates.base_points")}: {template.basePoints}
-                        </p>
-                        <p>
-                          {template.requirePhotoProof
-                            ? t("templates.photo_required")
-                            : t("templates.photo_optional")}
-                        </p>
-                        {normalizeTemplateDependencyRules(
-                          template.dependencyRules,
-                          template.dependencyTemplateIds
-                        ).length > 0 ? (
-                          <p>
-                            {t("templates.follow_ups")}:{" "}
-                            {normalizeTemplateDependencyRules(
-                              template.dependencyRules,
-                              template.dependencyTemplateIds
-                            )
-                              .map((dependencyRule) => {
-                                const followUpTemplateName =
-                                  payload.templates.find(
-                                    (candidate) => candidate.id === dependencyRule.templateId
-                                  )?.title ?? t("common.unknown");
-
-                                return `${followUpTemplateName} (+${formatFollowUpDelayLabel(dependencyRule)})`;
-                              })
-                              .join(", ")}
-                          </p>
-                        ) : (
-                          <p className="inline-message">{t("templates.no_follow_ups")}</p>
-                        )}
-                        {template.checklist.length > 0 ? (
-                          <ul className="simple-list compact-list">
-                            {template.checklist.map((item) => (
-                              <li key={item.id}>
-                                {item.title}
-                                {item.required ? ` - ${t("task.required")}` : ""}
-                              </li>
-                            ))}
-                          </ul>
-                        ) : (
-                          <p className="inline-message">{t("templates.no_checklist")}</p>
-                        )}
-                        <div className="button-row">
-                          <button
-                            className="ghost-button"
-                            type="button"
-                            onClick={() => startEditingTemplate(template)}
-                          >
-                            {t("common.edit")}
-                          </button>
-                          <button
-                            className="ghost-button"
-                            type="button"
-                            disabled={busyAction === `delete-template:${template.id}`}
-                            onClick={() => void handleDeleteTemplate(template.id)}
-                          >
-                            {busyAction === `delete-template:${template.id}`
-                              ? t("templates.deleting")
-                              : t("common.delete")}
-                          </button>
-                        </div>
+                  <div className="template-admin-layout">
+                    <div className="stack-list template-browser-panel">
+                      <label>
+                        <span>{t("templates.search")}</span>
+                        <input
+                          type="search"
+                          value={templateSearch}
+                          onChange={(event) => setTemplateSearch(event.target.value)}
+                          placeholder={t("templates.search_placeholder")}
+                        />
+                      </label>
+                      <div className="button-row">
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          onClick={() => {
+                            setTemplateSearch("");
+                            resetTemplateForm();
+                          }}
+                        >
+                          {t("templates.new_template")}
+                        </button>
                       </div>
-                    ))}
-                  </div>
-                  <form className="login-form member-form" onSubmit={handleCreateTemplate}>
+                      {filteredTemplateGroups.length === 0 ? (
+                        <p className="inline-message">{t("templates.search_empty")}</p>
+                      ) : (
+                        filteredTemplateGroups.map((group) => (
+                          <section className="template-group-block" key={group.groupTitle}>
+                            <div className="section-heading">
+                              <h3>{group.groupTitle}</h3>
+                              <span className="section-kicker">{group.templates.length}</span>
+                            </div>
+                            <div className="stack-list compact-stack">
+                              {group.templates.map((template) => (
+                                <button
+                                  className={`template-browser-card ${
+                                    editingTemplateId === template.id ? "active" : ""
+                                  }`}
+                                  key={template.id}
+                                  type="button"
+                                  onClick={() => startEditingTemplate(template)}
+                                >
+                                  <div className="task-row-header align-start">
+                                    <div>
+                                      <strong>{template.title}</strong>
+                                      <p className="inline-message">{template.description}</p>
+                                    </div>
+                                    <span className="status-pill">{t(`difficulty.${template.difficulty}`)}</span>
+                                  </div>
+                                  <p>
+                                    {t("templates.recurrence")}: {formatTemplateRecurrence(template)}
+                                  </p>
+                                  <p>
+                                    {template.requirePhotoProof
+                                      ? t("templates.photo_required")
+                                      : t("templates.photo_optional")}
+                                  </p>
+                                  {normalizeTemplateDependencyRules(
+                                    template.dependencyRules,
+                                    template.dependencyTemplateIds
+                                  ).length > 0 ? (
+                                    <p>
+                                      {t("templates.follow_ups")}:{" "}
+                                      {normalizeTemplateDependencyRules(
+                                        template.dependencyRules,
+                                        template.dependencyTemplateIds
+                                      )
+                                        .map((dependencyRule) => {
+                                          const followUpTemplateName =
+                                            payload.templates.find(
+                                              (candidate) => candidate.id === dependencyRule.templateId
+                                            )?.title ?? t("common.unknown");
+
+                                          return `${followUpTemplateName} (+${formatFollowUpDelayLabel(
+                                            dependencyRule
+                                          )})`;
+                                        })
+                                        .join(", ")}
+                                    </p>
+                                  ) : (
+                                    <p className="inline-message">{t("templates.no_follow_ups")}</p>
+                                  )}
+                                </button>
+                              ))}
+                            </div>
+                          </section>
+                        ))
+                      )}
+                    </div>
+                  <form className="login-form member-form template-editor-panel" onSubmit={handleCreateTemplate}>
                     <label>
                       <span>{t("templates.default_locale")}</span>
                       <select
                         value={templateForm.defaultLocale ?? language}
-                        onChange={(event) =>
+                        onChange={(event) => {
+                          const nextLocale = event.target.value as TemplateTranslationLocale;
                           setTemplateForm((current) => ({
                             ...current,
-                            defaultLocale: event.target.value as TemplateTranslationLocale
-                          }))
-                        }
+                            defaultLocale: nextLocale
+                          }));
+                          setTemplateEditorLocale(nextLocale);
+                        }}
                       >
                         {templateTranslationLocales.map((locale) => (
                           <option key={locale} value={locale}>
@@ -6174,6 +6486,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           </option>
                         ))}
                       </select>
+                    </label>
+                    <label>
+                      <span>{t("templates.group_name")}</span>
+                      <input
+                        type="text"
+                        value={templateForm.groupTitle}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({ ...current, groupTitle: event.target.value }))
+                        }
+                      />
                     </label>
                     <label>
                       <span>{t("templates.default_title")}</span>
@@ -6198,42 +6520,64 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <div className="stack-list">
                       <div className="section-heading">
                         <h3>{t("templates.translations")}</h3>
-                        <span className="section-kicker">
-                          {templateTranslationLocales.filter(
-                            (locale) => locale !== (templateForm.defaultLocale ?? language)
-                          ).length}
-                        </span>
+                        <span className="section-kicker">{getLanguageLabel(templateEditorLocale)}</span>
                       </div>
                       <p className="inline-message">{t("templates.translations_hint")}</p>
-                      {templateTranslationLocales
-                        .filter((locale) => locale !== (templateForm.defaultLocale ?? language))
-                        .map((locale) => {
-                          const translation = (templateForm.translations ?? []).find(
-                            (entry) => entry.locale === locale
-                          );
-
+                      <div className="segmented-toggle" role="tablist" aria-label={t("templates.translations")}>
+                        {templateTranslationLocales.map((locale) => (
+                          <button
+                            key={locale}
+                            className={templateEditorLocale === locale ? "active" : ""}
+                            type="button"
+                            onClick={() => setTemplateEditorLocale(locale)}
+                          >
+                            {getLanguageLabel(locale)}
+                          </button>
+                        ))}
+                      </div>
+                      {templateEditorLocale === (templateForm.defaultLocale ?? language) ? (
+                        <p className="inline-message">{t("templates.default_locale_live_hint")}</p>
+                      ) : (
+                        (() => {
+                          const translation = getTemplateTranslation(templateEditorLocale);
                           return (
-                            <div className="task-row compact" key={locale}>
+                            <div className="task-row compact">
                               <label>
                                 <span>
-                                  {getLanguageLabel(locale)} {t("templates.title")}
+                                  {getLanguageLabel(templateEditorLocale)} {t("templates.group_name")}
                                 </span>
                                 <input
                                   type="text"
-                                  value={translation?.title ?? ""}
+                                  value={translation?.groupTitle ?? ""}
                                   onChange={(event) =>
-                                    updateTemplateTranslation(locale, { title: event.target.value })
+                                    updateTemplateTranslation(templateEditorLocale, {
+                                      groupTitle: event.target.value
+                                    })
                                   }
                                 />
                               </label>
                               <label>
                                 <span>
-                                  {getLanguageLabel(locale)} {t("templates.description")}
+                                  {getLanguageLabel(templateEditorLocale)} {t("templates.title")}
+                                </span>
+                                <input
+                                  type="text"
+                                  value={translation?.title ?? ""}
+                                  onChange={(event) =>
+                                    updateTemplateTranslation(templateEditorLocale, {
+                                      title: event.target.value
+                                    })
+                                  }
+                                />
+                              </label>
+                              <label>
+                                <span>
+                                  {getLanguageLabel(templateEditorLocale)} {t("templates.description")}
                                 </span>
                                 <textarea
                                   value={translation?.description ?? ""}
                                   onChange={(event) =>
-                                    updateTemplateTranslation(locale, {
+                                    updateTemplateTranslation(templateEditorLocale, {
                                       description: event.target.value
                                     })
                                   }
@@ -6242,7 +6586,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               </label>
                             </div>
                           );
-                        })}
+                        })()
+                      )}
                     </div>
                     <label>
                       <span>{t("templates.difficulty")}</span>
@@ -6458,7 +6803,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           return (
                             <div className="task-row compact" key={template.id}>
                               <label className="toggle-row">
-                                <span>{template.title}</span>
+                                <span>{formatTemplateDisplayName(template)}</span>
                                 <input
                                   type="checkbox"
                                   checked={selected}
@@ -6551,11 +6896,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       {editingTemplateId ? t("templates.save") : t("templates.create")}
                     </button>
                     {editingTemplateId ? (
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        disabled={busyAction === `delete-template:${editingTemplateId}`}
+                        onClick={() => void handleDeleteTemplate(editingTemplateId)}
+                      >
+                        {busyAction === `delete-template:${editingTemplateId}`
+                          ? t("templates.deleting")
+                          : t("common.delete")}
+                      </button>
+                    ) : null}
+                    {editingTemplateId ? (
                       <button className="ghost-button" type="button" onClick={resetTemplateForm}>
                         {t("common.cancel")}
                       </button>
-                    ) : null}
+                    ) : (
+                      <button className="ghost-button" type="button" onClick={resetTemplateForm}>
+                        {t("templates.clear_editor")}
+                      </button>
+                    )}
                   </form>
+                  </div>
                 </article>
 
               </>
