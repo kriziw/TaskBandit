@@ -5938,6 +5938,19 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         {payload.systemStatus.storage.runtimeLogFilePath}
                       </p>
                       <p>
+                        {t("system_status.runtime_log_limit_per_file")}:{" "}
+                        {payload.systemStatus.storage.runtimeLogMaxFileSizeMb} MB
+                      </p>
+                      <p>
+                        {t("system_status.runtime_log_limit_total")}:{" "}
+                        {payload.systemStatus.storage.runtimeLogMaxTotalSizeMb} MB
+                      </p>
+                      <p>
+                        {t("system_status.docker_log_limit")}:{" "}
+                        {payload.systemStatus.storage.dockerLogMaxSize} x{" "}
+                        {payload.systemStatus.storage.dockerLogMaxFiles}
+                      </p>
+                      <p>
                         {t("system_status.storage_hint")}:{" "}
                         {payload.systemStatus.storage.error ?? t("system_status.ok")}
                       </p>

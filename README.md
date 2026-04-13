@@ -89,6 +89,8 @@ TASKBANDIT_DOCKER_LOG_MAX_SIZE=100m
 TASKBANDIT_DOCKER_LOG_MAX_FILES=5
 ```
 
+The admin system status view also shows the effective runtime and Docker log limits as read-only values, so operators can confirm what the running stack picked up from `.env`.
+
 If you change these values later, recreate the containers so Docker picks up the updated container log policy.
 
 ## Repository Layout

@@ -425,6 +425,10 @@ export class DashboardService {
         status: "ready" as const,
         rootPath,
         runtimeLogFilePath,
+        runtimeLogMaxFileSizeMb: this.appConfigService.runtimeLogMaxFileSizeMb,
+        runtimeLogMaxTotalSizeMb: this.appConfigService.runtimeLogMaxTotalSizeMb,
+        dockerLogMaxSize: this.appConfigService.dockerLogMaxSize,
+        dockerLogMaxFiles: this.appConfigService.dockerLogMaxFiles,
         error: null
       };
     } catch (error) {
@@ -432,6 +436,10 @@ export class DashboardService {
         status: "error" as const,
         rootPath,
         runtimeLogFilePath,
+        runtimeLogMaxFileSizeMb: this.appConfigService.runtimeLogMaxFileSizeMb,
+        runtimeLogMaxTotalSizeMb: this.appConfigService.runtimeLogMaxTotalSizeMb,
+        dockerLogMaxSize: this.appConfigService.dockerLogMaxSize,
+        dockerLogMaxFiles: this.appConfigService.dockerLogMaxFiles,
         error: error instanceof Error ? error.message : "Storage path is not writable."
       };
     }
