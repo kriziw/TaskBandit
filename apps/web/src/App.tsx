@@ -555,6 +555,7 @@ const currentWebReleaseInfo: ReleaseInfo = {
   buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
   commitSha: import.meta.env.VITE_TASKBANDIT_COMMIT_SHA ?? "local"
 };
+const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
@@ -573,8 +574,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [isAuthEntryLoading, setIsAuthEntryLoading] = useState<boolean>(() => !readStoredToken(workspaceVariant));
   const [authEntryError, setAuthEntryError] = useState<string | null>(null);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
-    email: "alex@taskbandit.local",
-    password: "TaskBandit123!"
+    email: "",
+    password: ""
   });
   const [signupForm, setSignupForm] = useState<SignupFormState>({
     displayName: "",
@@ -1012,22 +1013,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   useEffect(() => {
     let cancelled = false;
+    const refreshReleaseInfo = () =>
+      taskBanditApi
+        .getReleaseInfo(language)
+        .then((releaseInfo) => {
+          if (!cancelled) {
+            setServerReleaseInfo(releaseInfo);
+          }
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setServerReleaseInfo(null);
+          }
+        });
 
-    void taskBanditApi
-      .getReleaseInfo(language)
-      .then((releaseInfo) => {
-        if (!cancelled) {
-          setServerReleaseInfo(releaseInfo);
-        }
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setServerReleaseInfo(null);
-        }
-      });
+    void refreshReleaseInfo();
+    const intervalId = window.setInterval(() => {
+      void refreshReleaseInfo();
+    }, releaseInfoRefreshIntervalMs);
 
     return () => {
       cancelled = true;
+      window.clearInterval(intervalId);
     };
   }, [language]);
 
@@ -4199,21 +4206,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
       {notice ? <div className="notice-banner success">{notice}</div> : null}
       {pageError ? <div className="notice-banner error">{pageError}</div> : null}
-      {showAvailableUpdateNotice && availableUpdate ? (
-        <div className="notice-banner info update-banner">
-          <div>
-            <strong>{t("release.update_available_title")}</strong>
-            <p>
-              {t("release.update_available_body")
-                .replace("{current}", formatReleaseLabel(currentWebReleaseInfo))
-                .replace("{latest}", formatReleaseLabel(availableUpdate))}
-            </p>
-          </div>
-          <button className="ghost-button" type="button" onClick={handleDismissAvailableUpdate}>
-            {t("release.dismiss_update")}
-          </button>
-        </div>
-      ) : null}
       {showInstallPrompt ? (
         <div className="notice-banner info update-banner">
           <div>
@@ -7369,6 +7361,23 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <span className="app-release-chip">
               {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
             </span>
+          ) : null}
+          {showAvailableUpdateNotice && availableUpdate ? (
+            <div className="app-release-update-chip" role="status" aria-live="polite">
+              <span className="app-release-chip app-release-chip-highlight">
+                {t("release.update_available_chip").replace(
+                  "{release}",
+                  formatReleaseLabel(availableUpdate)
+                )}
+              </span>
+              <button
+                className="app-release-dismiss"
+                type="button"
+                onClick={handleDismissAvailableUpdate}
+              >
+                {t("release.dismiss_update")}
+              </button>
+            </div>
           ) : null}
         </div>
       </footer>
