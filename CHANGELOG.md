@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.0](https://github.com/kriziw/TaskBandit/compare/v0.34.5...v0.35.0) (2026-04-13)
+
+
+### Features
+
+* add grouped starter templates ([#224](https://github.com/kriziw/TaskBandit/issues/224)) ([ed0e0b0](https://github.com/kriziw/TaskBandit/commit/ed0e0b0c57778e42c375d5d0125a44286a941080))
+
 ## [0.34.5](https://github.com/kriziw/TaskBandit/compare/v0.34.4...v0.34.5) (2026-04-13)
 
 
