@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.3](https://github.com/kriziw/TaskBandit/compare/v0.35.2...v0.35.3) (2026-04-13)
+
+
+### Bug Fixes
+
+* streamline admin template management ([#230](https://github.com/kriziw/TaskBandit/issues/230)) ([46e44fd](https://github.com/kriziw/TaskBandit/commit/46e44fd3538a6d74181f31b727082edf2a8782cf))
+
 ## [0.35.2](https://github.com/kriziw/TaskBandit/compare/v0.35.1...v0.35.2) (2026-04-13)
 
 
