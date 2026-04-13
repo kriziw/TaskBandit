@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.2](https://github.com/kriziw/TaskBandit/compare/v0.35.1...v0.35.2) (2026-04-13)
+
+
+### Bug Fixes
+
+* guide first household setup ([#228](https://github.com/kriziw/TaskBandit/issues/228)) ([403c4a8](https://github.com/kriziw/TaskBandit/commit/403c4a8628817f0b75dfd691cbc6a962c721a3e5))
+
 ## [0.35.1](https://github.com/kriziw/TaskBandit/compare/v0.35.0...v0.35.1) (2026-04-13)
 
 
