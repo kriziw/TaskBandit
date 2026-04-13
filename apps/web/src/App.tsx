@@ -557,6 +557,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     selfSignupEnabled: false,
     starterTemplateKeys: []
   });
+  const [bootstrapSetupStep, setBootstrapSetupStep] =
+    useState<"account" | "templates" | "review">("account");
+  const [selectedBootstrapStarterGroup, setSelectedBootstrapStarterGroup] = useState("");
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLogEntry[]>([]);
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
@@ -742,6 +745,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       };
     });
   }, [token, bootstrapStatus?.isBootstrapped, bootstrapStarterTemplates]);
+
+  useEffect(() => {
+    if (token || bootstrapStatus?.isBootstrapped !== false) {
+      setBootstrapSetupStep("account");
+    }
+  }, [token, bootstrapStatus?.isBootstrapped]);
 
   useEffect(() => {
     if (!token || workspaceVariant !== "client") {
@@ -1007,6 +1016,56 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       (entry) => entry.groupTitle
     );
   }, [bootstrapStarterTemplates]);
+
+  useEffect(() => {
+    if (starterTemplatesByGroup.length === 0) {
+      setSelectedBootstrapStarterGroup("");
+      return;
+    }
+
+    setSelectedBootstrapStarterGroup((current) =>
+      starterTemplatesByGroup.some((group) => group.groupTitle === current)
+        ? current
+        : starterTemplatesByGroup[0].groupTitle
+    );
+  }, [starterTemplatesByGroup]);
+
+  const activeBootstrapStarterGroup =
+    starterTemplatesByGroup.find((group) => group.groupTitle === selectedBootstrapStarterGroup) ??
+    starterTemplatesByGroup[0] ??
+    null;
+  const selectedStarterTemplateCount = bootstrapForm.starterTemplateKeys?.length ?? 0;
+  const selectedStarterGroupCount = starterTemplatesByGroup.filter((group) =>
+    group.templates.some((template) => (bootstrapForm.starterTemplateKeys ?? []).includes(template.key))
+  ).length;
+  const bootstrapAccountComplete = Boolean(
+    bootstrapForm.householdName.trim() &&
+      bootstrapForm.ownerDisplayName.trim() &&
+      bootstrapForm.ownerEmail.trim() &&
+      bootstrapForm.ownerPassword.trim()
+  );
+  const bootstrapStepItems: Array<{
+    key: typeof bootstrapSetupStep;
+    label: string;
+    helper: string;
+  }> = [
+    {
+      key: "account",
+      label: t("bootstrap.step_account"),
+      helper: t("bootstrap.step_account_helper")
+    },
+    {
+      key: "templates",
+      label: t("bootstrap.step_templates"),
+      helper: t("bootstrap.step_templates_helper")
+    },
+    {
+      key: "review",
+      label: t("bootstrap.step_review"),
+      helper: t("bootstrap.step_review_helper")
+    }
+  ];
+  const activeBootstrapStepIndex = bootstrapStepItems.findIndex((step) => step.key === bootstrapSetupStep);
 
   const templateGroups = useMemo(() => {
     const grouped = new Map<string, ChoreTemplate[]>();
@@ -3183,6 +3242,37 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     });
   }
 
+  function goToBootstrapStep(step: typeof bootstrapSetupStep) {
+    if (step !== "account" && !bootstrapAccountComplete) {
+      setBootstrapSetupStep("account");
+      return;
+    }
+
+    setBootstrapSetupStep(step);
+  }
+
+  function handleBootstrapNext() {
+    if (bootstrapSetupStep === "account") {
+      goToBootstrapStep("templates");
+      return;
+    }
+
+    if (bootstrapSetupStep === "templates") {
+      goToBootstrapStep("review");
+    }
+  }
+
+  function handleBootstrapBack() {
+    if (bootstrapSetupStep === "review") {
+      setBootstrapSetupStep("templates");
+      return;
+    }
+
+    if (bootstrapSetupStep === "templates") {
+      setBootstrapSetupStep("account");
+    }
+  }
+
   function updateTemplateTranslation(
     locale: AppLanguage,
     nextValue: Partial<Pick<LocalizedTemplateTranslation, "groupTitle" | "title" | "description">>
@@ -4058,99 +4148,184 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <h2>{t("bootstrap.title")}</h2>
                 <span className="section-kicker">{t("bootstrap.kicker")}</span>
               </div>
-              <form className="login-form" onSubmit={handleBootstrapSubmit}>
-                <label>
-                  <span>{t("bootstrap.household_name")}</span>
-                  <input
-                    type="text"
-                    value={bootstrapForm.householdName}
-                    onChange={(event) =>
-                      setBootstrapForm((current) => ({ ...current, householdName: event.target.value }))
+              <form
+                className="login-form bootstrap-flow"
+                onSubmit={(event) => {
+                  if (bootstrapSetupStep !== "review") {
+                    event.preventDefault();
+                    if (bootstrapSetupStep === "account" && !event.currentTarget.reportValidity()) {
+                      return;
                     }
-                  />
-                </label>
-                <label>
-                  <span>{t("bootstrap.owner_display_name")}</span>
-                  <input
-                    type="text"
-                    value={bootstrapForm.ownerDisplayName}
-                    onChange={(event) =>
-                      setBootstrapForm((current) => ({ ...current, ownerDisplayName: event.target.value }))
-                    }
-                  />
-                </label>
-                <label>
-                  <span>{t("bootstrap.owner_email")}</span>
-                  <input
-                    type="email"
-                    value={bootstrapForm.ownerEmail}
-                    onChange={(event) =>
-                      setBootstrapForm((current) => ({ ...current, ownerEmail: event.target.value }))
-                    }
-                    autoComplete="email"
-                  />
-                </label>
-                <label>
-                  <span>{t("bootstrap.owner_password")}</span>
-                  <input
-                    type="password"
-                    value={bootstrapForm.ownerPassword}
-                    onChange={(event) =>
-                      setBootstrapForm((current) => ({ ...current, ownerPassword: event.target.value }))
-                    }
-                    autoComplete="new-password"
-                  />
-                </label>
-                <label className="toggle-row">
-                  <span>{t("bootstrap.self_signup")}</span>
-                  <input
-                    type="checkbox"
-                    checked={bootstrapForm.selfSignupEnabled}
-                    onChange={(event) =>
-                      setBootstrapForm((current) => ({ ...current, selfSignupEnabled: event.target.checked }))
-                    }
-                  />
-                </label>
-                {starterTemplatesByGroup.length > 0 ? (
-                  <div className="stack-list compact-stack">
-                    <div className="section-heading">
-                      <h3>{t("bootstrap.starter_templates")}</h3>
+                    handleBootstrapNext();
+                    return;
+                  }
+
+                  void handleBootstrapSubmit(event);
+                }}
+              >
+                <div className="bootstrap-stepper" aria-label={t("bootstrap.steps_label")}>
+                  {bootstrapStepItems.map((step, index) => {
+                    const isActive = step.key === bootstrapSetupStep;
+                    const isComplete = index < activeBootstrapStepIndex;
+                    const isLocked = index > 0 && !bootstrapAccountComplete;
+
+                    return (
+                      <button
+                        className={`bootstrap-step ${isActive ? "active" : ""} ${isComplete ? "complete" : ""}`}
+                        type="button"
+                        key={step.key}
+                        disabled={isLocked}
+                        onClick={() => goToBootstrapStep(step.key)}
+                      >
+                        <span>{index + 1}</span>
+                        <strong>{step.label}</strong>
+                        <small>{step.helper}</small>
+                      </button>
+                    );
+                  })}
+                </div>
+
+                {bootstrapSetupStep === "account" ? (
+                  <section className="bootstrap-step-panel bootstrap-account-panel">
+                    <div>
+                      <p className="section-kicker">{t("bootstrap.step_account")}</p>
+                      <h3>{t("bootstrap.account_title")}</h3>
+                      <p className="inline-message">{t("bootstrap.account_hint")}</p>
+                    </div>
+                    <div className="bootstrap-field-grid">
+                      <label>
+                        <span>{t("bootstrap.household_name")}</span>
+                        <input
+                          type="text"
+                          value={bootstrapForm.householdName}
+                          required
+                          onChange={(event) =>
+                            setBootstrapForm((current) => ({ ...current, householdName: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>{t("bootstrap.owner_display_name")}</span>
+                        <input
+                          type="text"
+                          value={bootstrapForm.ownerDisplayName}
+                          required
+                          onChange={(event) =>
+                            setBootstrapForm((current) => ({ ...current, ownerDisplayName: event.target.value }))
+                          }
+                        />
+                      </label>
+                      <label>
+                        <span>{t("bootstrap.owner_email")}</span>
+                        <input
+                          type="email"
+                          value={bootstrapForm.ownerEmail}
+                          required
+                          onChange={(event) =>
+                            setBootstrapForm((current) => ({ ...current, ownerEmail: event.target.value }))
+                          }
+                          autoComplete="email"
+                        />
+                      </label>
+                      <label>
+                        <span>{t("bootstrap.owner_password")}</span>
+                        <input
+                          type="password"
+                          value={bootstrapForm.ownerPassword}
+                          required
+                          onChange={(event) =>
+                            setBootstrapForm((current) => ({ ...current, ownerPassword: event.target.value }))
+                          }
+                          autoComplete="new-password"
+                        />
+                      </label>
+                    </div>
+                    <label className="toggle-row bootstrap-toggle">
+                      <span>
+                        <strong>{t("bootstrap.self_signup")}</strong>
+                        <small className="inline-message">{t("bootstrap.self_signup_hint")}</small>
+                      </span>
+                      <input
+                        type="checkbox"
+                        checked={bootstrapForm.selfSignupEnabled}
+                        onChange={(event) =>
+                          setBootstrapForm((current) => ({ ...current, selfSignupEnabled: event.target.checked }))
+                        }
+                      />
+                    </label>
+                  </section>
+                ) : null}
+
+                {bootstrapSetupStep === "templates" ? (
+                  <section className="bootstrap-step-panel">
+                    <div className="bootstrap-template-heading">
+                      <div>
+                        <p className="section-kicker">{t("bootstrap.step_templates")}</p>
+                        <h3>{t("bootstrap.starter_templates")}</h3>
+                        <p className="inline-message">{t("bootstrap.starter_templates_hint")}</p>
+                      </div>
                       <span className="section-kicker">
-                        {bootstrapForm.starterTemplateKeys?.length ?? 0}
+                        {t("bootstrap.selected_templates")
+                          .replace("{selected}", String(selectedStarterTemplateCount))
+                          .replace("{groups}", String(selectedStarterGroupCount))}
                       </span>
                     </div>
-                    <p className="inline-message">{t("bootstrap.starter_templates_hint")}</p>
-                    {starterTemplatesByGroup.map((group) => {
-                      const groupKeys = group.templates.map((template) => template.key);
-                      const selectedCount = groupKeys.filter((key) =>
-                        (bootstrapForm.starterTemplateKeys ?? []).includes(key)
-                      ).length;
-                      const allSelected = selectedCount === groupKeys.length;
-                      const someSelected = selectedCount > 0 && !allSelected;
+                    {starterTemplatesByGroup.length > 0 && activeBootstrapStarterGroup ? (
+                      <div className="bootstrap-template-flow">
+                        <div className="bootstrap-group-list">
+                          {starterTemplatesByGroup.map((group) => {
+                            const groupKeys = group.templates.map((template) => template.key);
+                            const selectedCount = groupKeys.filter((key) =>
+                              (bootstrapForm.starterTemplateKeys ?? []).includes(key)
+                            ).length;
+                            const allSelected = selectedCount === groupKeys.length;
 
-                      return (
-                        <div className="task-row compact" key={group.groupTitle}>
+                            return (
+                              <button
+                                className={`bootstrap-group-button ${
+                                  group.groupTitle === activeBootstrapStarterGroup.groupTitle ? "active" : ""
+                                }`}
+                                type="button"
+                                key={group.groupTitle}
+                                onClick={() => setSelectedBootstrapStarterGroup(group.groupTitle)}
+                              >
+                                <strong>{group.groupTitle}</strong>
+                                <small>
+                                  {t("bootstrap.starter_group_selected")
+                                    .replace("{selected}", String(selectedCount))
+                                    .replace("{total}", String(groupKeys.length))}
+                                </small>
+                                <span>{allSelected ? t("bootstrap.group_ready") : t("bootstrap.group_review")}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        <div className="task-row compact bootstrap-active-group">
                           <div className="task-row-header align-start">
                             <div>
-                              <strong>{group.groupTitle}</strong>
-                              <p className="inline-message">
-                                {t("bootstrap.starter_group_selected")
-                                  .replace("{selected}", String(selectedCount))
-                                  .replace("{total}", String(groupKeys.length))}
-                              </p>
+                              <strong>{activeBootstrapStarterGroup.groupTitle}</strong>
+                              <p className="inline-message">{t("bootstrap.active_group_hint")}</p>
                             </div>
                             <button
                               className="ghost-button"
                               type="button"
-                              onClick={() =>
-                                setBootstrapStarterGroupSelection(groupKeys, !allSelected)
-                              }
+                              onClick={() => {
+                                const groupKeys = activeBootstrapStarterGroup.templates.map((template) => template.key);
+                                const selectedCount = groupKeys.filter((key) =>
+                                  (bootstrapForm.starterTemplateKeys ?? []).includes(key)
+                                ).length;
+                                setBootstrapStarterGroupSelection(groupKeys, selectedCount !== groupKeys.length);
+                              }}
                             >
-                              {allSelected ? t("bootstrap.clear_group") : t("bootstrap.select_group")}
+                              {activeBootstrapStarterGroup.templates.every((template) =>
+                                (bootstrapForm.starterTemplateKeys ?? []).includes(template.key)
+                              )
+                                ? t("bootstrap.clear_group")
+                                : t("bootstrap.select_group")}
                             </button>
                           </div>
                           <div className="stack-list">
-                            {group.templates.map((template) => {
+                            {activeBootstrapStarterGroup.templates.map((template) => {
                               const checked = (bootstrapForm.starterTemplateKeys ?? []).includes(template.key);
                               return (
                                 <label className="toggle-row align-start" key={template.key}>
@@ -4167,7 +4342,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                   <input
                                     type="checkbox"
                                     checked={checked}
-                                    aria-checked={someSelected && !checked ? "mixed" : checked}
                                     onChange={(event) =>
                                       toggleBootstrapStarterTemplate(template.key, event.target.checked)
                                     }
@@ -4177,13 +4351,63 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             })}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+                      </div>
+                    ) : (
+                      <p className="inline-message">{t("bootstrap.no_starter_templates")}</p>
+                    )}
+                  </section>
                 ) : null}
-                <button className="primary-button" type="submit" disabled={busyAction === "bootstrap"}>
-                  {t("bootstrap.create")}
-                </button>
+
+                {bootstrapSetupStep === "review" ? (
+                  <section className="bootstrap-step-panel bootstrap-review-panel">
+                    <div>
+                      <p className="section-kicker">{t("bootstrap.step_review")}</p>
+                      <h3>{t("bootstrap.review_title")}</h3>
+                      <p className="inline-message">{t("bootstrap.review_hint")}</p>
+                    </div>
+                    <div className="bootstrap-review-grid">
+                      <div className="task-row compact">
+                        <strong>{t("bootstrap.review_household")}</strong>
+                        <p>{bootstrapForm.householdName || t("common.none")}</p>
+                        <p>{bootstrapForm.ownerDisplayName || t("common.none")}</p>
+                        <p>{bootstrapForm.ownerEmail || t("common.none")}</p>
+                      </div>
+                      <div className="task-row compact">
+                        <strong>{t("bootstrap.review_access")}</strong>
+                        <p>
+                          {bootstrapForm.selfSignupEnabled
+                            ? t("bootstrap.review_self_signup_enabled")
+                            : t("bootstrap.review_self_signup_disabled")}
+                        </p>
+                      </div>
+                      <div className="task-row compact">
+                        <strong>{t("bootstrap.review_templates")}</strong>
+                        <p>
+                          {t("bootstrap.selected_templates")
+                            .replace("{selected}", String(selectedStarterTemplateCount))
+                            .replace("{groups}", String(selectedStarterGroupCount))}
+                        </p>
+                      </div>
+                    </div>
+                  </section>
+                ) : null}
+
+                <div className="bootstrap-flow-actions">
+                  {bootstrapSetupStep !== "account" ? (
+                    <button className="ghost-button" type="button" onClick={handleBootstrapBack}>
+                      {t("common.back")}
+                    </button>
+                  ) : null}
+                  {bootstrapSetupStep !== "review" ? (
+                    <button className="primary-button" type="submit">
+                      {t("bootstrap.next_step")}
+                    </button>
+                  ) : (
+                    <button className="primary-button" type="submit" disabled={busyAction === "bootstrap"}>
+                      {busyAction === "bootstrap" ? t("bootstrap.creating") : t("bootstrap.create")}
+                    </button>
+                  )}
+                </div>
               </form>
             </article>
           ) : (

@@ -12,7 +12,7 @@
 
 1. Copy `.env.example` to `.env` and adjust any values you want to override.
 2. Start PostgreSQL and TaskBandit with Docker Compose from the repository root.
-3. Decide whether you want demo seed data. For a clean install, set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=false`.
+3. Decide whether you want demo seed data. Clean installs do not seed demo data by default; set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` only for testing or walkthroughs.
 4. If you want to run the published container instead of a local build, leave `TASKBANDIT_IMAGE_TAG` at `latest` or pin it to a published Docker Hub tag.
 5. If you want to run the server locally, install dependencies in `apps/server`, run `npm run prisma:generate`, apply the Prisma migration, then start the NestJS API.
 6. If needed, copy `apps/web/.env.example` to `apps/web/.env` and set `VITE_TASKBANDIT_API_BASE_URL` to the reachable API origin.
