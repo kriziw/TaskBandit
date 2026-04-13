@@ -140,7 +140,6 @@ import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
 import com.taskbandit.app.mobile.TaskBanditSession
 import com.taskbandit.app.mobile.TaskBanditSessionStore
 import com.taskbandit.app.mobile.TaskBanditTransportException
-import com.taskbandit.app.mobile.TaskBanditUnexpectedResponseException
 import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
 import com.taskbandit.app.mobile.TaskBanditWidgetStore
 import com.taskbandit.app.mobile.MobileReleaseInfo
@@ -289,7 +288,6 @@ private fun TaskBanditApp(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val loginFailedMessage = stringResource(R.string.mobile_login_failed)
-    val unexpectedServerResponseMessage = stringResource(R.string.mobile_unexpected_server_response)
     val checklistRequiredMessage = stringResource(R.string.mobile_checklist_required)
     val photoRequiredMessage = stringResource(R.string.mobile_photo_required_missing)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
@@ -444,10 +442,7 @@ private fun TaskBanditApp(
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
 
     fun resolveLoginScreenErrorMessage(throwable: Throwable): String {
-        return when (throwable) {
-            is TaskBanditUnexpectedResponseException -> unexpectedServerResponseMessage
-            else -> throwable.message ?: loginFailedMessage
-        }
+        return throwable.message ?: loginFailedMessage
     }
 
     fun clearAuthProviderState() {
