@@ -516,6 +516,7 @@
   "members.send_invite_email": "Üdvözlő e-mail küldése a belépési adatokkal",
   "templates.title": "Típus",
   "templates.group_name": "Csoport",
+  "templates.edit_language": "Nyelv",
   "templates.default_locale": "Alapértelmezett nyelv",
   "templates.default_title": "Alapértelmezett típusnév",
   "templates.default_description": "Alapértelmezett leírás",

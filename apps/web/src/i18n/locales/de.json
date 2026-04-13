@@ -536,6 +536,7 @@
   "members.send_invite_email": "Willkommens-E-Mail mit Zugangsdaten senden",
   "templates.title": "Typ",
   "templates.group_name": "Gruppe",
+  "templates.edit_language": "Sprache",
   "templates.default_locale": "Standardsprache",
   "templates.default_title": "Standard-Typname",
   "templates.default_description": "Standardbeschreibung",

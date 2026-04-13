@@ -594,7 +594,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [memberForm, setMemberForm] = useState<MemberFormState>(createEmptyMemberForm);
   const [memberEditForm, setMemberEditForm] = useState<MemberEditFormState>(createEmptyMemberEditForm);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-  const [templateForm, setTemplateForm] = useState<TemplateFormState>(() => createEmptyTemplateForm(language));
+  const [templateForm, setTemplateForm] = useState<TemplateFormState>(() => createEmptyTemplateForm("en"));
   const [instanceForm, setInstanceForm] = useState<InstanceFormState>({
     templateId: "",
     assigneeId: "",
@@ -607,7 +607,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
   const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
-  const [templateEditorLocale, setTemplateEditorLocale] = useState<TemplateTranslationLocale>(language);
+  const [templateEditorLocale, setTemplateEditorLocale] = useState<TemplateTranslationLocale>("en");
   const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
   const [selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup] = useState("");
   const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
@@ -1188,6 +1188,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ),
     [language, payload?.templates, templateForm.dependencyRules, templateForm.dependencyTemplateIds]
   );
+
+  const templateEditorBaseLocale = templateForm.defaultLocale ?? "en";
+  const isEditingTemplateBaseLocale = templateEditorLocale === templateEditorBaseLocale;
+  const activeTemplateTranslation = isEditingTemplateBaseLocale
+    ? null
+    : getTemplateTranslation(templateEditorLocale);
 
   const sameGroupFollowUpCandidates = useMemo(() => {
     if (!payload) {
@@ -2817,7 +2823,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       const templatePayload = {
         ...templateForm,
-        defaultLocale: templateForm.defaultLocale ?? language,
+        defaultLocale: templateForm.defaultLocale ?? "en",
         groupTitle: templateForm.groupTitle.trim(),
         title: templateForm.title.trim(),
         description: templateForm.description.trim(),
@@ -3540,8 +3546,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function resetTemplateForm() {
     setEditingTemplateId(null);
-    setTemplateEditorLocale(language);
-    setTemplateForm(createEmptyTemplateForm(language));
+    setTemplateEditorLocale("en");
+    setTemplateForm(createEmptyTemplateForm("en"));
   }
 
   function resetInstanceForm() {
@@ -6719,7 +6725,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <div className="template-admin-layout">
                     <div className="stack-list template-browser-panel">
                       <div className="template-browser-toolbar">
-                        <label>
+                        <label className="template-search-field">
                           <span>{t("templates.search")}</span>
                           <input
                             type="search"
@@ -6840,63 +6846,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       )}
                     </div>
                   <form className="login-form member-form template-editor-panel" onSubmit={handleCreateTemplate}>
-                    <label>
-                      <span>{t("templates.default_locale")}</span>
-                      <select
-                        value={templateForm.defaultLocale ?? language}
-                        onChange={(event) => {
-                          const nextLocale = event.target.value as TemplateTranslationLocale;
-                          setTemplateForm((current) => ({
-                            ...current,
-                            defaultLocale: nextLocale
-                          }));
-                          setTemplateEditorLocale(nextLocale);
-                        }}
-                      >
-                        {templateTranslationLocales.map((locale) => (
-                          <option key={locale} value={locale}>
-                            {getLanguageLabel(locale)}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>{t("templates.group_name")}</span>
-                      <input
-                        type="text"
-                        value={templateForm.groupTitle}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({ ...current, groupTitle: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("templates.default_title")}</span>
-                      <input
-                        type="text"
-                        value={templateForm.title}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({ ...current, title: event.target.value }))
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("templates.default_description")}</span>
-                      <textarea
-                        value={templateForm.description}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({ ...current, description: event.target.value }))
-                        }
-                        rows={4}
-                      />
-                    </label>
                     <div className="stack-list">
                       <div className="section-heading">
-                        <h3>{t("templates.translations")}</h3>
+                        <h3>{t("templates.edit_language")}</h3>
                         <span className="section-kicker">{getLanguageLabel(templateEditorLocale)}</span>
                       </div>
-                      <p className="inline-message">{t("templates.translations_hint")}</p>
-                      <div className="segmented-toggle" role="tablist" aria-label={t("templates.translations")}>
+                      <div className="segmented-toggle" role="tablist" aria-label={t("templates.edit_language")}>
                         {templateTranslationLocales.map((locale) => (
                           <button
                             key={locale}
@@ -6908,60 +6863,53 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           </button>
                         ))}
                       </div>
-                      {templateEditorLocale === (templateForm.defaultLocale ?? language) ? (
-                        <p className="inline-message">{t("templates.default_locale_live_hint")}</p>
-                      ) : (
-                        (() => {
-                          const translation = getTemplateTranslation(templateEditorLocale);
-                          return (
-                            <div className="task-row compact">
-                              <label>
-                                <span>
-                                  {getLanguageLabel(templateEditorLocale)} {t("templates.group_name")}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={translation?.groupTitle ?? ""}
-                                  onChange={(event) =>
-                                    updateTemplateTranslation(templateEditorLocale, {
-                                      groupTitle: event.target.value
-                                    })
-                                  }
-                                />
-                              </label>
-                              <label>
-                                <span>
-                                  {getLanguageLabel(templateEditorLocale)} {t("templates.title")}
-                                </span>
-                                <input
-                                  type="text"
-                                  value={translation?.title ?? ""}
-                                  onChange={(event) =>
-                                    updateTemplateTranslation(templateEditorLocale, {
-                                      title: event.target.value
-                                    })
-                                  }
-                                />
-                              </label>
-                              <label>
-                                <span>
-                                  {getLanguageLabel(templateEditorLocale)} {t("templates.description")}
-                                </span>
-                                <textarea
-                                  value={translation?.description ?? ""}
-                                  onChange={(event) =>
-                                    updateTemplateTranslation(templateEditorLocale, {
-                                      description: event.target.value
-                                    })
-                                  }
-                                  rows={2}
-                                />
-                              </label>
-                            </div>
-                          );
-                        })()
-                      )}
                     </div>
+                    <label>
+                      <span>{t("templates.group_name")}</span>
+                      <input
+                        type="text"
+                        value={isEditingTemplateBaseLocale ? templateForm.groupTitle : activeTemplateTranslation?.groupTitle ?? ""}
+                        onChange={(event) =>
+                          isEditingTemplateBaseLocale
+                            ? setTemplateForm((current) => ({ ...current, groupTitle: event.target.value }))
+                            : updateTemplateTranslation(templateEditorLocale, {
+                                groupTitle: event.target.value
+                              })
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("templates.title")}</span>
+                      <input
+                        type="text"
+                        value={isEditingTemplateBaseLocale ? templateForm.title : activeTemplateTranslation?.title ?? ""}
+                        onChange={(event) =>
+                          isEditingTemplateBaseLocale
+                            ? setTemplateForm((current) => ({ ...current, title: event.target.value }))
+                            : updateTemplateTranslation(templateEditorLocale, {
+                                title: event.target.value
+                              })
+                        }
+                      />
+                    </label>
+                    <label>
+                      <span>{t("templates.description")}</span>
+                      <textarea
+                        value={
+                          isEditingTemplateBaseLocale
+                            ? templateForm.description
+                            : activeTemplateTranslation?.description ?? ""
+                        }
+                        onChange={(event) =>
+                          isEditingTemplateBaseLocale
+                            ? setTemplateForm((current) => ({ ...current, description: event.target.value }))
+                            : updateTemplateTranslation(templateEditorLocale, {
+                                description: event.target.value
+                              })
+                        }
+                        rows={4}
+                      />
+                    </label>
                     <label>
                       <span>{t("templates.difficulty")}</span>
                       <select
