@@ -1265,6 +1265,9 @@ private fun LoginScreen(
                             onValueChange = onServerUrlChange,
                             label = { Text(stringResource(R.string.mobile_server_url)) },
                             singleLine = true,
+                            supportingText = {
+                                Text(stringResource(R.string.mobile_server_url_hint))
+                            },
                             modifier = Modifier.fillMaxWidth()
                         )
                         OutlinedTextField(
@@ -1359,6 +1362,9 @@ private fun LoginScreen(
                         onValueChange = onServerUrlChange,
                         label = { Text(stringResource(R.string.mobile_server_url)) },
                         singleLine = true,
+                        supportingText = {
+                            Text(stringResource(R.string.mobile_server_url_hint))
+                        },
                         modifier = Modifier.fillMaxWidth()
                     )
                     OutlinedTextField(

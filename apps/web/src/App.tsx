@@ -80,6 +80,14 @@ type CompletionCelebration = {
   phraseKey: string;
 };
 
+type AuthEntryState = {
+  providers: AuthProviders | null;
+  bootstrapStatus: BootstrapStatus | null;
+  starterTemplates: BootstrapStarterTemplateOption[];
+  errorMessage: string | null;
+  hasFatalError: boolean;
+};
+
 type LoginFormState = {
   email: string;
   password: string;
@@ -513,17 +521,29 @@ function getInitialClientWebPushStatus(): ClientWebPushStatus {
 }
 
 async function fetchAuthEntryState(language: AppLanguage) {
-  const [providers, bootstrapStatus, starterTemplates] = await Promise.all([
+  const [providersResult, bootstrapStatusResult, starterTemplatesResult] = await Promise.allSettled([
     taskBanditApi.getProviders(language),
     taskBanditApi.getBootstrapStatus(language),
     taskBanditApi.getBootstrapStarterTemplates(language)
   ]);
+  const providers = providersResult.status === "fulfilled" ? providersResult.value : null;
+  const bootstrapStatus =
+    bootstrapStatusResult.status === "fulfilled" ? bootstrapStatusResult.value : null;
+  const starterTemplates =
+    starterTemplatesResult.status === "fulfilled" ? starterTemplatesResult.value : [];
+
+  const firstError =
+    (providersResult.status === "rejected" ? providersResult.reason : null) ??
+    (bootstrapStatusResult.status === "rejected" ? bootstrapStatusResult.reason : null) ??
+    (starterTemplatesResult.status === "rejected" ? starterTemplatesResult.reason : null);
 
   return {
     providers,
     bootstrapStatus,
-    starterTemplates
-  };
+    starterTemplates,
+    errorMessage: firstError ? readErrorMessage(firstError, "Request failed.") : null,
+    hasFatalError: providers === null && bootstrapStatus === null
+  } satisfies AuthEntryState;
 }
 
 function sortByLabel<T>(items: T[], getLabel: (item: T) => string) {
@@ -551,7 +571,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
   const [bootstrapStarterTemplates, setBootstrapStarterTemplates] = useState<BootstrapStarterTemplateOption[]>([]);
   const [isAuthEntryLoading, setIsAuthEntryLoading] = useState<boolean>(() => !readStoredToken(workspaceVariant));
-  const [didAuthEntryLoadFail, setDidAuthEntryLoadFail] = useState(false);
+  const [authEntryError, setAuthEntryError] = useState<string | null>(null);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
     email: "alex@taskbandit.local",
     password: "TaskBandit123!"
@@ -699,13 +719,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   useEffect(() => {
     if (token) {
       setIsAuthEntryLoading(false);
-      setDidAuthEntryLoadFail(false);
+      setAuthEntryError(null);
       return;
     }
 
     let cancelled = false;
     setIsAuthEntryLoading(true);
-    setDidAuthEntryLoadFail(false);
+    setAuthEntryError(null);
 
     void fetchAuthEntryState(language)
       .then((response) => {
@@ -716,16 +736,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         setProviders(response.providers);
         setBootstrapStatus(response.bootstrapStatus);
         setBootstrapStarterTemplates(response.starterTemplates);
-      })
-      .catch(() => {
-        if (cancelled) {
-          return;
-        }
-
-        setProviders(null);
-        setBootstrapStatus(null);
-        setBootstrapStarterTemplates([]);
-        setDidAuthEntryLoadFail(true);
+        setAuthEntryError(response.hasFatalError ? response.errorMessage : null);
       })
       .finally(() => {
         if (!cancelled) {
@@ -2262,16 +2273,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     setLoginError(null);
     setIsAuthEntryLoading(true);
-    setDidAuthEntryLoadFail(false);
+    setAuthEntryError(null);
 
     try {
       const response = await fetchAuthEntryState(language);
       setProviders(response.providers);
       setBootstrapStatus(response.bootstrapStatus);
-    } catch {
-      setProviders(null);
-      setBootstrapStatus(null);
-      setDidAuthEntryLoadFail(true);
+      setBootstrapStarterTemplates(response.starterTemplates);
+      setAuthEntryError(response.hasFatalError ? response.errorMessage : null);
     } finally {
       setIsAuthEntryLoading(false);
     }
@@ -4254,13 +4263,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
               <p className="inline-message">{t("auth.setup_loading")}</p>
             </article>
-          ) : didAuthEntryLoadFail ? (
+          ) : authEntryError ? (
             <article className="panel login-panel">
               <div className="section-heading">
                 <h2>{t("auth.sign_in")}</h2>
                 <span className="section-kicker">{t("auth.setup_retry")}</span>
               </div>
-              <p className="inline-message error-text">{t("auth.setup_load_failed")}</p>
+              <p className="inline-message error-text">{authEntryError}</p>
               <div className="button-row">
                 <button className="secondary-button" type="button" onClick={() => void handleRetryAuthEntryState()}>
                   {t("common.retry")}

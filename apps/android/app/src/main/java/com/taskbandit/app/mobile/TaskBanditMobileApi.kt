@@ -467,7 +467,8 @@ class TaskBanditMobileApi {
         method: String = "GET",
         body: JSONObject? = null
     ): JSONObject {
-        val parsed = JSONTokener(executeRequest(baseUrl, path, token, method, body)).nextValue()
+        val responseText = executeRequest(baseUrl, path, token, method, body)
+        val parsed = parseJsonValue(responseText)
         return parsed as? JSONObject ?: throw IllegalStateException("Unexpected response shape.")
     }
 
@@ -477,7 +478,8 @@ class TaskBanditMobileApi {
         token: String? = null,
         method: String = "GET"
     ): JSONArray {
-        val parsed = JSONTokener(executeRequest(baseUrl, path, token, method, null)).nextValue()
+        val responseText = executeRequest(baseUrl, path, token, method, null)
+        val parsed = parseJsonValue(responseText)
         return parsed as? JSONArray ?: throw IllegalStateException("Unexpected response shape.")
     }
 
@@ -508,6 +510,12 @@ class TaskBanditMobileApi {
             httpClient.newCall(requestBuilder.build()).execute().use { response ->
                 val responseText = response.body?.string().orEmpty()
                 if (response.isSuccessful) {
+                    if (!looksLikeJsonResponse(responseText, response.header("Content-Type"))) {
+                        throw TaskBanditApiException(
+                            response.code,
+                            buildUnexpectedResponseMessage(responseText, response.header("Content-Type"))
+                        )
+                    }
                     return responseText
                 }
 
@@ -515,7 +523,10 @@ class TaskBanditMobileApi {
                     throw TaskBanditUnauthorizedException()
                 }
 
-                throw IllegalStateException(readErrorMessage(responseText))
+                throw TaskBanditApiException(
+                    response.code,
+                    readErrorMessage(responseText, response.header("Content-Type"))
+                )
             }
         } catch (exception: IOException) {
             throw TaskBanditTransportException(
@@ -525,7 +536,40 @@ class TaskBanditMobileApi {
         }
     }
 
-    private fun readErrorMessage(responseText: String): String {
+    private fun parseJsonValue(responseText: String): Any {
+        return runCatching {
+            JSONTokener(responseText).nextValue()
+        }.getOrElse {
+            throw IllegalStateException(buildUnexpectedResponseMessage(responseText, null))
+        }
+    }
+
+    private fun looksLikeJsonResponse(responseText: String, contentType: String?): Boolean {
+        val trimmed = responseText.trimStart()
+        val normalizedContentType = contentType.orEmpty().lowercase()
+        return normalizedContentType.contains("application/json") ||
+            trimmed.startsWith("{") ||
+            trimmed.startsWith("[")
+    }
+
+    private fun looksLikeHtmlDocument(responseText: String): Boolean {
+        val trimmed = responseText.trimStart().lowercase()
+        return trimmed.startsWith("<!doctype html") ||
+            trimmed.startsWith("<html") ||
+            trimmed.startsWith("<head") ||
+            trimmed.startsWith("<body")
+    }
+
+    private fun buildUnexpectedResponseMessage(responseText: String, contentType: String?): String {
+        val normalizedContentType = contentType.orEmpty().lowercase()
+        return if (normalizedContentType.contains("text/html") || looksLikeHtmlDocument(responseText)) {
+            "TaskBandit received an HTML page instead of an API response. Check that the Android app uses the TaskBandit API URL, not the web UI URL."
+        } else {
+            "TaskBandit received an unexpected response from the server."
+        }
+    }
+
+    private fun readErrorMessage(responseText: String, contentType: String? = null): String {
         return runCatching {
             when (val parsed = JSONTokener(responseText).nextValue()) {
                 is JSONObject -> when {
@@ -533,9 +577,15 @@ class TaskBanditMobileApi {
                     parsed.has("error") -> parsed.get("error").toString()
                     else -> parsed.toString()
                 }
-                else -> responseText
+                else -> if (responseText.isBlank()) {
+                    "Request failed."
+                } else {
+                    responseText
+                }
             }
-        }.getOrDefault(responseText.ifBlank { "Request failed." })
+        }.getOrElse {
+            buildUnexpectedResponseMessage(responseText, contentType)
+        }
     }
 
     private fun reviewChore(
