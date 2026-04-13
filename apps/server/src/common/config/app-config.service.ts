@@ -128,7 +128,7 @@ export class AppConfigService {
   }
 
   get seedDemoData(): boolean {
-    return this.configService.get<string>("TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA", "true") === "true";
+    return this.configService.get<string>("TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA", "false") === "true";
   }
 
   get reminderIntervalMs(): number {

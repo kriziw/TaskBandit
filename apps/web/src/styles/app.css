@@ -747,34 +747,138 @@ h4,
   width: 100%;
 }
 
-.bootstrap-panel .login-form {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  align-items: start;
+.bootstrap-flow {
+  gap: 16px;
 }
 
-.bootstrap-panel .login-form > .toggle-row,
-.bootstrap-panel .login-form > .compact-stack,
-.bootstrap-panel .login-form > .primary-button {
-  grid-column: 1 / -1;
+.bootstrap-stepper {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px;
 }
 
-.bootstrap-panel .compact-stack {
-  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
-  align-items: start;
-}
-
-.bootstrap-panel .compact-stack > .section-heading,
-.bootstrap-panel .compact-stack > .inline-message {
-  grid-column: 1 / -1;
-}
-
-.bootstrap-panel .compact-stack .stack-list {
-  gap: 6px;
-}
-
-.bootstrap-panel .task-row.compact {
-  align-self: stretch;
+.bootstrap-step {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 3px 10px;
+  align-items: center;
+  text-align: left;
+  border: 1px solid rgba(36, 48, 67, 0.1);
+  border-radius: 20px;
   padding: 12px;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.54);
+  cursor: pointer;
+}
+
+.bootstrap-step:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
+}
+
+.bootstrap-step span {
+  grid-row: span 2;
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 999px;
+  background: rgba(36, 48, 67, 0.08);
+  font-family: var(--font-brand);
+  font-weight: 800;
+}
+
+.bootstrap-step strong,
+.bootstrap-step small {
+  min-width: 0;
+}
+
+.bootstrap-step small {
+  color: rgba(36, 48, 67, 0.68);
+  font-size: 0.78rem;
+}
+
+.bootstrap-step.active {
+  border-color: rgba(255, 201, 74, 0.72);
+  background: linear-gradient(135deg, rgba(255, 201, 74, 0.25), rgba(255, 255, 255, 0.72));
+}
+
+.bootstrap-step.complete span {
+  background: rgba(115, 217, 179, 0.28);
+}
+
+.bootstrap-step-panel {
+  display: grid;
+  gap: 14px;
+  padding: 16px;
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.48);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.bootstrap-step-panel h3 {
+  margin: 6px 0 0;
+  font-size: 1.35rem;
+}
+
+.bootstrap-field-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bootstrap-toggle {
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px dashed rgba(36, 48, 67, 0.12);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.45);
+}
+
+.bootstrap-template-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.bootstrap-template-flow {
+  display: grid;
+  grid-template-columns: minmax(220px, 0.78fr) minmax(0, 1.22fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.bootstrap-group-list {
+  display: grid;
+  gap: 8px;
+}
+
+.bootstrap-group-button {
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(36, 48, 67, 0.1);
+  border-radius: 18px;
+  padding: 12px;
+  text-align: left;
+  color: var(--ink);
+  background: rgba(255, 255, 255, 0.58);
+  cursor: pointer;
+}
+
+.bootstrap-group-button.active {
+  border-color: rgba(115, 199, 244, 0.62);
+  background: rgba(115, 199, 244, 0.15);
+}
+
+.bootstrap-group-button small,
+.bootstrap-group-button span {
+  color: rgba(36, 48, 67, 0.7);
+  font-size: 0.8rem;
+}
+
+.bootstrap-active-group {
+  margin: 0;
 }
 
 .bootstrap-panel .toggle-row {
@@ -786,6 +890,19 @@ h4,
   display: block;
   margin-top: 4px;
   width: auto;
+}
+
+.bootstrap-review-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.bootstrap-flow-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  flex-wrap: wrap;
 }
 
 .dashboard-grid {
@@ -1537,9 +1654,15 @@ h4,
     grid-column: span 1;
   }
 
-  .bootstrap-panel .login-form,
-  .bootstrap-panel .compact-stack {
+  .bootstrap-stepper,
+  .bootstrap-field-grid,
+  .bootstrap-template-flow,
+  .bootstrap-review-grid {
     grid-template-columns: 1fr;
+  }
+
+  .bootstrap-template-heading {
+    flex-direction: column;
   }
 
   .app-shell.variant-client .workspace-sidebar-panel {
