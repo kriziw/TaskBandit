@@ -252,6 +252,10 @@ export type AdminSystemStatus = {
     status: "ready" | "error";
     rootPath: string;
     runtimeLogFilePath: string;
+    runtimeLogMaxFileSizeMb: number;
+    runtimeLogMaxTotalSizeMb: number;
+    dockerLogMaxSize: string;
+    dockerLogMaxFiles: number;
     error: string | null;
   };
   auth: {

@@ -228,6 +228,23 @@ export class AppConfigService {
     );
   }
 
+  get runtimeLogMaxFileSizeMb(): number {
+    return Math.round(this.runtimeLogMaxFileSizeBytes / 1024 / 1024);
+  }
+
+  get runtimeLogMaxTotalSizeMb(): number {
+    return Math.round(this.runtimeLogMaxTotalSizeBytes / 1024 / 1024);
+  }
+
+  get dockerLogMaxSize(): string {
+    return this.configService.get<string>("TASKBANDIT_DOCKER_LOG_MAX_SIZE", "100m").trim() || "100m";
+  }
+
+  get dockerLogMaxFiles(): number {
+    const configuredValue = Number(this.configService.get("TASKBANDIT_DOCKER_LOG_MAX_FILES") ?? 5);
+    return Number.isFinite(configuredValue) && configuredValue > 0 ? configuredValue : 5;
+  }
+
   get fcmEnabled(): boolean {
     return this.configService.get<string>("TASKBANDIT_FCM_ENABLED", "false") === "true";
   }
