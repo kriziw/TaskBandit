@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.35.7](https://github.com/kriziw/TaskBandit/compare/v0.35.6...v0.35.7) (2026-04-13)
+
+
+### Bug Fixes
+
+* add bounded log rotation defaults ([#238](https://github.com/kriziw/TaskBandit/issues/238)) ([22ff834](https://github.com/kriziw/TaskBandit/commit/22ff83483e4521552aeec98207f6882b45164335))
+
 ## [0.35.6](https://github.com/kriziw/TaskBandit/compare/v0.35.5...v0.35.6) (2026-04-13)
 
 
