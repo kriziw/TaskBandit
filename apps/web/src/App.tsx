@@ -1194,6 +1194,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const activeTemplateTranslation = isEditingTemplateBaseLocale
     ? null
     : getTemplateTranslation(templateEditorLocale);
+  const trimmedTemplateGroupTitle = templateForm.groupTitle.trim();
+  const templateGroupPickerValue = templateGroupOptions.includes(trimmedTemplateGroupTitle)
+    ? trimmedTemplateGroupTitle
+    : "__new__";
 
   const sameGroupFollowUpCandidates = useMemo(() => {
     if (!payload) {
@@ -4783,7 +4787,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <div>
                 <p className="workspace-nav-kicker">{payload.household.name}</p>
                 <h2>{activePageLabel}</h2>
-                <p className="workspace-page-copy">{activePageDescription}</p>
+                {workspaceVariant === "client" ? (
+                  <p className="workspace-page-copy">{activePageDescription}</p>
+                ) : null}
               </div>
               <div className="workspace-page-meta">
                 <span className="status-pill">{workspaceVariantLabel}</span>
@@ -4805,7 +4811,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
                 <p>{t("workspace.admin_only_body")}</p>
               </section>
-            ) : pageSectionLinks.length > 0 ? (
+            ) : pageSectionLinks.length > 1 ? (
               <section className="panel workspace-subnav-panel">
                 <span className="section-kicker">{t("nav.jump_to")}</span>
                 <div className="workspace-subnav">
@@ -6646,7 +6652,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       <div className="section-heading section-heading-compact">
                         <h3>{t("members.create_section")}</h3>
                       </div>
-                      <p className="inline-message">{t("members.create_section_hint")}</p>
                       <form className="login-form member-form household-member-create-form" onSubmit={handleCreateHouseholdMember}>
                         <label>
                           <span>{t("members.display_name")}</span>
@@ -6864,34 +6869,82 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         ))}
                       </div>
                     </div>
-                    <label>
-                      <span>{t("templates.group_name")}</span>
-                      <input
-                        type="text"
-                        value={isEditingTemplateBaseLocale ? templateForm.groupTitle : activeTemplateTranslation?.groupTitle ?? ""}
-                        onChange={(event) =>
-                          isEditingTemplateBaseLocale
-                            ? setTemplateForm((current) => ({ ...current, groupTitle: event.target.value }))
-                            : updateTemplateTranslation(templateEditorLocale, {
+                    <div className="template-editor-grid">
+                      {isEditingTemplateBaseLocale ? (
+                        <label>
+                          <span>{t("templates.group_name")}</span>
+                          <select
+                            value={templateGroupPickerValue}
+                            onChange={(event) => {
+                              const nextValue = event.target.value;
+                              if (nextValue === "__new__") {
+                                setTemplateForm((current) => ({
+                                  ...current,
+                                  groupTitle: templateGroupOptions.includes(current.groupTitle.trim())
+                                    ? ""
+                                    : current.groupTitle
+                                }));
+                                return;
+                              }
+
+                              setTemplateForm((current) => ({
+                                ...current,
+                                groupTitle: nextValue
+                              }));
+                            }}
+                          >
+                            {templateGroupOptions.map((groupTitle) => (
+                              <option key={groupTitle} value={groupTitle}>
+                                {groupTitle}
+                              </option>
+                            ))}
+                            <option value="__new__">{t("templates.group_create_new")}</option>
+                          </select>
+                        </label>
+                      ) : (
+                        <label>
+                          <span>{t("templates.group_name")}</span>
+                          <input
+                            type="text"
+                            value={activeTemplateTranslation?.groupTitle ?? ""}
+                            onChange={(event) =>
+                              updateTemplateTranslation(templateEditorLocale, {
                                 groupTitle: event.target.value
                               })
-                        }
-                      />
-                    </label>
-                    <label>
-                      <span>{t("templates.title")}</span>
-                      <input
-                        type="text"
-                        value={isEditingTemplateBaseLocale ? templateForm.title : activeTemplateTranslation?.title ?? ""}
-                        onChange={(event) =>
-                          isEditingTemplateBaseLocale
-                            ? setTemplateForm((current) => ({ ...current, title: event.target.value }))
-                            : updateTemplateTranslation(templateEditorLocale, {
-                                title: event.target.value
-                              })
-                        }
-                      />
-                    </label>
+                            }
+                          />
+                        </label>
+                      )}
+                      <label>
+                        <span>{t("templates.title")}</span>
+                        <input
+                          type="text"
+                          value={
+                            isEditingTemplateBaseLocale ? templateForm.title : activeTemplateTranslation?.title ?? ""
+                          }
+                          onChange={(event) =>
+                            isEditingTemplateBaseLocale
+                              ? setTemplateForm((current) => ({ ...current, title: event.target.value }))
+                              : updateTemplateTranslation(templateEditorLocale, {
+                                  title: event.target.value
+                                })
+                          }
+                        />
+                      </label>
+                    </div>
+                    {isEditingTemplateBaseLocale && templateGroupPickerValue === "__new__" ? (
+                      <label>
+                        <span>{t("templates.group_new_name")}</span>
+                        <input
+                          type="text"
+                          value={templateForm.groupTitle}
+                          onChange={(event) =>
+                            setTemplateForm((current) => ({ ...current, groupTitle: event.target.value }))
+                          }
+                          placeholder={t("templates.group_new_placeholder")}
+                        />
+                      </label>
+                    ) : null}
                     <label>
                       <span>{t("templates.description")}</span>
                       <textarea
@@ -6910,58 +6963,77 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         rows={4}
                       />
                     </label>
-                    <label>
-                      <span>{t("templates.difficulty")}</span>
-                      <select
-                        value={templateForm.difficulty}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({
-                            ...current,
-                            difficulty: event.target.value as TemplateFormState["difficulty"]
-                          }))
-                        }
-                      >
-                        <option value="easy">{t("difficulty.easy")}</option>
-                        <option value="medium">{t("difficulty.medium")}</option>
-                        <option value="hard">{t("difficulty.hard")}</option>
-                      </select>
-                    </label>
-                    <label>
-                      <span>{t("templates.assignment_strategy")}</span>
-                      <select
-                        value={templateForm.assignmentStrategy}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({
-                            ...current,
-                            assignmentStrategy: event.target.value as TemplateFormState["assignmentStrategy"]
-                          }))
-                        }
-                      >
-                        {assignmentStrategyOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
-                    <label>
-                      <span>{t("templates.recurrence")}</span>
-                      <select
-                        value={templateForm.recurrenceType ?? "none"}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({
-                            ...current,
-                            recurrenceType: event.target.value as TemplateFormState["recurrenceType"]
-                          }))
-                        }
-                      >
-                        {recurrenceOptions.map((option) => (
-                          <option key={option.value} value={option.value}>
-                            {option.label}
-                          </option>
-                        ))}
-                      </select>
-                    </label>
+                    <div className="template-editor-grid">
+                      <label>
+                        <span>{t("templates.difficulty")}</span>
+                        <select
+                          value={templateForm.difficulty}
+                          onChange={(event) =>
+                            setTemplateForm((current) => ({
+                              ...current,
+                              difficulty: event.target.value as TemplateFormState["difficulty"]
+                            }))
+                          }
+                        >
+                          <option value="easy">{t("difficulty.easy")}</option>
+                          <option value="medium">{t("difficulty.medium")}</option>
+                          <option value="hard">{t("difficulty.hard")}</option>
+                        </select>
+                      </label>
+                      <label>
+                        <span>{t("templates.assignment_strategy")}</span>
+                        <select
+                          value={templateForm.assignmentStrategy}
+                          onChange={(event) =>
+                            setTemplateForm((current) => ({
+                              ...current,
+                              assignmentStrategy: event.target.value as TemplateFormState["assignmentStrategy"]
+                            }))
+                          }
+                        >
+                          {assignmentStrategyOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                    </div>
+                    <div className="template-editor-grid">
+                      <label>
+                        <span>{t("templates.recurrence")}</span>
+                        <select
+                          value={templateForm.recurrenceType ?? "none"}
+                          onChange={(event) =>
+                            setTemplateForm((current) => ({
+                              ...current,
+                              recurrenceType: event.target.value as TemplateFormState["recurrenceType"]
+                            }))
+                          }
+                        >
+                          {recurrenceOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </label>
+                      <label>
+                        <span>{t("templates.recurrence_anchor")}</span>
+                        <select
+                          value={templateForm.recurrenceStartStrategy ?? "due_at"}
+                          onChange={(event) =>
+                            setTemplateForm((current) => ({
+                              ...current,
+                              recurrenceStartStrategy: event.target.value as "due_at" | "completed_at"
+                            }))
+                          }
+                        >
+                          <option value="due_at">{t("templates.recurrence_anchor_due_at")}</option>
+                          <option value="completed_at">{t("templates.recurrence_anchor_completed_at")}</option>
+                        </select>
+                      </label>
+                    </div>
                     {templateForm.recurrenceType === "every_x_days" ? (
                       <label>
                         <span>{t("templates.interval_days")}</span>
@@ -7024,229 +7096,225 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         }
                       />
                     </label>
-                    <label>
-                      <span>{t("templates.recurrence_anchor")}</span>
-                      <select
-                        value={templateForm.recurrenceStartStrategy ?? "due_at"}
-                        onChange={(event) =>
-                          setTemplateForm((current) => ({
-                            ...current,
-                            recurrenceStartStrategy: event.target.value as "due_at" | "completed_at"
-                          }))
-                        }
-                      >
-                        <option value="due_at">{t("templates.recurrence_anchor_due_at")}</option>
-                        <option value="completed_at">{t("templates.recurrence_anchor_completed_at")}</option>
-                      </select>
-                    </label>
-                    <div className="stack-list">
-                      <div className="section-heading">
-                        <h3>{t("templates.subtypes")}</h3>
+                    <details className="template-advanced-panel">
+                      <summary className="template-advanced-summary">
+                        <span>{t("templates.subtypes")}</span>
                         <span className="section-kicker">{(templateForm.variants ?? []).length}</span>
-                      </div>
-                      <p className="inline-message">{t("templates.subtypes_hint")}</p>
-                      {(templateForm.variants ?? []).map((variant, index) => (
-                        <div className="task-row compact" key={variant.id ?? `variant-${index}`}>
-                          <label>
-                            <span>{t("templates.subtype_name")}</span>
-                            <input
-                              type="text"
-                              value={variant.label}
-                              maxLength={100}
-                              onChange={(event) =>
-                                updateVariantDraftItem(index, { label: event.target.value })
-                              }
-                            />
-                          </label>
-                          {templateTranslationLocales
-                            .filter((locale) => locale !== (templateForm.defaultLocale ?? language))
-                            .map((locale) => {
-                              const translation = (variant.translations ?? []).find(
-                                (entry) => entry.locale === locale
-                              );
+                      </summary>
+                      <div className="stack-list template-advanced-body">
+                        {(templateForm.variants ?? []).length === 0 ? (
+                          <p className="inline-message">{t("templates.no_subtypes")}</p>
+                        ) : (
+                          (templateForm.variants ?? []).map((variant, index) => (
+                            <div className="task-row compact" key={variant.id ?? `variant-${index}`}>
+                              <label>
+                                <span>{t("templates.subtype_name")}</span>
+                                <input
+                                  type="text"
+                                  value={variant.label}
+                                  maxLength={100}
+                                  onChange={(event) =>
+                                    updateVariantDraftItem(index, { label: event.target.value })
+                                  }
+                                />
+                              </label>
+                              {templateTranslationLocales
+                                .filter((locale) => locale !== (templateForm.defaultLocale ?? language))
+                                .map((locale) => {
+                                  const translation = (variant.translations ?? []).find(
+                                    (entry) => entry.locale === locale
+                                  );
 
-                              return (
-                                <label key={`${variant.id ?? index}-${locale}`}>
-                                  <span>
-                                    {getLanguageLabel(locale)} {t("templates.subtype_name")}
-                                  </span>
-                                  <input
-                                    type="text"
-                                    value={translation?.label ?? ""}
-                                    maxLength={100}
-                                    onChange={(event) =>
-                                      updateVariantTranslation(index, locale, event.target.value)
-                                    }
-                                  />
-                                </label>
-                              );
-                            })}
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            onClick={() => removeVariantDraftItem(index)}
-                          >
-                            {t("templates.remove_subtype")}
-                          </button>
-                        </div>
-                      ))}
-                      <button type="button" className="ghost-button" onClick={addVariantDraftItem}>
-                        {t("templates.add_subtype")}
-                      </button>
-                    </div>
-                    <div className="stack-list">
-                      <div className="section-heading">
-                        <h3>{t("templates.follow_ups")}</h3>
-                        <span className="section-kicker">{selectedTemplateDependencyRules.length}</span>
-                      </div>
-                      {!templateForm.groupTitle.trim() ? (
-                        <p className="inline-message">{t("templates.follow_up_group_required")}</p>
-                      ) : sameGroupFollowUpCandidates.length === 0 ? (
-                        <p className="inline-message">{t("templates.follow_up_same_group_empty")}</p>
-                      ) : (
-                        <>
-                          <p className="inline-message">{t("templates.follow_up_same_group_hint")}</p>
-                          <details className="multi-select-menu">
-                            <summary>
-                              {t("templates.follow_up_summary").replace(
-                                "{count}",
-                                String(selectedTemplateDependencyRules.length)
-                              )}
-                            </summary>
-                            <div className="stack-list compact-stack">
-                              {sameGroupFollowUpCandidates.map((template) => {
-                                const selected = selectedTemplateDependencyRules.some(
-                                  (dependencyRule) => dependencyRule.templateId === template.id
-                                );
-                                return (
-                                  <label className="toggle-row" key={template.id}>
-                                    <span>{template.title}</span>
-                                    <input
-                                      type="checkbox"
-                                      checked={selected}
-                                      onChange={(event) =>
-                                        toggleTemplateDependencyRule(template.id, event.target.checked)
-                                      }
-                                    />
-                                  </label>
-                                );
-                              })}
-                            </div>
-                          </details>
-                          {selectedTemplateDependencyRules.length === 0 ? (
-                            <p className="inline-message">{t("templates.no_follow_ups")}</p>
-                          ) : (
-                            selectedTemplateDependencyRules.map((selectedRule) => {
-                              const followUpTemplate = sameGroupFollowUpCandidates.find(
-                                (template) => template.id === selectedRule.templateId
-                              );
-                              return (
-                                <div className="task-row compact template-follow-up-rule" key={selectedRule.templateId}>
-                                  <strong>{followUpTemplate?.title ?? t("common.unknown")}</strong>
-                                  <div className="button-row">
-                                    <label>
-                                      <span>{t("templates.follow_up_delay")}</span>
+                                  return (
+                                    <label key={`${variant.id ?? index}-${locale}`}>
+                                      <span>
+                                        {getLanguageLabel(locale)} {t("templates.subtype_name")}
+                                      </span>
                                       <input
-                                        type="number"
-                                        min={1}
-                                        max={365}
-                                        value={selectedRule.delayValue}
+                                        type="text"
+                                        value={translation?.label ?? ""}
+                                        maxLength={100}
                                         onChange={(event) =>
-                                          updateTemplateDependencyRule(selectedRule.templateId, {
-                                            delayValue: Number(event.target.value || 1)
-                                          })
+                                          updateVariantTranslation(index, locale, event.target.value)
                                         }
                                       />
                                     </label>
-                                    <label>
-                                      <span>{t("templates.follow_up_delay_unit")}</span>
-                                      <select
-                                        value={selectedRule.delayUnit}
+                                  );
+                                })}
+                              <button
+                                type="button"
+                                className="ghost-button"
+                                onClick={() => removeVariantDraftItem(index)}
+                              >
+                                {t("templates.remove_subtype")}
+                              </button>
+                            </div>
+                          ))
+                        )}
+                        <button type="button" className="ghost-button" onClick={addVariantDraftItem}>
+                          {t("templates.add_subtype")}
+                        </button>
+                      </div>
+                    </details>
+                    <details className="template-advanced-panel">
+                      <summary className="template-advanced-summary">
+                        <span>{t("templates.follow_ups")}</span>
+                        <span className="section-kicker">{selectedTemplateDependencyRules.length}</span>
+                      </summary>
+                      <div className="stack-list template-advanced-body">
+                        {!templateForm.groupTitle.trim() ? (
+                          <p className="inline-message">{t("templates.follow_up_group_required")}</p>
+                        ) : sameGroupFollowUpCandidates.length === 0 ? (
+                          <p className="inline-message">{t("templates.follow_up_same_group_empty")}</p>
+                        ) : (
+                          <>
+                            <details className="multi-select-menu">
+                              <summary>
+                                {t("templates.follow_up_summary").replace(
+                                  "{count}",
+                                  String(selectedTemplateDependencyRules.length)
+                                )}
+                              </summary>
+                              <div className="stack-list compact-stack">
+                                {sameGroupFollowUpCandidates.map((template) => {
+                                  const selected = selectedTemplateDependencyRules.some(
+                                    (dependencyRule) => dependencyRule.templateId === template.id
+                                  );
+                                  return (
+                                    <label className="toggle-row" key={template.id}>
+                                      <span>{template.title}</span>
+                                      <input
+                                        type="checkbox"
+                                        checked={selected}
                                         onChange={(event) =>
-                                          updateTemplateDependencyRule(selectedRule.templateId, {
-                                            delayUnit: event.target.value as FollowUpDelayUnit
-                                          })
+                                          toggleTemplateDependencyRule(template.id, event.target.checked)
                                         }
-                                      >
-                                        <option value="hours">{t("templates.delay_hours")}</option>
-                                        <option value="days">{t("templates.delay_days")}</option>
-                                      </select>
+                                      />
                                     </label>
+                                  );
+                                })}
+                              </div>
+                            </details>
+                            {selectedTemplateDependencyRules.length === 0 ? (
+                              <p className="inline-message">{t("templates.no_follow_ups")}</p>
+                            ) : (
+                              selectedTemplateDependencyRules.map((selectedRule) => {
+                                const followUpTemplate = sameGroupFollowUpCandidates.find(
+                                  (template) => template.id === selectedRule.templateId
+                                );
+                                return (
+                                  <div className="task-row compact template-follow-up-rule" key={selectedRule.templateId}>
+                                    <strong>{followUpTemplate?.title ?? t("common.unknown")}</strong>
+                                    <div className="button-row">
+                                      <label>
+                                        <span>{t("templates.follow_up_delay")}</span>
+                                        <input
+                                          type="number"
+                                          min={1}
+                                          max={365}
+                                          value={selectedRule.delayValue}
+                                          onChange={(event) =>
+                                            updateTemplateDependencyRule(selectedRule.templateId, {
+                                              delayValue: Number(event.target.value || 1)
+                                            })
+                                          }
+                                        />
+                                      </label>
+                                      <label>
+                                        <span>{t("templates.follow_up_delay_unit")}</span>
+                                        <select
+                                          value={selectedRule.delayUnit}
+                                          onChange={(event) =>
+                                            updateTemplateDependencyRule(selectedRule.templateId, {
+                                              delayUnit: event.target.value as FollowUpDelayUnit
+                                            })
+                                          }
+                                        >
+                                          <option value="hours">{t("templates.delay_hours")}</option>
+                                          <option value="days">{t("templates.delay_days")}</option>
+                                        </select>
+                                      </label>
+                                    </div>
                                   </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </>
-                      )}
-                    </div>
-                    <div className="stack-list">
-                      <div className="section-heading">
-                        <h3>{t("templates.checklist")}</h3>
+                                );
+                              })
+                            )}
+                          </>
+                        )}
+                      </div>
+                    </details>
+                    <details className="template-advanced-panel">
+                      <summary className="template-advanced-summary">
+                        <span>{t("templates.checklist")}</span>
+                        <span className="section-kicker">{(templateForm.checklist ?? []).length}</span>
+                      </summary>
+                      <div className="stack-list template-advanced-body">
+                        {(templateForm.checklist ?? []).length === 0 ? (
+                          <p className="inline-message">{t("templates.no_checklist_draft")}</p>
+                        ) : (
+                          (templateForm.checklist ?? []).map((item, index) => (
+                            <div className="task-row compact" key={`${item.title}-${index}`}>
+                              <label>
+                                <span>{t("templates.checklist_item_title")}</span>
+                                <input
+                                  type="text"
+                                  value={item.title}
+                                  onChange={(event) =>
+                                    updateChecklistDraftItem(index, { title: event.target.value })
+                                  }
+                                />
+                              </label>
+                              <label className="toggle-row">
+                                <span>{t("templates.checklist_required")}</span>
+                                <input
+                                  type="checkbox"
+                                  checked={item.required}
+                                  onChange={(event) =>
+                                    updateChecklistDraftItem(index, { required: event.target.checked })
+                                  }
+                                />
+                              </label>
+                              <button
+                                className="secondary-button"
+                                type="button"
+                                onClick={() => removeChecklistDraftItem(index)}
+                              >
+                                {t("templates.remove_checklist_item")}
+                              </button>
+                            </div>
+                          ))
+                        )}
                         <button className="ghost-button" type="button" onClick={addChecklistDraftItem}>
                           {t("templates.add_checklist_item")}
                         </button>
                       </div>
-                      {(templateForm.checklist ?? []).length === 0 ? (
-                        <p className="inline-message">{t("templates.no_checklist_draft")}</p>
+                    </details>
+                    <div className="template-editor-actions">
+                      <button className="primary-button" type="submit" disabled={busyAction === "create-template"}>
+                        {editingTemplateId ? t("templates.save") : t("templates.create")}
+                      </button>
+                      {editingTemplateId ? (
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          disabled={busyAction === `delete-template:${editingTemplateId}`}
+                          onClick={() => void handleDeleteTemplate(editingTemplateId)}
+                        >
+                          {busyAction === `delete-template:${editingTemplateId}`
+                            ? t("templates.deleting")
+                            : t("common.delete")}
+                        </button>
+                      ) : null}
+                      {editingTemplateId ? (
+                        <button className="ghost-button" type="button" onClick={resetTemplateForm}>
+                          {t("common.cancel")}
+                        </button>
                       ) : (
-                        (templateForm.checklist ?? []).map((item, index) => (
-                          <div className="task-row compact" key={`${item.title}-${index}`}>
-                            <label>
-                              <span>{t("templates.checklist_item_title")}</span>
-                              <input
-                                type="text"
-                                value={item.title}
-                                onChange={(event) =>
-                                  updateChecklistDraftItem(index, { title: event.target.value })
-                                }
-                              />
-                            </label>
-                            <label className="toggle-row">
-                              <span>{t("templates.checklist_required")}</span>
-                              <input
-                                type="checkbox"
-                                checked={item.required}
-                                onChange={(event) =>
-                                  updateChecklistDraftItem(index, { required: event.target.checked })
-                                }
-                              />
-                            </label>
-                            <button
-                              className="secondary-button"
-                              type="button"
-                              onClick={() => removeChecklistDraftItem(index)}
-                            >
-                              {t("templates.remove_checklist_item")}
-                            </button>
-                          </div>
-                        ))
+                        <button className="ghost-button" type="button" onClick={resetTemplateForm}>
+                          {t("templates.clear_editor")}
+                        </button>
                       )}
                     </div>
-                    <button className="primary-button" type="submit" disabled={busyAction === "create-template"}>
-                      {editingTemplateId ? t("templates.save") : t("templates.create")}
-                    </button>
-                    {editingTemplateId ? (
-                      <button
-                        className="ghost-button"
-                        type="button"
-                        disabled={busyAction === `delete-template:${editingTemplateId}`}
-                        onClick={() => void handleDeleteTemplate(editingTemplateId)}
-                      >
-                        {busyAction === `delete-template:${editingTemplateId}`
-                          ? t("templates.deleting")
-                          : t("common.delete")}
-                      </button>
-                    ) : null}
-                    {editingTemplateId ? (
-                      <button className="ghost-button" type="button" onClick={resetTemplateForm}>
-                        {t("common.cancel")}
-                      </button>
-                    ) : (
-                      <button className="ghost-button" type="button" onClick={resetTemplateForm}>
-                        {t("templates.clear_editor")}
-                      </button>
-                    )}
                   </form>
                   </div>
                 </article>
