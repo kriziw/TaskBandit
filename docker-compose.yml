@@ -5,6 +5,11 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: taskbandit-postgres
+    logging:
+      driver: json-file
+      options:
+        max-size: ${TASKBANDIT_DOCKER_LOG_MAX_SIZE:-100m}
+        max-file: "${TASKBANDIT_DOCKER_LOG_MAX_FILES:-5}"
     environment:
       POSTGRES_DB: ${TASKBANDIT_DB_NAME:-taskbandit}
       POSTGRES_USER: ${TASKBANDIT_DB_USER:-taskbandit}
@@ -54,6 +59,8 @@ services:
       TASKBANDIT_REVERSE_PROXY_ENABLED: ${TASKBANDIT_REVERSE_PROXY_ENABLED:-}
       TASKBANDIT_REVERSE_PROXY_PATH_BASE: ${TASKBANDIT_REVERSE_PROXY_PATH_BASE:-}
       TASKBANDIT_STORAGE_ROOT: ${TASKBANDIT_STORAGE_ROOT:-/var/lib/taskbandit/storage}
+      TASKBANDIT_RUNTIME_LOG_MAX_FILE_SIZE_MB: ${TASKBANDIT_RUNTIME_LOG_MAX_FILE_SIZE_MB:-100}
+      TASKBANDIT_RUNTIME_LOG_MAX_TOTAL_SIZE_MB: ${TASKBANDIT_RUNTIME_LOG_MAX_TOTAL_SIZE_MB:-500}
       TASKBANDIT_DATA_ROOT_HINT: ${TASKBANDIT_DATA_ROOT_HINT:-${TASKBANDIT_DATA_ROOT:-./data}}
       TASKBANDIT_COMPOSE_FILE_HINT: ${TASKBANDIT_COMPOSE_FILE_HINT:-./docker-compose.yml}
       TASKBANDIT_ENV_FILE_HINT: ${TASKBANDIT_ENV_FILE_HINT:-./.env}
@@ -72,6 +79,11 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+    logging:
+      driver: json-file
+      options:
+        max-size: ${TASKBANDIT_DOCKER_LOG_MAX_SIZE:-100m}
+        max-file: "${TASKBANDIT_DOCKER_LOG_MAX_FILES:-5}"
     pull_policy: always
     volumes:
       - ${TASKBANDIT_DATA_ROOT:-./data}/taskbandit:/var/lib/taskbandit
@@ -79,6 +91,11 @@ services:
   web:
     image: kriziw/taskbandit-web:${TASKBANDIT_IMAGE_TAG:-latest}
     container_name: taskbandit-web
+    logging:
+      driver: json-file
+      options:
+        max-size: ${TASKBANDIT_DOCKER_LOG_MAX_SIZE:-100m}
+        max-file: "${TASKBANDIT_DOCKER_LOG_MAX_FILES:-5}"
     environment:
       TASKBANDIT_API_BASE_URL: ${TASKBANDIT_PUBLIC_API_BASE_URL:-http://localhost:8080}
       TASKBANDIT_WEB_BASE_URL: ${TASKBANDIT_PUBLIC_WEB_BASE_URL:-http://localhost:4173}

@@ -1,5 +1,5 @@
 import { ConsoleLogger, Injectable } from "@nestjs/common";
-import { appendFile, readFile } from "node:fs/promises";
+import { appendFile, readFile, rename, stat, unlink } from "node:fs/promises";
 import { mkdirSync } from "node:fs";
 import path from "node:path";
 import { AppConfigService } from "../config/app-config.service";
@@ -11,11 +11,21 @@ export class AppLogService extends ConsoleLogger {
   private nextId = 1;
   private readonly logFilePath: string;
   private readonly maxEntries: number;
+  private readonly maxFileSizeBytes: number;
+  private readonly maxTotalSizeBytes: number;
+  private readonly maxArchiveFiles: number;
+  private writeQueue = Promise.resolve();
 
   constructor(private readonly appConfigService: AppConfigService) {
     super();
     this.logFilePath = appConfigService.runtimeLogFilePath;
     this.maxEntries = appConfigService.runtimeLogBufferSize;
+    this.maxFileSizeBytes = appConfigService.runtimeLogMaxFileSizeBytes;
+    this.maxTotalSizeBytes = appConfigService.runtimeLogMaxTotalSizeBytes;
+    this.maxArchiveFiles = Math.max(
+      0,
+      Math.ceil(this.maxTotalSizeBytes / this.maxFileSizeBytes) - 1
+    );
     mkdirSync(path.dirname(this.logFilePath), { recursive: true });
   }
 
@@ -77,7 +87,94 @@ export class AppLogService extends ConsoleLogger {
       this.entries.splice(0, this.entries.length - this.maxEntries);
     }
 
-    void appendFile(this.logFilePath, `${this.formatLine(entry)}\n`, "utf8").catch(() => undefined);
+    const serializedEntry = `${this.formatLine(entry)}\n`;
+    this.writeQueue = this.writeQueue
+      .then(() => this.persistEntry(serializedEntry))
+      .catch(() => undefined);
+  }
+
+  private async persistEntry(serializedEntry: string) {
+    const serializedSize = Buffer.byteLength(serializedEntry, "utf8");
+    await this.rotateIfNeeded(serializedSize);
+    await appendFile(this.logFilePath, serializedEntry, "utf8");
+    await this.pruneArchivedLogsToTotalLimit();
+  }
+
+  private async rotateIfNeeded(nextEntrySizeBytes: number) {
+    const currentFileSize = await this.getFileSize(this.logFilePath);
+    if (currentFileSize === 0) {
+      return;
+    }
+
+    if (currentFileSize + nextEntrySizeBytes <= this.maxFileSizeBytes) {
+      return;
+    }
+
+    if (this.maxArchiveFiles === 0) {
+      await unlink(this.logFilePath).catch(() => undefined);
+      return;
+    }
+
+    await unlink(this.getArchivePath(this.maxArchiveFiles)).catch(() => undefined);
+
+    for (let archiveIndex = this.maxArchiveFiles; archiveIndex >= 1; archiveIndex -= 1) {
+      const sourcePath = archiveIndex === 1 ? this.logFilePath : this.getArchivePath(archiveIndex - 1);
+      const destinationPath = this.getArchivePath(archiveIndex);
+
+      if (!(await this.fileExists(sourcePath))) {
+        continue;
+      }
+
+      await unlink(destinationPath).catch(() => undefined);
+      await rename(sourcePath, destinationPath).catch(() => undefined);
+    }
+  }
+
+  private async pruneArchivedLogsToTotalLimit() {
+    let totalSize = await this.getFileSize(this.logFilePath);
+    const archiveSizes: Array<{ index: number; size: number }> = [];
+
+    for (let archiveIndex = 1; archiveIndex <= this.maxArchiveFiles; archiveIndex += 1) {
+      const archivePath = this.getArchivePath(archiveIndex);
+      const archiveSize = await this.getFileSize(archivePath);
+      if (archiveSize === 0) {
+        continue;
+      }
+
+      archiveSizes.push({ index: archiveIndex, size: archiveSize });
+      totalSize += archiveSize;
+    }
+
+    for (const archive of archiveSizes.sort((left, right) => right.index - left.index)) {
+      if (totalSize <= this.maxTotalSizeBytes) {
+        return;
+      }
+
+      await unlink(this.getArchivePath(archive.index)).catch(() => undefined);
+      totalSize -= archive.size;
+    }
+  }
+
+  private async getFileSize(filePath: string) {
+    try {
+      const fileStats = await stat(filePath);
+      return fileStats.size;
+    } catch {
+      return 0;
+    }
+  }
+
+  private async fileExists(filePath: string) {
+    try {
+      await stat(filePath);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+
+  private getArchivePath(index: number) {
+    return `${this.logFilePath}.${index}`;
   }
 
   private formatLine(entry: RuntimeLogEntry) {

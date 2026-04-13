@@ -36,3 +36,4 @@
 - The client web app keeps its session in durable local storage, while the admin entrypoint uses session storage so admin access is more tightly scoped to the active browser session.
 - Split frontend deployment and migration rules are documented in `docs/dual-web-clients.md`.
 - Proof-photo uploads are now written to local disk under `TASKBANDIT_STORAGE_ROOT` and should point at a persistent path outside disposable containers in real deployments.
+- Runtime log safety is now built in: `TASKBANDIT_RUNTIME_LOG_MAX_FILE_SIZE_MB=100` and `TASKBANDIT_RUNTIME_LOG_MAX_TOTAL_SIZE_MB=500` rotate and cap the persistent TaskBandit runtime log, while `TASKBANDIT_DOCKER_LOG_MAX_SIZE=100m` and `TASKBANDIT_DOCKER_LOG_MAX_FILES=5` cap Docker container logs.
