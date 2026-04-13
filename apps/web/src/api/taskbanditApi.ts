@@ -58,6 +58,25 @@ export class TaskBanditApiError extends Error {
   }
 }
 
+function looksLikeHtmlDocument(value: string) {
+  const trimmedValue = value.trimStart().toLowerCase();
+  return (
+    trimmedValue.startsWith("<!doctype html") ||
+    trimmedValue.startsWith("<html") ||
+    trimmedValue.startsWith("<head") ||
+    trimmedValue.startsWith("<body")
+  );
+}
+
+function buildUnexpectedResponseMessage(response: Response, responseText: string) {
+  const contentType = response.headers.get("Content-Type")?.toLowerCase() ?? "";
+  if (contentType.includes("text/html") || looksLikeHtmlDocument(responseText)) {
+    return "TaskBandit received an HTML page instead of API JSON. Check the API base URL and reverse proxy configuration.";
+  }
+
+  return "TaskBandit received an unexpected response from the server.";
+}
+
 function buildHeaders(token: string | null | undefined, language: AppLanguage) {
   const headers = new Headers({
     Accept: "application/json",
@@ -89,19 +108,31 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
     throw new TaskBanditApiError(message, response.status);
   }
 
-  return (await response.json()) as T;
+  return await readJsonResponse<T>(response);
 }
 
 async function readErrorMessage(response: Response) {
+  const responseText = await response.text();
+
   try {
-    const data = (await response.json()) as ApiErrorShape;
+    const data = JSON.parse(responseText) as ApiErrorShape;
     if (Array.isArray(data.message)) {
       return data.message.join(", ");
     }
 
-    return data.message ?? data.error ?? "Request failed.";
+    return data.message ?? data.error ?? buildUnexpectedResponseMessage(response, responseText);
   } catch {
-    return "Request failed.";
+    return buildUnexpectedResponseMessage(response, responseText);
+  }
+}
+
+async function readJsonResponse<T>(response: Response): Promise<T> {
+  const responseText = await response.text();
+
+  try {
+    return JSON.parse(responseText) as T;
+  } catch {
+    throw new TaskBanditApiError(buildUnexpectedResponseMessage(response, responseText), response.status);
   }
 }
 
@@ -603,7 +634,7 @@ export const taskBanditApi = {
       throw new TaskBanditApiError(message, response.status);
     }
 
-    return (await response.json()) as UploadedProof;
+    return await readJsonResponse<UploadedProof>(response);
   },
   async downloadProofAttachment(token: string, language: AppLanguage, attachmentId: string) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/chores/attachments/${attachmentId}`, {

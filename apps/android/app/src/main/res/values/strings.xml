@@ -35,6 +35,7 @@
     <string name="mobile_update_available_body">This app is on %1$s while the server is already on %2$s. Update when you can.</string>
     <string name="mobile_update_dismiss">Dismiss</string>
     <string name="mobile_server_url">Server URL</string>
+    <string name="mobile_server_url_hint">Use the TaskBandit API URL for this server.</string>
     <string name="mobile_email">Email</string>
     <string name="mobile_password">Password</string>
     <string name="mobile_login_action">Sign in</string>
