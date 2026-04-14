@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.37.0](https://github.com/kriziw/TaskBandit/compare/v0.36.3...v0.37.0) (2026-04-14)
+
+
+### Features
+
+* **recurring:** support occurrence cancellation and multi-weekday repeats ([#258](https://github.com/kriziw/TaskBandit/issues/258)) ([39122ce](https://github.com/kriziw/TaskBandit/commit/39122ce41ae4766353eea807ae55376ad5e2e461))
+
 ## [0.36.3](https://github.com/kriziw/TaskBandit/compare/v0.36.2...v0.36.3) (2026-04-14)
 
 
