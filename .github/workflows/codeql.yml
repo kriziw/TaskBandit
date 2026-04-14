@@ -3,7 +3,7 @@ name: codeql
 on:
   push:
     branches: ["main"]
-  pull_request:
+  workflow_dispatch:
   schedule:
     - cron: "23 4 * * 1"
 
@@ -14,6 +14,7 @@ permissions:
 
 jobs:
   analyze:
+    if: vars.CODEQL_ADVANCED_SETUP_ENABLED == 'true'
     name: Analyze (${{ matrix.name }})
     runs-on: ubuntu-latest
     strategy:
