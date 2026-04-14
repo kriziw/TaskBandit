@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.36.0](https://github.com/kriziw/TaskBandit/compare/v0.35.10...v0.36.0) (2026-04-14)
+
+
+### Features
+
+* add guided admin and web onboarding tour ([#246](https://github.com/kriziw/TaskBandit/issues/246)) ([657197e](https://github.com/kriziw/TaskBandit/commit/657197e22200bab8bee6794bcbbaffde38d28ab4))
+* clarify backup recovery and migration readiness ([#247](https://github.com/kriziw/TaskBandit/issues/247)) ([14c7315](https://github.com/kriziw/TaskBandit/commit/14c73154a314e314fab8e0fd8598a8b7acc04223))
+
 ## [0.35.10](https://github.com/kriziw/TaskBandit/compare/v0.35.9...v0.35.10) (2026-04-14)
 
 
