@@ -29,6 +29,7 @@
   "chores.takeover_request_invalid_target": "Válassz másik háztartási tagot ehhez az átvételi kéréshez.",
   "chores.invalid_cancel_state": "Csak aktiv feladatokat lehet torolni.",
   "chores.cycle_close_not_available": "Ez a feladat nem tartozik ismetlodő ciklushoz.",
+  "chores.occurrence_cancel_not_available": "Ez a feladat nem tamogatja, hogy csak egyetlen ismetlodo alkalmat torolj.",
   "chores.invalid_edit_state": "Ez a feladat a jelenlegi allapotaban mar nem szerkesztheto.",
   "chores.invalid_start_state": "Csak nyitott vagy javitasra visszakuldott feladatokat lehet elinditani.",
   "chores.invalid_review_state": "Csak jovahagyasra varo feladatokat lehet felulvizsgalni.",

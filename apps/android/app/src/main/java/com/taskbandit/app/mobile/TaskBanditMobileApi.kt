@@ -271,6 +271,26 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun cancelChoreOccurrence(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/cancel-occurrence",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
+    fun cancelChoreSeries(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/cancel-series",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
     fun requestTakeover(
         baseUrl: String,
         token: String,
@@ -340,6 +360,7 @@ class TaskBanditMobileApi {
         assignmentStrategy: String? = null,
         recurrenceType: String? = null,
         recurrenceIntervalDays: Int? = null,
+        recurrenceWeekdays: List<String> = emptyList(),
         recurrenceEndMode: String? = null,
         recurrenceOccurrences: Int? = null,
         recurrenceEndsAtIsoUtc: String? = null,
@@ -365,6 +386,10 @@ class TaskBanditMobileApi {
 
         if (recurrenceIntervalDays != null) {
             payload.put("recurrenceIntervalDays", recurrenceIntervalDays)
+        }
+
+        if (recurrenceWeekdays.isNotEmpty()) {
+            payload.put("recurrenceWeekdays", JSONArray(recurrenceWeekdays))
         }
 
         if (!recurrenceEndMode.isNullOrBlank()) {
@@ -671,11 +696,14 @@ class TaskBanditMobileApi {
         return MobileChore(
             id = entry.optString("id"),
             cycleId = entry.optNullableString("cycleId"),
+            occurrenceRootId = entry.optNullableString("occurrenceRootId"),
             title = entry.optString("title"),
             groupTitle = entry.optString("groupTitle").ifBlank { "General" },
             typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
             subtypeLabel = entry.optNullableString("subtypeLabel"),
             state = entry.optString("state"),
+            supportsOccurrenceCancellation = entry.optBoolean("supportsOccurrenceCancellation"),
+            supportsSeriesCancellation = entry.optBoolean("supportsSeriesCancellation"),
             assigneeId = entry.optNullableString("assigneeId"),
             assigneeDisplayName = entry.optNullableString("assigneeDisplayName"),
             dueAt = entry.optString("dueAt"),

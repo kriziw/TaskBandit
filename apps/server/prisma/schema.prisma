@@ -249,6 +249,7 @@ model ChoreInstance {
   householdId     String        @db.Uuid
   templateId      String        @db.Uuid
   cycleId         String?       @db.Uuid
+  occurrenceRootId String?      @db.Uuid
   title           String
   subtypeLabel    String?
   requirePhotoProofOverride Boolean?
@@ -288,6 +289,7 @@ model ChoreInstance {
   takeoverRequests ChoreTakeoverRequest[]
 
   @@index([householdId, cycleId, state], map: "chore_instance_household_cycle_state_idx")
+  @@index([householdId, occurrenceRootId, state], map: "chore_instance_household_occurrence_root_state_idx")
 }
 
 model ChoreTakeoverRequest {

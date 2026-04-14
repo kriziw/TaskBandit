@@ -122,13 +122,49 @@ export class ChoresService {
     return cancelledInstance;
   }
 
+  async cancelOccurrence(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    if (!instance) {
+      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+    }
+
+    if (instance.state === "completed" || instance.state === "cancelled") {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.invalid_cancel_state", language)
+      );
+    }
+
+    if (!instance.supportsOccurrenceCancellation) {
+      return this.repository.throwConflict(
+        this.i18nService.translate("chores.occurrence_cancel_not_available", language)
+      );
+    }
+
+    const result = await this.repository.cancelOccurrence(
+      instanceId,
+      user.householdId,
+      user.id,
+      language
+    );
+
+    result.cancelledIds.forEach((cancelledId) => {
+      this.publishSyncEvent(user, "instance.cancelled", "instance", cancelledId);
+    });
+
+    if (result.nextInstance) {
+      this.publishSyncEvent(user, "instance.created", "instance", result.nextInstance.id);
+    }
+
+    return result;
+  }
+
   async closeCycle(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
     }
 
-    if (!instance.cycleId) {
+    if (!instance.supportsSeriesCancellation) {
       return this.repository.throwConflict(
         this.i18nService.translate("chores.cycle_close_not_available", language)
       );
@@ -146,6 +182,10 @@ export class ChoresService {
     });
 
     return result;
+  }
+
+  async cancelSeries(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
+    return this.closeCycle(instanceId, user, language);
   }
 
   async startInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {

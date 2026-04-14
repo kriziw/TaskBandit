@@ -2213,7 +2213,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 {t("common.edit")}
               </button>
             ) : null}
-            {!instance.cycleId ? (
+            {!instance.supportsOccurrenceCancellation ? (
               <button
                 className="secondary-button"
                 type="button"
@@ -2223,16 +2223,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 {t("instances.cancel")}
               </button>
             ) : (
-              <button
-                className="secondary-button"
-                type="button"
-                disabled={busyAction === `close-cycle:${instance.id}`}
-                onClick={() => void handleCloseCycle(instance.id)}
-              >
-                {busyAction === `close-cycle:${instance.id}`
-                  ? t("instances.closing_cycle")
-                  : t("instances.close_cycle")}
-              </button>
+              <>
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={busyAction === `cancel-occurrence:${instance.id}`}
+                  onClick={() => void handleCancelOccurrence(instance.id)}
+                >
+                  {busyAction === `cancel-occurrence:${instance.id}`
+                    ? t("instances.cancelling_occurrence")
+                    : t("instances.cancel_occurrence")}
+                </button>
+                <button
+                  className="ghost-button"
+                  type="button"
+                  disabled={busyAction === `cancel-series:${instance.id}`}
+                  onClick={() => void handleCancelSeries(instance.id)}
+                >
+                  {busyAction === `cancel-series:${instance.id}`
+                    ? t("instances.cancelling_series")
+                    : t("instances.cancel_series")}
+                </button>
+              </>
             )}
           </div>
         ) : null}
@@ -2336,17 +2348,29 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           >
             {t("submission.submit")}
           </button>
-          {payload?.currentUser.role !== "child" && instance.cycleId ? (
-            <button
-              className="ghost-button"
-              type="button"
-              disabled={busyAction === `close-cycle:${instance.id}`}
-              onClick={() => void handleCloseCycle(instance.id)}
-            >
-              {busyAction === `close-cycle:${instance.id}`
-                ? t("instances.closing_cycle")
-                : t("instances.close_cycle")}
-            </button>
+          {payload?.currentUser.role !== "child" && instance.supportsOccurrenceCancellation ? (
+            <>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={busyAction === `cancel-occurrence:${instance.id}`}
+                onClick={() => void handleCancelOccurrence(instance.id)}
+              >
+                {busyAction === `cancel-occurrence:${instance.id}`
+                  ? t("instances.cancelling_occurrence")
+                  : t("instances.cancel_occurrence")}
+              </button>
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={busyAction === `cancel-series:${instance.id}`}
+                onClick={() => void handleCancelSeries(instance.id)}
+              >
+                {busyAction === `cancel-series:${instance.id}`
+                  ? t("instances.cancelling_series")
+                  : t("instances.cancel_series")}
+              </button>
+            </>
           ) : null}
         </div>
       </div>
@@ -3232,36 +3256,45 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   }
 
-  async function handleCloseCycle(instanceId: string) {
+  async function handleCancelOccurrence(instanceId: string) {
     if (!token) {
       return;
     }
 
-    if (!window.confirm(t("instances.close_cycle_confirm"))) {
+    if (!window.confirm(t("instances.cancel_occurrence_confirm"))) {
       return;
     }
 
-    setBusyAction(`close-cycle:${instanceId}`);
+    setBusyAction(`cancel-occurrence:${instanceId}`);
     try {
-      const closedCycle = await taskBanditApi.closeCycle(token, language, instanceId);
-      const cancelledIds = new Set(closedCycle.cancelledIds);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              instances: current.instances.map((instance) =>
-                cancelledIds.has(instance.id)
-                  ? { ...instance, state: "cancelled", cancelledAt: closedCycle.cancelledAt }
-                  : instance
-              )
-            }
-          : current
-      );
+      await taskBanditApi.cancelOccurrence(token, language, instanceId);
       await refreshDashboard(token, { silent: true });
-      setNotice(t("instances.cycle_closed"));
+      setNotice(t("instances.occurrence_cancelled"));
       setPageError(null);
     } catch (error) {
-      setPageError(readErrorMessage(error, t("instances.close_cycle_failed")));
+      setPageError(readErrorMessage(error, t("instances.cancel_occurrence_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleCancelSeries(instanceId: string) {
+    if (!token) {
+      return;
+    }
+
+    if (!window.confirm(t("instances.cancel_series_confirm"))) {
+      return;
+    }
+
+    setBusyAction(`cancel-series:${instanceId}`);
+    try {
+      await taskBanditApi.cancelSeries(token, language, instanceId);
+      await refreshDashboard(token, { silent: true });
+      setNotice(t("instances.series_cancelled"));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.cancel_series_failed")));
     } finally {
       setBusyAction(null);
     }

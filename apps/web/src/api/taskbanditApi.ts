@@ -525,9 +525,32 @@ export const taskBanditApi = {
       language
     });
   },
+  cancelOccurrence(token: string, language: AppLanguage, instanceId: string) {
+    return request<{
+      occurrenceRootId: string;
+      cancelledCount: number;
+      cancelledIds: string[];
+      cancelledAt: string | null;
+      nextInstance: ChoreInstance | null;
+    }>(`/api/chores/instances/${instanceId}/cancel-occurrence`, {
+      method: "POST",
+      token,
+      language
+    });
+  },
   closeCycle(token: string, language: AppLanguage, instanceId: string) {
     return request<{ cycleId: string; cancelledCount: number; cancelledIds: string[]; cancelledAt: string | null }>(
       `/api/chores/instances/${instanceId}/close-cycle`,
+      {
+        method: "POST",
+        token,
+        language
+      }
+    );
+  },
+  cancelSeries(token: string, language: AppLanguage, instanceId: string) {
+    return request<{ cycleId: string; cancelledCount: number; cancelledIds: string[]; cancelledAt: string | null }>(
+      `/api/chores/instances/${instanceId}/cancel-series`,
       {
         method: "POST",
         token,
