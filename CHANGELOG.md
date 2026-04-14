@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.37.1](https://github.com/kriziw/TaskBandit/compare/v0.37.0...v0.37.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* **web:** keep admin settings out of client workspace ([#260](https://github.com/kriziw/TaskBandit/issues/260)) ([c84e60d](https://github.com/kriziw/TaskBandit/commit/c84e60dbea924afce90795ec6ed99565ea711e2a))
+
 ## [0.37.0](https://github.com/kriziw/TaskBandit/compare/v0.36.3...v0.37.0) (2026-04-14)
 
 
