@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.36.3](https://github.com/kriziw/TaskBandit/compare/v0.36.2...v0.36.3) (2026-04-14)
+
+
+### Bug Fixes
+
+* **ui:** float settings notices and gate repo-owned CodeQL setup ([#256](https://github.com/kriziw/TaskBandit/issues/256)) ([991c22a](https://github.com/kriziw/TaskBandit/commit/991c22ada1fb777037c9d113125ed6ad5c1293bc))
+
 ## [0.36.2](https://github.com/kriziw/TaskBandit/compare/v0.36.1...v0.36.2) (2026-04-14)
 
 
