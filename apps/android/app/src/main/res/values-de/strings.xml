@@ -127,12 +127,15 @@
     <string name="mobile_create_repeat_every_2_weeks_short">Alle 2 Wochen</string>
     <string name="mobile_create_repeat_monthly_short">Monatlich</string>
     <string name="mobile_create_repeat_template_short">Vorlage</string>
+    <string name="mobile_create_repeat_custom_weekly_short">Ausgewaehlte Wochentage</string>
     <string name="mobile_create_repeat_daily">Wiederholt sich tÃ¤glich</string>
     <string name="mobile_create_repeat_weekly">Wiederholt sich wÃ¶chentlich</string>
     <string name="mobile_create_repeat_every_2_weeks">Wiederholt sich alle 2 Wochen</string>
     <string name="mobile_create_repeat_monthly">Wiederholt sich monatlich</string>
     <string name="mobile_create_repeat_every_x_days">Wiederholt sich alle %1$d Tage</string>
     <string name="mobile_create_repeat_custom_weekly">Wiederholt sich an %1$s</string>
+    <string name="mobile_create_weekdays_label">An diesen Wochentagen wiederholen</string>
+    <string name="mobile_create_weekdays_required">Waehle mindestens einen Wochentag aus.</string>
     <string name="mobile_create_repeat_template_none">Diese Vorlage hat noch keinen Wiederholungsplan.</string>
     <string name="mobile_create_repeat_duration">Wiederholungsdauer</string>
     <string name="mobile_create_repeat_forever">Wiederholen, bis ich es beende</string>
@@ -308,6 +311,20 @@
     <string name="mobile_close_cycle_confirm_title">Diese Aufgabe stornieren?</string>
     <string name="mobile_close_cycle_confirm_body">"%1$s" stornieren und kuenftige Wiederholungen stoppen? Dadurch werden alle noch offenen Aufgaben dieser Wiederholung storniert.</string>
     <string name="mobile_close_cycle_confirm_action">Ja, Aufgabe stornieren</string>
+    <string name="mobile_cancel_occurrence">Nur diesen Termin stornieren</string>
+    <string name="mobile_cancelling_occurrence">Dieser Termin wird storniert...</string>
+    <string name="mobile_occurrence_cancelled">Dieser Termin wurde storniert. Kuenftige Wiederholungen bleiben aktiv.</string>
+    <string name="mobile_cancel_occurrence_failed">TaskBandit konnte nur diesen Termin nicht stornieren.</string>
+    <string name="mobile_cancel_occurrence_confirm_title">Diesen Termin stornieren?</string>
+    <string name="mobile_cancel_occurrence_confirm_body">Nur "%1$s" fuer diesen geplanten Termin stornieren? Verknuepfte Folgeaufgaben fuer diesen Termin werden ebenfalls storniert, waehrend kuenftige Wiederholungen aktiv bleiben.</string>
+    <string name="mobile_cancel_occurrence_confirm_action">Diesen Termin stornieren</string>
+    <string name="mobile_cancel_series">Gesamte Serie stornieren</string>
+    <string name="mobile_cancelling_series">Serie wird storniert...</string>
+    <string name="mobile_series_cancelled">Die wiederkehrende Serie wurde storniert.</string>
+    <string name="mobile_cancel_series_failed">TaskBandit konnte die wiederkehrende Serie nicht stornieren.</string>
+    <string name="mobile_cancel_series_confirm_title">Gesamte Serie stornieren?</string>
+    <string name="mobile_cancel_series_confirm_body">"%1$s" stornieren und alle noch offenen zukuenftigen Aufgaben dieser Serie stoppen? Verknuepfte Folgeaufgaben der Serie werden ebenfalls storniert.</string>
+    <string name="mobile_cancel_series_confirm_action">Gesamte Serie stornieren</string>
 </resources>
 
 

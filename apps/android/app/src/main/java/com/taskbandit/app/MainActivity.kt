@@ -151,9 +151,11 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
+import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.time.temporal.WeekFields
 import java.io.File
@@ -210,6 +212,16 @@ private data class MobileCompletionCelebration(
     val points: Int,
     val choreTitle: String,
     val phraseIndex: Int
+)
+
+private val recurrenceWeekdayOrder = listOf(
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY"
 )
 
 private fun pickRandomCelebrationPhraseIndex(previousIndex: Int): Int {
@@ -301,7 +313,8 @@ private fun TaskBanditApp(
     val takeoverRequestApprovingMessage = stringResource(R.string.mobile_takeover_request_approving)
     val takeoverRequestDecliningMessage = stringResource(R.string.mobile_takeover_request_declining)
     val creatingChoreMessage = stringResource(R.string.mobile_create_creating)
-    val closingCycleMessage = stringResource(R.string.mobile_closing_cycle)
+    val cancellingOccurrenceMessage = stringResource(R.string.mobile_cancelling_occurrence)
+    val cancellingSeriesMessage = stringResource(R.string.mobile_cancelling_series)
     val deviceRemovingMessage = stringResource(R.string.mobile_device_removing)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     val choreTakenOverMessage = stringResource(R.string.mobile_chore_taken_over)
@@ -309,10 +322,12 @@ private fun TaskBanditApp(
     val takeoverApprovedMessage = stringResource(R.string.mobile_takeover_request_approved_notice)
     val takeoverDeclinedMessage = stringResource(R.string.mobile_takeover_request_declined_notice)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
-    val cycleClosedMessage = stringResource(R.string.mobile_cycle_closed)
+    val occurrenceCancelledMessage = stringResource(R.string.mobile_occurrence_cancelled)
+    val seriesCancelledMessage = stringResource(R.string.mobile_series_cancelled)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
     val reconnectFailedMessage = stringResource(R.string.mobile_connection_restore_failed)
-    val closeCycleFailedMessage = stringResource(R.string.mobile_close_cycle_failed)
+    val cancelOccurrenceFailedMessage = stringResource(R.string.mobile_cancel_occurrence_failed)
+    val cancelSeriesFailedMessage = stringResource(R.string.mobile_cancel_series_failed)
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
@@ -890,6 +905,7 @@ private fun TaskBanditApp(
         assignmentStrategy: String,
         recurrenceType: String?,
         recurrenceIntervalDays: Int?,
+        recurrenceWeekdays: List<String>,
         recurrenceEndMode: String?,
         recurrenceOccurrences: Int?,
         recurrenceEndsAtIsoUtc: String?,
@@ -914,6 +930,7 @@ private fun TaskBanditApp(
                             assignmentStrategy = assignmentStrategy,
                             recurrenceType = recurrenceType,
                             recurrenceIntervalDays = recurrenceIntervalDays,
+                            recurrenceWeekdays = recurrenceWeekdays,
                             recurrenceEndMode = recurrenceEndMode,
                             recurrenceOccurrences = recurrenceOccurrences,
                             recurrenceEndsAtIsoUtc = recurrenceEndsAtIsoUtc,
@@ -939,25 +956,53 @@ private fun TaskBanditApp(
     fun closeChoreCycle(choreId: String) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
-        activeCloseCycleAction = "close-cycle:$choreId"
+        activeCloseCycleAction = "cancel-series:$choreId"
         errorMessage = null
         noticeMessage = null
 
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    runMutationWithReconnectWindow(closingCycleMessage) {
-                        api.closeChoreCycle(baseUrl, token, choreId)
+                    runMutationWithReconnectWindow(cancellingSeriesMessage) {
+                        api.cancelChoreSeries(baseUrl, token, choreId)
                     }
                 }
             }.onSuccess {
-                noticeMessage = cycleClosedMessage
+                noticeMessage = seriesCancelledMessage
                 requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
                     logout()
                 } else {
-                    errorMessage = throwable.message ?: closeCycleFailedMessage
+                    errorMessage = throwable.message ?: cancelSeriesFailedMessage
+                }
+            }
+            activeCloseCycleAction = null
+        }
+    }
+
+    fun cancelChoreOccurrence(choreId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeCloseCycleAction = "cancel-occurrence:$choreId"
+        errorMessage = null
+        noticeMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    runMutationWithReconnectWindow(cancellingOccurrenceMessage) {
+                        api.cancelChoreOccurrence(baseUrl, token, choreId)
+                    }
+                }
+            }.onSuccess {
+                noticeMessage = occurrenceCancelledMessage
+                requestDashboardRefresh()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message ?: cancelOccurrenceFailedMessage
                 }
             }
             activeCloseCycleAction = null
@@ -1222,6 +1267,7 @@ private fun TaskBanditApp(
                     onPickProofs = ::openProofPicker,
                     onTakeProofPhoto = ::takeProofPhoto,
                     onStartChore = ::startChore,
+                    onCancelChoreOccurrence = ::cancelChoreOccurrence,
                     onCloseChoreCycle = ::closeChoreCycle,
                     onTakeOverChore = ::takeOverChore,
                     onRequestTakeover = ::requestTakeover,
@@ -1708,12 +1754,13 @@ private fun DashboardScreen(
     onPickProofs: (String) -> Unit,
     onTakeProofPhoto: (String) -> Unit,
     onStartChore: (String) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String, String) -> Unit,
     onRespondToTakeoverRequest: (String, Boolean) -> Unit,
     onSubmitChore: (String) -> Unit,
-    onCreateChore: (String, String, String?, String, String?, Int?, String?, Int?, String?, String?) -> Unit,
+    onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
@@ -1731,6 +1778,7 @@ private fun DashboardScreen(
     var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
     var createRecurrenceType by rememberSaveable { mutableStateOf("template") }
     var createRecurrenceIntervalInput by rememberSaveable { mutableStateOf("7") }
+    var createRecurrenceWeekdays by rememberSaveable { mutableStateOf(listOf<String>()) }
     var createRecurrenceEndMode by rememberSaveable { mutableStateOf("never") }
     var createRecurrenceOccurrencesInput by rememberSaveable { mutableStateOf("3") }
     var createRecurrenceEndsAtMillis by rememberSaveable { mutableLongStateOf(defaultCreateRecurrenceEndsAtMillis()) }
@@ -1825,6 +1873,7 @@ private fun DashboardScreen(
     val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
     val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
     val recurrenceIntervalInvalidMessage = stringResource(R.string.mobile_create_interval_days_invalid)
+    val recurrenceWeekdaysInvalidMessage = stringResource(R.string.mobile_create_weekdays_required)
     val recurrenceOccurrencesInvalidMessage = stringResource(R.string.mobile_create_occurrences_invalid)
     val recurrenceEndDateRequiredMessage = stringResource(R.string.mobile_create_end_date_required)
     val effectiveCreateRecurrenceType = resolveEffectiveCreateRecurrenceType(selectedTemplate, createRecurrenceType)
@@ -1834,6 +1883,12 @@ private fun DashboardScreen(
             (createRecurrenceIntervalInput.isBlank() || parsedCreateRecurrenceInterval == null || parsedCreateRecurrenceInterval <= 0)
         ) {
             recurrenceIntervalInvalidMessage
+        } else {
+            null
+        }
+    val createRecurrenceWeekdaysError =
+        if (effectiveCreateRecurrenceType == "custom_weekly" && createRecurrenceWeekdays.isEmpty()) {
+            recurrenceWeekdaysInvalidMessage
         } else {
             null
         }
@@ -1875,6 +1930,7 @@ private fun DashboardScreen(
         val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
         createRecurrenceType = defaultType
         createRecurrenceIntervalInput = defaultInterval.toString()
+        createRecurrenceWeekdays = templateRecurrenceWeekdayDefaults(template.recurrence)
         createRecurrenceEndMode = "never"
         createRecurrenceOccurrencesInput = "3"
         createRecurrenceEndsAtMillis = defaultCreateRecurrenceEndsAtMillis(createDueAtMillis)
@@ -1890,10 +1946,12 @@ private fun DashboardScreen(
             val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
             createRecurrenceType = defaultType
             createRecurrenceIntervalInput = defaultInterval.toString()
+            createRecurrenceWeekdays = templateRecurrenceWeekdayDefaults(template.recurrence)
         } else {
             createAssignmentStrategy = "round_robin"
             createRecurrenceType = "template"
             createRecurrenceIntervalInput = "7"
+            createRecurrenceWeekdays = emptyList()
         }
         createRecurrenceEndMode = "never"
         createRecurrenceOccurrencesInput = "3"
@@ -2312,11 +2370,11 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
-                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
                             }
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -2355,11 +2413,11 @@ private fun DashboardScreen(
                             )
                         }
                     }
-                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId })
                     historicChoreSection(
                         chores = historicChores,
                         title = choresHistoryLabel,
@@ -2427,16 +2485,37 @@ private fun DashboardScreen(
                                         createRecurrenceType = createRecurrenceType,
                                         createRecurrenceIntervalInput = createRecurrenceIntervalInput,
                                         createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
                                         recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
                                         onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
                                         onRecurrenceTypeSelected = {
                                             createRecurrenceType = it
+                                            createRecurrenceWeekdays =
+                                                when (it) {
+                                                    "template" -> templateRecurrenceWeekdayDefaults(selectedTemplate?.recurrence)
+                                                    "custom_weekly" ->
+                                                        if (createRecurrenceWeekdays.isNotEmpty()) {
+                                                            createRecurrenceWeekdays
+                                                        } else {
+                                                            listOf(weekdayTokenForEpochMillis(createDueAtMillis))
+                                                        }
+                                                    else -> emptyList()
+                                                }
                                             recurrenceTypeDropdownExpanded = false
                                         },
                                         onRecurrenceIntervalChange = { v ->
                                             if (v.all(Char::isDigit)) {
                                                 createRecurrenceIntervalInput = v
                                             }
+                                        },
+                                        onToggleRecurrenceWeekday = { weekday ->
+                                            createRecurrenceWeekdays =
+                                                if (createRecurrenceWeekdays.contains(weekday)) {
+                                                    createRecurrenceWeekdays - weekday
+                                                } else {
+                                                    createRecurrenceWeekdays + weekday
+                                                }
                                         }
                                     )
                                     CreateRecurrenceEndPanel(
@@ -2497,6 +2576,8 @@ private fun DashboardScreen(
                                         createRecurrenceType = createRecurrenceType,
                                         createRecurrenceInterval = parsedCreateRecurrenceInterval,
                                         createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
                                         createRecurrenceEndMode = createRecurrenceEndMode,
                                         createRecurrenceOccurrences = parsedCreateRecurrenceOccurrences,
                                         createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
@@ -2538,16 +2619,37 @@ private fun DashboardScreen(
                                         createRecurrenceType = createRecurrenceType,
                                         createRecurrenceIntervalInput = createRecurrenceIntervalInput,
                                         createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
                                         recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
                                         onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
                                         onRecurrenceTypeSelected = {
                                             createRecurrenceType = it
+                                            createRecurrenceWeekdays =
+                                                when (it) {
+                                                    "template" -> templateRecurrenceWeekdayDefaults(selectedTemplate?.recurrence)
+                                                    "custom_weekly" ->
+                                                        if (createRecurrenceWeekdays.isNotEmpty()) {
+                                                            createRecurrenceWeekdays
+                                                        } else {
+                                                            listOf(weekdayTokenForEpochMillis(createDueAtMillis))
+                                                        }
+                                                    else -> emptyList()
+                                                }
                                             recurrenceTypeDropdownExpanded = false
                                         },
                                         onRecurrenceIntervalChange = { v ->
                                             if (v.all(Char::isDigit)) {
                                                 createRecurrenceIntervalInput = v
                                             }
+                                        },
+                                        onToggleRecurrenceWeekday = { weekday ->
+                                            createRecurrenceWeekdays =
+                                                if (createRecurrenceWeekdays.contains(weekday)) {
+                                                    createRecurrenceWeekdays - weekday
+                                                } else {
+                                                    createRecurrenceWeekdays + weekday
+                                                }
                                         }
                                     )
                                     CreateRecurrenceEndPanel(
@@ -2603,6 +2705,8 @@ private fun DashboardScreen(
                                         createRecurrenceType = createRecurrenceType,
                                         createRecurrenceInterval = parsedCreateRecurrenceInterval,
                                         createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
                                         createRecurrenceEndMode = createRecurrenceEndMode,
                                         createRecurrenceOccurrences = parsedCreateRecurrenceOccurrences,
                                         createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
@@ -2860,7 +2964,7 @@ private fun SectionIntro(title: String, body: String) {
 private fun LazyListScope.choreSection(
     chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     if (chores.isEmpty()) return
     val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
@@ -2872,7 +2976,7 @@ private fun LazyListScope.choreSection(
     item {
         ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
             chores.forEach { chore ->
-                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
+                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
             }
         }
     }
@@ -2920,6 +3024,7 @@ private fun ChoreSectionColumn(
     onPickProofs: (String) -> Unit,
     onTakeProofPhoto: (String) -> Unit,
     onStartChore: (String) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String) -> Unit,
@@ -2955,6 +3060,7 @@ private fun ChoreSectionColumn(
                 onPickProofs = onPickProofs,
                 onTakeProofPhoto = onTakeProofPhoto,
                 onStartChore = onStartChore,
+                onCancelChoreOccurrence = onCancelChoreOccurrence,
                 onCloseChoreCycle = onCloseChoreCycle,
                 onTakeOverChore = onTakeOverChore,
                 onRequestTakeover = onRequestTakeover,
@@ -3421,10 +3527,11 @@ private fun ChoreCard(
     chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?,
     outgoingTakeoverRequest: MobileTakeoverRequest?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
-    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
 ) {
     var showApproveConfirm by remember { mutableStateOf(false) }
     var showRejectConfirm by remember { mutableStateOf(false) }
+    var showCancelOccurrenceConfirm by remember { mutableStateOf(false) }
     var showCloseCycleConfirm by remember { mutableStateOf(false) }
     var showManageMenu by remember { mutableStateOf(false) }
 
@@ -3464,17 +3571,38 @@ private fun ChoreCard(
         )
     }
 
+    if (showCancelOccurrenceConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelOccurrenceConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = {
+                    showCancelOccurrenceConfirm = false
+                    onCancelChoreOccurrence(chore.id)
+                }) {
+                    Text(stringResource(R.string.mobile_cancel_occurrence_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelOccurrenceConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
     if (showCloseCycleConfirm) {
         AlertDialog(
             onDismissRequest = { showCloseCycleConfirm = false },
-            title = { Text(stringResource(R.string.mobile_close_cycle_confirm_title)) },
-            text = { Text(stringResource(R.string.mobile_close_cycle_confirm_body, chore.title)) },
+            title = { Text(stringResource(R.string.mobile_cancel_series_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_series_confirm_body, chore.title)) },
             confirmButton = {
                 Button(onClick = {
                     showCloseCycleConfirm = false
                     onCloseChoreCycle(chore.id)
                 }) {
-                    Text(stringResource(R.string.mobile_close_cycle_confirm_action))
+                    Text(stringResource(R.string.mobile_cancel_series_confirm_action))
                 }
             },
             dismissButton = {
@@ -3488,7 +3616,8 @@ private fun ChoreCard(
     val isPendingApproval = chore.state == "pending_approval"
     val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canManageTask = chore.assigneeId == null || chore.assigneeId == currentUserId
-    val canCloseCycle = currentUserRole != "child" && chore.cycleId != null
+    val canCancelOccurrence = currentUserRole != "child" && chore.supportsOccurrenceCancellation
+    val canCloseCycle = currentUserRole != "child" && chore.supportsSeriesCancellation
     val section = resolveChoreSection(chore, currentUserId)
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
@@ -3496,7 +3625,7 @@ private fun ChoreCard(
     val requiresTakeOver = supportsTakeoverRequests && section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
     val canRequestTakeover = supportsTakeoverRequests && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
-    val hasSecondaryActions = canCloseCycle || canRequestTakeover
+    val hasSecondaryActions = canCancelOccurrence || canCloseCycle || canRequestTakeover
     val outgoingTakeoverFirstName = outgoingTakeoverRequest?.requested?.displayName?.let(::firstNameFromDisplayName)
     val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
     val accentContainerColor = when (section) {
@@ -3615,15 +3744,35 @@ private fun ChoreCard(
                                     }
                                 )
                             }
+                            if (canCancelOccurrence) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeCloseCycleAction == "cancel-occurrence:${chore.id}") {
+                                                    R.string.mobile_cancelling_occurrence
+                                                } else {
+                                                    R.string.mobile_cancel_occurrence
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeCloseCycleAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        showCancelOccurrenceConfirm = true
+                                    }
+                                )
+                            }
                             if (canCloseCycle) {
                                 DropdownMenuItem(
                                     text = {
                                         Text(
                                             stringResource(
-                                                if (activeCloseCycleAction == "close-cycle:${chore.id}") {
-                                                    R.string.mobile_closing_cycle
+                                                if (activeCloseCycleAction == "cancel-series:${chore.id}") {
+                                                    R.string.mobile_cancelling_series
                                                 } else {
-                                                    R.string.mobile_close_cycle
+                                                    R.string.mobile_cancel_series
                                                 }
                                             )
                                         )
@@ -4188,10 +4337,13 @@ private fun CreateRecurrencePanel(
     createRecurrenceType: String,
     createRecurrenceIntervalInput: String,
     createRecurrenceIntervalError: String?,
+    createRecurrenceWeekdays: List<String>,
+    createRecurrenceWeekdaysError: String?,
     recurrenceTypeDropdownExpanded: Boolean,
     onRecurrenceDropdownExpandedChange: (Boolean) -> Unit,
     onRecurrenceTypeSelected: (String) -> Unit,
-    onRecurrenceIntervalChange: (String) -> Unit
+    onRecurrenceIntervalChange: (String) -> Unit,
+    onToggleRecurrenceWeekday: (String) -> Unit
 ) {
     val recurrenceLabel = recurrenceTypeLabel(createRecurrenceType)
     CreatePanelCard(title = stringResource(R.string.mobile_create_repeat)) {
@@ -4210,7 +4362,7 @@ private fun CreateRecurrencePanel(
                 expanded = recurrenceTypeDropdownExpanded,
                 onDismissRequest = { onRecurrenceDropdownExpandedChange(false) }
             ) {
-                listOf("none", "daily", "weekly", "every_x_days", "monthly", "template").forEach { type ->
+                listOf("none", "daily", "weekly", "custom_weekly", "every_x_days", "monthly", "template").forEach { type ->
                     DropdownMenuItem(
                         text = { Text(recurrenceTypeLabel(type)) },
                         onClick = { onRecurrenceTypeSelected(type) }
@@ -4231,6 +4383,28 @@ private fun CreateRecurrencePanel(
             if (!createRecurrenceIntervalError.isNullOrBlank()) {
                 Text(
                     text = createRecurrenceIntervalError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        if (createRecurrenceType == "custom_weekly") {
+            Text(
+                text = stringResource(R.string.mobile_create_weekdays_label),
+                style = MaterialTheme.typography.titleSmall
+            )
+            MobileChoiceRow(
+                options = recurrenceWeekdayOrder.map { weekday ->
+                    MobileChoiceOption(
+                        label = weekdayShortLabel(weekday),
+                        selected = createRecurrenceWeekdays.contains(weekday),
+                        onClick = { onToggleRecurrenceWeekday(weekday) }
+                    )
+                }
+            )
+            if (!createRecurrenceWeekdaysError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceWeekdaysError,
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.error
                 )
@@ -4450,6 +4624,8 @@ private fun CreateSubmitPanel(
     createRecurrenceType: String,
     createRecurrenceInterval: Int?,
     createRecurrenceIntervalError: String?,
+    createRecurrenceWeekdays: List<String>,
+    createRecurrenceWeekdaysError: String?,
     createRecurrenceEndMode: String,
     createRecurrenceOccurrences: Int?,
     createRecurrenceOccurrencesError: String?,
@@ -4457,7 +4633,7 @@ private fun CreateSubmitPanel(
     createRecurrenceEndDateError: String?,
     createVariantId: String?,
     activeCreateAction: String?,
-    onCreateChore: (String, String, String?, String, String?, Int?, String?, Int?, String?, String?) -> Unit
+    onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit
 ) {
     CreatePanelCard(title = stringResource(R.string.mobile_create_action)) {
         selectedTemplate?.let { template ->
@@ -4470,12 +4646,19 @@ private fun CreateSubmitPanel(
             val canCreate =
                 activeCreateAction == null &&
                     (!needsRecurrenceInterval || (createRecurrenceIntervalError == null && (createRecurrenceInterval ?: 0) > 0)) &&
+                    (effectiveRecurrenceType != "custom_weekly" || createRecurrenceWeekdaysError == null) &&
                     (!needsRecurrenceOccurrences || (createRecurrenceOccurrencesError == null && (createRecurrenceOccurrences ?: 0) > 0)) &&
                     (!needsRecurrenceEndDate || createRecurrenceEndDateError == null)
             Button(
                 onClick = {
                     val recType = if (createRecurrenceType == "template") null else createRecurrenceType
                     val recInterval = if (createRecurrenceType == "every_x_days") createRecurrenceInterval else null
+                    val recWeekdays =
+                        if (resolveEffectiveCreateRecurrenceType(template, createRecurrenceType) == "custom_weekly") {
+                            createRecurrenceWeekdays
+                        } else {
+                            emptyList()
+                        }
                     val recurrenceEndMode = if (effectiveRecurrenceType == "none") null else createRecurrenceEndMode
                     val recurrenceOccurrences =
                         if (createRecurrenceEndMode == "after_occurrences") createRecurrenceOccurrences else null
@@ -4488,6 +4671,7 @@ private fun CreateSubmitPanel(
                         createAssignmentStrategy,
                         recType,
                         recInterval,
+                        recWeekdays,
                         recurrenceEndMode,
                         recurrenceOccurrences,
                         recurrenceEndsAtIsoUtc,
@@ -4713,6 +4897,7 @@ private fun recurrenceTypeLabel(value: String): String = when (value) {
     "none" -> stringResource(R.string.mobile_create_repeat_no)
     "daily" -> stringResource(R.string.mobile_create_repeat_daily_short)
     "weekly" -> stringResource(R.string.mobile_create_repeat_weekly_short)
+    "custom_weekly" -> stringResource(R.string.mobile_create_repeat_custom_weekly_short)
     "every_x_days" -> stringResource(R.string.mobile_create_repeat_every_x_days_option)
     "monthly" -> stringResource(R.string.mobile_create_repeat_monthly_short)
     else -> stringResource(R.string.mobile_create_repeat_template_short)
@@ -4725,6 +4910,43 @@ private fun templateRecurrenceDefaults(recurrence: MobileTemplateRecurrence): Pa
     "every_x_days" -> "every_x_days" to (recurrence.intervalDays ?: 7)
     "custom_weekly" -> "template" to 7
     else -> "none" to 1
+}
+
+private fun templateRecurrenceWeekdayDefaults(recurrence: MobileTemplateRecurrence?): List<String> {
+    if (recurrence?.type != "custom_weekly") {
+        return emptyList()
+    }
+
+    return recurrence.weekdays
+        .filter { recurrenceWeekdayOrder.contains(it) }
+        .distinct()
+}
+
+private fun weekdayTokenForEpochMillis(value: Long): String {
+    return when (Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).dayOfWeek) {
+        DayOfWeek.MONDAY -> "MONDAY"
+        DayOfWeek.TUESDAY -> "TUESDAY"
+        DayOfWeek.WEDNESDAY -> "WEDNESDAY"
+        DayOfWeek.THURSDAY -> "THURSDAY"
+        DayOfWeek.FRIDAY -> "FRIDAY"
+        DayOfWeek.SATURDAY -> "SATURDAY"
+        DayOfWeek.SUNDAY -> "SUNDAY"
+    }
+}
+
+@Composable
+private fun weekdayShortLabel(weekday: String): String {
+    val locale = Locale.getDefault()
+    val dayOfWeek = when (weekday) {
+        "MONDAY" -> DayOfWeek.MONDAY
+        "TUESDAY" -> DayOfWeek.TUESDAY
+        "WEDNESDAY" -> DayOfWeek.WEDNESDAY
+        "THURSDAY" -> DayOfWeek.THURSDAY
+        "FRIDAY" -> DayOfWeek.FRIDAY
+        "SATURDAY" -> DayOfWeek.SATURDAY
+        else -> DayOfWeek.SUNDAY
+    }
+    return dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
 }
 
 private fun formatApiTimestamp(value: String): String {

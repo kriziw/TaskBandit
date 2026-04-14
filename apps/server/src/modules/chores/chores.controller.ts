@@ -138,6 +138,20 @@ export class ChoresController {
     );
   }
 
+  @Post("instances/:id/cancel-occurrence")
+  @Roles("admin", "parent")
+  cancelOccurrence(
+    @Param("id") instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.cancelOccurrence(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
   @Post("instances/:id/close-cycle")
   @Roles("admin", "parent")
   closeCycle(
@@ -146,6 +160,20 @@ export class ChoresController {
     @Headers("accept-language") acceptLanguage?: string
   ) {
     return this.choresService.closeCycle(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("instances/:id/cancel-series")
+  @Roles("admin", "parent")
+  cancelSeries(
+    @Param("id") instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.cancelSeries(
       instanceId,
       user,
       this.i18nService.resolveLanguage(acceptLanguage)

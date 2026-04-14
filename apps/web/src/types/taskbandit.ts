@@ -425,11 +425,14 @@ export type ChoreInstance = {
   id: string;
   templateId: string;
   cycleId: string | null;
+  occurrenceRootId: string;
   title: string;
   groupTitle: string;
   typeTitle: string;
   subtypeLabel: string | null;
   state: ChoreState;
+  supportsOccurrenceCancellation: boolean;
+  supportsSeriesCancellation: boolean;
   assigneeId: string | null;
   dueAt: string;
   difficulty: Difficulty;
@@ -531,6 +534,7 @@ export type CreateChoreInstanceInput = {
   assignmentStrategy?: AssignmentStrategy;
   recurrenceType?: RecurrenceType;
   recurrenceIntervalDays?: number;
+  recurrenceWeekdays?: string[];
   recurrenceEndMode?: RecurrenceEndMode;
   recurrenceOccurrences?: number;
   recurrenceEndsAt?: string;

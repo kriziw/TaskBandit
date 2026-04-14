@@ -28,6 +28,7 @@
   "chores.takeover_request_already_pending": "A takeover request for this member is already pending.",
   "chores.takeover_request_invalid_target": "Choose a different household member for this takeover request.",
   "chores.invalid_cancel_state": "Only active chores can be cancelled.",
+  "chores.occurrence_cancel_not_available": "This chore does not support cancelling only one recurring occurrence.",
   "chores.cycle_close_not_available": "This chore is not part of a repeatable cycle.",
   "chores.invalid_edit_state": "This chore can no longer be edited in its current state.",
   "chores.invalid_start_state": "Only open or fix-needed chores can be started.",
