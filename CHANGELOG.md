@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.36.2](https://github.com/kriziw/TaskBandit/compare/v0.36.1...v0.36.2) (2026-04-14)
+
+
+### Bug Fixes
+
+* **settings:** improve smtp test validation and error reporting ([#253](https://github.com/kriziw/TaskBandit/issues/253)) ([2e3e7fd](https://github.com/kriziw/TaskBandit/commit/2e3e7fd897cd042496aa60383f8202fac03b20dc))
+
 ## [0.36.1](https://github.com/kriziw/TaskBandit/compare/v0.36.0...v0.36.1) (2026-04-14)
 
 
