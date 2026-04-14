@@ -58,6 +58,7 @@ describe("SettingsService", () => {
   };
   let smtpService: {
     sendMail: ReturnType<typeof vi.fn>;
+    verify: ReturnType<typeof vi.fn>;
   };
   let appConfigService: {
     forceLocalAuthEnabled: boolean;
@@ -91,7 +92,8 @@ describe("SettingsService", () => {
       hashPassword: vi.fn().mockResolvedValue("hashed-password")
     };
     smtpService = {
-      sendMail: vi.fn().mockResolvedValue(undefined)
+      sendMail: vi.fn().mockResolvedValue(undefined),
+      verify: vi.fn().mockResolvedValue({ ok: true })
     };
     appConfigService = {
       forceLocalAuthEnabled: false,
@@ -280,6 +282,132 @@ describe("SettingsService", () => {
     expect(result).toEqual(
       expect.objectContaining({
         inviteEmailSent: true
+      })
+    );
+  });
+
+  it("tests smtp against the supplied draft settings even while smtp is disabled", async () => {
+    repository.getHousehold.mockResolvedValue({
+      ...householdFixture,
+      settings: {
+        ...householdFixture.settings,
+        smtpEnabled: false,
+        smtpHost: "persisted.example.com",
+        smtpPort: 587,
+        smtpUsername: "persisted-user",
+        smtpPassword: "persisted-secret",
+        smtpPasswordConfigured: true,
+        smtpFromEmail: "persisted@example.com",
+        smtpFromName: "Persisted Sender"
+      }
+    });
+
+    await expect(
+      service.testSmtp(
+        {
+          smtpEnabled: false,
+          smtpHost: "draft.example.com",
+          smtpPort: 2525,
+          smtpSecure: true,
+          smtpUsername: "draft-user",
+          smtpPassword: "draft-secret",
+          smtpFromEmail: "draft@example.com",
+          smtpFromName: "Draft Sender"
+        },
+        user
+      )
+    ).resolves.toEqual({ ok: true });
+
+    expect(smtpService.verify).toHaveBeenCalledWith({
+      enabled: false,
+      host: "draft.example.com",
+      port: 2525,
+      secure: true,
+      username: "draft-user",
+      password: "draft-secret",
+      fromEmail: "draft@example.com",
+      fromName: "Draft Sender",
+      passwordConfigured: true
+    });
+  });
+
+  it("rejects enabling smtp before the current draft has been tested successfully", async () => {
+    repository.getHousehold.mockResolvedValue({
+      ...householdFixture,
+      settings: {
+        ...householdFixture.settings,
+        smtpEnabled: false,
+        smtpHost: "draft.example.com",
+        smtpPort: 2525,
+        smtpUsername: "draft-user",
+        smtpPassword: "draft-secret",
+        smtpPasswordConfigured: true,
+        smtpFromEmail: "draft@example.com",
+        smtpFromName: "Draft Sender"
+      }
+    });
+
+    await expect(
+      service.updateSettings(
+        {
+          smtpEnabled: true
+        },
+        user
+      )
+    ).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it("allows enabling smtp after the same draft settings pass a test", async () => {
+    const draftHousehold = {
+      ...householdFixture,
+      settings: {
+        ...householdFixture.settings,
+        smtpEnabled: false,
+        smtpHost: "draft.example.com",
+        smtpPort: 2525,
+        smtpUsername: "draft-user",
+        smtpPassword: "draft-secret",
+        smtpPasswordConfigured: true,
+        smtpFromEmail: "draft@example.com",
+        smtpFromName: "Draft Sender"
+      }
+    };
+
+    repository.getHousehold.mockResolvedValue(draftHousehold);
+    repository.updateSettings.mockResolvedValue({
+      ...draftHousehold,
+      settings: {
+        ...draftHousehold.settings,
+        smtpEnabled: true
+      }
+    });
+
+    await service.testSmtp(
+      {
+        smtpEnabled: false,
+        smtpHost: "draft.example.com",
+        smtpPort: 2525,
+        smtpSecure: false,
+        smtpUsername: "draft-user",
+        smtpPassword: "draft-secret",
+        smtpFromEmail: "draft@example.com",
+        smtpFromName: "Draft Sender"
+      },
+      user
+    );
+
+    await expect(
+      service.updateSettings(
+        {
+          smtpEnabled: true
+        },
+        user
+      )
+    ).resolves.toEqual(
+      expect.objectContaining({
+        settings: expect.objectContaining({
+          smtpEnabled: true
+        })
       })
     );
   });

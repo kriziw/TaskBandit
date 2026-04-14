@@ -7,13 +7,16 @@ import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
 import { RegisterNotificationDeviceDto } from "./dto/register-notification-device.dto";
-import { SmtpService } from "./smtp.service";
+import { TestSmtpSettingsDto } from "./dto/test-smtp-settings.dto";
 import { UpdateHouseholdMemberDto } from "./dto/update-household-member.dto";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
+import { SmtpService, type SmtpSettings } from "./smtp.service";
 
 @Injectable()
 export class SettingsService {
+  private readonly verifiedSmtpSettings = new Map<string, string>();
+
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly authService: AuthService,
@@ -56,6 +59,7 @@ export class SettingsService {
     const currentHousehold = await this.repository.getHousehold(user.householdId);
     const nextLocalAuthEnabled = dto.localAuthEnabled ?? currentHousehold.settings.localAuthEnabled;
     const nextOidcEnabled = dto.oidcEnabled ?? currentHousehold.settings.oidcEnabled;
+    const nextSmtpEnabled = dto.smtpEnabled ?? currentHousehold.settings.smtpEnabled;
     const nextOidcAuthority =
       dto.oidcAuthority !== undefined ? dto.oidcAuthority.trim() : currentHousehold.settings.oidcAuthority;
     const nextOidcClientId =
@@ -77,6 +81,18 @@ export class SettingsService {
       throw new BadRequestException(
         "Either local auth or OIDC must stay enabled unless local auth is forced on from config."
       );
+    }
+
+    if (!currentHousehold.settings.smtpEnabled && nextSmtpEnabled) {
+      const smtpSettings = this.buildSmtpSettingsForUpdate(dto, currentHousehold.settings);
+      const testedSettingsFingerprint = this.verifiedSmtpSettings.get(user.householdId);
+
+      if (testedSettingsFingerprint !== this.getSmtpSettingsFingerprint(smtpSettings)) {
+        throw new BadRequestException({
+          code: "SMTP_TEST_REQUIRED",
+          message: "Test the SMTP settings successfully before enabling SMTP."
+        });
+      }
     }
 
     const updatedHousehold = await this.repository.updateSettings(dto, user.householdId, user.id);
@@ -173,18 +189,67 @@ export class SettingsService {
     );
   }
 
-  async testSmtp(user: AuthenticatedUser) {
+  async testSmtp(dto: TestSmtpSettingsDto, user: AuthenticatedUser) {
     const household = await this.repository.getHousehold(user.householdId);
-    return this.smtpService.verify({
-      enabled: household.settings.smtpEnabled,
-      host: household.settings.smtpHost,
-      port: household.settings.smtpPort,
-      secure: household.settings.smtpSecure,
-      username: household.settings.smtpUsername,
-      password: household.settings.smtpPassword,
-      fromEmail: household.settings.smtpFromEmail,
-      fromName: household.settings.smtpFromName,
-      passwordConfigured: household.settings.smtpPasswordConfigured
+    const smtpSettings = this.buildSmtpSettingsForTest(dto, household.settings);
+    const result = await this.smtpService.verify(smtpSettings);
+    this.verifiedSmtpSettings.set(user.householdId, this.getSmtpSettingsFingerprint(smtpSettings));
+    return result;
+  }
+
+  private buildSmtpSettingsForTest(
+    dto: TestSmtpSettingsDto,
+    settings: Awaited<ReturnType<HouseholdRepository["getHousehold"]>>["settings"]
+  ): SmtpSettings {
+    const smtpPassword = dto.smtpPassword !== undefined ? dto.smtpPassword : settings.smtpPassword;
+
+    return {
+      enabled: dto.smtpEnabled ?? settings.smtpEnabled,
+      host: dto.smtpHost ?? settings.smtpHost,
+      port: dto.smtpPort ?? settings.smtpPort,
+      secure: dto.smtpSecure ?? settings.smtpSecure,
+      username: dto.smtpUsername ?? settings.smtpUsername,
+      password: smtpPassword,
+      fromEmail: dto.smtpFromEmail ?? settings.smtpFromEmail,
+      fromName: dto.smtpFromName ?? settings.smtpFromName,
+      passwordConfigured:
+        dto.smtpPassword !== undefined
+          ? Boolean(dto.smtpPassword.trim())
+          : settings.smtpPasswordConfigured
+    };
+  }
+
+  private buildSmtpSettingsForUpdate(
+    dto: UpdateSettingsDto,
+    settings: Awaited<ReturnType<HouseholdRepository["getHousehold"]>>["settings"]
+  ): SmtpSettings {
+    const smtpPassword = dto.smtpPassword !== undefined ? dto.smtpPassword : settings.smtpPassword;
+
+    return {
+      enabled: dto.smtpEnabled ?? settings.smtpEnabled,
+      host: dto.smtpHost ?? settings.smtpHost,
+      port: dto.smtpPort ?? settings.smtpPort,
+      secure: dto.smtpSecure ?? settings.smtpSecure,
+      username: dto.smtpUsername ?? settings.smtpUsername,
+      password: smtpPassword,
+      fromEmail: dto.smtpFromEmail ?? settings.smtpFromEmail,
+      fromName: dto.smtpFromName ?? settings.smtpFromName,
+      passwordConfigured:
+        dto.smtpPassword !== undefined
+          ? Boolean(dto.smtpPassword.trim())
+          : settings.smtpPasswordConfigured
+    };
+  }
+
+  private getSmtpSettingsFingerprint(settings: SmtpSettings) {
+    return JSON.stringify({
+      host: settings.host,
+      port: settings.port,
+      secure: settings.secure,
+      username: settings.username,
+      password: settings.password,
+      fromEmail: settings.fromEmail,
+      fromName: settings.fromName
     });
   }
 

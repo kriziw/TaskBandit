@@ -44,6 +44,7 @@ type RequestOptions = {
 };
 
 type ApiErrorShape = {
+  code?: string;
   message?: string | string[];
   error?: string;
 };
@@ -116,11 +117,20 @@ async function readErrorMessage(response: Response) {
 
   try {
     const data = JSON.parse(responseText) as ApiErrorShape;
-    if (Array.isArray(data.message)) {
-      return data.message.join(", ");
+    const code = typeof data.code === "string" ? data.code : "";
+    const message = Array.isArray(data.message)
+      ? data.message.join(", ")
+      : data.message ?? data.error ?? buildUnexpectedResponseMessage(response, responseText);
+
+    if (code && message) {
+      return `${code}: ${message}`;
     }
 
-    return data.message ?? data.error ?? buildUnexpectedResponseMessage(response, responseText);
+    if (code) {
+      return code;
+    }
+
+    return message;
   } catch {
     return buildUnexpectedResponseMessage(response, responseText);
   }
@@ -288,11 +298,26 @@ export const taskBanditApi = {
       body: recipientUserId ? { recipientUserId } : {}
     });
   },
-  testSmtp(token: string, language: AppLanguage) {
+  testSmtp(
+    token: string,
+    language: AppLanguage,
+    settings: Pick<
+      HouseholdSettings,
+      | "smtpEnabled"
+      | "smtpHost"
+      | "smtpPort"
+      | "smtpSecure"
+      | "smtpUsername"
+      | "smtpPassword"
+      | "smtpFromEmail"
+      | "smtpFromName"
+    >
+  ) {
     return request<{ ok: boolean }>("/api/settings/smtp/test", {
       method: "POST",
       token,
-      language
+      language,
+      body: settings
     });
   },
   getRuntimeLogs(token: string, language: AppLanguage, limit = 200) {
