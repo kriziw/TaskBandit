@@ -111,7 +111,7 @@ type BootstrapFormState = BootstrapHouseholdInput;
 type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
-type OnboardingStep = "welcome" | "settings" | "members" | "chores" | "overview";
+type OnboardingStep = string;
 type WorkspacePage =
   | "overview"
   | "chores"
@@ -125,6 +125,13 @@ type WorkspaceSectionLink = {
   key: string;
   label: string;
   ref: RefObject<HTMLElement | null>;
+};
+type OnboardingStepDefinition = {
+  key: OnboardingStep;
+  title: string;
+  description: string;
+  page: WorkspacePage;
+  targetRef?: RefObject<HTMLElement | null>;
 };
 
 const workspacePageOrder: WorkspacePage[] = [
@@ -343,6 +350,10 @@ function getTokenMigrationKey(variant: WorkspaceVariant) {
   return `${getTokenStorageKey(variant)}-migrated`;
 }
 
+function getOnboardingTourStorageKey(variant: WorkspaceVariant) {
+  return `taskbandit-onboarding-tour-${variant}`;
+}
+
 function getTokenStorage(variant: WorkspaceVariant) {
   if (variant === "admin") {
     return window.sessionStorage;
@@ -372,6 +383,19 @@ function readStoredToken(variant: WorkspaceVariant) {
   }
 
   return null;
+}
+
+function readStoredOnboardingTourCompletion(variant: WorkspaceVariant) {
+  return window.localStorage.getItem(getOnboardingTourStorageKey(variant)) === "true";
+}
+
+function writeStoredOnboardingTourCompletion(variant: WorkspaceVariant, completed: boolean) {
+  if (completed) {
+    window.localStorage.setItem(getOnboardingTourStorageKey(variant), "true");
+    return;
+  }
+
+  window.localStorage.removeItem(getOnboardingTourStorageKey(variant));
 }
 
 function writeStoredToken(variant: WorkspaceVariant, token: string) {
@@ -644,6 +668,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+  const [onboardingManuallyOpened, setOnboardingManuallyOpened] = useState(false);
+  const [onboardingTourCompleted, setOnboardingTourCompleted] = useState(() =>
+    readStoredOnboardingTourCompletion(workspaceVariant)
+  );
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
@@ -902,12 +930,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (payload) {
       setSettingsDraft(payload.household.settings);
       setNotificationPreferencesDraft(payload.notificationPreferences);
-      if (payload.household.settings.onboardingCompleted) {
-        setOnboardingDismissed(false);
-        setOnboardingStep("welcome");
+      if (
+        workspaceVariant === "admin" &&
+        payload.household.settings.onboardingCompleted &&
+        !onboardingTourCompleted
+      ) {
+        writeStoredOnboardingTourCompletion("admin", true);
+        setOnboardingTourCompleted(true);
       }
     }
-  }, [payload]);
+  }, [onboardingTourCompleted, payload, workspaceVariant]);
 
   useEffect(() => {
     if (!payload || payload.templates.length === 0) {
@@ -1345,15 +1377,23 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     [payload, t]
   );
 
-  const showOnboarding = Boolean(
-    payload &&
-      payload.currentUser.role === "admin" &&
-      !payload.household.settings.onboardingCompleted &&
-      !onboardingDismissed
-  );
-
   const isAdminVariantAccessDenied = Boolean(
     payload && workspaceVariant === "admin" && payload.currentUser.role !== "admin"
+  );
+
+  const showOnboarding = Boolean(
+    payload &&
+      !isAdminVariantAccessDenied &&
+      (
+        onboardingManuallyOpened ||
+        (!onboardingDismissed &&
+          (
+            (workspaceVariant === "admin" &&
+              payload.currentUser.role === "admin" &&
+              !payload.household.settings.onboardingCompleted) ||
+            (workspaceVariant === "client" && !onboardingTourCompleted)
+          ))
+      )
   );
 
   const availablePages = useMemo<Array<{ key: WorkspacePage; label: string }>>(() => {
@@ -1466,90 +1506,139 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setInstallPromptDismissed(
       window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
     );
+    setOnboardingTourCompleted(readStoredOnboardingTourCompletion(workspaceVariant));
+    setOnboardingDismissed(false);
+    setOnboardingManuallyOpened(false);
+    setOnboardingStep("welcome");
   }, [workspaceVariant]);
 
-  const onboardingSteps = useMemo(() => {
+  const onboardingSteps = useMemo<Array<OnboardingStepDefinition>>(() => {
     if (workspaceVariant === "admin") {
       return [
         {
-          key: "welcome" as const,
+          key: "welcome",
           title: t("onboarding.welcome_title"),
           description: t("onboarding.welcome_body"),
-          actionLabel: null,
-          action: null
+          page: "overview"
         },
         {
-          key: "settings" as const,
+          key: "rules",
           title: t("onboarding.settings_title"),
           description: t("onboarding.settings_body"),
-          actionLabel: t("onboarding.go_settings"),
-          action: () => openWorkspacePage("settings", householdSettingsRef)
+          page: "settings",
+          targetRef: generalSettingsRef
         },
         {
-          key: "members" as const,
+          key: "services",
+          title: t("onboarding.services_title"),
+          description: t("onboarding.services_body"),
+          page: "settings",
+          targetRef: oidcSettingsRef
+        },
+        {
+          key: "members",
           title: t("onboarding.members_title"),
           description: t("onboarding.members_body"),
-          actionLabel: t("onboarding.go_members"),
-          action: () => openWorkspacePage("household", membersRef)
+          page: "household",
+          targetRef: membersRef
         },
         {
-          key: "chores" as const,
+          key: "templates",
           title: t("onboarding.chores_title"),
           description: t("onboarding.chores_body"),
-          actionLabel: t("onboarding.go_templates"),
-          action: () => openWorkspacePage("templates", templatesRef)
+          page: "templates",
+          targetRef: templatesRef
         },
         {
-          key: "overview" as const,
-          title: t("onboarding.overview_title"),
-          description: t("onboarding.overview_body"),
-          actionLabel: t("onboarding.go_settings"),
-          action: () => openWorkspacePage("admin", systemStatusRef)
+          key: "readiness",
+          title: t("onboarding.readiness_title"),
+          description: t("onboarding.readiness_body"),
+          page: "admin",
+          targetRef: systemStatusRef
         }
       ];
     }
 
     return [
       {
-        key: "welcome" as const,
+        key: "welcome",
         title: t("onboarding.welcome_title"),
         description: t("onboarding.welcome_body"),
-        actionLabel: null,
-        action: null
+        page: "overview"
       },
       {
-        key: "settings" as const,
-        title: t("onboarding.settings_title"),
-        description: t("onboarding.settings_body"),
-        actionLabel: t("onboarding.go_settings"),
-        action: () => openWorkspacePage("settings", notificationPreferencesRef)
+        key: "chores",
+        title: t("onboarding.client_chores_title"),
+        description: t("onboarding.client_chores_body"),
+        page: "chores",
+        targetRef: myChoresRef
       },
       {
-        key: "members" as const,
-        title: t("onboarding.members_title"),
-        description: t("onboarding.members_body"),
-        actionLabel: t("onboarding.go_notifications"),
-        action: () => openWorkspacePage("notifications", notificationsRef)
+        key: "schedule",
+        title: t("onboarding.client_schedule_title"),
+        description: t("onboarding.client_schedule_body"),
+        page: "chores",
+        targetRef: scheduleRef
       },
       {
-        key: "chores" as const,
-        title: t("onboarding.chores_title"),
-        description: t("onboarding.chores_body"),
-        actionLabel: t("onboarding.go_chores"),
-        action: () => openWorkspacePage("chores", myChoresRef)
+        key: "notifications",
+        title: t("onboarding.client_notifications_title"),
+        description: t("onboarding.client_notifications_body"),
+        page: "notifications",
+        targetRef: notificationsRef
       },
       {
-        key: "overview" as const,
-        title: t("onboarding.overview_title"),
-        description: t("onboarding.overview_body"),
-        actionLabel: t("onboarding.go_schedule"),
-        action: () => openWorkspacePage("chores", scheduleRef)
+        key: "devices",
+        title: t("onboarding.client_devices_title"),
+        description: t("onboarding.client_devices_body"),
+        page: "settings",
+        targetRef: notificationDevicesRef
       }
     ];
-  }, [t, workspaceVariant]);
+  }, [
+    generalSettingsRef,
+    membersRef,
+    myChoresRef,
+    notificationDevicesRef,
+    notificationsRef,
+    oidcSettingsRef,
+    scheduleRef,
+    systemStatusRef,
+    t,
+    templatesRef,
+    workspaceVariant
+  ]);
 
   const onboardingIndex = onboardingSteps.findIndex((step) => step.key === onboardingStep);
   const currentOnboardingStep = onboardingSteps[Math.max(onboardingIndex, 0)];
+
+  useEffect(() => {
+    const targetRef = currentOnboardingStep?.targetRef;
+
+    if (!showOnboarding || !targetRef) {
+      return;
+    }
+
+    if (currentOnboardingStep.page !== activePage) {
+      openWorkspacePage(currentOnboardingStep.page, targetRef);
+      return;
+    }
+
+    const timeoutId = window.setTimeout(() => {
+      const element = targetRef.current;
+      if (!element) {
+        return;
+      }
+
+      scrollToSection(targetRef);
+      element.classList.add("onboarding-target-active");
+    }, 80);
+
+    return () => {
+      window.clearTimeout(timeoutId);
+      targetRef.current?.classList.remove("onboarding-target-active");
+    };
+  }, [activePage, currentOnboardingStep, showOnboarding]);
 
   const visibleHouseholdChores = useMemo(() => {
     const currentUserId = payload?.currentUser.id;
@@ -2545,20 +2634,37 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   async function handleCompleteOnboarding() {
-    if (!token) {
+    if (!payload) {
       return;
     }
 
     setBusyAction("complete-onboarding");
     try {
-      const household = await taskBanditApi.updateHousehold(token, language, {
-        onboardingCompleted: true
-      });
-      setPayload((current) => (current ? { ...current, household } : current));
-      setSettingsDraft(household.settings);
+      const shouldPersistHouseholdCompletion =
+        workspaceVariant === "admin" &&
+        payload.currentUser.role === "admin" &&
+        !payload.household.settings.onboardingCompleted;
+
+      if (shouldPersistHouseholdCompletion) {
+        if (!token) {
+          return;
+        }
+
+        const household = await taskBanditApi.updateHousehold(token, language, {
+          onboardingCompleted: true
+        });
+        setPayload((current) => (current ? { ...current, household } : current));
+        setSettingsDraft(household.settings);
+      }
+
+      writeStoredOnboardingTourCompletion(workspaceVariant, true);
+      setOnboardingTourCompleted(true);
       setOnboardingDismissed(false);
+      setOnboardingManuallyOpened(false);
       setOnboardingStep("welcome");
-      setNotice(t("onboarding.completed"));
+      setNotice(
+        shouldPersistHouseholdCompletion ? t("onboarding.completed") : t("onboarding.tour_completed")
+      );
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("onboarding.complete_failed")));
@@ -2577,6 +2683,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (onboardingIndex > 0) {
       setOnboardingStep(onboardingSteps[onboardingIndex - 1].key);
     }
+  }
+
+  function handleOpenOnboarding() {
+    setOnboardingDismissed(false);
+    setOnboardingManuallyOpened(true);
+    setOnboardingStep("welcome");
+  }
+
+  function handleDismissOnboarding() {
+    setOnboardingDismissed(true);
+    setOnboardingManuallyOpened(false);
+    setOnboardingStep("welcome");
+  }
+
+  function handleFocusOnboardingStep(step: OnboardingStepDefinition) {
+    setOnboardingStep(step.key);
+    if (step.targetRef) {
+      openWorkspacePage(step.page, step.targetRef);
+      return;
+    }
+
+    openWorkspacePage(step.page);
   }
 
   async function handleProcessOverduePenalties() {
@@ -4801,6 +4929,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <span className="status-pill">
                   {formatNumber(payload.currentUser.currentStreak)} {t("user.streak")}
                 </span>
+                <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
+                  {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
+                </button>
               </div>
             </section>
 
@@ -4830,11 +4961,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </section>
             ) : null}
 
-          {isAdminVariantAccessDenied ? null : showOnboarding && activePage === "overview" ? (
-            <section className="onboarding-shell">
-              <article className="panel onboarding-panel">
-                <div className="section-heading">
-                  <h2>{t("onboarding.title")}</h2>
+          {showOnboarding ? (
+            <aside className="onboarding-floating" aria-live="polite">
+              <article className="panel onboarding-panel onboarding-floating-panel">
+                <div className="onboarding-floating-header">
+                  <div>
+                    <p className="workspace-nav-kicker">
+                      {t(
+                        workspaceVariant === "admin"
+                          ? "onboarding.workspace_admin"
+                          : "onboarding.workspace_client"
+                      )}
+                    </p>
+                    <h2>{t("onboarding.title")}</h2>
+                  </div>
                   <span className="section-kicker">
                     {t("onboarding.progress")
                       .replace("{current}", String(onboardingIndex + 1))
@@ -4847,7 +4987,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       key={step.key}
                       className={`onboarding-chip ${step.key === onboardingStep ? "active" : ""}`}
                       type="button"
-                      onClick={() => setOnboardingStep(step.key)}
+                      onClick={() => handleFocusOnboardingStep(step)}
                     >
                       <span>{index + 1}</span>
                       <strong>{step.title}</strong>
@@ -4867,13 +5007,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   >
                     {t("onboarding.back")}
                   </button>
-                  {currentOnboardingStep.actionLabel && currentOnboardingStep.action ? (
+                  {currentOnboardingStep.targetRef ? (
                     <button
                       className="secondary-button"
                       type="button"
-                      onClick={currentOnboardingStep.action}
+                      onClick={() => handleFocusOnboardingStep(currentOnboardingStep)}
                     >
-                      {currentOnboardingStep.actionLabel}
+                      {t("onboarding.take_me_there")}
                     </button>
                   ) : null}
                   {onboardingIndex < onboardingSteps.length - 1 ? (
@@ -4890,16 +5030,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       {t("onboarding.finish")}
                     </button>
                   )}
-                  <button
-                    className="ghost-button"
-                    type="button"
-                    onClick={() => setOnboardingDismissed(true)}
-                  >
+                  <button className="ghost-button" type="button" onClick={handleDismissOnboarding}>
                     {t("onboarding.later")}
                   </button>
                 </div>
               </article>
-            </section>
+            </aside>
           ) : null}
 
           {activePage === "overview" ? (
