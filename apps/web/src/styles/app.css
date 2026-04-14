@@ -441,6 +441,38 @@ h4,
   line-height: 1.6;
 }
 
+.onboarding-floating {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  width: min(420px, calc(100vw - 28px));
+}
+
+.onboarding-floating-panel {
+  box-shadow: 0 26px 70px rgba(36, 48, 67, 0.28);
+}
+
+.onboarding-floating-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+  margin-bottom: 14px;
+}
+
+.onboarding-floating-header h2 {
+  margin: 0;
+}
+
+.onboarding-target-active {
+  border-color: rgba(255, 201, 74, 0.9) !important;
+  box-shadow:
+    0 0 0 4px rgba(255, 201, 74, 0.2),
+    0 24px 60px rgba(36, 48, 67, 0.24) !important;
+  scroll-margin-top: 110px;
+}
+
 .eyebrow {
   display: inline-flex;
   margin: 0 0 12px;
@@ -2019,5 +2051,16 @@ h4,
 
   .app-shell.variant-client .workspace-nav-kicker {
     margin-bottom: 6px;
+  }
+
+  .onboarding-floating {
+    right: 14px;
+    left: 14px;
+    bottom: 14px;
+    width: auto;
+  }
+
+  .onboarding-floating-header {
+    flex-direction: column;
   }
 }
