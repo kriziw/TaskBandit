@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.36.1](https://github.com/kriziw/TaskBandit/compare/v0.36.0...v0.36.1) (2026-04-14)
+
+
+### Bug Fixes
+
+* **web:** prevent stale client login bootstrap on first load ([#251](https://github.com/kriziw/TaskBandit/issues/251)) ([b29526c](https://github.com/kriziw/TaskBandit/commit/b29526cc54ed9e41b5db17fbb65ac99297e4e552))
+
 ## [0.36.0](https://github.com/kriziw/TaskBandit/compare/v0.35.10...v0.36.0) (2026-04-14)
 
 
