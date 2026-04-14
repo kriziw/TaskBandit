@@ -4471,8 +4471,36 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         </div>
       ) : null}
 
-      {notice ? <div className="notice-banner success">{notice}</div> : null}
-      {pageError ? <div className="notice-banner error">{pageError}</div> : null}
+      {notice || pageError ? (
+        <div className="floating-notice-stack" aria-live="polite" aria-atomic="true">
+          {notice ? (
+            <div className="floating-notice success" role="status">
+              <p>{notice}</p>
+              <button
+                className="floating-notice-close"
+                type="button"
+                onClick={() => setNotice(null)}
+                aria-label={t("release.dismiss_update")}
+              >
+                {t("release.dismiss_update")}
+              </button>
+            </div>
+          ) : null}
+          {pageError ? (
+            <div className="floating-notice error" role="alert">
+              <p>{pageError}</p>
+              <button
+                className="floating-notice-close"
+                type="button"
+                onClick={() => setPageError(null)}
+                aria-label={t("release.dismiss_update")}
+              >
+                {t("release.dismiss_update")}
+              </button>
+            </div>
+          ) : null}
+        </div>
+      ) : null}
       {showInstallPrompt ? (
         <div className="notice-banner info update-banner">
           <div>

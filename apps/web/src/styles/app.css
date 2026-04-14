@@ -1041,6 +1041,62 @@ h4,
   background: rgba(115, 201, 244, 0.18);
 }
 
+.floating-notice-stack {
+  position: fixed;
+  right: 18px;
+  bottom: 18px;
+  z-index: 60;
+  display: grid;
+  gap: 10px;
+  width: min(420px, calc(100vw - 24px));
+}
+
+.floating-notice {
+  display: grid;
+  gap: 10px;
+  align-items: start;
+  padding: 14px 16px;
+  border-radius: 22px;
+  border: 1px solid var(--line);
+  box-shadow: 0 22px 42px rgba(36, 48, 67, 0.2);
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+  background: rgba(255, 255, 255, 0.94);
+}
+
+.floating-notice.success {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(237, 255, 246, 0.96)),
+    rgba(255, 255, 255, 0.92);
+}
+
+.floating-notice.error {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.94), rgba(255, 241, 239, 0.97)),
+    rgba(255, 255, 255, 0.92);
+}
+
+.floating-notice p {
+  margin: 0;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.floating-notice-close {
+  justify-self: end;
+  border: 0;
+  background: rgba(36, 48, 67, 0.08);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 8px 12px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.floating-notice-close:hover {
+  background: rgba(36, 48, 67, 0.14);
+}
+
 .update-banner {
   display: flex;
   align-items: center;
@@ -1947,6 +2003,12 @@ h4,
 
   .workspace-page-header {
     flex-direction: column;
+  }
+
+  .floating-notice-stack {
+    right: 12px;
+    bottom: 12px;
+    width: min(100vw - 24px, 420px);
   }
 
   .update-banner {
