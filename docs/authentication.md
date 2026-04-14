@@ -50,7 +50,14 @@ TaskBandit now includes local auth plus an optional OIDC login flow in the NestJ
 - Environment-based `TASKBANDIT_OIDC_*` values remain available as a fallback path if you prefer to keep provider config outside the UI.
 - If an OIDC identity already matches an existing TaskBandit email address, TaskBandit links that OIDC identity to the existing user.
 - If no linked account exists yet, TaskBandit can create a new `parent` account only when household self-signup is enabled.
-- Current local auth is intended as the project foundation; role-aware authorization guards and password reset flows still need to be added.
 - Password reset is intentionally generic on the request step: if an email does not match a local account, TaskBandit still returns the same success response.
 - Password reset email delivery depends on household SMTP settings from the admin UI.
 - For demo-seeded environments, the seeded users share the password `TaskBandit123!`.
+
+## Recovery And Migration Guidance
+
+- The admin UI now exposes a Backup Readiness panel that lists the host-mounted paths you actually need to preserve during migration: the data root, Postgres data, compose file, and `.env`.
+- The household snapshot export and runtime log exports are useful support and recovery artifacts, but they are not a replacement for the mounted host data.
+- Keep at least one admin account with local password sign-in available before relying entirely on OIDC. If you prefer to disable local auth in the UI, `TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED=true` remains the safety override.
+- Password reset is a second recovery path for local accounts, but it only works when SMTP is configured and the recovery user has a reachable email address.
+- After moving the stack, use the System Status view in the admin UI to confirm application reachability, database access, storage writes, auth, push delivery, and email fallback before treating the migration as complete.
