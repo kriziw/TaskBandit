@@ -1289,6 +1289,88 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     [payload]
   );
 
+  const effectiveHouseholdSettings = settingsDraft ?? payload?.household.settings ?? null;
+
+  const adminMembers = useMemo(
+    () => payload?.household.members.filter((member) => member.role === "admin") ?? [],
+    [payload]
+  );
+
+  const adminLocalRecoveryCount = useMemo(
+    () => adminMembers.filter((member) => member.localAuthConfigured).length,
+    [adminMembers]
+  );
+
+  const adminLocalRecoveryEmailCount = useMemo(
+    () => adminMembers.filter((member) => member.localAuthConfigured && member.email).length,
+    [adminMembers]
+  );
+
+  const smtpRecoveryReady = Boolean(
+    effectiveHouseholdSettings &&
+      effectiveHouseholdSettings.smtpEnabled &&
+      effectiveHouseholdSettings.smtpHost &&
+      effectiveHouseholdSettings.smtpPort &&
+      effectiveHouseholdSettings.smtpFromEmail &&
+      (!effectiveHouseholdSettings.smtpUsername ||
+        effectiveHouseholdSettings.smtpPasswordConfigured ||
+        effectiveHouseholdSettings.smtpPassword)
+  );
+
+  const backupMigrationChecklist = useMemo<
+    Array<{ key: string; status: "ready" | "warning"; title: string; detail: string }>
+  >(() => {
+    if (!payload?.backupReadiness) {
+      return [];
+    }
+
+    const hostPathsReady = Boolean(
+      payload.backupReadiness.hostPaths.dataRootHint &&
+        payload.backupReadiness.hostPaths.composeFileHint &&
+        payload.backupReadiness.hostPaths.envFileHint
+    );
+    const exportsReady =
+      payload.backupReadiness.exports.householdSnapshotReady &&
+      payload.backupReadiness.exports.runtimeLogsReady;
+    const recoveryReady =
+      adminLocalRecoveryCount > 0 || payload.backupReadiness.recovery.localAuthForcedByConfig;
+    const cutoverReady = Boolean(
+      payload.systemStatus &&
+        payload.systemStatus.application.status === "ready" &&
+        payload.systemStatus.database.status === "ready" &&
+        payload.systemStatus.storage.status === "ready"
+    );
+
+    return [
+      {
+        key: "paths",
+        status: hostPathsReady ? "ready" : "warning",
+        title: t("backup.checklist_paths_title"),
+        detail: t("backup.checklist_paths_body")
+      },
+      {
+        key: "exports",
+        status: exportsReady ? "ready" : "warning",
+        title: t("backup.checklist_exports_title"),
+        detail: t("backup.checklist_exports_body")
+      },
+      {
+        key: "recovery",
+        status: recoveryReady ? "ready" : "warning",
+        title: t("backup.checklist_recovery_title"),
+        detail: t("backup.checklist_recovery_body")
+          .replace("{localAdmins}", String(adminLocalRecoveryCount))
+          .replace("{resetEmails}", String(adminLocalRecoveryEmailCount))
+      },
+      {
+        key: "cutover",
+        status: cutoverReady ? "ready" : "warning",
+        title: t("backup.checklist_cutover_title"),
+        detail: t("backup.checklist_cutover_body")
+      }
+    ];
+  }, [adminLocalRecoveryCount, adminLocalRecoveryEmailCount, payload, t]);
+
   const restrictHouseholdDetails = Boolean(
     payload &&
       !payload.household.settings.membersCanSeeFullHouseholdChoreDetails &&
@@ -5740,6 +5822,35 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <div className="system-status-grid">
                     <div className="task-row compact">
                       <div className="task-row-header">
+                        <strong>{t("backup.checklist")}</strong>
+                        <span
+                          className={`status-pill system-${
+                            backupMigrationChecklist.every((item) => item.status === "ready")
+                              ? "ready"
+                              : "warning"
+                          }`}
+                        >
+                          {backupMigrationChecklist.filter((item) => item.status === "ready").length}/
+                          {backupMigrationChecklist.length}
+                        </span>
+                      </div>
+                      <p>{t("backup.checklist_hint")}</p>
+                      <div className="stack-list">
+                        {backupMigrationChecklist.map((item) => (
+                          <div className="notification-delivery-block" key={item.key}>
+                            <div className="task-row-header">
+                              <strong>{item.title}</strong>
+                              <span className={`status-pill system-${item.status}`}>
+                                {formatStatusChip(item.status)}
+                              </span>
+                            </div>
+                            <p>{item.detail}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="task-row compact">
+                      <div className="task-row-header">
                         <strong>{t("backup.host_paths")}</strong>
                         <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
                       </div>
@@ -5782,6 +5893,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         <strong>{t("backup.exports")}</strong>
                         <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
                       </div>
+                      <p>{t("backup.exports_hint")}</p>
                       <p>
                         {t("backup.snapshot_export")}:{" "}
                         {payload.backupReadiness.exports.householdSnapshotReady
@@ -5811,6 +5923,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         >
                           {t("logs.export_text")}
                         </button>
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          disabled={busyAction === "download-runtime-logs-json"}
+                          onClick={() => void handleDownloadRuntimeLogs("json")}
+                        >
+                          {t("logs.export_json")}
+                        </button>
                       </div>
                     </div>
                     <div className="task-row compact">
@@ -5818,11 +5938,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         <strong>{t("backup.recovery_features")}</strong>
                         <span className="status-pill system-ready">{t("system_status.status_ready")}</span>
                       </div>
+                      <p>{t("backup.recovery_hint")}</p>
                       <p>
                         {t("backup.local_recovery")}:{" "}
                         {payload.backupReadiness.recovery.localAuthForcedByConfig
                           ? t("common.enabled")
                           : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.admin_local_recovery")}:{" "}
+                        {t("backup.admin_local_recovery_detail")
+                          .replace("{configured}", String(adminLocalRecoveryCount))
+                          .replace("{total}", String(adminMembers.length || 1))}
+                      </p>
+                      <p>
+                        {t("backup.smtp_reset")}:{" "}
+                        {smtpRecoveryReady && adminLocalRecoveryEmailCount > 0
+                          ? t("common.enabled")
+                          : t("common.disabled")}
+                      </p>
+                      <p>
+                        {t("backup.admin_recovery_email")}: {adminLocalRecoveryEmailCount}
                       </p>
                       <p>
                         {t("backup.oidc_ui")}:{" "}
@@ -6501,6 +6637,38 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         {settingsDraft.localAuthForcedByConfig ? (
                           <p className="inline-message">{t("settings.local_auth_forced_note")}</p>
                         ) : null}
+                      </div>
+                    </section>
+
+                    <section className="settings-section settings-section-recovery">
+                      <div className="section-heading section-heading-compact">
+                        <h3>{t("settings.section_recovery")}</h3>
+                      </div>
+                      <div className="settings-list">
+                        <p className="inline-message">{t("settings.recovery_summary_hint")}</p>
+                        <p>
+                          {t("settings.recovery_local_admins")}:{" "}
+                          {t("settings.recovery_local_admins_detail")
+                            .replace("{configured}", String(adminLocalRecoveryCount))
+                            .replace("{total}", String(adminMembers.length || 1))}
+                        </p>
+                        <p>
+                          {t("backup.local_recovery")}:{" "}
+                          {effectiveHouseholdSettings?.localAuthForcedByConfig
+                            ? t("common.enabled")
+                            : t("common.disabled")}
+                        </p>
+                        <p>
+                          {t("settings.recovery_reset_email")}:{" "}
+                          {smtpRecoveryReady && adminLocalRecoveryEmailCount > 0
+                            ? t("common.enabled")
+                            : t("common.disabled")}
+                        </p>
+                        <p>
+                          {t("settings.recovery_backup_callout")
+                            .replace("{emails}", String(adminLocalRecoveryEmailCount))}
+                        </p>
+                        <p className="inline-message">{t("settings.recovery_member_password_hint")}</p>
                       </div>
                     </section>
                   </div>
