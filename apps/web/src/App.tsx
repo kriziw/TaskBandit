@@ -5991,7 +5991,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" && payload.compatibility.notificationHealth ? (
+            {workspaceVariant === "admin" &&
+            payload.currentUser.role === "admin" &&
+            payload.compatibility.notificationHealth ? (
               <article className="panel page-panel page-admin" ref={notificationHealthRef}>
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
@@ -6051,7 +6053,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" && payload.compatibility.backupReadiness ? (
+            {workspaceVariant === "admin" &&
+            payload.currentUser.role === "admin" &&
+            payload.compatibility.backupReadiness ? (
               <article className="panel page-panel page-admin" ref={backupReadinessRef}>
                 <div className="section-heading">
                   <h2>{t("panel.backup_readiness")}</h2>
@@ -6246,7 +6250,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" && payload.compatibility.systemStatus ? (
+            {workspaceVariant === "admin" &&
+            payload.currentUser.role === "admin" &&
+            payload.compatibility.systemStatus ? (
               <article className="panel page-panel page-admin" ref={systemStatusRef}>
                 <div className="section-heading">
                   <h2>{t("panel.system_status")}</h2>
@@ -6458,7 +6464,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" && payload.compatibility.notificationRecovery ? (
+            {workspaceVariant === "admin" &&
+            payload.currentUser.role === "admin" &&
+            payload.compatibility.notificationRecovery ? (
               <article className="panel page-panel page-admin" ref={notificationRecoveryRef}>
                 <div className="section-heading">
                   <h2>{t("panel.notification_recovery")}</h2>
@@ -6569,7 +6577,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" && settingsDraft ? (
+            {workspaceVariant === "admin" && payload.currentUser.role === "admin" && settingsDraft ? (
               <>
                 <article className="panel page-panel page-settings" ref={householdSettingsRef}>
                   <div className="section-heading">
