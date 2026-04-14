@@ -342,6 +342,44 @@ function createEmptyMemberEditForm(): MemberEditFormState {
   };
 }
 
+function getSmtpTestSettings(
+  settings: Pick<
+    HouseholdSettings,
+    | "smtpHost"
+    | "smtpPort"
+    | "smtpSecure"
+    | "smtpUsername"
+    | "smtpPassword"
+    | "smtpFromEmail"
+    | "smtpFromName"
+  >
+) {
+  return {
+    smtpHost: settings.smtpHost,
+    smtpPort: settings.smtpPort,
+    smtpSecure: settings.smtpSecure,
+    smtpUsername: settings.smtpUsername,
+    smtpPassword: settings.smtpPassword,
+    smtpFromEmail: settings.smtpFromEmail,
+    smtpFromName: settings.smtpFromName
+  };
+}
+
+function getSmtpSettingsFingerprint(
+  settings: Pick<
+    HouseholdSettings,
+    | "smtpHost"
+    | "smtpPort"
+    | "smtpSecure"
+    | "smtpUsername"
+    | "smtpPassword"
+    | "smtpFromEmail"
+    | "smtpFromName"
+  >
+) {
+  return JSON.stringify(settings);
+}
+
 function getTokenStorageKey(variant: WorkspaceVariant) {
   return `${legacyTokenStorageKey}-${variant}`;
 }
@@ -630,6 +668,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [payload, setPayload] = useState<DashboardPayload | null>(null);
   const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLogEntry[]>([]);
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
+  const [smtpVerifiedFingerprint, setSmtpVerifiedFingerprint] = useState<string | null>(null);
   const [notificationPreferencesDraft, setNotificationPreferencesDraft] =
     useState<NotificationPreferences | null>(null);
   const [submitSelections, setSubmitSelections] = useState<Record<string, string[]>>({});
@@ -705,6 +744,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const generalSettingsRef = useRef<HTMLElement | null>(null);
   const oidcSettingsRef = useRef<HTMLElement | null>(null);
   const smtpSettingsRef = useRef<HTMLElement | null>(null);
+  const smtpDraftSettings = settingsDraft ? getSmtpTestSettings(settingsDraft) : null;
+  const smtpDraftFingerprint = smtpDraftSettings ? getSmtpSettingsFingerprint(smtpDraftSettings) : null;
+  const smtpTestRequiredToEnable = Boolean(
+    payload &&
+      settingsDraft &&
+      !payload.household.settings.smtpEnabled &&
+      settingsDraft.smtpEnabled &&
+      smtpDraftFingerprint !== smtpVerifiedFingerprint
+  );
 
   const languageOptions: Array<{ code: AppLanguage; label: string }> = [
     { code: "en", label: t("language.english") },
@@ -2673,6 +2721,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return;
     }
 
+    if (smtpTestRequiredToEnable) {
+      setPageError("SMTP_TEST_REQUIRED: Test the SMTP settings successfully before enabling SMTP.");
+      return;
+    }
+
     setBusyAction("save-settings");
     try {
       const household = await taskBanditApi.updateHousehold(token, language, settingsDraft);
@@ -2867,13 +2920,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   async function handleTestSmtp() {
-    if (!token) {
+    if (!token || !settingsDraft || !smtpDraftSettings || !smtpDraftFingerprint) {
       return;
     }
 
     setBusyAction("test-smtp");
     try {
-      await taskBanditApi.testSmtp(token, language);
+      await taskBanditApi.testSmtp(token, language, {
+        smtpEnabled: settingsDraft.smtpEnabled,
+        ...smtpDraftSettings
+      });
+      setSmtpVerifiedFingerprint(smtpDraftFingerprint);
       setNotice(t("settings.smtp_test_success"));
       setPageError(null);
     } catch (error) {
@@ -6663,6 +6720,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           {t("settings.smtp_test")}
                         </button>
                       </div>
+                      {smtpTestRequiredToEnable ? (
+                        <p className="inline-message">
+                          SMTP_TEST_REQUIRED: Test the SMTP settings successfully before enabling SMTP.
+                        </p>
+                      ) : null}
                     </section>
 
                     <section className="settings-section settings-section-general" ref={generalSettingsRef}>
@@ -6812,7 +6874,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <button
                       className="primary-button"
                       type="button"
-                      disabled={busyAction === "save-settings"}
+                      disabled={busyAction === "save-settings" || smtpTestRequiredToEnable}
                       onClick={() => void handleSaveSettings()}
                     >
                       {t("settings.save")}

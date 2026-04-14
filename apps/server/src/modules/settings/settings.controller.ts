@@ -10,6 +10,7 @@ import { I18nService } from "../../common/i18n/i18n.service";
 import { SettingsService } from "./settings.service";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
 import { RegisterNotificationDeviceDto } from "./dto/register-notification-device.dto";
+import { TestSmtpSettingsDto } from "./dto/test-smtp-settings.dto";
 import { UpdateNotificationPreferencesDto } from "./dto/update-notification-preferences.dto";
 import { UpdateHouseholdMemberDto } from "./dto/update-household-member.dto";
 import { UpdateSettingsDto } from "./dto/update-settings.dto";
@@ -87,8 +88,8 @@ export class SettingsController {
 
   @Post("smtp/test")
   @Roles("admin")
-  testSmtp(@CurrentUser() user: AuthenticatedUser) {
-    return this.settingsService.testSmtp(user);
+  testSmtp(@Body() dto: TestSmtpSettingsDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.testSmtp(dto, user);
   }
 
   @Post("household/members")
