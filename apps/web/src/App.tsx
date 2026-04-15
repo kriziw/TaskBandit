@@ -112,6 +112,7 @@ type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
 type OnboardingStep = string;
+type OnboardingTourMode = "admin" | "client" | "client-mobile";
 type WorkspacePage =
   | "overview"
   | "chores"
@@ -167,6 +168,7 @@ const activeChoreStates: ChoreState[] = [
 
 const historicChoreStates: ChoreState[] = ["completed", "cancelled"];
 const choreHistoryPageSize = 25;
+const clientMobileBreakpointPx = 820;
 
 const recurrenceWeekdayOrder = [
   "SUNDAY",
@@ -388,8 +390,19 @@ function getTokenMigrationKey(variant: WorkspaceVariant) {
   return `${getTokenStorageKey(variant)}-migrated`;
 }
 
-function getOnboardingTourStorageKey(variant: WorkspaceVariant) {
-  return `taskbandit-onboarding-tour-${variant}`;
+function getOnboardingTourStorageKey(mode: OnboardingTourMode) {
+  return `taskbandit-onboarding-tour-${mode}`;
+}
+
+function getOnboardingTourMode(
+  variant: WorkspaceVariant,
+  isClientMobileViewport: boolean
+): OnboardingTourMode {
+  if (variant === "client" && isClientMobileViewport) {
+    return "client-mobile";
+  }
+
+  return variant;
 }
 
 function getTokenStorage(variant: WorkspaceVariant) {
@@ -423,17 +436,63 @@ function readStoredToken(variant: WorkspaceVariant) {
   return null;
 }
 
-function readStoredOnboardingTourCompletion(variant: WorkspaceVariant) {
-  return window.localStorage.getItem(getOnboardingTourStorageKey(variant)) === "true";
+function readStoredOnboardingTourCompletion(mode: OnboardingTourMode) {
+  return window.localStorage.getItem(getOnboardingTourStorageKey(mode)) === "true";
 }
 
-function writeStoredOnboardingTourCompletion(variant: WorkspaceVariant, completed: boolean) {
+function writeStoredOnboardingTourCompletion(mode: OnboardingTourMode, completed: boolean) {
   if (completed) {
-    window.localStorage.setItem(getOnboardingTourStorageKey(variant), "true");
+    window.localStorage.setItem(getOnboardingTourStorageKey(mode), "true");
     return;
   }
 
-  window.localStorage.removeItem(getOnboardingTourStorageKey(variant));
+  window.localStorage.removeItem(getOnboardingTourStorageKey(mode));
+}
+
+function getClientOnboardingStepForMode(
+  step: OnboardingStep,
+  mode: OnboardingTourMode,
+  isChildClientUser: boolean
+) {
+  const mobileActionStep = isChildClientUser ? "mobile-sections" : "mobile-add";
+
+  if (mode === "client-mobile") {
+    switch (step) {
+      case "chores":
+      case "mobile-summary":
+      case "mobile-my-chores":
+        return step === "mobile-summary" ? "mobile-summary" : "mobile-my-chores";
+      case "schedule":
+      case "mobile-add":
+      case "mobile-sections":
+        return mobileActionStep;
+      case "notifications":
+      case "devices":
+      case "mobile-nav":
+        return "mobile-nav";
+      default:
+        return "welcome";
+    }
+  }
+
+  switch (step) {
+    case "mobile-summary":
+    case "mobile-my-chores":
+      return "chores";
+    case "mobile-add":
+    case "mobile-sections":
+      return "schedule";
+    case "mobile-nav":
+      return "notifications";
+    case "welcome":
+    case "chores":
+    case "schedule":
+    case "notifications":
+    case "devices":
+      return step;
+    default:
+      return "welcome";
+  }
 }
 
 function writeStoredToken(variant: WorkspaceVariant, token: string) {
@@ -702,14 +761,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [exportStatusFilter, setExportStatusFilter] = useState<ChoreExportStatusFilter>("all");
   const [exportDateFrom, setExportDateFrom] = useState("");
   const [exportDateTo, setExportDateTo] = useState("");
+  const [isClientMobileViewport, setIsClientMobileViewport] = useState(
+    () =>
+      typeof window !== "undefined" &&
+      window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
+  );
+  const [isClientComposerOpen, setIsClientComposerOpen] = useState(false);
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
+  const onboardingTourMode = getOnboardingTourMode(workspaceVariant, isClientMobileViewport);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [onboardingManuallyOpened, setOnboardingManuallyOpened] = useState(false);
   const [onboardingTourCompleted, setOnboardingTourCompleted] = useState(() =>
-    readStoredOnboardingTourCompletion(workspaceVariant)
+    readStoredOnboardingTourCompletion(
+      getOnboardingTourMode(
+        workspaceVariant,
+        typeof window !== "undefined" &&
+          window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
+      )
+    )
   );
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -729,6 +801,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const scheduleRef = useRef<HTMLElement | null>(null);
   const approvalQueueRef = useRef<HTMLElement | null>(null);
   const takeoverRequestsRef = useRef<HTMLElement | null>(null);
+  const mobileSummaryRef = useRef<HTMLElement | null>(null);
+  const mobileChoresRailRef = useRef<HTMLElement | null>(null);
+  const mobileBottomNavRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
   const choreHistoryRef = useRef<HTMLElement | null>(null);
@@ -1488,6 +1563,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     () => myChores.filter((instance) => ["open", "assigned", "overdue"].includes(instance.state)),
     [myChores]
   );
+  const myActionableChoreCount =
+    myNeedsFixesChores.length + myInProgressChores.length + myReadyToStartChores.length;
 
   const featuredMetrics = useMemo(
     () => [
@@ -1552,6 +1629,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       { key: "settings", label: t("nav.settings") }
     ];
   }, [payload, t, workspaceVariant]);
+  const mobileBottomNavPages = useMemo(
+    () =>
+      availablePages.filter((page) =>
+        ["overview", "chores", "notifications", "settings"].includes(page.key)
+      ),
+    [availablePages]
+  );
 
   useEffect(() => {
     if (!availablePages.length) {
@@ -1594,6 +1678,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     ? t("workspace.admin_only_body")
     : pageDescriptions[activePage];
   const isClientVariant = workspaceVariant === "client";
+  const showClientMobileShell = isClientVariant && Boolean(payload) && isClientMobileViewport;
   const isStandaloneDisplayMode =
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: window-controls-overlay)").matches ||
@@ -1642,6 +1727,43 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setOnboardingStep("welcome");
   }, [workspaceVariant]);
 
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      return;
+    }
+
+    const mediaQuery = window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`);
+    const updateViewportState = (event?: MediaQueryListEvent) => {
+      setIsClientMobileViewport(event ? event.matches : mediaQuery.matches);
+    };
+
+    updateViewportState();
+    mediaQuery.addEventListener("change", updateViewportState);
+    return () => mediaQuery.removeEventListener("change", updateViewportState);
+  }, []);
+
+  useEffect(() => {
+    if (!isClientMobileViewport) {
+      setIsClientComposerOpen(false);
+    }
+  }, [isClientMobileViewport]);
+
+  useEffect(() => {
+    if (workspaceVariant !== "client") {
+      return;
+    }
+
+    setOnboardingTourCompleted(readStoredOnboardingTourCompletion(onboardingTourMode));
+    setOnboardingDismissed(false);
+    setOnboardingStep((current) =>
+      getClientOnboardingStepForMode(
+        current,
+        onboardingTourMode,
+        payload?.currentUser.role === "child"
+      )
+    );
+  }, [onboardingTourMode, payload?.currentUser.role, workspaceVariant]);
+
   const onboardingSteps = useMemo<Array<OnboardingStepDefinition>>(() => {
     if (workspaceVariant === "admin") {
       return [
@@ -1689,6 +1811,55 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ];
     }
 
+    if (onboardingTourMode === "client-mobile") {
+      const actionStep = payload?.currentUser.role === "child"
+        ? {
+            key: "mobile-sections",
+            title: t("onboarding.mobile_sections_title"),
+            description: t("onboarding.mobile_sections_body"),
+            page: "chores" as WorkspacePage,
+            targetRef: mobileChoresRailRef
+          }
+        : {
+            key: "mobile-add",
+            title: t("onboarding.mobile_add_title"),
+            description: t("onboarding.mobile_add_body"),
+            page: "chores" as WorkspacePage,
+            targetRef: mobileChoresRailRef
+          };
+
+      return [
+        {
+          key: "welcome",
+          title: t("onboarding.mobile_welcome_title"),
+          description: t("onboarding.mobile_welcome_body"),
+          page: "chores"
+        },
+        {
+          key: "mobile-nav",
+          title: t("onboarding.mobile_nav_title"),
+          description: t("onboarding.mobile_nav_body"),
+          page: "chores",
+          targetRef: mobileBottomNavRef
+        },
+        {
+          key: "mobile-summary",
+          title: t("onboarding.mobile_summary_title"),
+          description: t("onboarding.mobile_summary_body"),
+          page: "chores",
+          targetRef: mobileSummaryRef
+        },
+        actionStep,
+        {
+          key: "mobile-my-chores",
+          title: t("onboarding.mobile_my_chores_title"),
+          description: t("onboarding.mobile_my_chores_body"),
+          page: "chores",
+          targetRef: myChoresRef
+        }
+      ];
+    }
+
     return [
       {
         key: "welcome",
@@ -1728,10 +1899,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }, [
     generalSettingsRef,
     membersRef,
+    mobileBottomNavRef,
+    mobileChoresRailRef,
+    mobileSummaryRef,
     myChoresRef,
     notificationDevicesRef,
     notificationsRef,
     oidcSettingsRef,
+    onboardingTourMode,
+    payload?.currentUser.role,
     scheduleRef,
     systemStatusRef,
     t,
@@ -2172,28 +2348,33 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           {choreHeading}
           <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
         </div>
-        <p>
-          {t("task.assignee")}:{" "}
-          {restrictHouseholdDetails
-            ? t("task.visible_limited")
-            : instance.assigneeId
-              ? memberLookup.get(instance.assigneeId)?.displayName ?? t("common.unknown")
-              : t("common.unassigned")}
-        </p>
-        <p>
-          {options?.historic ? t(getHistoricChoreDateLabelKey(instance)) : t("task.due")}:{" "}
-          {formatDate(options?.historic ? getHistoricChoreDate(instance) : instance.dueAt)}
-        </p>
-        {!restrictHouseholdDetails ? (
-          <p>
-            {t("task.difficulty")}: {t(`difficulty.${instance.difficulty}`)}
-          </p>
-        ) : null}
+        <div className="task-row-meta-grid">
+          <div className="task-row-meta-item">
+            <span>{t("task.assignee")}</span>
+            <strong>
+              {restrictHouseholdDetails
+                ? t("task.visible_limited")
+                : instance.assigneeId
+                  ? memberLookup.get(instance.assigneeId)?.displayName ?? t("common.unknown")
+                  : t("common.unassigned")}
+            </strong>
+          </div>
+          <div className="task-row-meta-item">
+            <span>{options?.historic ? t(getHistoricChoreDateLabelKey(instance)) : t("task.due")}</span>
+            <strong>{formatDate(options?.historic ? getHistoricChoreDate(instance) : instance.dueAt)}</strong>
+          </div>
+          {!restrictHouseholdDetails ? (
+            <div className="task-row-meta-item">
+              <span>{t("task.difficulty")}</span>
+              <strong>{t(`difficulty.${instance.difficulty}`)}</strong>
+            </div>
+          ) : null}
+        </div>
         {!options?.historic &&
           payload?.currentUser.role !== "child" &&
           instance.state !== "completed" &&
           instance.state !== "cancelled" ? (
-            <div className="button-row">
+            <div className="button-row task-row-actions">
               {instance.state !== "pending_approval" && instance.state !== "in_progress" ? (
                 <button
                   className="secondary-button"
@@ -2269,12 +2450,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           {choreHeading}
           <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
         </div>
-        <p>
-          {t("task.due")}: {formatDate(instance.dueAt)}
-        </p>
-        <p>
-          {t("task.points")}: {instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints}
-        </p>
+        <div className="task-row-meta-grid">
+          <div className="task-row-meta-item">
+            <span>{t("task.due")}</span>
+            <strong>{formatDate(instance.dueAt)}</strong>
+          </div>
+          <div className="task-row-meta-item">
+            <span>{t("task.points")}</span>
+            <strong>{instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints}</strong>
+          </div>
+        </div>
         {instance.requirePhotoProof ? (
           <p className="inline-message">{t("submission.photo_hint_required")}</p>
         ) : (
@@ -2331,7 +2516,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             rows={3}
           />
         </label>
-        <div className="button-row">
+        <div className="button-row task-row-actions">
           <button
             className="secondary-button"
             type="button"
@@ -2348,7 +2533,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           >
             {t("submission.submit")}
           </button>
-          {payload?.currentUser.role !== "child" && instance.supportsOccurrenceCancellation ? (
+        </div>
+        {payload?.currentUser.role !== "child" && instance.supportsOccurrenceCancellation ? (
+          <div className="button-row task-row-actions task-row-actions-secondary">
             <>
               <button
                 className="ghost-button"
@@ -2371,8 +2558,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   : t("instances.cancel_series")}
               </button>
             </>
-          ) : null}
-        </div>
+          </div>
+        ) : null}
       </div>
     );
   }
@@ -2497,6 +2684,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setLoginError(message ?? null);
     setNotice(null);
     setCompletionCelebration(null);
+    setIsClientComposerOpen(false);
   }
 
   async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
@@ -2816,7 +3004,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         setSettingsDraft(household.settings);
       }
 
-      writeStoredOnboardingTourCompletion(workspaceVariant, true);
+      writeStoredOnboardingTourCompletion(onboardingTourMode, true);
       setOnboardingTourCompleted(true);
       setOnboardingDismissed(false);
       setOnboardingManuallyOpened(false);
@@ -3245,6 +3433,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           : current
       );
       resetInstanceForm();
+      setIsClientComposerOpen(false);
       setNotice(editingInstanceId ? t("instances.updated") : t("instances.created"));
       setPageError(null);
     } catch (error) {
@@ -3977,6 +4166,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       recurrenceOccurrences: 3,
       recurrenceEndsAt: ""
     });
+    if (workspaceVariant === "client" && isClientMobileViewport) {
+      setActivePage("chores");
+      setIsClientComposerOpen(true);
+    }
   }
 
   function formatDate(value: string | null) {
@@ -4137,6 +4330,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   ]);
 
   function openWorkspacePage(page: WorkspacePage, targetRef?: RefObject<HTMLElement | null>) {
+    if (workspaceVariant === "client" && page !== "chores") {
+      setIsClientComposerOpen(false);
+      if (editingInstanceId) {
+        resetInstanceForm();
+      }
+    }
+
     setActivePage(page);
     if (targetRef) {
       window.setTimeout(() => {
@@ -4203,7 +4403,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   }
 
-  function renderScheduleChorePanel(pageClassName: string) {
+  function handleOpenClientComposer() {
+    setActivePage("chores");
+    setPageError(null);
+    resetInstanceForm();
+    setIsClientComposerOpen(true);
+  }
+
+  function handleCloseClientComposer() {
+    resetInstanceForm();
+    setIsClientComposerOpen(false);
+  }
+
+  function renderScheduleChorePanel(
+    pageClassName: string,
+    options?: {
+      mobileSheet?: boolean;
+    }
+  ) {
     if (!payload) {
       return null;
     }
@@ -4215,12 +4432,29 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
 
     return (
-      <article className={`panel page-panel ${pageClassName}`} ref={scheduleRef}>
-        <div className="section-heading">
-          <h2>{t("panel.schedule_chore")}</h2>
-          <span className="section-kicker">{visibleHouseholdChores.length}</span>
+      <article
+        className={`panel ${options?.mobileSheet ? "mobile-composer-panel" : `page-panel ${pageClassName}`}`}
+        ref={scheduleRef}
+      >
+        <div className={`section-heading ${options?.mobileSheet ? "mobile-composer-heading" : ""}`}>
+          <div>
+            <h2 id={options?.mobileSheet ? "mobile-chore-composer-title" : undefined}>
+              {t("panel.schedule_chore")}
+            </h2>
+            {options?.mobileSheet ? (
+              <p className="schedule-panel-subtitle">{activePageDescription}</p>
+            ) : null}
+          </div>
+          <div className="workspace-page-meta">
+            <span className="section-kicker">{visibleHouseholdChores.length}</span>
+            {options?.mobileSheet ? (
+              <button className="ghost-button" type="button" onClick={handleCloseClientComposer}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
+          </div>
         </div>
-        <form className="login-form member-form" onSubmit={handleCreateInstance}>
+        <form className="login-form member-form schedule-form" onSubmit={handleCreateInstance}>
           <label>
             <span>{t("instances.group")}</span>
             <select
@@ -4332,7 +4566,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             />
           </label>
           {selectedTemplateRepeats ? (
-            <>
+            <div className="schedule-form-section">
               <label>
                 <span>{t("instances.repeat_duration")}</span>
                 <select
@@ -4384,20 +4618,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   />
                 </label>
               ) : null}
-            </>
+            </div>
           ) : null}
-          <button
-            className="primary-button"
-            type="submit"
-            disabled={busyAction === "create-instance" || payload.templates.length === 0}
-          >
-            {editingInstanceId ? t("instances.save") : t("instances.create")}
-          </button>
-          {editingInstanceId ? (
-            <button className="ghost-button" type="button" onClick={resetInstanceForm}>
-              {t("common.cancel")}
+          <div className="button-row schedule-form-actions">
+            <button
+              className="primary-button"
+              type="submit"
+              disabled={busyAction === "create-instance" || payload.templates.length === 0}
+            >
+              {editingInstanceId ? t("instances.save") : t("instances.create")}
             </button>
-          ) : null}
+            {editingInstanceId || options?.mobileSheet ? (
+              <button className="ghost-button" type="button" onClick={handleCloseClientComposer}>
+                {t("common.cancel")}
+              </button>
+            ) : null}
+          </div>
         </form>
       </article>
     );
@@ -5135,6 +5371,51 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
             </section>
 
+            {showClientMobileShell ? (
+              <section className="panel mobile-workspace-summary" ref={mobileSummaryRef}>
+                <div className="section-heading section-heading-compact">
+                  <h3>{activePageLabel}</h3>
+                  <span className="section-kicker">{workspaceVariantLabel}</span>
+                </div>
+                <p className="workspace-page-copy">{activePageDescription}</p>
+                <div className="mobile-workspace-stats">
+                  <div className="mobile-workspace-stat">
+                    <span>{t("panel.my_chores")}</span>
+                    <strong>{myActionableChoreCount}</strong>
+                  </div>
+                  <div className="mobile-workspace-stat">
+                    <span>{t("panel.notifications")}</span>
+                    <strong>{unreadNotifications.length}</strong>
+                  </div>
+                  <div className="mobile-workspace-stat">
+                    <span>{t("panel.household_chores")}</span>
+                    <strong>{visibleHouseholdChores.length}</strong>
+                  </div>
+                </div>
+                {activePage === "chores" ? (
+                  <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
+                    {payload.currentUser.role !== "child" ? (
+                      <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
+                        {t("instances.create")}
+                      </button>
+                    ) : null}
+                    {pageSectionLinks
+                      .filter((link) => link.key !== "chores-schedule")
+                      .map((link) => (
+                        <button
+                          key={link.key}
+                          className="ghost-button"
+                          type="button"
+                          onClick={() => scrollToSection(link.ref)}
+                        >
+                          {link.label}
+                        </button>
+                      ))}
+                  </section>
+                ) : null}
+              </section>
+            ) : null}
+
             {isAdminVariantAccessDenied ? (
               <section className="panel page-panel">
                 <div className="section-heading">
@@ -5143,7 +5424,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
                 <p>{t("workspace.admin_only_body")}</p>
               </section>
-            ) : pageSectionLinks.length > 1 ? (
+            ) : pageSectionLinks.length > 1 && !showClientMobileShell ? (
               <section className="panel workspace-subnav-panel">
                 <span className="section-kicker">{t("nav.jump_to")}</span>
                 <div className="workspace-subnav">
@@ -5162,7 +5443,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
           {showOnboarding ? (
-            <aside className="onboarding-floating" aria-live="polite">
+            <aside
+              className={`onboarding-floating ${showClientMobileShell ? "mobile-onboarding-floating" : ""}`}
+              aria-live="polite"
+            >
               <article className="panel onboarding-panel onboarding-floating-panel">
                 <div className="onboarding-floating-header">
                   <div>
@@ -5170,7 +5454,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       {t(
                         workspaceVariant === "admin"
                           ? "onboarding.workspace_admin"
-                          : "onboarding.workspace_client"
+                          : showClientMobileShell
+                            ? "onboarding.workspace_client_mobile"
+                            : "onboarding.workspace_client"
                       )}
                     </p>
                     <h2>{t("onboarding.title")}</h2>
@@ -5366,7 +5652,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               )}
             </article>
 
-            {workspaceVariant === "client" && payload.currentUser.role !== "child"
+            {workspaceVariant === "client" && payload.currentUser.role !== "child" && !showClientMobileShell
               ? renderScheduleChorePanel("page-chores")
               : null}
 
@@ -7787,6 +8073,40 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
       )}
+      {showClientMobileShell && payload?.currentUser.role !== "child" && isClientComposerOpen ? (
+        <div className="mobile-composer-backdrop" role="presentation">
+          <div
+            className="mobile-composer-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-chore-composer-title"
+          >
+            {renderScheduleChorePanel("page-chores", { mobileSheet: true })}
+          </div>
+        </div>
+      ) : null}
+      {showClientMobileShell ? (
+        <nav className="mobile-bottom-nav" aria-label={t("nav.workspace")} ref={mobileBottomNavRef}>
+          <div className="mobile-bottom-nav-track">
+            {mobileBottomNavPages.map((page) => (
+              <button
+                key={page.key}
+                className={`mobile-bottom-nav-button ${page.key === activePage ? "active" : ""}`}
+                type="button"
+                onClick={() => openWorkspacePage(page.key)}
+              >
+                <span>{page.label}</span>
+              </button>
+            ))}
+            {payload?.currentUser.role !== "child" ? (
+              <button className="mobile-bottom-nav-add" type="button" onClick={handleOpenClientComposer}>
+                <span>+</span>
+                <strong>{t("instances.create")}</strong>
+              </button>
+            ) : null}
+          </div>
+        </nav>
+      ) : null}
       <footer className="app-release-footer">
         <div className="app-release-footer-inner">
           <span className="app-release-chip">
