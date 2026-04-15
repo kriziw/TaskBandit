@@ -217,13 +217,22 @@ select {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 10px;
-  margin-top: 14px;
+  margin-top: 10px;
+}
+
+.mobile-workspace-summary-heading {
+  align-items: flex-start;
+}
+
+.mobile-workspace-summary-heading h3 {
+  margin: 0;
+  font-size: 1.15rem;
 }
 
 .mobile-workspace-stat {
   display: grid;
   gap: 4px;
-  padding: 12px;
+  padding: 10px;
   border-radius: 20px;
   background: rgba(255, 255, 255, 0.58);
   border: 1px solid rgba(36, 48, 67, 0.08);
@@ -2259,8 +2268,61 @@ h4,
 
   .app-shell.variant-client .toolbar {
     position: static;
-    padding: 10px;
-    border-radius: 26px;
+    padding: 8px 10px;
+    border-radius: 22px;
+    gap: 8px;
+  }
+
+  .app-shell.variant-client .toolbar-group {
+    width: 100%;
+    justify-content: space-between;
+    gap: 8px;
+  }
+
+  .app-shell.variant-client .toolbar-brand {
+    padding: 4px 8px 4px 6px;
+    gap: 8px;
+  }
+
+  .app-shell.variant-client .toolbar-brand strong {
+    font-size: 0.92rem;
+  }
+
+  .app-shell.variant-client .toolbar-brand-mascot {
+    width: 26px;
+    height: 26px;
+  }
+
+  .app-shell.variant-client .user-badge,
+  .app-shell.variant-client .toolbar-pill,
+  .app-shell.variant-client .language-picker {
+    padding: 6px 10px;
+    min-height: 0;
+    box-shadow: none;
+  }
+
+  .app-shell.variant-client .user-badge {
+    flex: 1 1 auto;
+    min-width: 0;
+    gap: 1px;
+  }
+
+  .app-shell.variant-client .user-badge strong {
+    font-size: 0.86rem;
+    line-height: 1.1;
+  }
+
+  .app-shell.variant-client .user-badge span {
+    font-size: 0.74rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-shell.variant-client .toolbar-group:last-child {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: center;
   }
 
   .app-shell.variant-client .workspace-shell {
@@ -2273,21 +2335,7 @@ h4,
   }
 
   .app-shell.variant-client .workspace-page-header {
-    gap: 12px;
-  }
-
-  .app-shell.variant-client .workspace-page-meta {
-    width: 100%;
-    justify-content: flex-start;
-  }
-
-  .app-shell.variant-client .workspace-page-meta .status-pill {
-    flex: 1 1 140px;
-    justify-content: center;
-  }
-
-  .app-shell.variant-client .workspace-page-meta .ghost-button {
-    width: 100%;
+    display: none;
   }
 
   .app-shell.variant-client .mobile-workspace-summary,
@@ -2311,6 +2359,10 @@ h4,
   .app-shell.variant-client .metric-card,
   .app-shell.variant-client .panel {
     border-radius: 24px;
+  }
+
+  .app-shell.variant-client .mobile-workspace-summary {
+    padding: 14px;
   }
 
   .app-shell.variant-client .task-row,
@@ -2360,7 +2412,7 @@ h4,
   }
 
   .app-shell.variant-client .mobile-bottom-nav-track {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(var(--mobile-nav-columns, 3), minmax(0, 1fr));
     align-items: stretch;
     padding: 10px;
     border-radius: 28px;
@@ -2397,8 +2449,6 @@ h4,
     padding: 20px 14px 40px;
   }
 
-  .toolbar,
-  .toolbar-group,
   .button-row,
   .task-row-header,
   .board-column-header,
@@ -2406,8 +2456,6 @@ h4,
     align-items: stretch;
   }
 
-  .toolbar,
-  .toolbar-group,
   .button-row,
   .task-row-header,
   .hero-meta,
@@ -2461,5 +2509,22 @@ h4,
 
   .mobile-onboarding-floating .onboarding-step-list {
     grid-template-columns: 1fr;
+  }
+
+  .app-shell.variant-client .toolbar,
+  .app-shell.variant-client .toolbar-group {
+    flex-direction: row;
+    align-items: center;
+  }
+
+  .app-shell.variant-client .toolbar-group:first-child {
+    align-items: stretch;
+  }
+
+  .app-shell.variant-client .toolbar-group:last-child .ghost-button {
+    width: auto;
+    min-width: 0;
+    padding-left: 12px;
+    padding-right: 12px;
   }
 }
