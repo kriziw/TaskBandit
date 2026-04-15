@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.37.2](https://github.com/kriziw/TaskBandit/compare/v0.37.1...v0.37.2) (2026-04-15)
+
+
+### Bug Fixes
+
+* **web:** overhaul client pwa mobile layout and navigation ([#262](https://github.com/kriziw/TaskBandit/issues/262)) ([0b4287f](https://github.com/kriziw/TaskBandit/commit/0b4287fc5b37f53360acde22bc284216904e986d))
+
 ## [0.37.1](https://github.com/kriziw/TaskBandit/compare/v0.37.0...v0.37.1) (2026-04-14)
 
 
