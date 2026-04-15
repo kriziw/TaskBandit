@@ -112,6 +112,7 @@ type HouseholdChoreViewMode = "list" | "board" | "calendar";
 type HouseholdChoreStateFilter = "all" | ChoreState;
 type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
 type OnboardingStep = string;
+type OnboardingTourMode = "admin" | "client" | "client-mobile";
 type WorkspacePage =
   | "overview"
   | "chores"
@@ -389,8 +390,19 @@ function getTokenMigrationKey(variant: WorkspaceVariant) {
   return `${getTokenStorageKey(variant)}-migrated`;
 }
 
-function getOnboardingTourStorageKey(variant: WorkspaceVariant) {
-  return `taskbandit-onboarding-tour-${variant}`;
+function getOnboardingTourStorageKey(mode: OnboardingTourMode) {
+  return `taskbandit-onboarding-tour-${mode}`;
+}
+
+function getOnboardingTourMode(
+  variant: WorkspaceVariant,
+  isClientMobileViewport: boolean
+): OnboardingTourMode {
+  if (variant === "client" && isClientMobileViewport) {
+    return "client-mobile";
+  }
+
+  return variant;
 }
 
 function getTokenStorage(variant: WorkspaceVariant) {
@@ -424,17 +436,63 @@ function readStoredToken(variant: WorkspaceVariant) {
   return null;
 }
 
-function readStoredOnboardingTourCompletion(variant: WorkspaceVariant) {
-  return window.localStorage.getItem(getOnboardingTourStorageKey(variant)) === "true";
+function readStoredOnboardingTourCompletion(mode: OnboardingTourMode) {
+  return window.localStorage.getItem(getOnboardingTourStorageKey(mode)) === "true";
 }
 
-function writeStoredOnboardingTourCompletion(variant: WorkspaceVariant, completed: boolean) {
+function writeStoredOnboardingTourCompletion(mode: OnboardingTourMode, completed: boolean) {
   if (completed) {
-    window.localStorage.setItem(getOnboardingTourStorageKey(variant), "true");
+    window.localStorage.setItem(getOnboardingTourStorageKey(mode), "true");
     return;
   }
 
-  window.localStorage.removeItem(getOnboardingTourStorageKey(variant));
+  window.localStorage.removeItem(getOnboardingTourStorageKey(mode));
+}
+
+function getClientOnboardingStepForMode(
+  step: OnboardingStep,
+  mode: OnboardingTourMode,
+  isChildClientUser: boolean
+) {
+  const mobileActionStep = isChildClientUser ? "mobile-sections" : "mobile-add";
+
+  if (mode === "client-mobile") {
+    switch (step) {
+      case "chores":
+      case "mobile-summary":
+      case "mobile-my-chores":
+        return step === "mobile-summary" ? "mobile-summary" : "mobile-my-chores";
+      case "schedule":
+      case "mobile-add":
+      case "mobile-sections":
+        return mobileActionStep;
+      case "notifications":
+      case "devices":
+      case "mobile-nav":
+        return "mobile-nav";
+      default:
+        return "welcome";
+    }
+  }
+
+  switch (step) {
+    case "mobile-summary":
+    case "mobile-my-chores":
+      return "chores";
+    case "mobile-add":
+    case "mobile-sections":
+      return "schedule";
+    case "mobile-nav":
+      return "notifications";
+    case "welcome":
+    case "chores":
+    case "schedule":
+    case "notifications":
+    case "devices":
+      return step;
+    default:
+      return "welcome";
+  }
 }
 
 function writeStoredToken(variant: WorkspaceVariant, token: string) {
@@ -712,11 +770,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
+  const onboardingTourMode = getOnboardingTourMode(workspaceVariant, isClientMobileViewport);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
   const [onboardingManuallyOpened, setOnboardingManuallyOpened] = useState(false);
   const [onboardingTourCompleted, setOnboardingTourCompleted] = useState(() =>
-    readStoredOnboardingTourCompletion(workspaceVariant)
+    readStoredOnboardingTourCompletion(
+      getOnboardingTourMode(
+        workspaceVariant,
+        typeof window !== "undefined" &&
+          window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
+      )
+    )
   );
   const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
@@ -736,6 +801,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const scheduleRef = useRef<HTMLElement | null>(null);
   const approvalQueueRef = useRef<HTMLElement | null>(null);
   const takeoverRequestsRef = useRef<HTMLElement | null>(null);
+  const mobileSummaryRef = useRef<HTMLElement | null>(null);
+  const mobileChoresRailRef = useRef<HTMLElement | null>(null);
+  const mobileBottomNavRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
   const choreHistoryRef = useRef<HTMLElement | null>(null);
@@ -1680,6 +1748,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   }, [isClientMobileViewport]);
 
+  useEffect(() => {
+    if (workspaceVariant !== "client") {
+      return;
+    }
+
+    setOnboardingTourCompleted(readStoredOnboardingTourCompletion(onboardingTourMode));
+    setOnboardingDismissed(false);
+    setOnboardingStep((current) =>
+      getClientOnboardingStepForMode(
+        current,
+        onboardingTourMode,
+        payload?.currentUser.role === "child"
+      )
+    );
+  }, [onboardingTourMode, payload?.currentUser.role, workspaceVariant]);
+
   const onboardingSteps = useMemo<Array<OnboardingStepDefinition>>(() => {
     if (workspaceVariant === "admin") {
       return [
@@ -1727,6 +1811,55 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ];
     }
 
+    if (onboardingTourMode === "client-mobile") {
+      const actionStep = payload?.currentUser.role === "child"
+        ? {
+            key: "mobile-sections",
+            title: t("onboarding.mobile_sections_title"),
+            description: t("onboarding.mobile_sections_body"),
+            page: "chores" as WorkspacePage,
+            targetRef: mobileChoresRailRef
+          }
+        : {
+            key: "mobile-add",
+            title: t("onboarding.mobile_add_title"),
+            description: t("onboarding.mobile_add_body"),
+            page: "chores" as WorkspacePage,
+            targetRef: mobileChoresRailRef
+          };
+
+      return [
+        {
+          key: "welcome",
+          title: t("onboarding.mobile_welcome_title"),
+          description: t("onboarding.mobile_welcome_body"),
+          page: "chores"
+        },
+        {
+          key: "mobile-nav",
+          title: t("onboarding.mobile_nav_title"),
+          description: t("onboarding.mobile_nav_body"),
+          page: "chores",
+          targetRef: mobileBottomNavRef
+        },
+        {
+          key: "mobile-summary",
+          title: t("onboarding.mobile_summary_title"),
+          description: t("onboarding.mobile_summary_body"),
+          page: "chores",
+          targetRef: mobileSummaryRef
+        },
+        actionStep,
+        {
+          key: "mobile-my-chores",
+          title: t("onboarding.mobile_my_chores_title"),
+          description: t("onboarding.mobile_my_chores_body"),
+          page: "chores",
+          targetRef: myChoresRef
+        }
+      ];
+    }
+
     return [
       {
         key: "welcome",
@@ -1766,10 +1899,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }, [
     generalSettingsRef,
     membersRef,
+    mobileBottomNavRef,
+    mobileChoresRailRef,
+    mobileSummaryRef,
     myChoresRef,
     notificationDevicesRef,
     notificationsRef,
     oidcSettingsRef,
+    onboardingTourMode,
+    payload?.currentUser.role,
     scheduleRef,
     systemStatusRef,
     t,
@@ -2866,7 +3004,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         setSettingsDraft(household.settings);
       }
 
-      writeStoredOnboardingTourCompletion(workspaceVariant, true);
+      writeStoredOnboardingTourCompletion(onboardingTourMode, true);
       setOnboardingTourCompleted(true);
       setOnboardingDismissed(false);
       setOnboardingManuallyOpened(false);
@@ -5234,7 +5372,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </section>
 
             {showClientMobileShell ? (
-              <section className="panel mobile-workspace-summary">
+              <section className="panel mobile-workspace-summary" ref={mobileSummaryRef}>
                 <div className="section-heading section-heading-compact">
                   <h3>{activePageLabel}</h3>
                   <span className="section-kicker">{workspaceVariantLabel}</span>
@@ -5255,7 +5393,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                 </div>
                 {activePage === "chores" ? (
-                  <div className="mobile-chores-rail">
+                  <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
                     {payload.currentUser.role !== "child" ? (
                       <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
                         {t("instances.create")}
@@ -5273,7 +5411,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           {link.label}
                         </button>
                       ))}
-                  </div>
+                  </section>
                 ) : null}
               </section>
             ) : null}
@@ -5305,7 +5443,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
           {showOnboarding ? (
-            <aside className="onboarding-floating" aria-live="polite">
+            <aside
+              className={`onboarding-floating ${showClientMobileShell ? "mobile-onboarding-floating" : ""}`}
+              aria-live="polite"
+            >
               <article className="panel onboarding-panel onboarding-floating-panel">
                 <div className="onboarding-floating-header">
                   <div>
@@ -5313,7 +5454,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       {t(
                         workspaceVariant === "admin"
                           ? "onboarding.workspace_admin"
-                          : "onboarding.workspace_client"
+                          : showClientMobileShell
+                            ? "onboarding.workspace_client_mobile"
+                            : "onboarding.workspace_client"
                       )}
                     </p>
                     <h2>{t("onboarding.title")}</h2>
@@ -7943,7 +8086,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         </div>
       ) : null}
       {showClientMobileShell ? (
-        <nav className="mobile-bottom-nav" aria-label={t("nav.workspace")}>
+        <nav className="mobile-bottom-nav" aria-label={t("nav.workspace")} ref={mobileBottomNavRef}>
           <div className="mobile-bottom-nav-track">
             {mobileBottomNavPages.map((page) => (
               <button
