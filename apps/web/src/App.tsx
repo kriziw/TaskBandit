@@ -77,7 +77,10 @@ type DashboardPayload = {
 type CompletionCelebration = {
   points: number;
   choreTitle: string;
+  titleKey: string;
+  eyebrowKey: string;
   phraseKey: string;
+  variant: "standard" | "rare" | "chore";
 };
 
 type ReadinessChecklistItem = {
@@ -199,18 +202,98 @@ const completionCelebrationPhraseKeys = [
   "celebration.phrase_4",
   "celebration.phrase_5"
 ];
+const rareCompletionCelebrationPhraseKeys = [
+  "celebration.rare_phrase_1",
+  "celebration.rare_phrase_2",
+  "celebration.rare_phrase_3"
+];
+const choreAwareCelebrationPhraseGroups: Array<{
+  keywords: string[];
+  phraseKeys: string[];
+}> = [
+  {
+    keywords: ["kitchen", "dish", "dishwasher", "plate", "fridge", "oven"],
+    phraseKeys: ["celebration.chore_kitchen_1", "celebration.chore_kitchen_2"]
+  },
+  {
+    keywords: ["laundry", "clothes", "washing", "dryer", "fold", "linen"],
+    phraseKeys: ["celebration.chore_laundry_1", "celebration.chore_laundry_2"]
+  },
+  {
+    keywords: ["clean", "tidy", "vacuum", "mop", "dust", "bathroom", "toilet"],
+    phraseKeys: ["celebration.chore_cleaning_1", "celebration.chore_cleaning_2"]
+  },
+  {
+    keywords: ["trash", "rubbish", "garbage", "recycling", "waste", "bin"],
+    phraseKeys: ["celebration.chore_waste_1", "celebration.chore_waste_2"]
+  },
+  {
+    keywords: ["plant", "water", "garden"],
+    phraseKeys: ["celebration.chore_plants_1", "celebration.chore_plants_2"]
+  }
+];
 
-function pickRandomCelebrationPhraseKey(previousKey?: string | null) {
-  if (completionCelebrationPhraseKeys.length === 1) {
-    return completionCelebrationPhraseKeys[0];
+function pickRandomFromPool(pool: string[], previousKey?: string | null) {
+  if (pool.length === 1) {
+    return pool[0];
   }
 
-  let nextKey = completionCelebrationPhraseKeys[getRandomNumber(completionCelebrationPhraseKeys.length)];
+  let nextKey = pool[getRandomNumber(pool.length)];
   while (nextKey === previousKey) {
-    nextKey = completionCelebrationPhraseKeys[getRandomNumber(completionCelebrationPhraseKeys.length)];
+    nextKey = pool[getRandomNumber(pool.length)];
   }
 
   return nextKey;
+}
+
+function buildCompletionCelebration(
+  chore: ChoreInstance,
+  previousKey?: string | null
+): CompletionCelebration {
+  const searchableChoreText = [
+    chore.groupTitle,
+    chore.typeTitle,
+    chore.subtypeLabel,
+    chore.title
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  const choreAwareGroup = choreAwareCelebrationPhraseGroups.find((group) =>
+    group.keywords.some((keyword) => searchableChoreText.includes(keyword))
+  );
+  const rareVariant = getRandomNumber(8) === 0;
+
+  if (rareVariant) {
+    return {
+      points: Math.max(0, chore.awardedPoints),
+      choreTitle: chore.typeTitle || chore.title,
+      titleKey: "celebration.rare_title",
+      eyebrowKey: "celebration.rare_eyebrow",
+      phraseKey: pickRandomFromPool(rareCompletionCelebrationPhraseKeys, previousKey),
+      variant: "rare"
+    };
+  }
+
+  if (choreAwareGroup) {
+    return {
+      points: Math.max(0, chore.awardedPoints),
+      choreTitle: chore.typeTitle || chore.title,
+      titleKey: "celebration.chore_title",
+      eyebrowKey: "celebration.chore_eyebrow",
+      phraseKey: pickRandomFromPool(choreAwareGroup.phraseKeys, previousKey),
+      variant: "chore"
+    };
+  }
+
+  return {
+    points: Math.max(0, chore.awardedPoints),
+    choreTitle: chore.typeTitle || chore.title,
+    titleKey: "celebration.title",
+    eyebrowKey: "celebration.eyebrow",
+    phraseKey: pickRandomFromPool(completionCelebrationPhraseKeys, previousKey),
+    variant: "standard"
+  };
 }
 
 function getRandomNumber(max: number) {
@@ -2988,13 +3071,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         note: submitNotes[instanceId]
       });
       if (submittedChore.state === "completed") {
-        const phraseKey = pickRandomCelebrationPhraseKey(lastCompletionCelebrationPhraseKey);
-        setCompletionCelebration({
-          points: Math.max(0, submittedChore.awardedPoints),
-          choreTitle: submittedChore.typeTitle || submittedChore.title,
-          phraseKey
-        });
-        setLastCompletionCelebrationPhraseKey(phraseKey);
+        const celebration = buildCompletionCelebration(submittedChore, lastCompletionCelebrationPhraseKey);
+        setCompletionCelebration(celebration);
+        setLastCompletionCelebrationPhraseKey(celebration.phraseKey);
       }
       setNotice(t("submission.success"));
       setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
@@ -4863,7 +4942,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       {completionCelebration ? (
         <div className="celebration-backdrop" role="presentation">
           <section
-            className="celebration-dialog"
+            className={`celebration-dialog celebration-variant-${completionCelebration.variant}`}
             role="dialog"
             aria-modal="true"
             aria-labelledby="completion-celebration-title"
@@ -4880,8 +4959,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </div>
             <img className="celebration-mascot" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
             <div className="celebration-copy">
-              <p className="eyebrow">{t("celebration.eyebrow")}</p>
-              <h2 id="completion-celebration-title">{t("celebration.title")}</h2>
+              <p className="eyebrow">{t(completionCelebration.eyebrowKey)}</p>
+              <h2 id="completion-celebration-title">{t(completionCelebration.titleKey)}</h2>
               <p className="celebration-points">
                 {t("celebration.points").replace("{points}", formatNumber(completionCelebration.points))}
               </p>

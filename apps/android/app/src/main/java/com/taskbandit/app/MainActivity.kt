@@ -208,10 +208,24 @@ private data class MobileChoiceOption(
     val onClick: () -> Unit
 )
 
+private enum class MobileCompletionCelebrationVariant {
+    STANDARD,
+    RARE,
+    CHORE
+}
+
 private data class MobileCompletionCelebration(
     val points: Int,
     val choreTitle: String,
-    val phraseIndex: Int
+    val titleResource: Int,
+    val eyebrowResource: Int,
+    val phraseResource: Int,
+    val variant: MobileCompletionCelebrationVariant
+)
+
+private data class MobileChoreAwareCelebrationGroup(
+    val keywords: List<String>,
+    val phraseResources: List<Int>
 )
 
 private val recurrenceWeekdayOrder = listOf(
@@ -224,17 +238,97 @@ private val recurrenceWeekdayOrder = listOf(
     "SATURDAY"
 )
 
-private fun pickRandomCelebrationPhraseIndex(previousIndex: Int): Int {
-    if (previousIndex !in 0..4) {
-        return Random.nextInt(5)
+private val mobileGenericCelebrationPhraseResources = listOf(
+    R.string.mobile_celebration_phrase_1,
+    R.string.mobile_celebration_phrase_2,
+    R.string.mobile_celebration_phrase_3,
+    R.string.mobile_celebration_phrase_4,
+    R.string.mobile_celebration_phrase_5
+)
+
+private val mobileRareCelebrationPhraseResources = listOf(
+    R.string.mobile_celebration_rare_phrase_1,
+    R.string.mobile_celebration_rare_phrase_2,
+    R.string.mobile_celebration_rare_phrase_3
+)
+
+private val mobileChoreAwareCelebrationGroups = listOf(
+    MobileChoreAwareCelebrationGroup(
+        keywords = listOf("kitchen", "dish", "dishwasher", "plate", "fridge", "oven"),
+        phraseResources = listOf(R.string.mobile_celebration_chore_kitchen_1, R.string.mobile_celebration_chore_kitchen_2)
+    ),
+    MobileChoreAwareCelebrationGroup(
+        keywords = listOf("laundry", "clothes", "washing", "dryer", "fold", "linen"),
+        phraseResources = listOf(R.string.mobile_celebration_chore_laundry_1, R.string.mobile_celebration_chore_laundry_2)
+    ),
+    MobileChoreAwareCelebrationGroup(
+        keywords = listOf("clean", "tidy", "vacuum", "mop", "dust", "bathroom", "toilet"),
+        phraseResources = listOf(R.string.mobile_celebration_chore_cleaning_1, R.string.mobile_celebration_chore_cleaning_2)
+    ),
+    MobileChoreAwareCelebrationGroup(
+        keywords = listOf("trash", "rubbish", "garbage", "recycling", "waste", "bin"),
+        phraseResources = listOf(R.string.mobile_celebration_chore_waste_1, R.string.mobile_celebration_chore_waste_2)
+    ),
+    MobileChoreAwareCelebrationGroup(
+        keywords = listOf("plant", "water", "garden"),
+        phraseResources = listOf(R.string.mobile_celebration_chore_plants_1, R.string.mobile_celebration_chore_plants_2)
+    )
+)
+
+private fun pickRandomCelebrationResource(pool: List<Int>, previousResource: Int): Int {
+    if (pool.size == 1) {
+        return pool.first()
     }
 
-    var nextIndex = Random.nextInt(5)
-    while (nextIndex == previousIndex) {
-        nextIndex = Random.nextInt(5)
+    var nextResource = pool[Random.nextInt(pool.size)]
+    while (nextResource == previousResource) {
+        nextResource = pool[Random.nextInt(pool.size)]
     }
 
-    return nextIndex
+    return nextResource
+}
+
+private fun buildMobileCompletionCelebration(
+    chore: MobileChore,
+    previousPhraseResource: Int
+): MobileCompletionCelebration {
+    val searchableChoreText = listOfNotNull(
+        chore.groupTitle,
+        chore.typeTitle,
+        chore.subtypeLabel,
+        chore.title
+    ).joinToString(" ").lowercase(Locale.getDefault())
+    val choreAwareGroup = mobileChoreAwareCelebrationGroups.firstOrNull { group ->
+        group.keywords.any { keyword -> searchableChoreText.contains(keyword) }
+    }
+    val rareVariant = Random.nextInt(8) == 0
+
+    return when {
+        rareVariant -> MobileCompletionCelebration(
+            points = chore.awardedPoints.coerceAtLeast(0),
+            choreTitle = chore.typeTitle.ifBlank { chore.title },
+            titleResource = R.string.mobile_celebration_rare_title,
+            eyebrowResource = R.string.mobile_celebration_rare_eyebrow,
+            phraseResource = pickRandomCelebrationResource(mobileRareCelebrationPhraseResources, previousPhraseResource),
+            variant = MobileCompletionCelebrationVariant.RARE
+        )
+        choreAwareGroup != null -> MobileCompletionCelebration(
+            points = chore.awardedPoints.coerceAtLeast(0),
+            choreTitle = chore.typeTitle.ifBlank { chore.title },
+            titleResource = R.string.mobile_celebration_chore_title,
+            eyebrowResource = R.string.mobile_celebration_chore_eyebrow,
+            phraseResource = pickRandomCelebrationResource(choreAwareGroup.phraseResources, previousPhraseResource),
+            variant = MobileCompletionCelebrationVariant.CHORE
+        )
+        else -> MobileCompletionCelebration(
+            points = chore.awardedPoints.coerceAtLeast(0),
+            choreTitle = chore.typeTitle.ifBlank { chore.title },
+            titleResource = R.string.mobile_celebration_title,
+            eyebrowResource = R.string.mobile_celebration_eyebrow,
+            phraseResource = pickRandomCelebrationResource(mobileGenericCelebrationPhraseResources, previousPhraseResource),
+            variant = MobileCompletionCelebrationVariant.STANDARD
+        )
+    }
 }
 
 class MainActivity : AppCompatActivity() {
@@ -377,7 +471,7 @@ private fun TaskBanditApp(
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(0) }
     var completionCelebration by remember { mutableStateOf<MobileCompletionCelebration?>(null) }
-    var lastCompletionCelebrationPhraseIndex by remember { mutableIntStateOf(-1) }
+    var lastCompletionCelebrationPhraseResource by remember { mutableIntStateOf(0) }
     var notificationsPermissionGranted by remember {
         mutableStateOf(
             Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU ||
@@ -872,13 +966,12 @@ private fun TaskBanditApp(
                     }
                 }
                 if (submittedChore.state == "completed") {
-                    val phraseIndex = pickRandomCelebrationPhraseIndex(lastCompletionCelebrationPhraseIndex)
-                    completionCelebration = MobileCompletionCelebration(
-                        points = submittedChore.awardedPoints.coerceAtLeast(0),
-                        choreTitle = submittedChore.typeTitle.ifBlank { submittedChore.title },
-                        phraseIndex = phraseIndex
+                    val celebration = buildMobileCompletionCelebration(
+                        submittedChore,
+                        lastCompletionCelebrationPhraseResource
                     )
-                    lastCompletionCelebrationPhraseIndex = phraseIndex
+                    completionCelebration = celebration
+                    lastCompletionCelebrationPhraseResource = celebration.phraseResource
                 }
                 selectedProofUris = selectedProofUris - choreId
                 submitSelections = submitSelections - choreId
@@ -4026,19 +4119,17 @@ private fun CompletionCelebrationDialog(
     celebration: MobileCompletionCelebration,
     onDismiss: () -> Unit
 ) {
-    val phraseResource = when (celebration.phraseIndex % 5) {
-        0 -> R.string.mobile_celebration_phrase_1
-        1 -> R.string.mobile_celebration_phrase_2
-        2 -> R.string.mobile_celebration_phrase_3
-        3 -> R.string.mobile_celebration_phrase_4
-        else -> R.string.mobile_celebration_phrase_5
+    val accentColor = when (celebration.variant) {
+        MobileCompletionCelebrationVariant.RARE -> Color(0xFFFCCC3D)
+        MobileCompletionCelebrationVariant.CHORE -> Color(0xFF73D9B3)
+        MobileCompletionCelebrationVariant.STANDARD -> MaterialTheme.colorScheme.primary
     }
 
     AlertDialog(
         onDismissRequest = onDismiss,
         title = {
             Text(
-                text = stringResource(R.string.mobile_celebration_title),
+                text = stringResource(celebration.titleResource),
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth()
             )
@@ -4056,12 +4147,25 @@ private fun CompletionCelebrationDialog(
                     contentAlignment = Alignment.Center
                 ) {
                     CelebrationConfettiBurst(
-                        modifier = Modifier.fillMaxSize()
+                        modifier = Modifier.fillMaxSize(),
+                        variant = celebration.variant
                     )
                     Image(
                         painter = painterResource(R.drawable.ic_taskbandit_mark),
                         contentDescription = stringResource(R.string.brand_mark_description),
                         modifier = Modifier.size(116.dp)
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = accentColor.copy(alpha = 0.18f)
+                ) {
+                    Text(
+                        text = stringResource(celebration.eyebrowResource),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
                     )
                 }
                 Surface(
@@ -4083,7 +4187,7 @@ private fun CompletionCelebrationDialog(
                     textAlign = TextAlign.Center
                 )
                 Text(
-                    text = stringResource(phraseResource),
+                    text = stringResource(celebration.phraseResource),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.Bold,
                     textAlign = TextAlign.Center
@@ -4099,7 +4203,10 @@ private fun CompletionCelebrationDialog(
 }
 
 @Composable
-private fun CelebrationConfettiBurst(modifier: Modifier = Modifier) {
+private fun CelebrationConfettiBurst(
+    modifier: Modifier = Modifier,
+    variant: MobileCompletionCelebrationVariant = MobileCompletionCelebrationVariant.STANDARD
+) {
     val transition = rememberInfiniteTransition(label = "celebration-confetti")
     val progress = transition.animateFloat(
         initialValue = 0f,
@@ -4110,13 +4217,29 @@ private fun CelebrationConfettiBurst(modifier: Modifier = Modifier) {
         ),
         label = "celebration-confetti-progress"
     )
-    val colors = listOf(
-        Color(0xFFD8B77E),
-        Color(0xFF9B5218),
-        Color(0xFF637052),
-        Color(0xFF73C9F4),
-        Color(0xFFFCCC3D)
-    )
+    val colors = when (variant) {
+        MobileCompletionCelebrationVariant.RARE -> listOf(
+            Color(0xFFFCCC3D),
+            Color(0xFFFFF1A8),
+            Color(0xFF73C9F4),
+            Color(0xFFFF8A5B),
+            Color(0xFFFFFFFF)
+        )
+        MobileCompletionCelebrationVariant.CHORE -> listOf(
+            Color(0xFF73D9B3),
+            Color(0xFF637052),
+            Color(0xFFD8B77E),
+            Color(0xFF9ED18B),
+            Color(0xFF73C9F4)
+        )
+        MobileCompletionCelebrationVariant.STANDARD -> listOf(
+            Color(0xFFD8B77E),
+            Color(0xFF9B5218),
+            Color(0xFF637052),
+            Color(0xFF73C9F4),
+            Color(0xFFFCCC3D)
+        )
+    }
     val particles = listOf(
         Triple(0.08f, 0.05f, 0.00f),
         Triple(0.14f, 0.09f, 0.07f),

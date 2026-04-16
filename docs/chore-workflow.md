@@ -34,6 +34,7 @@ TaskBandit now includes the first protected submission and review flow for chore
 - Claiming a chore assigns it to the acting user instead of moving it into a separate progress state.
 - Child submissions move to `pending_approval`.
 - Approved submissions move to `completed`.
+- Completed chores can show cosmetic celebration variants in clients; these do not change task state, points, approvals, or scoring rules.
 - Rejected submissions move to `needs_fixes`.
 - Cancelling a repeating chore from the client cancels every still-open chore in that repeat and stops future repeats.
 - Admins can configure a signed takeover points rule in household settings: positive values reward the user who accepts a takeover, negative values deduct points when someone asks another member to take over.
