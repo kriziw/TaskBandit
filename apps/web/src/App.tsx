@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import type { RefObject } from "react";
+import type { CSSProperties, RefObject } from "react";
 import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
@@ -113,6 +113,8 @@ type HouseholdChoreStateFilter = "all" | ChoreState;
 type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
 type OnboardingStep = string;
 type OnboardingTourMode = "admin" | "client" | "client-mobile";
+type ClientMobileChoreSection = "mine" | "unassigned" | "others";
+type ClientMobileDueBucket = "today" | "this_week" | "later";
 type WorkspacePage =
   | "overview"
   | "chores"
@@ -1565,6 +1567,53 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
   const myActionableChoreCount =
     myNeedsFixesChores.length + myInProgressChores.length + myReadyToStartChores.length;
+  const clientMobileSortedChores = useMemo(
+    () =>
+      payload
+        ? [...activeInstances].sort((left, right) =>
+            compareClientMobileChoreOrder(left, right, payload.currentUser.id)
+          )
+        : [],
+    [activeInstances, payload]
+  );
+  const clientMobileMyChores = useMemo(
+    () =>
+      clientMobileSortedChores.filter(
+        (instance) => resolveClientMobileChoreSection(instance, payload?.currentUser.id) === "mine"
+      ),
+    [clientMobileSortedChores, payload]
+  );
+  const clientMobileMyChoresDueToday = useMemo(
+    () =>
+      clientMobileMyChores.filter((instance) => resolveClientMobileDueBucket(instance, language) === "today"),
+    [clientMobileMyChores, language]
+  );
+  const clientMobileMyChoresDueThisWeek = useMemo(
+    () =>
+      clientMobileMyChores.filter(
+        (instance) => resolveClientMobileDueBucket(instance, language) === "this_week"
+      ),
+    [clientMobileMyChores, language]
+  );
+  const clientMobileMyChoresDueLater = useMemo(
+    () =>
+      clientMobileMyChores.filter((instance) => resolveClientMobileDueBucket(instance, language) === "later"),
+    [clientMobileMyChores, language]
+  );
+  const clientMobileUnassignedChores = useMemo(
+    () =>
+      clientMobileSortedChores.filter(
+        (instance) => resolveClientMobileChoreSection(instance, payload?.currentUser.id) === "unassigned"
+      ),
+    [clientMobileSortedChores, payload]
+  );
+  const clientMobileOtherChores = useMemo(
+    () =>
+      clientMobileSortedChores.filter(
+        (instance) => resolveClientMobileChoreSection(instance, payload?.currentUser.id) === "others"
+      ),
+    [clientMobileSortedChores, payload]
+  );
 
   const featuredMetrics = useMemo(
     () => [
@@ -1622,17 +1671,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ];
     }
 
+    if (isClientMobileViewport) {
+      return [
+        { key: "chores", label: t("nav.chores") },
+        { key: "settings", label: t("nav.settings") }
+      ];
+    }
+
     return [
       { key: "overview", label: t("nav.overview") },
       { key: "chores", label: t("nav.chores") },
       { key: "notifications", label: t("nav.notifications") },
       { key: "settings", label: t("nav.settings") }
     ];
-  }, [payload, t, workspaceVariant]);
+  }, [isClientMobileViewport, payload, t, workspaceVariant]);
   const mobileBottomNavPages = useMemo(
     () =>
       availablePages.filter((page) =>
-        ["overview", "chores", "notifications", "settings"].includes(page.key)
+        ["chores", "settings"].includes(page.key)
       ),
     [availablePages]
   );
@@ -1651,7 +1707,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     workspaceVariant === "admin" ? t("workspace.variant_admin") : t("workspace.variant_client");
   const activePageLabel = isAdminVariantAccessDenied
     ? t("workspace.admin_only_title")
-    : availablePages.find((page) => page.key === activePage)?.label ?? t("nav.overview");
+    : availablePages.find((page) => page.key === activePage)?.label ??
+      (workspaceVariant === "client" ? t("nav.chores") : t("nav.templates"));
   const availableUpdate = useMemo(() => {
     if (!serverReleaseInfo) {
       return null;
@@ -1670,7 +1727,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     templates: t("page.templates_description"),
     household: t("page.household_description"),
     notifications: t("page.notifications_description"),
-    settings: t("page.settings_description"),
+    settings:
+      workspaceVariant === "client"
+        ? t("page.client_settings_description")
+        : t("page.settings_description"),
     admin: t("page.admin_description"),
     logs: t("page.logs_description")
   };
@@ -1683,11 +1743,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: window-controls-overlay)").matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-  const showInstallPrompt =
-    isClientVariant &&
-    !isStandaloneDisplayMode &&
-    !installPromptDismissed &&
-    installPromptEvent !== null;
+  const showInstallPrompt = false;
 
   useEffect(() => {
     if (!isClientVariant) {
@@ -2594,6 +2650,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         )}
       </section>
     );
+  }
+
+  function renderVisibleMyChoreSection(title: string, items: ChoreInstance[], emptyMessage: string) {
+    if (items.length === 0) {
+      return null;
+    }
+
+    return renderMyChoreSection(title, items, emptyMessage);
+  }
+
+  function renderVisibleCompactChoreSection(title: string, items: ChoreInstance[], emptyMessage: string) {
+    if (items.length === 0) {
+      return null;
+    }
+
+    return renderCompactChoreSection(title, items, emptyMessage);
   }
 
   function firstNameFromDisplayName(value: string) {
@@ -4264,6 +4336,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       case "settings":
         return workspaceVariant === "client"
           ? [
+              ...(isClientMobileViewport
+                ? [
+                    {
+                      key: "settings-notifications",
+                      label: t("panel.notifications"),
+                      ref: notificationsRef
+                    }
+                  ]
+                : []),
               {
                 key: "settings-preferences",
                 label: t("panel.notification_preferences"),
@@ -4786,7 +4867,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
       ) : null}
-      {workspaceVariant === "client" && token && clientWebPushStatus.supported && clientWebPushStatus.needsPrompt ? (
+      {workspaceVariant === "client" &&
+      token &&
+      clientWebPushStatus.supported &&
+      clientWebPushStatus.needsPrompt &&
+      !showClientMobileShell ? (
         <div className="notice-banner info update-banner">
           <div>
             <strong>{t("pwa.browser_notifications_title")}</strong>
@@ -5348,36 +5433,42 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </aside>
           ) : null}
           <div className="workspace-main" data-page={activePage}>
-            <section className="panel workspace-page-header">
-              <div>
-                <p className="workspace-nav-kicker">{payload.household.name}</p>
-                <h2>{activePageLabel}</h2>
-                {workspaceVariant === "client" ? (
-                  <p className="workspace-page-copy">{activePageDescription}</p>
-                ) : null}
-              </div>
-              <div className="workspace-page-meta">
-                <span className="status-pill">{workspaceVariantLabel}</span>
-                <span className="status-pill">{t(`role.${payload.currentUser.role}`)}</span>
-                <span className="status-pill">
-                  {formatNumber(payload.currentUser.points)} {t("user.points")}
-                </span>
-                <span className="status-pill">
-                  {formatNumber(payload.currentUser.currentStreak)} {t("user.streak")}
-                </span>
-                <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
-                  {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
-                </button>
-              </div>
-            </section>
-
-            {showClientMobileShell ? (
-              <section className="panel mobile-workspace-summary" ref={mobileSummaryRef}>
-                <div className="section-heading section-heading-compact">
-                  <h3>{activePageLabel}</h3>
-                  <span className="section-kicker">{workspaceVariantLabel}</span>
+            {!showClientMobileShell ? (
+              <section className="panel workspace-page-header">
+                <div>
+                  <p className="workspace-nav-kicker">{payload.household.name}</p>
+                  <h2>{activePageLabel}</h2>
+                  {workspaceVariant === "client" ? (
+                    <p className="workspace-page-copy">{activePageDescription}</p>
+                  ) : null}
                 </div>
-                <p className="workspace-page-copy">{activePageDescription}</p>
+                <div className="workspace-page-meta">
+                  <span className="status-pill">{workspaceVariantLabel}</span>
+                  <span className="status-pill">{t(`role.${payload.currentUser.role}`)}</span>
+                  <span className="status-pill">
+                    {formatNumber(payload.currentUser.points)} {t("user.points")}
+                  </span>
+                  <span className="status-pill">
+                    {formatNumber(payload.currentUser.currentStreak)} {t("user.streak")}
+                  </span>
+                  <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
+                    {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
+                  </button>
+                </div>
+              </section>
+            ) : null}
+
+            {showClientMobileShell && activePage === "chores" ? (
+              <section className="panel mobile-workspace-summary" ref={mobileSummaryRef}>
+                <div className="section-heading section-heading-compact mobile-workspace-summary-heading">
+                  <div>
+                    <p className="workspace-nav-kicker">{payload.household.name}</p>
+                    <h3>{t("panel.my_chores")}</h3>
+                  </div>
+                  <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
+                    {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
+                  </button>
+                </div>
                 <div className="mobile-workspace-stats">
                   <div className="mobile-workspace-stat">
                     <span>{t("panel.my_chores")}</span>
@@ -5389,30 +5480,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                   <div className="mobile-workspace-stat">
                     <span>{t("panel.household_chores")}</span>
-                    <strong>{visibleHouseholdChores.length}</strong>
+                    <strong>{clientMobileUnassignedChores.length + clientMobileOtherChores.length}</strong>
                   </div>
                 </div>
-                {activePage === "chores" ? (
-                  <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
-                    {payload.currentUser.role !== "child" ? (
-                      <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
-                        {t("instances.create")}
+                <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
+                  {payload.currentUser.role !== "child" ? (
+                    <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
+                      {t("instances.create")}
+                    </button>
+                  ) : null}
+                  {pageSectionLinks
+                    .filter((link) => link.key !== "chores-schedule")
+                    .map((link) => (
+                      <button
+                        key={link.key}
+                        className="ghost-button"
+                        type="button"
+                        onClick={() => scrollToSection(link.ref)}
+                      >
+                        {link.label}
                       </button>
-                    ) : null}
-                    {pageSectionLinks
-                      .filter((link) => link.key !== "chores-schedule")
-                      .map((link) => (
-                        <button
-                          key={link.key}
-                          className="ghost-button"
-                          type="button"
-                          onClick={() => scrollToSection(link.ref)}
-                        >
-                          {link.label}
-                        </button>
-                      ))}
-                  </section>
-                ) : null}
+                    ))}
+                </section>
               </section>
             ) : null}
 
@@ -5626,9 +5715,33 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <article className="panel page-panel page-chores" ref={myChoresRef}>
               <div className="section-heading">
                 <h2>{t("panel.my_chores")}</h2>
-                <span className="section-kicker">{myChores.length}</span>
+                <span className="section-kicker">
+                  {showClientMobileShell ? clientMobileMyChores.length : myChores.length}
+                </span>
               </div>
-              {myChores.length === 0 ? (
+              {showClientMobileShell ? (
+                clientMobileMyChores.length === 0 ? (
+                  <p className="empty-state">{t("submission.empty")}</p>
+                ) : (
+                  <div className="stack-list my-chore-groups">
+                    {renderVisibleMyChoreSection(
+                      t("chores.mobile_due_today"),
+                      clientMobileMyChoresDueToday,
+                      t("submission.empty")
+                    )}
+                    {renderVisibleMyChoreSection(
+                      t("chores.mobile_due_this_week"),
+                      clientMobileMyChoresDueThisWeek,
+                      t("submission.empty")
+                    )}
+                    {renderVisibleMyChoreSection(
+                      t("chores.mobile_due_later"),
+                      clientMobileMyChoresDueLater,
+                      t("submission.empty")
+                    )}
+                  </div>
+                )
+              ) : myChores.length === 0 ? (
                 <p className="empty-state">{t("submission.empty")}</p>
               ) : (
                 <div className="stack-list my-chore-groups">
@@ -5680,7 +5793,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
             </article>
 
-            <article className="panel page-panel page-notifications" ref={notificationsRef}>
+            <article
+              className={`panel page-panel ${
+                workspaceVariant === "client" && showClientMobileShell ? "page-settings" : "page-notifications"
+              }`}
+              ref={notificationsRef}
+            >
               <div className="section-heading">
                 <h2>{t("panel.notifications")}</h2>
                 <div className="toolbar-group">
@@ -5888,7 +6006,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <div className="section-heading">
                 <h2>{t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
-                  <span className="section-kicker">{visibleHouseholdChores.length}</span>
+                  <span className="section-kicker">
+                    {showClientMobileShell
+                      ? clientMobileUnassignedChores.length + clientMobileOtherChores.length
+                      : visibleHouseholdChores.length}
+                  </span>
                   {payload.currentUser.role === "admin" ? (
                     <button
                       className="ghost-button"
@@ -5901,110 +6023,131 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   ) : null}
                 </div>
               </div>
-              <div className="household-filter-bar">
-                <label>
-                  <span>{t("filters.view")}</span>
-                  <div className="segmented-toggle" role="tablist" aria-label={t("filters.view")}>
-                    <button
-                      className={householdViewMode === "list" ? "active" : ""}
-                      type="button"
-                      onClick={() => setHouseholdViewMode("list")}
-                    >
-                      {t("view.list")}
-                    </button>
-                    <button
-                      className={householdViewMode === "board" ? "active" : ""}
-                      type="button"
-                      onClick={() => setHouseholdViewMode("board")}
-                    >
-                      {t("view.board")}
-                    </button>
-                    <button
-                      className={householdViewMode === "calendar" ? "active" : ""}
-                      type="button"
-                      onClick={() => setHouseholdViewMode("calendar")}
-                    >
-                      {t("view.calendar")}
-                    </button>
+              {showClientMobileShell ? (
+                clientMobileUnassignedChores.length === 0 && clientMobileOtherChores.length === 0 ? (
+                  <p className="empty-state">{t("empty.filtered_chores")}</p>
+                ) : (
+                  <div className="stack-list my-chore-groups">
+                    {renderVisibleCompactChoreSection(
+                      t("panel.unassigned_chores"),
+                      clientMobileUnassignedChores,
+                      t("chores.empty_unassigned")
+                    )}
+                    {renderVisibleCompactChoreSection(
+                      t("panel.assigned_elsewhere"),
+                      clientMobileOtherChores,
+                      t("chores.empty_assigned_elsewhere")
+                    )}
                   </div>
-                </label>
-                <label>
-                  <span>{t("filters.state")}</span>
-                  <select
-                    value={householdStateFilter}
-                    onChange={(event) =>
-                      setHouseholdStateFilter(event.target.value as HouseholdChoreStateFilter)
-                    }
-                  >
-                    <option value="all">{t("filters.all_states")}</option>
-                    {activeChoreStates.map((state) => (
-                      <option key={state} value={state}>
-                        {t(`state.${state}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t("filters.assignee")}</span>
-                  <select
-                    value={householdAssigneeFilter}
-                    onChange={(event) => setHouseholdAssigneeFilter(event.target.value)}
-                  >
-                    <option value="all">{t("filters.all_members")}</option>
-                    <option value="unassigned">{t("filters.unassigned")}</option>
-                    {payload.household.members
-                      .filter((member) => member.id !== payload.currentUser.id)
-                      .map((member) => (
-                        <option key={member.id} value={member.id}>
-                          {member.displayName}
-                        </option>
-                      ))}
-                  </select>
-                </label>
-              </div>
-              {visibleHouseholdChores.length === 0 ? (
-                <p className="empty-state">{t("empty.filtered_chores")}</p>
-              ) : householdViewMode === "list" ? (
-                <div className="stack-list my-chore-groups">
-                  {renderCompactChoreSection(
-                    t("panel.assigned_elsewhere"),
-                    visibleAssignedElsewhereChores,
-                    t("chores.empty_assigned_elsewhere")
-                  )}
-                  {renderCompactChoreSection(
-                    t("panel.unassigned_chores"),
-                    visibleUnassignedHouseholdChores,
-                    t("chores.empty_unassigned")
-                  )}
-                </div>
-              ) : householdViewMode === "board" ? (
-                <div className="board-grid">
-                  {householdBoardColumns.map((column) => (
-                    <section className="board-column" key={column.state}>
-                      <div className="board-column-header">
-                        <strong>{t(`state.${column.state}`)}</strong>
-                        <span className={`status-pill state-${column.state}`}>{column.chores.length}</span>
-                      </div>
-                      <div className="stack-list">
-                        {column.chores.map((instance) => renderHouseholdChoreCard(instance))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
+                )
               ) : (
-                <div className="calendar-grid">
-                  {householdCalendarGroups.map((group) => (
-                    <section className="calendar-day" key={group.dateKey}>
-                      <div className="calendar-day-header">
-                        <strong>{formatCalendarDate(group.dateKey)}</strong>
-                        <span className="status-pill">{group.chores.length}</span>
+                <>
+                  <div className="household-filter-bar">
+                    <label>
+                      <span>{t("filters.view")}</span>
+                      <div className="segmented-toggle" role="tablist" aria-label={t("filters.view")}>
+                        <button
+                          className={householdViewMode === "list" ? "active" : ""}
+                          type="button"
+                          onClick={() => setHouseholdViewMode("list")}
+                        >
+                          {t("view.list")}
+                        </button>
+                        <button
+                          className={householdViewMode === "board" ? "active" : ""}
+                          type="button"
+                          onClick={() => setHouseholdViewMode("board")}
+                        >
+                          {t("view.board")}
+                        </button>
+                        <button
+                          className={householdViewMode === "calendar" ? "active" : ""}
+                          type="button"
+                          onClick={() => setHouseholdViewMode("calendar")}
+                        >
+                          {t("view.calendar")}
+                        </button>
                       </div>
-                      <div className="stack-list">
-                        {group.chores.map((instance) => renderHouseholdChoreCard(instance))}
-                      </div>
-                    </section>
-                  ))}
-                </div>
+                    </label>
+                    <label>
+                      <span>{t("filters.state")}</span>
+                      <select
+                        value={householdStateFilter}
+                        onChange={(event) =>
+                          setHouseholdStateFilter(event.target.value as HouseholdChoreStateFilter)
+                        }
+                      >
+                        <option value="all">{t("filters.all_states")}</option>
+                        {activeChoreStates.map((state) => (
+                          <option key={state} value={state}>
+                            {t(`state.${state}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("filters.assignee")}</span>
+                      <select
+                        value={householdAssigneeFilter}
+                        onChange={(event) => setHouseholdAssigneeFilter(event.target.value)}
+                      >
+                        <option value="all">{t("filters.all_members")}</option>
+                        <option value="unassigned">{t("filters.unassigned")}</option>
+                        {payload.household.members
+                          .filter((member) => member.id !== payload.currentUser.id)
+                          .map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.displayName}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                  </div>
+                  {visibleHouseholdChores.length === 0 ? (
+                    <p className="empty-state">{t("empty.filtered_chores")}</p>
+                  ) : householdViewMode === "list" ? (
+                    <div className="stack-list my-chore-groups">
+                      {renderCompactChoreSection(
+                        t("panel.assigned_elsewhere"),
+                        visibleAssignedElsewhereChores,
+                        t("chores.empty_assigned_elsewhere")
+                      )}
+                      {renderCompactChoreSection(
+                        t("panel.unassigned_chores"),
+                        visibleUnassignedHouseholdChores,
+                        t("chores.empty_unassigned")
+                      )}
+                    </div>
+                  ) : householdViewMode === "board" ? (
+                    <div className="board-grid">
+                      {householdBoardColumns.map((column) => (
+                        <section className="board-column" key={column.state}>
+                          <div className="board-column-header">
+                            <strong>{t(`state.${column.state}`)}</strong>
+                            <span className={`status-pill state-${column.state}`}>{column.chores.length}</span>
+                          </div>
+                          <div className="stack-list">
+                            {column.chores.map((instance) => renderHouseholdChoreCard(instance))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="calendar-grid">
+                      {householdCalendarGroups.map((group) => (
+                        <section className="calendar-day" key={group.dateKey}>
+                          <div className="calendar-day-header">
+                            <strong>{formatCalendarDate(group.dateKey)}</strong>
+                            <span className="status-pill">{group.chores.length}</span>
+                          </div>
+                          <div className="stack-list">
+                            {group.chores.map((instance) => renderHouseholdChoreCard(instance))}
+                          </div>
+                        </section>
+                      ))}
+                    </div>
+                  )}
+                </>
               )}
             </article>
 
@@ -6012,107 +6155,125 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <div className="section-heading">
                 <h2>{t("panel.chore_history")}</h2>
                 <div className="toolbar-group">
-                  <span className="section-kicker">{historicChores.length}</span>
-                  <span className="inline-message">
-                    {t("history.page_indicator")
-                      .replace("{page}", String(historyPage))
-                      .replace("{pages}", String(historyPageCount))}
+                  <span className="section-kicker">
+                    {showClientMobileShell ? Math.min(historicChores.length, 2) : historicChores.length}
                   </span>
+                  {!showClientMobileShell ? (
+                    <span className="inline-message">
+                      {t("history.page_indicator")
+                        .replace("{page}", String(historyPage))
+                        .replace("{pages}", String(historyPageCount))}
+                    </span>
+                  ) : null}
                 </div>
               </div>
-              <div className="household-filter-bar export-filter-bar">
-                <label>
-                  <span>{t("exports.assignment_filter")}</span>
-                  <select
-                    value={exportAssigneeFilter}
-                    onChange={(event) => setExportAssigneeFilter(event.target.value)}
-                  >
-                    <option value="all">{t("filters.all_members")}</option>
-                    <option value="mine">{t("exports.assignment_mine")}</option>
-                    <option value="assigned_elsewhere">{t("exports.assignment_assigned_elsewhere")}</option>
-                    <option value="unassigned">{t("filters.unassigned")}</option>
-                    {payload.household.members.map((member) => (
-                      <option key={member.id} value={member.id}>
-                        {member.displayName}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t("exports.status_filter")}</span>
-                  <select
-                    value={exportStatusFilter}
-                    onChange={(event) => setExportStatusFilter(event.target.value as ChoreExportStatusFilter)}
-                  >
-                    <option value="all">{t("filters.all_states")}</option>
-                    <option value="active">{t("exports.status_active")}</option>
-                    <option value="historic">{t("exports.status_historic")}</option>
-                    {householdBoardStateOrder.map((state) => (
-                      <option key={state} value={state}>
-                        {t(`state.${state}`)}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                <label>
-                  <span>{t("exports.date_from")}</span>
-                  <input
-                    type="date"
-                    value={exportDateFrom}
-                    onChange={(event) => setExportDateFrom(event.target.value)}
-                  />
-                </label>
-                <label>
-                  <span>{t("exports.date_to")}</span>
-                  <input
-                    type="date"
-                    value={exportDateTo}
-                    onChange={(event) => setExportDateTo(event.target.value)}
-                  />
-                </label>
-                <div className="export-actions">
-                  <p className="inline-message">
-                    {t("exports.matching_results").replace("{count}", String(exportableChores.length))}
-                  </p>
-                  <button
-                    className="ghost-button"
-                    type="button"
-                    disabled={busyAction === "download-chores-export" || exportableChores.length === 0}
-                    onClick={() => void handleDownloadChoresExport()}
-                  >
-                    {t("exports.download_chores")}
-                  </button>
-                </div>
-              </div>
-              {historicChores.length === 0 ? (
-                <p className="empty-state">{t("history.empty")}</p>
-              ) : (
-                <>
+              {showClientMobileShell ? (
+                historicChores.length === 0 ? (
+                  <p className="empty-state">{t("history.empty")}</p>
+                ) : (
                   <div className="stack-list">
-                    {paginatedHistoricChores.map((instance) =>
+                    {historicChores.slice(0, 2).map((instance) =>
                       renderHouseholdChoreCard(instance, { historic: true })
                     )}
                   </div>
-                  <div className="pagination-bar">
-                    <button
-                      className="ghost-button"
-                      type="button"
-                      disabled={historyPage <= 1}
-                      onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
-                    >
-                      {t("history.previous_page")}
-                    </button>
-                    <button
-                      className="ghost-button"
-                      type="button"
-                      disabled={historyPage >= historyPageCount}
-                      onClick={() =>
-                        setHistoryPage((current) => Math.min(historyPageCount, current + 1))
-                      }
-                    >
-                      {t("history.next_page")}
-                    </button>
+                )
+              ) : (
+                <>
+                  <div className="household-filter-bar export-filter-bar">
+                    <label>
+                      <span>{t("exports.assignment_filter")}</span>
+                      <select
+                        value={exportAssigneeFilter}
+                        onChange={(event) => setExportAssigneeFilter(event.target.value)}
+                      >
+                        <option value="all">{t("filters.all_members")}</option>
+                        <option value="mine">{t("exports.assignment_mine")}</option>
+                        <option value="assigned_elsewhere">{t("exports.assignment_assigned_elsewhere")}</option>
+                        <option value="unassigned">{t("filters.unassigned")}</option>
+                        {payload.household.members.map((member) => (
+                          <option key={member.id} value={member.id}>
+                            {member.displayName}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("exports.status_filter")}</span>
+                      <select
+                        value={exportStatusFilter}
+                        onChange={(event) => setExportStatusFilter(event.target.value as ChoreExportStatusFilter)}
+                      >
+                        <option value="all">{t("filters.all_states")}</option>
+                        <option value="active">{t("exports.status_active")}</option>
+                        <option value="historic">{t("exports.status_historic")}</option>
+                        {householdBoardStateOrder.map((state) => (
+                          <option key={state} value={state}>
+                            {t(`state.${state}`)}
+                          </option>
+                        ))}
+                      </select>
+                    </label>
+                    <label>
+                      <span>{t("exports.date_from")}</span>
+                      <input
+                        type="date"
+                        value={exportDateFrom}
+                        onChange={(event) => setExportDateFrom(event.target.value)}
+                      />
+                    </label>
+                    <label>
+                      <span>{t("exports.date_to")}</span>
+                      <input
+                        type="date"
+                        value={exportDateTo}
+                        onChange={(event) => setExportDateTo(event.target.value)}
+                      />
+                    </label>
+                    <div className="export-actions">
+                      <p className="inline-message">
+                        {t("exports.matching_results").replace("{count}", String(exportableChores.length))}
+                      </p>
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        disabled={busyAction === "download-chores-export" || exportableChores.length === 0}
+                        onClick={() => void handleDownloadChoresExport()}
+                      >
+                        {t("exports.download_chores")}
+                      </button>
+                    </div>
                   </div>
+                  {historicChores.length === 0 ? (
+                    <p className="empty-state">{t("history.empty")}</p>
+                  ) : (
+                    <>
+                      <div className="stack-list">
+                        {paginatedHistoricChores.map((instance) =>
+                          renderHouseholdChoreCard(instance, { historic: true })
+                        )}
+                      </div>
+                      <div className="pagination-bar">
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          disabled={historyPage <= 1}
+                          onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
+                        >
+                          {t("history.previous_page")}
+                        </button>
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          disabled={historyPage >= historyPageCount}
+                          onClick={() =>
+                            setHistoryPage((current) => Math.min(historyPageCount, current + 1))
+                          }
+                        >
+                          {t("history.next_page")}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
             </article>
@@ -8087,7 +8248,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ) : null}
       {showClientMobileShell ? (
         <nav className="mobile-bottom-nav" aria-label={t("nav.workspace")} ref={mobileBottomNavRef}>
-          <div className="mobile-bottom-nav-track">
+          <div
+            className="mobile-bottom-nav-track"
+            style={
+              {
+                "--mobile-nav-columns": payload?.currentUser.role !== "child" ? 3 : 2
+              } as CSSProperties
+            }
+          >
             {mobileBottomNavPages.map((page) => (
               <button
                 key={page.key}
@@ -8155,6 +8323,90 @@ function getHistoricChoreDate(instance: ChoreInstance) {
   return instance.state === "cancelled"
     ? instance.cancelledAt ?? instance.completedAt ?? instance.reviewedAt ?? instance.submittedAt ?? instance.dueAt
     : instance.completedAt ?? instance.reviewedAt ?? instance.submittedAt ?? instance.dueAt;
+}
+
+function resolveClientMobileChoreSection(
+  instance: ChoreInstance,
+  currentUserId?: string | null
+): ClientMobileChoreSection {
+  if (instance.assigneeId && instance.assigneeId === currentUserId) {
+    return "mine";
+  }
+
+  if (!instance.assigneeId) {
+    return "unassigned";
+  }
+
+  return "others";
+}
+
+function getClientMobileChoreSectionRank(section: ClientMobileChoreSection) {
+  switch (section) {
+    case "mine":
+      return 0;
+    case "unassigned":
+      return 1;
+    case "others":
+      return 2;
+  }
+}
+
+function parseChoreInstantForSort(value: string) {
+  const parsed = new Date(value).getTime();
+  return Number.isNaN(parsed) ? Number.MAX_SAFE_INTEGER : parsed;
+}
+
+function compareClientMobileChoreOrder(
+  left: ChoreInstance,
+  right: ChoreInstance,
+  currentUserId?: string | null
+) {
+  const sectionDifference =
+    getClientMobileChoreSectionRank(resolveClientMobileChoreSection(left, currentUserId)) -
+    getClientMobileChoreSectionRank(resolveClientMobileChoreSection(right, currentUserId));
+
+  if (sectionDifference !== 0) {
+    return sectionDifference;
+  }
+
+  const dueDifference = parseChoreInstantForSort(left.dueAt) - parseChoreInstantForSort(right.dueAt);
+  if (dueDifference !== 0) {
+    return dueDifference;
+  }
+
+  return left.title.localeCompare(right.title, undefined, { sensitivity: "base" });
+}
+
+function resolveClientMobileDueBucket(
+  instance: ChoreInstance,
+  language: AppLanguage
+): ClientMobileDueBucket {
+  const dueAt = new Date(instance.dueAt);
+  if (Number.isNaN(dueAt.getTime())) {
+    return "today";
+  }
+
+  const today = new Date();
+  const todayStart = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+  const dueDate = new Date(dueAt.getFullYear(), dueAt.getMonth(), dueAt.getDate());
+
+  if (dueDate.getTime() <= todayStart.getTime()) {
+    return "today";
+  }
+
+  const locale = new Intl.Locale(language) as Intl.Locale & {
+    weekInfo?: { firstDay?: number };
+  };
+  const firstDay = locale.weekInfo?.firstDay ?? 1;
+  const normalizedFirstDay = firstDay % 7;
+  const startOfWeek = new Date(todayStart);
+  const distanceToWeekStart = (todayStart.getDay() - normalizedFirstDay + 7) % 7;
+  startOfWeek.setDate(todayStart.getDate() - distanceToWeekStart);
+
+  const endOfWeek = new Date(startOfWeek);
+  endOfWeek.setDate(startOfWeek.getDate() + 6);
+
+  return dueDate.getTime() <= endOfWeek.getTime() ? "this_week" : "later";
 }
 
 function getHistoricChoreDateLabelKey(instance: ChoreInstance) {
