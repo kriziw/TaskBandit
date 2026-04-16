@@ -185,6 +185,11 @@ export class CreateChoreTemplateDto {
   @IsBoolean()
   requirePhotoProof!: boolean;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  stickyFollowUpAssignee?: boolean;
+
   @ApiPropertyOptional({ type: [CreateChecklistItemDto] })
   @IsOptional()
   @IsArray()

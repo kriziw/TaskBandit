@@ -217,10 +217,10 @@
     <string name="mobile_submit_confirm_action">Ja, abschlieÃŸen</string>
     <string name="mobile_action_required_title">Aktion erforderlich</string>
     <string name="mobile_validation_confirm">Verstanden</string>
-    <string name="mobile_start">Aufgabe starten</string>
+    <string name="mobile_start">Aufgabe übernehmen</string>
     <string name="mobile_starting">Startet...</string>
-    <string name="mobile_started">In Bearbeitung</string>
-    <string name="mobile_chore_started">Aufgabe wurde in Bearbeitung versetzt.</string>
+    <string name="mobile_started">Übernommen</string>
+    <string name="mobile_chore_started">Aufgabe wurde übernommen.</string>
     <string name="mobile_chore_taken_over">Die Aufgabe wurde dir zugewiesen.</string>
     <string name="mobile_takeover_requests_title">Wartet auf deine Freigabe</string>
     <string name="mobile_takeover_request_card_body">%1$s hat dich gebeten, diese Aufgabe zu Ã¼bernehmen.</string>

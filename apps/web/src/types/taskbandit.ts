@@ -367,8 +367,16 @@ export type ChoreTemplateChecklistItem = {
 export type AssignmentStrategy =
   | "round_robin"
   | "least_completed_recently"
+  | "highest_streak";
+
+export type ChoreAssignmentReason =
+  | "round_robin"
+  | "least_completed_recently"
   | "highest_streak"
-  | "manual_default_assignee";
+  | "manual"
+  | "claimed"
+  | "sticky_follow_up"
+  | "rebalanced";
 
 export type FollowUpDelayUnit = "hours" | "days";
 export type TemplateTranslationLocale = "en" | "de" | "hu";
@@ -406,6 +414,7 @@ export type ChoreTemplate = {
     weekdays: string[];
   };
   requirePhotoProof: boolean;
+  stickyFollowUpAssignee: boolean;
   recurrenceStartStrategy: RecurrenceStartStrategy;
   variants: Array<{ id: string; label: string; translations: LocalizedVariantLabelTranslation[] }>;
   checklist: ChoreTemplateChecklistItem[];
@@ -434,6 +443,8 @@ export type ChoreInstance = {
   supportsOccurrenceCancellation: boolean;
   supportsSeriesCancellation: boolean;
   assigneeId: string | null;
+  assigneeDisplayName?: string | null;
+  assignmentReason: ChoreAssignmentReason | null;
   dueAt: string;
   difficulty: Difficulty;
   basePoints: number;
@@ -515,6 +526,7 @@ export type CreateChoreTemplateInput = {
   recurrenceIntervalDays?: number;
   recurrenceWeekdays?: string[];
   requirePhotoProof: boolean;
+  stickyFollowUpAssignee?: boolean;
   recurrenceStartStrategy?: RecurrenceStartStrategy;
   variants?: Array<{ id?: string; label: string; translations?: LocalizedVariantLabelTranslation[] }>;
   dependencyTemplateIds?: string[];
@@ -532,6 +544,7 @@ export type CreateChoreInstanceInput = {
   dueAt: string;
   variantId?: string;
   assignmentStrategy?: AssignmentStrategy;
+  reassignAutomatically?: boolean;
   recurrenceType?: RecurrenceType;
   recurrenceIntervalDays?: number;
   recurrenceWeekdays?: string[];

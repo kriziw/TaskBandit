@@ -7,6 +7,7 @@ import {
 } from "@nestjs/common";
 import {
   AuthProvider,
+  AssignmentReasonType,
   AssignmentStrategyType,
   ChoreAttachment,
   ChoreChecklistCompletion,
@@ -54,6 +55,25 @@ type LocalizedVariantTranslationInput = NonNullable<
   NonNullable<CreateChoreTemplateDto["variants"]>[number]["translations"]
 >[number];
 type LocalizedTextMap = Partial<Record<SupportedLanguage, string>>;
+type AssignmentLoad = {
+  choreCount: number;
+  basePoints: number;
+};
+type AssignmentDecision = {
+  assigneeId: string | null;
+  locked: boolean;
+  reason: AssignmentReasonType | null;
+};
+
+const assignmentFreezeWindowHours = 12;
+const activeAssignmentStates = [
+  ChoreState.OPEN,
+  ChoreState.ASSIGNED,
+  ChoreState.IN_PROGRESS,
+  ChoreState.NEEDS_FIXES,
+  ChoreState.OVERDUE
+] as const;
+const rebalanceEligibleStates = [ChoreState.OPEN, ChoreState.ASSIGNED] as const;
 
 @Injectable()
 export class HouseholdRepository {
@@ -1781,6 +1801,7 @@ export class HouseholdRepository {
           recurrenceWeekdays:
             dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
           requirePhotoProof: dto.requirePhotoProof,
+          stickyFollowUpAssignee: dto.stickyFollowUpAssignee ?? false,
           recurrenceStartStrategy: dto.recurrenceStartStrategy ?? RecurrenceStartStrategy.DUE_AT,
           checklistItems: {
             create:
@@ -1980,6 +2001,7 @@ export class HouseholdRepository {
           recurrenceWeekdays:
             dto.recurrenceType === RecurrenceType.CUSTOM_WEEKLY ? dto.recurrenceWeekdays ?? [] : [],
           requirePhotoProof: dto.requirePhotoProof,
+          stickyFollowUpAssignee: dto.stickyFollowUpAssignee ?? false,
           recurrenceStartStrategy: dto.recurrenceStartStrategy ?? RecurrenceStartStrategy.DUE_AT,
           checklistItems: {
             create:
@@ -2133,13 +2155,16 @@ export class HouseholdRepository {
     const cycleId = shouldTrackCycle ? randomUUID() : null;
     const instanceId = randomUUID();
     const recurrenceEndSettings = this.resolveRecurrenceEndSettings(dto, effectiveRecurrenceType);
-    const resolvedAssigneeId = dto.assigneeId
-      ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
-      : await this.resolveAssigneeForTemplate(
+    const assignmentDecision = dto.assigneeId
+      ? await this.buildManualAssignmentDecision(this.prisma, dto.assigneeId, householdId)
+      : await this.resolveAssignmentDecision(
           this.prisma,
           householdId,
           template.id,
-          effectiveAssignmentStrategy
+          effectiveAssignmentStrategy,
+          {
+            dueAt: dto.dueAt
+          }
         );
 
     const instance = await this.prisma.$transaction(async (tx) => {
@@ -2153,11 +2178,13 @@ export class HouseholdRepository {
           subtypeLabel,
           requirePhotoProofOverride: template.requirePhotoProof,
           title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
-          state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
-          assigneeId: resolvedAssigneeId,
+          state: assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          assigneeId: assignmentDecision.assigneeId,
           dueAtUtc: dto.dueAt,
           suppressRecurrence: effectiveRecurrenceType === RecurrenceType.NONE,
           variantId: dto.variantId ?? null,
+          assignmentLocked: assignmentDecision.locked,
+          assignmentReason: assignmentDecision.reason,
           assignmentStrategyOverride:
             effectiveAssignmentStrategy !== template.assignmentStrategy ? effectiveAssignmentStrategy : null,
           recurrenceTypeOverride:
@@ -2197,10 +2224,10 @@ export class HouseholdRepository {
         summary: `Scheduled chore "${createdInstance.title}".`
       });
 
-      if (resolvedAssigneeId && resolvedAssigneeId !== actorUserId) {
+      if (assignmentDecision.assigneeId && assignmentDecision.assigneeId !== actorUserId) {
         await this.recordNotification(tx, {
           householdId,
-          recipientUserId: resolvedAssigneeId,
+          recipientUserId: assignmentDecision.assigneeId,
           type: NotificationType.CHORE_ASSIGNED,
           title: "New chore assigned",
           message: `"${createdInstance.title}" was assigned to you.`,
@@ -2212,7 +2239,30 @@ export class HouseholdRepository {
       return createdInstance;
     });
 
-    return this.mapInstance(instance, undefined, language);
+    await this.rebalanceFlexibleAssignments(householdId, {
+      actorUserId,
+      excludeInstanceIds: [instance.id]
+    });
+
+    return this.mapInstance(
+      await this.prisma.choreInstance.findUniqueOrThrow({
+        where: {
+          id: instance.id
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          variant: true,
+          checklistCompletions: true,
+          attachments: true
+        }
+      }),
+      undefined,
+      language
+    );
   }
 
   async getInstances(householdId: string, language: SupportedLanguage = fallbackLanguage) {
@@ -2363,7 +2413,9 @@ export class HouseholdRepository {
         householdId
       },
       select: {
-        assigneeId: true
+        assigneeId: true,
+        assignmentLocked: true,
+        assignmentReason: true
       }
     });
 
@@ -2387,14 +2439,25 @@ export class HouseholdRepository {
     }
     const subtypeLabel = variant?.label ?? null;
 
-    const resolvedAssigneeId = dto.assigneeId
-      ? await this.validateAssignee(this.prisma, dto.assigneeId, householdId)
-      : await this.resolveAssigneeForTemplate(
-          this.prisma,
-          householdId,
-          template.id,
-          template.assignmentStrategy
-        );
+    const assignmentDecision = dto.assigneeId
+      ? await this.buildManualAssignmentDecision(this.prisma, dto.assigneeId, householdId)
+      : dto.reassignAutomatically
+        ? await this.resolveAssignmentDecision(
+            this.prisma,
+            householdId,
+            template.id,
+            template.assignmentStrategy,
+            {
+              currentInstanceId: instanceId,
+              dueAt: dto.dueAt,
+              isRebalance: true
+            }
+          )
+        : {
+            assigneeId: existingInstance.assigneeId,
+            locked: existingInstance.assignmentLocked,
+            reason: existingInstance.assignmentReason
+          };
 
     const updatedInstance = await this.prisma.$transaction(async (tx) => {
       const savedInstance = await tx.choreInstance.update({
@@ -2407,8 +2470,10 @@ export class HouseholdRepository {
           requirePhotoProofOverride: template.requirePhotoProof,
           title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
           variantId: dto.variantId ?? null,
-          assigneeId: resolvedAssigneeId,
-          state: resolvedAssigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          assigneeId: assignmentDecision.assigneeId,
+          state: assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          assignmentLocked: assignmentDecision.locked,
+          assignmentReason: assignmentDecision.reason,
           dueAtUtc: dto.dueAt
         },
         include: {
@@ -2432,10 +2497,14 @@ export class HouseholdRepository {
         summary: `Updated chore "${savedInstance.title}".`
       });
 
-      if (resolvedAssigneeId && resolvedAssigneeId !== existingInstance.assigneeId && resolvedAssigneeId !== actorUserId) {
+      if (
+        assignmentDecision.assigneeId &&
+        assignmentDecision.assigneeId !== existingInstance.assigneeId &&
+        assignmentDecision.assigneeId !== actorUserId
+      ) {
         await this.recordNotification(tx, {
           householdId,
-          recipientUserId: resolvedAssigneeId,
+          recipientUserId: assignmentDecision.assigneeId,
           type: NotificationType.CHORE_ASSIGNED,
           title: "Chore assignment updated",
           message: `"${savedInstance.title}" is now assigned to you.`,
@@ -2447,7 +2516,30 @@ export class HouseholdRepository {
       return savedInstance;
     });
 
-    return this.mapInstance(updatedInstance, undefined, language);
+    await this.rebalanceFlexibleAssignments(householdId, {
+      actorUserId,
+      excludeInstanceIds: [updatedInstance.id]
+    });
+
+    return this.mapInstance(
+      await this.prisma.choreInstance.findUniqueOrThrow({
+        where: {
+          id: updatedInstance.id
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          variant: true,
+          checklistCompletions: true,
+          attachments: true
+        }
+      }),
+      undefined,
+      language
+    );
   }
 
   async getInstanceForHousehold(
@@ -2532,12 +2624,16 @@ export class HouseholdRepository {
     actorUserId?: string,
     language: SupportedLanguage = fallbackLanguage
   ) {
+    const claimingUserId = actorUserId ?? null;
     const updatedInstance = await this.prisma.choreInstance.update({
       where: {
         id: instanceId
       },
       data: {
-        state: ChoreState.IN_PROGRESS
+        assigneeId: claimingUserId,
+        state: claimingUserId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+        assignmentLocked: Boolean(claimingUserId),
+        assignmentReason: claimingUserId ? AssignmentReasonType.CLAIMED : null
       },
       include: {
         template: {
@@ -2557,7 +2653,12 @@ export class HouseholdRepository {
       action: "instance.started",
       entityType: "chore_instance",
       entityId: updatedInstance.id,
-      summary: `Started chore "${updatedInstance.title}".`
+      summary: `Claimed chore "${updatedInstance.title}".`
+    });
+
+    await this.rebalanceFlexibleAssignments(householdId, {
+      actorUserId,
+      excludeInstanceIds: [updatedInstance.id]
     });
 
     return this.mapInstance(updatedInstance, undefined, language);
@@ -2575,7 +2676,9 @@ export class HouseholdRepository {
       },
       data: {
         assigneeId: actorUserId,
-        state: ChoreState.ASSIGNED
+        state: ChoreState.ASSIGNED,
+        assignmentLocked: true,
+        assignmentReason: AssignmentReasonType.CLAIMED
       },
       include: {
         template: {
@@ -2619,7 +2722,26 @@ export class HouseholdRepository {
       }
     });
 
-    return this.mapInstance(updatedInstance, {
+    await this.rebalanceFlexibleAssignments(householdId, {
+      actorUserId,
+      excludeInstanceIds: [updatedInstance.id]
+    });
+
+    return this.mapInstance(await this.prisma.choreInstance.findUniqueOrThrow({
+      where: {
+        id: updatedInstance.id
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        variant: true,
+        checklistCompletions: true,
+        attachments: true
+      }
+    }), {
       assigneeDisplayName: assignee?.displayName ?? null
     }, language);
   }
@@ -2894,7 +3016,9 @@ export class HouseholdRepository {
         },
         data: {
           assigneeId: input.actingUserId,
-          state: ChoreState.ASSIGNED
+          state: ChoreState.ASSIGNED,
+          assignmentLocked: true,
+          assignmentReason: AssignmentReasonType.CLAIMED
         },
         include: {
           template: {
@@ -2954,7 +3078,26 @@ export class HouseholdRepository {
       return reassigned;
     });
 
-    return this.mapInstance(updatedInstance, {
+    await this.rebalanceFlexibleAssignments(input.householdId, {
+      actorUserId: input.actingUserId,
+      excludeInstanceIds: [updatedInstance.id]
+    });
+
+    return this.mapInstance(await this.prisma.choreInstance.findUniqueOrThrow({
+      where: {
+        id: updatedInstance.id
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        variant: true,
+        checklistCompletions: true,
+        attachments: true
+      }
+    }), {
       assigneeDisplayName: request.requested.displayName
     }, input.language ?? fallbackLanguage);
   }
@@ -3288,6 +3431,12 @@ export class HouseholdRepository {
       });
     }
 
+    if (submissionResult.didTransition && input.nextState === "completed") {
+      await this.rebalanceFlexibleAssignments(input.householdId, {
+        actorUserId: input.actingUserId
+      });
+    }
+
     return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
 
@@ -3436,6 +3585,12 @@ export class HouseholdRepository {
       });
     }
 
+    if (reviewResult.didTransition && input.approved) {
+      await this.rebalanceFlexibleAssignments(input.householdId, {
+        actorUserId: input.actingUserId
+      });
+    }
+
     return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
 
@@ -3507,6 +3662,10 @@ export class HouseholdRepository {
         entityId: updatedInstance.id
       });
     }
+
+    await this.rebalanceFlexibleAssignments(householdId, {
+      actorUserId
+    });
 
     return this.mapInstance(updatedInstance, undefined, language);
   }
@@ -3739,6 +3898,10 @@ export class HouseholdRepository {
           });
         }
       }
+    });
+
+    await this.rebalanceFlexibleAssignments(householdId, {
+      actorUserId
     });
 
     return {
@@ -3993,11 +4156,152 @@ export class HouseholdRepository {
     return assignee.id;
   }
 
+  private normalizeAssignmentStrategy(strategy: AssignmentStrategyType) {
+    return strategy === AssignmentStrategyType.MANUAL_DEFAULT_ASSIGNEE
+      ? AssignmentStrategyType.ROUND_ROBIN
+      : strategy;
+  }
+
+  private assignmentReasonForStrategy(strategy: AssignmentStrategyType) {
+    switch (this.normalizeAssignmentStrategy(strategy)) {
+      case AssignmentStrategyType.LEAST_COMPLETED_RECENTLY:
+        return AssignmentReasonType.LEAST_COMPLETED_RECENTLY;
+      case AssignmentStrategyType.HIGHEST_STREAK:
+        return AssignmentReasonType.HIGHEST_STREAK;
+      case AssignmentStrategyType.ROUND_ROBIN:
+      default:
+        return AssignmentReasonType.ROUND_ROBIN;
+    }
+  }
+
+  private async buildManualAssignmentDecision(
+    executor: PrismaExecutor,
+    assigneeId: string,
+    householdId: string
+  ): Promise<AssignmentDecision> {
+    const validatedAssigneeId = await this.validateAssignee(executor, assigneeId, householdId);
+    return {
+      assigneeId: validatedAssigneeId,
+      locked: true,
+      reason: AssignmentReasonType.MANUAL
+    };
+  }
+
+  private async resolveAssignmentDecision(
+    executor: PrismaExecutor,
+    householdId: string,
+    templateId: string,
+    strategy: AssignmentStrategyType,
+    options?: {
+      currentInstanceId?: string;
+      stickyFollowUp?: boolean;
+      isRebalance?: boolean;
+      dueAt?: Date;
+    }
+  ): Promise<AssignmentDecision> {
+    const assigneeId = await this.resolveAssigneeForTemplate(executor, householdId, templateId, strategy, {
+      currentInstanceId: options?.currentInstanceId
+    });
+
+    return {
+      assigneeId,
+      locked: false,
+      reason: assigneeId
+        ? options?.stickyFollowUp
+          ? AssignmentReasonType.STICKY_FOLLOW_UP
+          : options?.isRebalance
+            ? AssignmentReasonType.REBALANCED
+            : this.assignmentReasonForStrategy(strategy)
+        : null
+    };
+  }
+
+  private async getActiveAssignmentLoadMap(
+    executor: PrismaExecutor,
+    householdId: string,
+    excludingInstanceId?: string
+  ) {
+    const activeAssignments = await executor.choreInstance.findMany({
+      where: {
+        householdId,
+        assigneeId: {
+          not: null
+        },
+        state: {
+          in: [...activeAssignmentStates]
+        },
+        ...(excludingInstanceId
+          ? {
+              id: {
+                not: excludingInstanceId
+              }
+            }
+          : {})
+      },
+      include: {
+        template: {
+          select: {
+            basePoints: true
+          }
+        }
+      }
+    });
+
+    const loadByUserId = new Map<string, AssignmentLoad>();
+    for (const assignment of activeAssignments) {
+      if (!assignment.assigneeId) {
+        continue;
+      }
+
+      const currentLoad = loadByUserId.get(assignment.assigneeId) ?? {
+        choreCount: 0,
+        basePoints: 0
+      };
+
+      loadByUserId.set(assignment.assigneeId, {
+        choreCount: currentLoad.choreCount + 1,
+        basePoints: currentLoad.basePoints + assignment.template.basePoints
+      });
+    }
+
+    return loadByUserId;
+  }
+
+  private compareMemberLoad(
+    left: {
+      id: string;
+      displayName: string;
+    },
+    right: {
+      id: string;
+      displayName: string;
+    },
+    loadByUserId: Map<string, AssignmentLoad>
+  ) {
+    const leftLoad = loadByUserId.get(left.id) ?? {
+      choreCount: 0,
+      basePoints: 0
+    };
+    const rightLoad = loadByUserId.get(right.id) ?? {
+      choreCount: 0,
+      basePoints: 0
+    };
+
+    return (
+      leftLoad.choreCount - rightLoad.choreCount ||
+      leftLoad.basePoints - rightLoad.basePoints ||
+      left.displayName.localeCompare(right.displayName)
+    );
+  }
+
   private async resolveAssigneeForTemplate(
     executor: PrismaExecutor,
     householdId: string,
     templateId: string,
-    strategy: AssignmentStrategyType
+    strategy: AssignmentStrategyType,
+    options?: {
+      currentInstanceId?: string;
+    }
   ) {
     const members = await executor.user.findMany({
       where: {
@@ -4006,11 +4310,14 @@ export class HouseholdRepository {
       orderBy: [{ createdAtUtc: "asc" }, { displayName: "asc" }]
     });
 
-    if (members.length === 0 || strategy === AssignmentStrategyType.MANUAL_DEFAULT_ASSIGNEE) {
+    if (members.length === 0) {
       return null;
     }
 
-    switch (strategy) {
+    const normalizedStrategy = this.normalizeAssignmentStrategy(strategy);
+    const loadByUserId = await this.getActiveAssignmentLoadMap(executor, householdId, options?.currentInstanceId);
+
+    switch (normalizedStrategy) {
       case AssignmentStrategyType.ROUND_ROBIN: {
         const lastAssigned = await executor.choreInstance.findFirst({
           where: {
@@ -4018,7 +4325,14 @@ export class HouseholdRepository {
             templateId,
             assigneeId: {
               not: null
-            }
+            },
+            ...(options?.currentInstanceId
+              ? {
+                  id: {
+                    not: options.currentInstanceId
+                  }
+                }
+              : {})
           },
           orderBy: [{ createdAtUtc: "desc" }],
           select: {
@@ -4027,12 +4341,12 @@ export class HouseholdRepository {
         });
 
         if (!lastAssigned?.assigneeId) {
-          return members[0]?.id ?? null;
+          return [...members].sort((left, right) => this.compareMemberLoad(left, right, loadByUserId))[0]?.id ?? null;
         }
 
         const currentIndex = members.findIndex((member) => member.id === lastAssigned.assigneeId);
         if (currentIndex < 0) {
-          return members[0]?.id ?? null;
+          return [...members].sort((left, right) => this.compareMemberLoad(left, right, loadByUserId))[0]?.id ?? null;
         }
 
         return members[(currentIndex + 1) % members.length]?.id ?? null;
@@ -4047,7 +4361,14 @@ export class HouseholdRepository {
             },
             completedAtUtc: {
               not: null
-            }
+            },
+            ...(options?.currentInstanceId
+              ? {
+                  id: {
+                    not: options.currentInstanceId
+                  }
+                }
+              : {})
           },
           select: {
             assigneeId: true,
@@ -4071,7 +4392,7 @@ export class HouseholdRepository {
               return leftTime - rightTime;
             }
 
-            return left.displayName.localeCompare(right.displayName);
+            return this.compareMemberLoad(left, right, loadByUserId);
           })[0]
           ?.id;
       }
@@ -4081,11 +4402,114 @@ export class HouseholdRepository {
             (left, right) =>
               right.currentStreak - left.currentStreak ||
               right.points - left.points ||
-              left.displayName.localeCompare(right.displayName)
+              this.compareMemberLoad(left, right, loadByUserId)
           )[0]
           ?.id;
       default:
         return null;
+    }
+  }
+
+  private getAssignmentFreezeCutoff() {
+    return new Date(Date.now() + assignmentFreezeWindowHours * 60 * 60 * 1000);
+  }
+
+  private async rebalanceFlexibleAssignments(
+    householdId: string,
+    options?: {
+      actorUserId?: string;
+      excludeInstanceIds?: string[];
+    }
+  ) {
+    const freezeCutoff = this.getAssignmentFreezeCutoff();
+    const excludedIds = (options?.excludeInstanceIds ?? []).filter(Boolean);
+    const candidates = await this.prisma.choreInstance.findMany({
+      where: {
+        householdId,
+        state: {
+          in: [...rebalanceEligibleStates]
+        },
+        assignmentLocked: false,
+        dueAtUtc: {
+          gt: freezeCutoff
+        },
+        ...(excludedIds.length > 0
+          ? {
+              id: {
+                notIn: excludedIds
+              }
+            }
+          : {})
+      },
+      include: {
+        template: {
+          select: {
+            id: true,
+            assignmentStrategy: true
+          }
+        }
+      },
+      orderBy: [{ dueAtUtc: "asc" }, { createdAtUtc: "asc" }]
+    });
+
+    for (const candidate of candidates) {
+      const assignmentDecision = await this.resolveAssignmentDecision(
+        this.prisma,
+        householdId,
+        candidate.template.id,
+        candidate.assignmentStrategyOverride ?? candidate.template.assignmentStrategy,
+        {
+          currentInstanceId: candidate.id,
+          isRebalance: true,
+          dueAt: candidate.dueAtUtc
+        }
+      );
+      const nextState = assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN;
+      const didChange =
+        candidate.assigneeId !== assignmentDecision.assigneeId ||
+        candidate.state !== nextState ||
+        candidate.assignmentReason !== assignmentDecision.reason;
+
+      if (!didChange) {
+        continue;
+      }
+
+      await this.prisma.choreInstance.update({
+        where: {
+          id: candidate.id
+        },
+        data: {
+          assigneeId: assignmentDecision.assigneeId,
+          state: nextState,
+          assignmentLocked: false,
+          assignmentReason: assignmentDecision.reason
+        }
+      });
+
+      await this.recordAuditLog(this.prisma, {
+        householdId,
+        actorUserId: options?.actorUserId,
+        action: "instance.rebalanced",
+        entityType: "chore_instance",
+        entityId: candidate.id,
+        summary: `Rebalanced chore "${candidate.title}".`
+      });
+
+      if (
+        assignmentDecision.assigneeId &&
+        assignmentDecision.assigneeId !== candidate.assigneeId &&
+        assignmentDecision.assigneeId !== options?.actorUserId
+      ) {
+        await this.recordNotification(this.prisma, {
+          householdId,
+          recipientUserId: assignmentDecision.assigneeId,
+          type: NotificationType.CHORE_ASSIGNED,
+          title: "Chore reassigned",
+          message: `"${candidate.title}" was reassigned to you.`,
+          entityType: "chore_instance",
+          entityId: candidate.id
+        });
+      }
     }
   }
 
@@ -4153,12 +4577,31 @@ export class HouseholdRepository {
           dependency.followUpDelayUnit
         );
 
-        const assigneeId = await this.resolveAssigneeForTemplate(
-          tx,
-          instance.householdId,
-          template.id,
-          template.assignmentStrategy
-        );
+        const assignmentDecision =
+          template.stickyFollowUpAssignee && instance.assigneeId
+            ? await this.validateAssignee(tx, instance.assigneeId, instance.householdId)
+                .then(
+                  (assigneeId) =>
+                    ({
+                      assigneeId,
+                      locked: false,
+                      reason: AssignmentReasonType.STICKY_FOLLOW_UP
+                    }) satisfies AssignmentDecision
+                )
+                .catch(() =>
+                  this.resolveAssignmentDecision(tx, instance.householdId, template.id, template.assignmentStrategy, {
+                    stickyFollowUp: true
+                  })
+                )
+            : await this.resolveAssignmentDecision(
+                tx,
+                instance.householdId,
+                template.id,
+                template.assignmentStrategy,
+                {
+                  stickyFollowUp: false
+                }
+              );
         const matchingVariant = carriedSubtypeLabel
           ? template.variants.find(
               (entry) => entry.label.trim().toLowerCase() === carriedSubtypeLabel.trim().toLowerCase()
@@ -4176,17 +4619,19 @@ export class HouseholdRepository {
             title: followUpTitle,
             subtypeLabel: carriedSubtypeLabel,
             requirePhotoProofOverride: effectiveFollowUpRequirePhotoProof,
-            state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
-            assigneeId,
+            state: assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+            assigneeId: assignmentDecision.assigneeId,
             dueAtUtc: followUpDueAt,
-            variantId: matchingVariant?.id ?? null
+            variantId: matchingVariant?.id ?? null,
+            assignmentLocked: assignmentDecision.locked,
+            assignmentReason: assignmentDecision.reason
           }
         });
 
-        if (assigneeId) {
+        if (assignmentDecision.assigneeId) {
           await this.recordNotification(tx, {
             householdId: instance.householdId,
-            recipientUserId: assigneeId,
+            recipientUserId: assignmentDecision.assigneeId,
             type: NotificationType.CHORE_ASSIGNED,
             title: "Follow-up chore assigned",
             message: `"${followUpTitle}" was created as a follow-up chore for you.`,
@@ -4291,7 +4736,7 @@ export class HouseholdRepository {
     const nextInstanceId = randomUUID();
 
     return this.prisma.$transaction(async (tx) => {
-      const assigneeId = await this.resolveAssigneeForTemplate(
+      const assignmentDecision = await this.resolveAssignmentDecision(
         tx,
         instance.householdId,
         template.id,
@@ -4306,13 +4751,15 @@ export class HouseholdRepository {
           cycleId,
           occurrenceRootId: nextInstanceId,
           title: instanceTitle,
-          state: assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
-          assigneeId,
+          state: assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          assigneeId: assignmentDecision.assigneeId,
           dueAtUtc: nextDueAt,
           suppressRecurrence: false,
           variantId: variantId,
           subtypeLabel,
           requirePhotoProofOverride: requirePhotoProof,
+          assignmentLocked: assignmentDecision.locked,
+          assignmentReason: assignmentDecision.reason,
           assignmentStrategyOverride: instance.assignmentStrategyOverride,
           recurrenceTypeOverride: instance.recurrenceTypeOverride,
           recurrenceIntervalDaysOverride: instance.recurrenceIntervalDaysOverride,
@@ -4334,10 +4781,10 @@ export class HouseholdRepository {
         }
       });
 
-      if (assigneeId) {
+      if (assignmentDecision.assigneeId) {
         await this.recordNotification(tx, {
           householdId: instance.householdId,
-          recipientUserId: assigneeId,
+          recipientUserId: assignmentDecision.assigneeId,
           type: NotificationType.CHORE_ASSIGNED,
           title: "Recurring chore assigned",
           message: `"${instanceTitle}" was scheduled again and assigned to you.`,
@@ -4642,6 +5089,7 @@ export class HouseholdRepository {
         weekdays: template.recurrenceWeekdays
       },
       requirePhotoProof: template.requirePhotoProof,
+      stickyFollowUpAssignee: template.stickyFollowUpAssignee,
       recurrenceStartStrategy: template.recurrenceStartStrategy.toLowerCase() as "due_at" | "completed_at",
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
@@ -4707,6 +5155,8 @@ export class HouseholdRepository {
         supportsOccurrenceCancellation,
         supportsSeriesCancellation: supportsOccurrenceCancellation,
         assigneeId: null,
+        assigneeDisplayName: null,
+        assignmentReason: null,
         dueAt: instance.dueAtUtc,
         difficulty: "easy" as const,
         basePoints: 0,
@@ -4748,6 +5198,7 @@ export class HouseholdRepository {
       supportsSeriesCancellation: supportsOccurrenceCancellation,
       assigneeId: instance.assigneeId,
       assigneeDisplayName: options?.assigneeDisplayName ?? null,
+      assignmentReason: this.mapAssignmentReason((instance as any).assignmentReason ?? null),
       dueAt: instance.dueAtUtc,
       difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
       basePoints: instance.template.basePoints,
@@ -5462,9 +5913,30 @@ export class HouseholdRepository {
       case AssignmentStrategyType.HIGHEST_STREAK:
         return "highest_streak";
       case AssignmentStrategyType.MANUAL_DEFAULT_ASSIGNEE:
-        return "manual_default_assignee";
+        return "round_robin";
       default:
         return "round_robin";
+    }
+  }
+
+  private mapAssignmentReason(reason: AssignmentReasonType | null) {
+    switch (reason) {
+      case AssignmentReasonType.ROUND_ROBIN:
+        return "round_robin";
+      case AssignmentReasonType.LEAST_COMPLETED_RECENTLY:
+        return "least_completed_recently";
+      case AssignmentReasonType.HIGHEST_STREAK:
+        return "highest_streak";
+      case AssignmentReasonType.MANUAL:
+        return "manual";
+      case AssignmentReasonType.CLAIMED:
+        return "claimed";
+      case AssignmentReasonType.STICKY_FOLLOW_UP:
+        return "sticky_follow_up";
+      case AssignmentReasonType.REBALANCED:
+        return "rebalanced";
+      default:
+        return null;
     }
   }
 
