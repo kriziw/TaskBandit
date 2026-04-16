@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.37.3](https://github.com/kriziw/TaskBandit/compare/v0.37.2...v0.37.3) (2026-04-16)
+
+
+### Bug Fixes
+
+* **web:** align client mobile pwa flow with native client ([#264](https://github.com/kriziw/TaskBandit/issues/264)) ([3e13eb5](https://github.com/kriziw/TaskBandit/commit/3e13eb5efc6942fd1fed986d7bf4c8d96733bb8f))
+
 ## [0.37.2](https://github.com/kriziw/TaskBandit/compare/v0.37.1...v0.37.2) (2026-04-15)
 
 
