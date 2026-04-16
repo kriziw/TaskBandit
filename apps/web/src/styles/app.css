@@ -657,6 +657,22 @@ h4,
   box-shadow: 0 34px 90px rgba(36, 48, 67, 0.28);
 }
 
+.celebration-dialog.celebration-variant-rare {
+  border-color: rgba(252, 204, 61, 0.82);
+  background:
+    radial-gradient(circle at 82% 10%, rgba(115, 201, 244, 0.42), transparent 12rem),
+    radial-gradient(circle at 12% 18%, rgba(252, 204, 61, 0.52), transparent 14rem),
+    linear-gradient(145deg, rgba(32, 44, 64, 0.98), rgba(101, 68, 33, 0.94));
+  color: #fff8ec;
+  box-shadow: 0 38px 110px rgba(36, 48, 67, 0.42);
+}
+
+.celebration-dialog.celebration-variant-chore {
+  background:
+    radial-gradient(circle at 12% 16%, rgba(115, 217, 179, 0.38), transparent 13rem),
+    linear-gradient(145deg, rgba(251, 255, 246, 0.98), rgba(223, 241, 214, 0.96));
+}
+
 .celebration-confetti {
   position: absolute;
   inset: 0;
@@ -732,6 +748,26 @@ h4,
   transform: rotate(18deg);
 }
 
+.celebration-variant-rare .celebration-confetti span:nth-child(1),
+.celebration-variant-rare .celebration-confetti span:nth-child(5),
+.celebration-variant-rare .celebration-confetti span:nth-child(8) {
+  background: #fccc3d;
+  box-shadow: 0 0 22px rgba(252, 204, 61, 0.78);
+}
+
+.celebration-variant-rare .celebration-confetti span:nth-child(2),
+.celebration-variant-rare .celebration-confetti span:nth-child(4),
+.celebration-variant-rare .celebration-confetti span:nth-child(7) {
+  background: #73c9f4;
+  box-shadow: 0 0 18px rgba(115, 201, 244, 0.7);
+}
+
+.celebration-variant-chore .celebration-confetti span:nth-child(1),
+.celebration-variant-chore .celebration-confetti span:nth-child(3),
+.celebration-variant-chore .celebration-confetti span:nth-child(7) {
+  background: #73d9b3;
+}
+
 .celebration-mascot {
   position: relative;
   width: min(100%, 180px);
@@ -765,9 +801,19 @@ h4,
   font-weight: 900;
 }
 
+.celebration-variant-rare .celebration-points {
+  background: rgba(252, 204, 61, 0.22);
+  color: #fff1a8;
+}
+
 .celebration-chore {
   color: rgba(36, 48, 67, 0.74);
   font-weight: 800;
+}
+
+.celebration-variant-rare .celebration-chore,
+.celebration-variant-rare .celebration-quote {
+  color: rgba(255, 248, 236, 0.88);
 }
 
 .celebration-quote {

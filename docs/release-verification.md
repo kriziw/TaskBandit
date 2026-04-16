@@ -35,6 +35,7 @@ These checks should be repeated against the built application before a stable re
 - sign in as a household member
 - confirm assigned chores load and due state renders correctly
 - complete a chore and verify the completion is visible after refresh
+- confirm the completion celebration appears and dismisses cleanly
 - confirm points are awarded only after completion and reflected in the member view
 
 ### Android
@@ -42,6 +43,7 @@ These checks should be repeated against the built application before a stable re
 - sign in with a real household account
 - sync and open the assigned chore list
 - complete a chore and verify the resulting state survives a refresh or app restart
+- confirm the completion celebration appears and dismisses cleanly
 - confirm the completion becomes visible to the other client surfaces
 
 ### Notifications And Delivery Paths
