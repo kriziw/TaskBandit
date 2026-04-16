@@ -21,6 +21,7 @@ The public documentation site is the main source for setup, deployment, reverse 
 [TaskBandit documentation](https://kriziw.github.io/taskbandit/)
 
 Repository-local docs are kept for source-adjacent references that are useful while developing or reviewing implementation details.
+The current release verification baseline is documented in [docs/release-verification.md](docs/release-verification.md).
 
 ## Quick Start
 

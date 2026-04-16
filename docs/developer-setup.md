@@ -25,6 +25,7 @@
 - The backend now targets PostgreSQL through Prisma and seeds an initial household on startup.
 - The backend also exposes bootstrap endpoints for checking initialization state and creating the first household when demo seeding is disabled.
 - Local authentication foundations are in place with JWT-based login endpoints and Authentik-oriented OIDC configuration settings.
+- Before stable releases, run the server regression suite from `apps/server` with `npm test` and follow the cross-client smoke checklist in `docs/release-verification.md`.
 - The repository now includes an initial Prisma migration snapshot under `apps/server/prisma/migrations`.
 - Docker Compose now pulls two images in the split deployment model:
   `kriziw/taskbandit` and `kriziw/taskbandit-web`.
