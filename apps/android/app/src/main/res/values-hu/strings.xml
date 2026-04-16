@@ -178,6 +178,13 @@
     <string name="mobile_settings_notifications_permission">Értesítések</string>
     <string name="mobile_settings_notifications_allowed">Engedélyezve</string>
     <string name="mobile_settings_notifications_needed">Engedély szükséges</string>
+    <string name="mobile_settings_push_readiness">Push készenlét</string>
+    <string name="mobile_device_push_ready">Kész a kiosztási emlékeztetőkre és jóváhagyási frissítésekre</string>
+    <string name="mobile_device_push_missing">Frissítsd a regisztrációt, hogy a szerver lássa ezt az eszközt</string>
+    <string name="mobile_device_push_permission_needed">Engedélyezd az értesítéseket, hogy az Android megjelenítse a push üzeneteket</string>
+    <string name="mobile_device_push_token_needed">Firebase token regisztrációra vár</string>
+    <string name="mobile_device_push_disabled">Regisztrálva van, de az értesítések ki vannak kapcsolva ezen az eszközön</string>
+    <string name="mobile_device_push_readiness_hint">Az adminnak ezt az eszközt push-készként kell látnia a System status és Mobile Push Devices nézetben.</string>
     <string name="mobile_settings_installation_id">Telepítési azonosító</string>
     <string name="mobile_settings_provider">Szolgáltató</string>
     <string name="mobile_settings_device_name">Eszköz neve</string>

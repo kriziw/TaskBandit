@@ -4724,8 +4724,18 @@ private fun SettingsDeviceContent(
     onRequestNotificationPermission: () -> Unit,
     onRemoveNotificationDevice: (String) -> Unit
 ) {
+    val pushReadinessText = when {
+        currentDevice == null -> stringResource(R.string.mobile_device_push_missing)
+        !notificationsPermissionGranted -> stringResource(R.string.mobile_device_push_permission_needed)
+        !currentDevice.pushTokenConfigured -> stringResource(R.string.mobile_device_push_token_needed)
+        !currentDevice.notificationsEnabled -> stringResource(R.string.mobile_device_push_disabled)
+        else -> stringResource(R.string.mobile_device_push_ready)
+    }
+
     Text(text = if (currentDevice == null) stringResource(R.string.mobile_device_status_missing) else stringResource(R.string.mobile_device_status_ready), style = MaterialTheme.typography.bodyMedium)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_notifications_permission), value = stringResource(if (notificationsPermissionGranted) R.string.mobile_settings_notifications_allowed else R.string.mobile_settings_notifications_needed))
+    SettingsValueLine(label = stringResource(R.string.mobile_settings_push_readiness), value = pushReadinessText)
+    Text(text = stringResource(R.string.mobile_device_push_readiness_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_installation_id), value = installationId)
     currentDevice?.let { device ->
         SettingsValueLine(label = stringResource(R.string.mobile_settings_provider), value = device.provider)

@@ -80,6 +80,13 @@ type CompletionCelebration = {
   phraseKey: string;
 };
 
+type ReadinessChecklistItem = {
+  key: string;
+  status: "ready" | "warning";
+  title: string;
+  detail: string;
+};
+
 type AuthEntryState = {
   providers: AuthProviders | null;
   bootstrapStatus: BootstrapStatus | null;
@@ -1476,9 +1483,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         effectiveHouseholdSettings.smtpPassword)
   );
 
-  const backupMigrationChecklist = useMemo<
-    Array<{ key: string; status: "ready" | "warning"; title: string; detail: string }>
-  >(() => {
+  const backupMigrationChecklist = useMemo<ReadinessChecklistItem[]>(() => {
     if (!payload?.backupReadiness) {
       return [];
     }
@@ -1529,6 +1534,50 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }
     ];
   }, [adminLocalRecoveryCount, adminLocalRecoveryEmailCount, payload, t]);
+
+  const pushReadinessChecklist = useMemo<ReadinessChecklistItem[]>(() => {
+    if (!payload?.systemStatus) {
+      return [];
+    }
+
+    const { push } = payload.systemStatus;
+    const fcmReady = push.serverFcmEnabled && push.serviceAccountConfigured;
+    const providerReady = fcmReady || push.serverWebPushEnabled;
+
+    return [
+      {
+        key: "household",
+        status: push.householdPushEnabled ? "ready" : "warning",
+        title: t("system_status.push_check_household_title"),
+        detail: t("system_status.push_check_household_body")
+      },
+      {
+        key: "provider",
+        status: providerReady ? "ready" : "warning",
+        title: t("system_status.push_check_provider_title"),
+        detail: t("system_status.push_check_provider_body")
+          .replace("{fcm}", fcmReady ? t("common.enabled") : t("common.disabled"))
+          .replace("{webPush}", push.serverWebPushEnabled ? t("common.enabled") : t("common.disabled"))
+      },
+      {
+        key: "devices",
+        status: push.pushReadyDeviceCount > 0 ? "ready" : "warning",
+        title: t("system_status.push_check_devices_title"),
+        detail: t("system_status.push_check_devices_body")
+          .replace("{ready}", String(push.pushReadyDeviceCount))
+          .replace("{registered}", String(push.registeredDeviceCount))
+      },
+      {
+        key: "members",
+        status: push.membersWithoutDeliveryPath === 0 ? "ready" : "warning",
+        title: t("system_status.push_check_members_title"),
+        detail: t("system_status.push_check_members_body")
+          .replace("{push}", String(push.membersWithPushReadyDevices))
+          .replace("{fallback}", String(push.membersUsingEmailFallback))
+          .replace("{none}", String(push.membersWithoutDeliveryPath))
+      }
+    ];
+  }, [payload, t]);
 
   const restrictHouseholdDetails = Boolean(
     payload &&
@@ -6867,6 +6916,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         <span className={`status-pill system-${payload.systemStatus.push.status}`}>
                           {formatStatusChip(payload.systemStatus.push.status)}
                         </span>
+                      </div>
+                      <div className="stack-list push-readiness-list">
+                        <strong>{t("system_status.push_readiness")}</strong>
+                        {pushReadinessChecklist.map((item) => (
+                          <div className="notification-delivery-block" key={item.key}>
+                            <div className="task-row-header">
+                              <strong>{item.title}</strong>
+                              <span className={`status-pill system-${item.status}`}>
+                                {formatStatusChip(item.status)}
+                              </span>
+                            </div>
+                            <p>{item.detail}</p>
+                          </div>
+                        ))}
                       </div>
                       <p>
                         {t("system_status.push_household_enabled")}:{" "}

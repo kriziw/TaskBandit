@@ -49,6 +49,19 @@ These checks should be repeated against the built application before a stable re
 - if SMTP is enabled, run a password-reset request and confirm the email is delivered
 - if push notifications are enabled for the release target, trigger one reminder path and confirm delivery or queueing without server errors
 
+### Push-First Private Release Baseline
+
+Issue [#92](https://github.com/kriziw/TaskBandit/issues/92) tracks the push-first notification readiness pass for private releases. Use this as the minimum repeatable check when Android push is expected to be the primary household notification path:
+
+- confirm the server release/build and Android APK release/build match the target release
+- sign in as an admin in the web UI and open `Admin` -> `System status`
+- verify the Push delivery checklist shows the household switch, server provider, registered devices, and member delivery paths as ready or clearly explains what is missing
+- sign in on Android, allow notification permission, and open `Settings` -> `Device registration`
+- verify Android shows the device as registered and push-ready, then confirm the same device is visible in the admin `Mobile Push Devices` panel
+- send a test notification from the admin `Household Notification Health` panel and confirm the Android notification appears under the TaskBandit notification channel
+- create a manually assigned chore for the Android user and confirm the notification inbox record and Android device behavior match
+- if Firebase is intentionally not configured, confirm the admin status explains the non-ready provider state rather than implying push is healthy
+
 ### Deployment Sanity
 
 - confirm the API health endpoint returns success

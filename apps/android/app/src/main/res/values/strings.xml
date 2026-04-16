@@ -187,6 +187,13 @@
     <string name="mobile_settings_notifications_permission">Notifications</string>
     <string name="mobile_settings_notifications_allowed">Allowed</string>
     <string name="mobile_settings_notifications_needed">Permission needed</string>
+    <string name="mobile_settings_push_readiness">Push readiness</string>
+    <string name="mobile_device_push_ready">Ready for assignment reminders and review updates</string>
+    <string name="mobile_device_push_missing">Refresh registration so the server can see this device</string>
+    <string name="mobile_device_push_permission_needed">Allow notifications so Android can show delivered pushes</string>
+    <string name="mobile_device_push_token_needed">Waiting for Firebase token registration</string>
+    <string name="mobile_device_push_disabled">Registered, but notifications are disabled for this device</string>
+    <string name="mobile_device_push_readiness_hint">Admins should see this device as push-ready in System status and Mobile Push Devices.</string>
     <string name="mobile_settings_installation_id">Installation ID</string>
     <string name="mobile_settings_provider">Provider</string>
     <string name="mobile_settings_device_name">Device name</string>
