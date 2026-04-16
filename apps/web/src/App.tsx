@@ -80,7 +80,7 @@ type CompletionCelebration = {
   titleKey: string;
   eyebrowKey: string;
   phraseKey: string;
-  variant: "standard" | "rare" | "chore";
+  variant: "standard" | "rare" | "chore" | "perfect";
 };
 
 type ReadinessChecklistItem = {
@@ -207,6 +207,11 @@ const rareCompletionCelebrationPhraseKeys = [
   "celebration.rare_phrase_2",
   "celebration.rare_phrase_3"
 ];
+const perfectDayCelebrationPhraseKeys = [
+  "celebration.perfect_day_phrase_1",
+  "celebration.perfect_day_phrase_2",
+  "celebration.perfect_day_phrase_3"
+];
 const choreAwareCelebrationPhraseGroups: Array<{
   keywords: string[];
   phraseKeys: string[];
@@ -246,6 +251,16 @@ function pickRandomFromPool(pool: string[], previousKey?: string | null) {
   return nextKey;
 }
 
+function pickDeterministicFromPool(pool: string[], index?: number | null) {
+  if (pool.length === 0) {
+    return "";
+  }
+
+  const rawIndex = typeof index === "number" && Number.isFinite(index) ? index : 0;
+  const normalizedIndex = Math.abs(Math.trunc(rawIndex));
+  return pool[normalizedIndex % pool.length];
+}
+
 function buildCompletionCelebration(
   chore: ChoreInstance,
   previousKey?: string | null
@@ -263,6 +278,20 @@ function buildCompletionCelebration(
     group.keywords.some((keyword) => searchableChoreText.includes(keyword))
   );
   const rareVariant = getRandomNumber(8) === 0;
+
+  if (chore.completionMilestone?.type === "perfect_day") {
+    return {
+      points: Math.max(0, chore.awardedPoints),
+      choreTitle: chore.typeTitle || chore.title,
+      titleKey: "celebration.perfect_day_title",
+      eyebrowKey: "celebration.perfect_day_eyebrow",
+      phraseKey: pickDeterministicFromPool(
+        perfectDayCelebrationPhraseKeys,
+        chore.completionMilestone.messageIndex
+      ),
+      variant: "perfect"
+    };
+  }
 
   if (rareVariant) {
     return {
@@ -3095,7 +3124,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction(`${action}:${instanceId}`);
     try {
       if (action === "approve") {
-        await taskBanditApi.approveChore(token, language, instanceId, reviewNotes[instanceId]);
+        const reviewedChore = await taskBanditApi.approveChore(token, language, instanceId, reviewNotes[instanceId]);
+        if (reviewedChore.completionMilestone?.type === "perfect_day") {
+          const celebration = buildCompletionCelebration(reviewedChore, lastCompletionCelebrationPhraseKey);
+          setCompletionCelebration(celebration);
+          setLastCompletionCelebrationPhraseKey(celebration.phraseKey);
+        }
         setNotice(t("approval.approved_notice"));
       } else {
         await taskBanditApi.rejectChore(token, language, instanceId, reviewNotes[instanceId]);

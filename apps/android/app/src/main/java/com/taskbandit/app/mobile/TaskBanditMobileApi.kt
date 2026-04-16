@@ -199,12 +199,12 @@ class TaskBanditMobileApi {
         )
     }
 
-    fun approveChore(baseUrl: String, token: String, instanceId: String, note: String? = null) {
-        reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/approve", note)
+    fun approveChore(baseUrl: String, token: String, instanceId: String, note: String? = null): MobileChore {
+        return reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/approve", note)
     }
 
-    fun rejectChore(baseUrl: String, token: String, instanceId: String, note: String? = null) {
-        reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/reject", note)
+    fun rejectChore(baseUrl: String, token: String, instanceId: String, note: String? = null): MobileChore {
+        return reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/reject", note)
     }
 
     fun markNotificationRead(baseUrl: String, token: String, notificationId: String) {
@@ -654,16 +654,18 @@ class TaskBanditMobileApi {
         token: String,
         path: String,
         note: String?
-    ) {
+    ): MobileChore {
         val payload = JSONObject()
             .put("note", note ?: "")
 
-        requestJson(
-            baseUrl = baseUrl,
-            path = path,
-            token = token,
-            method = "POST",
-            body = payload
+        return parseChore(
+            requestJson(
+                baseUrl = baseUrl,
+                path = path,
+                token = token,
+                method = "POST",
+                body = payload
+            )
         )
     }
 
@@ -716,7 +718,29 @@ class TaskBanditMobileApi {
             awardedPoints = entry.optInt("awardedPoints"),
             checklist = parseChecklist(entry.optJSONArray("checklist")),
             completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
-            variantId = entry.optNullableString("variantId")
+            variantId = entry.optNullableString("variantId"),
+            completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone"))
+        )
+    }
+
+    private fun parseCompletionMilestone(entry: JSONObject?): MobileCompletionMilestone? {
+        if (entry == null) {
+            return null
+        }
+
+        val type = entry.optString("type")
+        val userId = entry.optString("userId")
+        val dayKey = entry.optString("dayKey")
+        if (type.isBlank() || userId.isBlank() || dayKey.isBlank()) {
+            return null
+        }
+
+        return MobileCompletionMilestone(
+            type = type,
+            userId = userId,
+            dayKey = dayKey,
+            completedChoreCount = entry.optInt("completedChoreCount"),
+            messageIndex = entry.optInt("messageIndex")
         )
     }
 

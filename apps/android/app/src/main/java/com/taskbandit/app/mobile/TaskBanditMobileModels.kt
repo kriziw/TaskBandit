@@ -38,6 +38,14 @@ data class MobileLeaderboardEntry(
     val currentStreak: Int
 )
 
+data class MobileCompletionMilestone(
+    val type: String,
+    val userId: String,
+    val dayKey: String,
+    val completedChoreCount: Int,
+    val messageIndex: Int
+)
+
 data class MobileChore(
     val id: String,
     val cycleId: String? = null,
@@ -61,7 +69,8 @@ data class MobileChore(
     val awardedPoints: Int = 0,
     val checklist: List<MobileChecklistItem>,
     val completedChecklistIds: List<String>,
-    val variantId: String? = null
+    val variantId: String? = null,
+    val completionMilestone: MobileCompletionMilestone? = null
 )
 
 data class MobileChecklistItem(
