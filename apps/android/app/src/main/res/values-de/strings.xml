@@ -187,6 +187,13 @@
     <string name="mobile_settings_notifications_permission">Benachrichtigungen</string>
     <string name="mobile_settings_notifications_allowed">Erlaubt</string>
     <string name="mobile_settings_notifications_needed">Berechtigung nÃ¶tig</string>
+    <string name="mobile_settings_push_readiness">Push-Bereitschaft</string>
+    <string name="mobile_device_push_ready">Bereit fuer Zuweisungserinnerungen und Review-Updates</string>
+    <string name="mobile_device_push_missing">Registrierung aktualisieren, damit der Server dieses Geraet sieht</string>
+    <string name="mobile_device_push_permission_needed">Benachrichtigungen erlauben, damit Android zugestellte Pushes anzeigen kann</string>
+    <string name="mobile_device_push_token_needed">Wartet auf Firebase-Token-Registrierung</string>
+    <string name="mobile_device_push_disabled">Registriert, aber Benachrichtigungen sind fuer dieses Geraet deaktiviert</string>
+    <string name="mobile_device_push_readiness_hint">Admins sollten dieses Geraet im Systemstatus und unter Mobile Push Devices als push-bereit sehen.</string>
     <string name="mobile_settings_installation_id">Installations-ID</string>
     <string name="mobile_settings_provider">Anbieter</string>
     <string name="mobile_settings_device_name">GerÃ¤tename</string>
