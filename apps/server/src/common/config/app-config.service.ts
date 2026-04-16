@@ -181,20 +181,12 @@ export class AppConfigService {
     }
 
     return this.uniqueConfiguredOrigins([
-      this.configService.get<string>("TASKBANDIT_PUBLIC_WEB_BASE_URL"),
-      this.configService.get<string>("TASKBANDIT_PUBLIC_CLIENT_BASE_URL"),
-      this.configService.get<string>("TASKBANDIT_PUBLIC_ADMIN_BASE_URL"),
-      this.configService.get<string>("TASKBANDIT_WEB_BASE_URL"),
-      this.configService.get<string>("TASKBANDIT_CLIENT_BASE_URL"),
-      this.configService.get<string>("TASKBANDIT_ADMIN_BASE_URL")
+      this.configService.get<string>("TASKBANDIT_PUBLIC_WEB_BASE_URL")
     ]);
   }
 
   get publicWebBaseUrl(): string {
-    return (
-      this.normalizeBaseUrl(this.configService.get<string>("TASKBANDIT_PUBLIC_WEB_BASE_URL")) ||
-      this.normalizeBaseUrl(this.configService.get<string>("TASKBANDIT_PUBLIC_CLIENT_BASE_URL"))
-    );
+    return this.normalizeBaseUrl(this.configService.get<string>("TASKBANDIT_PUBLIC_WEB_BASE_URL"));
   }
 
   get publicApiBaseUrl(): string {

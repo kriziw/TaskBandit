@@ -14,7 +14,5 @@ interface Window {
   __TASKBANDIT_RUNTIME_CONFIG__?: {
     apiBaseUrl?: string;
     webBaseUrl?: string;
-    adminBaseUrl?: string;
-    clientBaseUrl?: string;
   };
 }
