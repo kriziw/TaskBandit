@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.38.1](https://github.com/kriziw/TaskBandit/compare/v0.38.0...v0.38.1) (2026-04-16)
+
+
+### Bug Fixes
+
+* **config:** remove legacy self-hosted url env compatibility ([#275](https://github.com/kriziw/TaskBandit/issues/275)) ([87f1610](https://github.com/kriziw/TaskBandit/commit/87f16101b6e8d1c8962bf15a1491d856fdfb20c4))
+
 ## [0.38.0](https://github.com/kriziw/TaskBandit/compare/v0.37.3...v0.38.0) (2026-04-16)
 
 
