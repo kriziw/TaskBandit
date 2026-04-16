@@ -40,9 +40,9 @@ Before first real use, edit `.env`:
 - change `TASKBANDIT_DB_PASSWORD` and `TASKBANDIT_JWT_SECRET`
 - keep `TASKBANDIT_DATA_ROOT=./data` unless you intentionally want another persistent storage path
 - set `TASKBANDIT_BOOTSTRAP_SEED_DEMO_DATA=true` only if you want demo accounts for testing
-- for most installs, only set `TASKBANDIT_PUBLIC_WEB_BASE_URL` and `TASKBANDIT_PUBLIC_API_BASE_URL`; TaskBandit derives the admin URL automatically and now also derives CORS/reverse-proxy behavior from those public URLs
+- for most installs, only set `TASKBANDIT_PUBLIC_WEB_BASE_URL` and `TASKBANDIT_PUBLIC_API_BASE_URL`; TaskBandit derives the admin URL automatically and also derives CORS/reverse-proxy behavior from those public URLs
 - leave the default log safety limits in place unless you have a reason to change them: the persistent runtime log rotates at `100 MB` with a `500 MB` total cap, and Docker container logs rotate at `100 MB` with `5` retained files per container
-- use the legacy overrides (`TASKBANDIT_PUBLIC_ADMIN_BASE_URL`, `TASKBANDIT_PUBLIC_CLIENT_BASE_URL`, `TASKBANDIT_CORS_ALLOWED_ORIGINS`, `TASKBANDIT_REVERSE_PROXY_ENABLED`) only if you intentionally need custom behavior
+- only use the advanced overrides (`TASKBANDIT_CORS_ALLOWED_ORIGINS`, `TASKBANDIT_REVERSE_PROXY_ENABLED`) if you intentionally need custom browser-origin or proxy behavior
 
 Example domain setup:
 
