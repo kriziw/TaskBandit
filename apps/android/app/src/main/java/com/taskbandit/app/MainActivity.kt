@@ -2546,7 +2546,6 @@ private fun DashboardScreen(
                                         onAssignmentDropdownExpandedChange = { assignmentStrategyDropdownExpanded = it },
                                         onAssignmentStrategySelected = { strategy ->
                                             createAssignmentStrategy = strategy
-                                            if (strategy != "manual_default_assignee") createAssigneeId = null
                                             assignmentStrategyDropdownExpanded = false
                                         },
                                         createAssigneeId = createAssigneeId,
@@ -2675,7 +2674,6 @@ private fun DashboardScreen(
                                         onAssignmentDropdownExpandedChange = { assignmentStrategyDropdownExpanded = it },
                                         onAssignmentStrategySelected = { strategy ->
                                             createAssignmentStrategy = strategy
-                                            if (strategy != "manual_default_assignee") createAssigneeId = null
                                             assignmentStrategyDropdownExpanded = false
                                         },
                                         createAssigneeId = createAssigneeId,
@@ -3219,6 +3217,7 @@ private data class SectionToneColors(
 private fun CompactChoreMeta(
     dueAt: String,
     assignmentLabel: String? = null,
+    assignmentReasonLabel: String? = null,
     subtypeLabel: String? = null,
     requirePhotoProof: Boolean,
     includeWeekdayInDueDate: Boolean = true,
@@ -3228,6 +3227,7 @@ private fun CompactChoreMeta(
     val supportingParts = buildList {
         subtypeLabel?.takeIf { it.isNotBlank() }?.let(::add)
         assignmentLabel?.takeIf { it.isNotBlank() }?.let(::add)
+        assignmentReasonLabel?.takeIf { it.isNotBlank() }?.let(::add)
         if (requirePhotoProof) add(stringResource(R.string.mobile_photo_required_hint))
     }
     Column(
@@ -3622,6 +3622,7 @@ private fun ChoreCard(
     val typeTitle = chore.typeTitle.ifBlank { chore.title }
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
+    val assignmentReasonLabel = describeAssignmentReason(chore.assignmentReason)
     val requiresTakeOver = supportsTakeoverRequests && section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
     val canRequestTakeover = supportsTakeoverRequests && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
@@ -3686,6 +3687,7 @@ private fun ChoreCard(
                     CompactChoreMeta(
                         dueAt = chore.dueAt,
                         assignmentLabel = assignmentLabel,
+                        assignmentReasonLabel = assignmentReasonLabel,
                         subtypeLabel = subtypeLabel,
                         requirePhotoProof = chore.requirePhotoProof
                     )
@@ -4526,7 +4528,7 @@ private fun CreateAssignmentPanel(
                 expanded = assignmentStrategyDropdownExpanded,
                 onDismissRequest = { onAssignmentDropdownExpandedChange(false) }
             ) {
-                listOf("round_robin", "least_completed_recently", "highest_streak", "manual_default_assignee").forEach { strategy ->
+                listOf("round_robin", "least_completed_recently", "highest_streak").forEach { strategy ->
                     DropdownMenuItem(
                         text = { Text(assignmentStrategyLabel(strategy)) },
                         onClick = { onAssignmentStrategySelected(strategy) }
@@ -4535,35 +4537,33 @@ private fun CreateAssignmentPanel(
             }
         }
 
-        if (createAssignmentStrategy == "manual_default_assignee") {
-            Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
-            val unassignedLabel = stringResource(R.string.mobile_create_unassigned)
-            val selectedMemberName = members.firstOrNull { it.id == createAssigneeId }?.displayName ?: unassignedLabel
-            ExposedDropdownMenuBox(
+        Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
+        val unassignedLabel = stringResource(R.string.mobile_create_unassigned)
+        val selectedMemberName = members.firstOrNull { it.id == createAssigneeId }?.displayName ?: unassignedLabel
+        ExposedDropdownMenuBox(
+            expanded = assigneeDropdownExpanded,
+            onExpandedChange = onAssigneeDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = selectedMemberName,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
                 expanded = assigneeDropdownExpanded,
-                onExpandedChange = onAssigneeDropdownExpandedChange
+                onDismissRequest = { onAssigneeDropdownExpandedChange(false) }
             ) {
-                OutlinedTextField(
-                    value = selectedMemberName,
-                    onValueChange = {},
-                    readOnly = true,
-                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeDropdownExpanded) },
-                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                DropdownMenuItem(
+                    text = { Text(unassignedLabel) },
+                    onClick = { onAssigneeSelected(null) }
                 )
-                ExposedDropdownMenu(
-                    expanded = assigneeDropdownExpanded,
-                    onDismissRequest = { onAssigneeDropdownExpandedChange(false) }
-                ) {
+                members.forEach { member ->
                     DropdownMenuItem(
-                        text = { Text(unassignedLabel) },
-                        onClick = { onAssigneeSelected(null) }
+                        text = { Text(member.displayName) },
+                        onClick = { onAssigneeSelected(member.id) }
                     )
-                    members.forEach { member ->
-                        DropdownMenuItem(
-                            text = { Text(member.displayName) },
-                            onClick = { onAssigneeSelected(member.id) }
-                        )
-                    }
                 }
             }
         }
@@ -4843,6 +4843,18 @@ private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?):
     }
 }
 
+@Composable
+private fun describeAssignmentReason(reason: String?): String? = when (reason) {
+    "round_robin" -> stringResource(R.string.mobile_assignment_reason_round_robin)
+    "least_completed_recently" -> stringResource(R.string.mobile_assignment_reason_least_completed)
+    "highest_streak" -> stringResource(R.string.mobile_assignment_reason_highest_streak)
+    "manual" -> stringResource(R.string.mobile_assignment_reason_manual)
+    "claimed" -> stringResource(R.string.mobile_assignment_reason_claimed)
+    "sticky_follow_up" -> stringResource(R.string.mobile_assignment_reason_sticky_follow_up)
+    "rebalanced" -> stringResource(R.string.mobile_assignment_reason_rebalanced)
+    else -> null
+}
+
 private fun firstNameFromDisplayName(displayName: String?): String? =
     displayName
         ?.trim()
@@ -4888,7 +4900,6 @@ private fun resolveEffectiveCreateRecurrenceType(
 private fun assignmentStrategyLabel(value: String): String = when (value) {
     "least_completed_recently" -> stringResource(R.string.mobile_create_assignment_least_completed)
     "highest_streak" -> stringResource(R.string.mobile_create_assignment_highest_streak)
-    "manual_default_assignee" -> stringResource(R.string.mobile_create_assignment_manual)
     else -> stringResource(R.string.mobile_create_assignment_round_robin)
 }
 

@@ -21,6 +21,17 @@ TaskBandit now includes the first protected submission and review flow for chore
 - Follow-up chores inherit the configured group, type, optional sub-type, checklist, recurrence, proof-photo requirement, and translated labels from their follow-up template.
 - Children can only submit chores assigned to themselves.
 - `admin` and `parent` users can approve or reject chore submissions.
+- Template assignment strategies now cover only automatic assignment:
+  - `round_robin`
+  - `least_completed_recently`
+  - `highest_streak`
+- Manual assignment is now a per-instance choice when scheduling or editing a chore.
+- Editing a chore preserves its current assignee by default.
+- Automatic rebalancing only touches flexible chores:
+  - state is still `open` or `assigned`
+  - assignment is not manually locked
+  - due time is outside the freeze window
+- Claiming a chore assigns it to the acting user instead of moving it into a separate progress state.
 - Child submissions move to `pending_approval`.
 - Approved submissions move to `completed`.
 - Rejected submissions move to `needs_fixes`.
@@ -29,6 +40,7 @@ TaskBandit now includes the first protected submission and review flow for chore
 - Required checklist items must be completed before submit.
 - Chores marked with required photo proof must include at least one uploaded image.
 - Proof uploads accept image files and return attachment metadata for the final submit payload.
+- Follow-up chores can optionally keep the same assignee when the template enables sticky follow-up assignment.
 
 ## Notes
 
@@ -40,3 +52,4 @@ TaskBandit now includes the first protected submission and review flow for chore
 - Takeover penalty deductions never drive a member's point balance below zero.
 - Proof uploads are now stored on local disk under the configured storage root.
 - Authorization currently focuses on role and assignee checks for the new workflow endpoints.
+- The API now returns compact assignment reasons so clients can explain why a chore is assigned where it is.

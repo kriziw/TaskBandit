@@ -51,6 +51,7 @@ data class MobileChore(
     val supportsSeriesCancellation: Boolean = false,
     val assigneeId: String? = null,
     val assigneeDisplayName: String? = null,
+    val assignmentReason: String? = null,
     val dueAt: String,
     val completedAt: String? = null,
     val cancelledAt: String? = null,
@@ -165,6 +166,7 @@ data class MobileChoreTemplate(
     val assignmentStrategy: String,
     val recurrence: MobileTemplateRecurrence,
     val requirePhotoProof: Boolean,
+    val stickyFollowUpAssignee: Boolean = false,
     val recurrenceStartStrategy: String = "due_at",
     val variants: List<MobileTemplateVariant> = emptyList()
 )

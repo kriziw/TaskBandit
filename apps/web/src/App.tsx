@@ -233,6 +233,7 @@ function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): Temp
     recurrenceIntervalDays: 2,
     recurrenceWeekdays: [],
     requirePhotoProof: false,
+    stickyFollowUpAssignee: false,
     recurrenceStartStrategy: "due_at",
     variants: [],
     dependencyTemplateIds: [],
@@ -745,6 +746,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     assigneeId: "",
     title: "",
     dueAt: "",
+    reassignAutomatically: false,
     recurrenceEndMode: "never",
     recurrenceOccurrences: 3,
     recurrenceEndsAt: ""
@@ -2157,8 +2159,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }> = [
     { value: "round_robin", label: t("assignment.round_robin") },
     { value: "least_completed_recently", label: t("assignment.least_completed_recently") },
-    { value: "highest_streak", label: t("assignment.highest_streak") },
-    { value: "manual_default_assignee", label: t("assignment.manual_default") }
+    { value: "highest_streak", label: t("assignment.highest_streak") }
   ];
 
   const recurrenceOptions: Array<{ value: RecurrenceType; label: string }> = [
@@ -2425,20 +2426,26 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <strong>{t(`difficulty.${instance.difficulty}`)}</strong>
             </div>
           ) : null}
+          {instance.assignmentReason ? (
+            <div className="task-row-meta-item">
+              <span>{t("templates.strategy")}</span>
+              <strong>{t(`assignment_reason.${instance.assignmentReason}`)}</strong>
+            </div>
+          ) : null}
         </div>
         {!options?.historic &&
           payload?.currentUser.role !== "child" &&
           instance.state !== "completed" &&
           instance.state !== "cancelled" ? (
             <div className="button-row task-row-actions">
-              {instance.state !== "pending_approval" && instance.state !== "in_progress" ? (
+              {instance.state !== "pending_approval" && instance.assigneeId !== payload?.currentUser.id ? (
                 <button
                   className="secondary-button"
                   type="button"
                   disabled={busyAction === `start:${instance.id}`}
                   onClick={() => void handleStartInstance(instance.id)}
                 >
-                  {t("instances.start")}
+                  {t("instances.claim")}
                 </button>
               ) : null}
               {instance.state !== "pending_approval" ? (
@@ -2515,6 +2522,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <span>{t("task.points")}</span>
             <strong>{instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints}</strong>
           </div>
+          {instance.assignmentReason ? (
+            <div className="task-row-meta-item">
+              <span>{t("templates.strategy")}</span>
+              <strong>{t(`assignment_reason.${instance.assignmentReason}`)}</strong>
+            </div>
+          ) : null}
         </div>
         {instance.requirePhotoProof ? (
           <p className="inline-message">{t("submission.photo_hint_required")}</p>
@@ -2573,14 +2586,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           />
         </label>
         <div className="button-row task-row-actions">
-          <button
-            className="secondary-button"
-            type="button"
-            disabled={busyAction === `start:${instance.id}` || instance.state === "in_progress"}
-            onClick={() => void handleStartInstance(instance.id)}
-          >
-            {instance.state === "in_progress" ? t("state.in_progress") : t("instances.start")}
-          </button>
           <button
             className="primary-button"
             type="button"
@@ -3477,6 +3482,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         title: instanceForm.title?.trim() || undefined,
         dueAt: new Date(instanceForm.dueAt).toISOString(),
         variantId: instanceForm.variantId || undefined,
+        reassignAutomatically: editingInstanceId ? Boolean(instanceForm.reassignAutomatically) : undefined,
         recurrenceEndMode: supportsRecurrenceEnd ? instanceForm.recurrenceEndMode : undefined,
         recurrenceOccurrences:
           supportsRecurrenceEnd && instanceForm.recurrenceEndMode === "after_occurrences"
@@ -4139,6 +4145,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       assigneeId: "",
       title: "",
       dueAt: "",
+      reassignAutomatically: false,
       recurrenceEndMode: "never",
       recurrenceOccurrences: 3,
       recurrenceEndsAt: ""
@@ -4162,6 +4169,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       recurrenceIntervalDays: template.recurrence.intervalDays ?? 2,
       recurrenceWeekdays: template.recurrence.weekdays,
       requirePhotoProof: template.requirePhotoProof,
+      stickyFollowUpAssignee: template.stickyFollowUpAssignee,
       recurrenceStartStrategy: template.recurrenceStartStrategy ?? "due_at",
       variants:
         template.variants?.map((variant) => ({
@@ -4234,6 +4242,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       assigneeId: instance.assigneeId ?? "",
       title: instance.title,
       dueAt: formatDateTimeLocal(instance.dueAt),
+      reassignAutomatically: false,
       recurrenceEndMode: "never",
       recurrenceOccurrences: 3,
       recurrenceEndsAt: ""
@@ -4614,7 +4623,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <select
               value={instanceForm.assigneeId ?? ""}
               onChange={(event) =>
-                setInstanceForm((current) => ({ ...current, assigneeId: event.target.value }))
+                setInstanceForm((current) => ({
+                  ...current,
+                  assigneeId: event.target.value,
+                  reassignAutomatically: event.target.value ? false : current.reassignAutomatically
+                }))
               }
             >
               <option value="">{t("instances.unassigned")}</option>
@@ -4625,6 +4638,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ))}
             </select>
           </label>
+          {editingInstanceId ? (
+            <label className="toggle-row">
+              <span>{t("instances.reassign_automatically")}</span>
+              <input
+                type="checkbox"
+                checked={Boolean(instanceForm.reassignAutomatically)}
+                disabled={Boolean(instanceForm.assigneeId)}
+                onChange={(event) =>
+                  setInstanceForm((current) => ({
+                    ...current,
+                    reassignAutomatically: event.target.checked
+                  }))
+                }
+              />
+            </label>
+          ) : null}
           <label>
             <span>{t("instances.title_override")}</span>
             <input
@@ -7720,6 +7749,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                           </span>
                                         ) : null}
                                       </div>
+                                      {template.stickyFollowUpAssignee ? (
+                                        <p className="inline-message">{t("templates.follow_up_assignment_sticky")}</p>
+                                      ) : null}
                                     </div>
                                     <div className="template-browser-translations" aria-label={t("templates.translations")}>
                                       {templateTranslationLocales.map((locale) => (
@@ -7930,6 +7962,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         </select>
                       </label>
                     </div>
+                    <label className="toggle-row">
+                      <span>{t("templates.sticky_follow_up_assignee")}</span>
+                      <input
+                        type="checkbox"
+                        checked={Boolean(templateForm.stickyFollowUpAssignee)}
+                        onChange={(event) =>
+                          setTemplateForm((current) => ({
+                            ...current,
+                            stickyFollowUpAssignee: event.target.checked
+                          }))
+                        }
+                      />
+                    </label>
+                    <p className="inline-message">
+                      {templateForm.stickyFollowUpAssignee
+                        ? t("templates.follow_up_assignment_sticky")
+                        : t("templates.follow_up_assignment_flexible")}
+                    </p>
                     {templateForm.recurrenceType === "every_x_days" ? (
                       <label>
                         <span>{t("templates.interval_days")}</span>
@@ -8227,7 +8277,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <li>{t("assignment.round_robin")}</li>
                 <li>{t("assignment.least_completed_recently")}</li>
                 <li>{t("assignment.highest_streak")}</li>
-                <li>{t("assignment.manual_default")}</li>
+                <li>{t("templates.follow_up_assignment_sticky")}</li>
               </ul>
             </article>
           </section>

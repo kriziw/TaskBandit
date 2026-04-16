@@ -706,6 +706,7 @@ class TaskBanditMobileApi {
             supportsSeriesCancellation = entry.optBoolean("supportsSeriesCancellation"),
             assigneeId = entry.optNullableString("assigneeId"),
             assigneeDisplayName = entry.optNullableString("assigneeDisplayName"),
+            assignmentReason = entry.optNullableString("assignmentReason"),
             dueAt = entry.optString("dueAt"),
             completedAt = entry.optNullableString("completedAt"),
             cancelledAt = entry.optNullableString("cancelledAt"),
@@ -779,6 +780,7 @@ class TaskBanditMobileApi {
                             )
                         },
                         requirePhotoProof = item.optBoolean("requirePhotoProof"),
+                        stickyFollowUpAssignee = item.optBoolean("stickyFollowUpAssignee"),
                         recurrenceStartStrategy = item.optString("recurrenceStartStrategy").ifBlank { "due_at" },
                         variants = parseVariants(item.optJSONArray("variants"))
                     )

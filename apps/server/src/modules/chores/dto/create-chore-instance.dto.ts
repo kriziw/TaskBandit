@@ -89,6 +89,11 @@ export class CreateChoreInstanceDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
+  reassignAutomatically?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsUUID("4")
   variantId?: string;
 
