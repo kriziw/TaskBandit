@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.38.0](https://github.com/kriziw/TaskBandit/compare/v0.37.3...v0.38.0) (2026-04-16)
+
+
+### Features
+
+* refine chore assignment rebalancing ([#272](https://github.com/kriziw/TaskBandit/issues/272)) ([260b22b](https://github.com/kriziw/TaskBandit/commit/260b22b338a2b646e6d2c00a772c1a9df0e01615))
+
 ## [0.37.3](https://github.com/kriziw/TaskBandit/compare/v0.37.2...v0.37.3) (2026-04-16)
 
 
