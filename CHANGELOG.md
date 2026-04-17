@@ -2,6 +2,19 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.39.0](https://github.com/kriziw/TaskBandit/compare/v0.38.1...v0.39.0) (2026-04-17)
+
+
+### Features
+
+* **celebrations:** add clean sweep milestone ([#281](https://github.com/kriziw/TaskBandit/issues/281)) ([8c73058](https://github.com/kriziw/TaskBandit/commit/8c730589fe60f91407f9c931f5a230363e97887d))
+* **celebrations:** add richer completion variants ([#279](https://github.com/kriziw/TaskBandit/issues/279)) ([e6e483e](https://github.com/kriziw/TaskBandit/commit/e6e483eebc030c3340261e56214669962968ca61))
+
+
+### Bug Fixes
+
+* **notifications:** clarify push readiness baseline ([#278](https://github.com/kriziw/TaskBandit/issues/278)) ([db2bfdf](https://github.com/kriziw/TaskBandit/commit/db2bfdff7f7d706393c559fe1f5442887dc0e66b))
+
 ## [0.38.1](https://github.com/kriziw/TaskBandit/compare/v0.38.0...v0.38.1) (2026-04-16)
 
 
