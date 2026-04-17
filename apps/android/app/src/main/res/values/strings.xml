@@ -331,6 +331,11 @@
     <string name="mobile_celebration_chore_waste_2">Bins handled. Bandit calls that clean getaway work.</string>
     <string name="mobile_celebration_chore_plants_1">The leafy crew appreciates the support.</string>
     <string name="mobile_celebration_chore_plants_2">Plant care completed. Tiny jungle morale is up.</string>
+    <string name="mobile_celebration_perfect_day_title">Perfect Day!</string>
+    <string name="mobile_celebration_perfect_day_eyebrow">Clean Sweep</string>
+    <string name="mobile_celebration_perfect_day_phrase_1">Every assigned chore due today is clear. Bandit is doing a victory lap.</string>
+    <string name="mobile_celebration_perfect_day_phrase_2">The daily list is spotless. Tiny raccoon confetti is absolutely justified.</string>
+    <string name="mobile_celebration_perfect_day_phrase_3">No same-day chores left behind. That is household hero work.</string>
     <string name="mobile_queued_submissions">%1$d queued submission(s) waiting to sync</string>
     <string name="mobile_syncing_queue">Syncing queued chores...</string>
     <string name="mobile_queue_synced">Synced %1$d queued chore(s).</string>

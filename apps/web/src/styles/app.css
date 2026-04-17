@@ -673,6 +673,16 @@ h4,
     linear-gradient(145deg, rgba(251, 255, 246, 0.98), rgba(223, 241, 214, 0.96));
 }
 
+.celebration-dialog.celebration-variant-perfect {
+  border-color: rgba(255, 255, 255, 0.86);
+  background:
+    radial-gradient(circle at 88% 16%, rgba(255, 255, 255, 0.58), transparent 12rem),
+    radial-gradient(circle at 16% 10%, rgba(115, 217, 179, 0.58), transparent 13rem),
+    linear-gradient(145deg, rgba(27, 69, 71, 0.98), rgba(32, 116, 92, 0.95));
+  color: #f7fff7;
+  box-shadow: 0 40px 120px rgba(27, 69, 71, 0.38);
+}
+
 .celebration-confetti {
   position: absolute;
   inset: 0;
@@ -768,6 +778,22 @@ h4,
   background: #73d9b3;
 }
 
+.celebration-variant-perfect .celebration-confetti span {
+  background: #f7fff7;
+  box-shadow: 0 0 20px rgba(247, 255, 247, 0.7);
+}
+
+.celebration-variant-perfect .celebration-confetti span:nth-child(2),
+.celebration-variant-perfect .celebration-confetti span:nth-child(4),
+.celebration-variant-perfect .celebration-confetti span:nth-child(7) {
+  background: #73d9b3;
+}
+
+.celebration-variant-perfect .celebration-confetti span:nth-child(5),
+.celebration-variant-perfect .celebration-confetti span:nth-child(8) {
+  background: #fccc3d;
+}
+
 .celebration-mascot {
   position: relative;
   width: min(100%, 180px);
@@ -806,13 +832,20 @@ h4,
   color: #fff1a8;
 }
 
+.celebration-variant-perfect .celebration-points {
+  background: rgba(247, 255, 247, 0.18);
+  color: #f7fff7;
+}
+
 .celebration-chore {
   color: rgba(36, 48, 67, 0.74);
   font-weight: 800;
 }
 
 .celebration-variant-rare .celebration-chore,
-.celebration-variant-rare .celebration-quote {
+.celebration-variant-rare .celebration-quote,
+.celebration-variant-perfect .celebration-chore,
+.celebration-variant-perfect .celebration-quote {
   color: rgba(255, 248, 236, 0.88);
 }
 

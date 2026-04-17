@@ -430,6 +430,14 @@ export type ChoreAttachment = {
   createdAt: string;
 };
 
+export type CompletionMilestone = {
+  type: "perfect_day";
+  userId: string;
+  dayKey: string;
+  completedChoreCount: number;
+  messageIndex: number;
+};
+
 export type ChoreInstance = {
   id: string;
   templateId: string;
@@ -465,6 +473,7 @@ export type ChoreInstance = {
   checklist: ChoreTemplateChecklistItem[];
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
+  completionMilestone?: CompletionMilestone | null;
 };
 
 export type UploadedProof = {

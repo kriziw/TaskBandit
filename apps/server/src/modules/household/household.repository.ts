@@ -64,8 +64,24 @@ type AssignmentDecision = {
   locked: boolean;
   reason: AssignmentReasonType | null;
 };
+type CompletionMilestone = {
+  type: "perfect_day";
+  userId: string;
+  dayKey: string;
+  completedChoreCount: number;
+  messageIndex: number;
+};
 
 const assignmentFreezeWindowHours = 12;
+const perfectDayAuditAction = "milestone.perfect_day";
+const perfectDayBlockingStates = [
+  ChoreState.OPEN,
+  ChoreState.ASSIGNED,
+  ChoreState.IN_PROGRESS,
+  ChoreState.PENDING_APPROVAL,
+  ChoreState.NEEDS_FIXES,
+  ChoreState.OVERDUE
+];
 const activeAssignmentStates = [
   ChoreState.OPEN,
   ChoreState.ASSIGNED,
@@ -3359,6 +3375,7 @@ export class HouseholdRepository {
     });
 
     const updatedInstance = submissionResult.instance;
+    let completionMilestone: CompletionMilestone | null = null;
 
     if (submissionResult.didTransition && input.nextState === "completed") {
       const beneficiaryUserId = updatedInstance.assigneeId ?? input.actingUserId;
@@ -3435,9 +3452,20 @@ export class HouseholdRepository {
       await this.rebalanceFlexibleAssignments(input.householdId, {
         actorUserId: input.actingUserId
       });
+      if (updatedInstance.assigneeId) {
+        completionMilestone = await this.tryCreatePerfectDayMilestone({
+          householdId: input.householdId,
+          userId: updatedInstance.assigneeId,
+          actorUserId: input.actingUserId,
+          completedInstanceId: updatedInstance.id,
+          completedInstanceTitle: updatedInstance.title,
+          dueAtUtc: updatedInstance.dueAtUtc
+        });
+      }
     }
 
-    return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
+    const mappedInstance = this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
+    return completionMilestone ? { ...mappedInstance, completionMilestone } : mappedInstance;
   }
 
   async reviewInstance(input: {
@@ -3526,6 +3554,7 @@ export class HouseholdRepository {
     });
 
     const updatedInstance = reviewResult.instance;
+    let completionMilestone: CompletionMilestone | null = null;
 
     if (reviewResult.didTransition && input.approved) {
       const beneficiaryUserId = updatedInstance.assigneeId ?? updatedInstance.submittedById;
@@ -3589,9 +3618,20 @@ export class HouseholdRepository {
       await this.rebalanceFlexibleAssignments(input.householdId, {
         actorUserId: input.actingUserId
       });
+      if (updatedInstance.assigneeId) {
+        completionMilestone = await this.tryCreatePerfectDayMilestone({
+          householdId: input.householdId,
+          userId: updatedInstance.assigneeId,
+          actorUserId: input.actingUserId,
+          completedInstanceId: updatedInstance.id,
+          completedInstanceTitle: updatedInstance.title,
+          dueAtUtc: updatedInstance.dueAtUtc
+        });
+      }
     }
 
-    return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
+    const mappedInstance = this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
+    return completionMilestone ? { ...mappedInstance, completionMilestone } : mappedInstance;
   }
 
   async cancelInstance(
@@ -5107,6 +5147,106 @@ export class HouseholdRepository {
           label: this.resolveVariantLabel(v, this.normalizeSupportedLanguage(template.defaultLocale), language),
           translations: this.serializeVariantTranslations(v)
         }))
+    };
+  }
+
+  private getUtcDayWindow(date: Date) {
+    const start = new Date(date);
+    start.setUTCHours(0, 0, 0, 0);
+    const end = new Date(start.getTime() + 24 * 60 * 60 * 1000);
+
+    return {
+      start,
+      end,
+      dayKey: start.toISOString().slice(0, 10)
+    };
+  }
+
+  private getMilestoneMessageIndex(seed: string, poolSize: number) {
+    if (poolSize <= 1) {
+      return 0;
+    }
+
+    let hash = 0;
+    for (const character of seed) {
+      hash = (hash * 31 + character.charCodeAt(0)) % poolSize;
+    }
+
+    return hash;
+  }
+
+  private async tryCreatePerfectDayMilestone(input: {
+    householdId: string;
+    userId: string;
+    actorUserId: string;
+    completedInstanceId: string;
+    completedInstanceTitle: string;
+    dueAtUtc: Date;
+  }): Promise<CompletionMilestone | null> {
+    const { start, end, dayKey } = this.getUtcDayWindow(input.dueAtUtc);
+    const remainingBlockingChores = await this.prisma.choreInstance.count({
+      where: {
+        householdId: input.householdId,
+        assigneeId: input.userId,
+        dueAtUtc: {
+          gte: start,
+          lt: end
+        },
+        state: {
+          in: perfectDayBlockingStates
+        }
+      }
+    });
+
+    if (remainingBlockingChores > 0) {
+      return null;
+    }
+
+    const completedChoreCount = await this.prisma.choreInstance.count({
+      where: {
+        householdId: input.householdId,
+        assigneeId: input.userId,
+        dueAtUtc: {
+          gte: start,
+          lt: end
+        },
+        state: ChoreState.COMPLETED
+      }
+    });
+
+    if (completedChoreCount < 1) {
+      return null;
+    }
+
+    const entityId = `${input.userId}:${dayKey}`;
+    const existingMilestone = await this.prisma.auditLog.findFirst({
+      where: {
+        householdId: input.householdId,
+        action: perfectDayAuditAction,
+        entityType: "user",
+        entityId
+      }
+    });
+
+    if (existingMilestone) {
+      return null;
+    }
+
+    await this.recordAuditLog(this.prisma, {
+      householdId: input.householdId,
+      actorUserId: input.actorUserId,
+      action: perfectDayAuditAction,
+      entityType: "user",
+      entityId,
+      summary: `Perfect Day milestone unlocked after "${input.completedInstanceTitle}" cleared all assigned chores due on ${dayKey}.`
+    });
+
+    return {
+      type: "perfect_day",
+      userId: input.userId,
+      dayKey,
+      completedChoreCount,
+      messageIndex: this.getMilestoneMessageIndex(`${entityId}:${input.completedInstanceId}`, 3)
     };
   }
 

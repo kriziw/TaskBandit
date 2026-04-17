@@ -211,7 +211,8 @@ private data class MobileChoiceOption(
 private enum class MobileCompletionCelebrationVariant {
     STANDARD,
     RARE,
-    CHORE
+    CHORE,
+    PERFECT
 }
 
 private data class MobileCompletionCelebration(
@@ -252,6 +253,12 @@ private val mobileRareCelebrationPhraseResources = listOf(
     R.string.mobile_celebration_rare_phrase_3
 )
 
+private val mobilePerfectDayCelebrationPhraseResources = listOf(
+    R.string.mobile_celebration_perfect_day_phrase_1,
+    R.string.mobile_celebration_perfect_day_phrase_2,
+    R.string.mobile_celebration_perfect_day_phrase_3
+)
+
 private val mobileChoreAwareCelebrationGroups = listOf(
     MobileChoreAwareCelebrationGroup(
         keywords = listOf("kitchen", "dish", "dishwasher", "plate", "fridge", "oven"),
@@ -288,6 +295,14 @@ private fun pickRandomCelebrationResource(pool: List<Int>, previousResource: Int
     return nextResource
 }
 
+private fun pickDeterministicCelebrationResource(pool: List<Int>, index: Int): Int {
+    if (pool.isEmpty()) {
+        return R.string.mobile_celebration_phrase_1
+    }
+
+    return pool[kotlin.math.abs(index) % pool.size]
+}
+
 private fun buildMobileCompletionCelebration(
     chore: MobileChore,
     previousPhraseResource: Int
@@ -304,6 +319,17 @@ private fun buildMobileCompletionCelebration(
     val rareVariant = Random.nextInt(8) == 0
 
     return when {
+        chore.completionMilestone?.type == "perfect_day" -> MobileCompletionCelebration(
+            points = chore.awardedPoints.coerceAtLeast(0),
+            choreTitle = chore.typeTitle.ifBlank { chore.title },
+            titleResource = R.string.mobile_celebration_perfect_day_title,
+            eyebrowResource = R.string.mobile_celebration_perfect_day_eyebrow,
+            phraseResource = pickDeterministicCelebrationResource(
+                mobilePerfectDayCelebrationPhraseResources,
+                chore.completionMilestone.messageIndex
+            ),
+            variant = MobileCompletionCelebrationVariant.PERFECT
+        )
         rareVariant -> MobileCompletionCelebration(
             points = chore.awardedPoints.coerceAtLeast(0),
             choreTitle = chore.typeTitle.ifBlank { chore.title },
@@ -739,7 +765,15 @@ private fun TaskBanditApp(
                         }
                     }
                 }
-            }.onSuccess {
+            }.onSuccess { reviewedChore ->
+                if (reviewedChore.completionMilestone?.type == "perfect_day") {
+                    val celebration = buildMobileCompletionCelebration(
+                        reviewedChore,
+                        lastCompletionCelebrationPhraseResource
+                    )
+                    completionCelebration = celebration
+                    lastCompletionCelebrationPhraseResource = celebration.phraseResource
+                }
                 requestDashboardRefresh()
             }.onFailure { throwable ->
                 if (throwable is TaskBanditUnauthorizedException) {
@@ -4122,6 +4156,7 @@ private fun CompletionCelebrationDialog(
     val accentColor = when (celebration.variant) {
         MobileCompletionCelebrationVariant.RARE -> Color(0xFFFCCC3D)
         MobileCompletionCelebrationVariant.CHORE -> Color(0xFF73D9B3)
+        MobileCompletionCelebrationVariant.PERFECT -> Color(0xFF73D9B3)
         MobileCompletionCelebrationVariant.STANDARD -> MaterialTheme.colorScheme.primary
     }
 
@@ -4229,6 +4264,13 @@ private fun CelebrationConfettiBurst(
             Color(0xFF73D9B3),
             Color(0xFF637052),
             Color(0xFFD8B77E),
+            Color(0xFF9ED18B),
+            Color(0xFF73C9F4)
+        )
+        MobileCompletionCelebrationVariant.PERFECT -> listOf(
+            Color(0xFFFFFFFF),
+            Color(0xFF73D9B3),
+            Color(0xFFFCCC3D),
             Color(0xFF9ED18B),
             Color(0xFF73C9F4)
         )

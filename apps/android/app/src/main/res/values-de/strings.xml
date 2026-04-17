@@ -281,6 +281,11 @@
     <string name="mobile_celebration_chore_waste_2">Tonnen erledigt. Bandit nennt das saubere Fluchtarbeit.</string>
     <string name="mobile_celebration_chore_plants_1">Die gruene Crew weiss die Unterstuetzung zu schaetzen.</string>
     <string name="mobile_celebration_chore_plants_2">Pflanzenpflege erledigt. Kleine-Dschungel-Laune steigt.</string>
+    <string name="mobile_celebration_perfect_day_title">Perfekter Tag!</string>
+    <string name="mobile_celebration_perfect_day_eyebrow">Sauberer Durchlauf</string>
+    <string name="mobile_celebration_perfect_day_phrase_1">Alle zugewiesenen Aufgaben fuer heute sind erledigt. Bandit dreht eine Ehrenrunde.</string>
+    <string name="mobile_celebration_perfect_day_phrase_2">Die Tagesliste ist blitzblank. Kleine Waschbaer-Konfetti ist absolut verdient.</string>
+    <string name="mobile_celebration_perfect_day_phrase_3">Keine heutige Aufgabe blieb liegen. Das ist echte Haushaltsheldenarbeit.</string>
     <string name="mobile_queued_submissions">%1$d vorgemerkte Aufgabe(n) warten auf Synchronisierung</string>
     <string name="mobile_syncing_queue">Vorgemerkte Aufgaben werden synchronisiert...</string>
     <string name="mobile_queue_synced">%1$d vorgemerkte Aufgabe(n) wurden synchronisiert.</string>

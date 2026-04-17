@@ -35,6 +35,7 @@ TaskBandit now includes the first protected submission and review flow for chore
 - Child submissions move to `pending_approval`.
 - Approved submissions move to `completed`.
 - Completed chores can show cosmetic celebration variants in clients; these do not change task state, points, approvals, or scoring rules.
+- The Perfect Day/Clean Sweep milestone is server-triggered after a real completion transition when no assigned chores remain active or pending for that user's UTC due-date window; it is recorded once per user per day.
 - Rejected submissions move to `needs_fixes`.
 - Cancelling a repeating chore from the client cancels every still-open chore in that repeat and stops future repeats.
 - Admins can configure a signed takeover points rule in household settings: positive values reward the user who accepts a takeover, negative values deduct points when someone asks another member to take over.
