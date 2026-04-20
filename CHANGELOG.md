@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.40.0](https://github.com/kriziw/TaskBandit/compare/v0.39.0...v0.40.0) (2026-04-20)
+
+
+### Features
+
+* **server:** add hosted multi-tenant runtime foundation ([#283](https://github.com/kriziw/TaskBandit/issues/283)) ([f1633e5](https://github.com/kriziw/TaskBandit/commit/f1633e522d687da6e7bd7a14568a75847c82fce2))
+
 ## [0.39.0](https://github.com/kriziw/TaskBandit/compare/v0.38.1...v0.39.0) (2026-04-17)
 
 
