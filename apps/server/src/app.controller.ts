@@ -37,7 +37,8 @@ export class AppController {
     return {
       releaseVersion: this.config.releaseVersion,
       buildNumber: this.config.buildNumber,
-      commitSha: this.config.commitSha
+      commitSha: this.config.commitSha,
+      imageTag: this.config.imageTag || null
     };
   }
 }

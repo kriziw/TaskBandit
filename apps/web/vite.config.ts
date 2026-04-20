@@ -10,6 +10,7 @@ const releaseVersion =
   "0.0.0-dev";
 const buildNumber = process.env.VITE_TASKBANDIT_BUILD_NUMBER?.trim() || "local";
 const commitSha = process.env.VITE_TASKBANDIT_COMMIT_SHA?.trim() || "local";
+const imageTag = process.env.VITE_TASKBANDIT_WEB_IMAGE_TAG?.trim() || "";
 const entryPoints = {
   index: path.resolve(__dirname, "index.html"),
   admin: path.resolve(__dirname, "admin.html"),
@@ -30,7 +31,8 @@ export default defineConfig(({ mode }) => {
     define: {
       "import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION": JSON.stringify(releaseVersion),
       "import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER": JSON.stringify(buildNumber),
-      "import.meta.env.VITE_TASKBANDIT_COMMIT_SHA": JSON.stringify(commitSha)
+      "import.meta.env.VITE_TASKBANDIT_COMMIT_SHA": JSON.stringify(commitSha),
+      "import.meta.env.VITE_TASKBANDIT_WEB_IMAGE_TAG": JSON.stringify(imageTag)
     },
     base: "./",
     server: {

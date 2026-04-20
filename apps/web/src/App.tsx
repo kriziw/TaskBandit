@@ -717,6 +717,14 @@ function formatReleaseLabel(release: ReleaseInfo) {
   return `v${release.releaseVersion} · build ${release.buildNumber}`;
 }
 
+function formatReleaseDetails(release: ReleaseInfo) {
+  const commit = release.commitSha && release.commitSha !== "local"
+    ? `commit ${release.commitSha.slice(0, 12)}`
+    : null;
+  const image = release.imageTag ? `image ${release.imageTag}` : null;
+  return [commit, image].filter(Boolean).join(" | ");
+}
+
 type BeforeInstallPromptEvent = Event & {
   readonly platforms: string[];
   prompt: () => Promise<void>;
@@ -796,7 +804,8 @@ function sortByLabel<T>(items: T[], getLabel: (item: T) => string) {
 const currentWebReleaseInfo: ReleaseInfo = {
   releaseVersion: import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION ?? "0.0.0-dev",
   buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
-  commitSha: import.meta.env.VITE_TASKBANDIT_COMMIT_SHA ?? "local"
+  commitSha: import.meta.env.VITE_TASKBANDIT_COMMIT_SHA ?? "local",
+  imageTag: import.meta.env.VITE_TASKBANDIT_WEB_IMAGE_TAG ?? null
 };
 const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 
@@ -8504,11 +8513,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       <footer className="app-release-footer">
         <div className="app-release-footer-inner">
           <span className="app-release-chip">
-            {t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}
+            <span>{t("release.web_build").replace("{release}", formatReleaseLabel(currentWebReleaseInfo))}</span>
+            {formatReleaseDetails(currentWebReleaseInfo) ? (
+              <span className="app-release-detail">{formatReleaseDetails(currentWebReleaseInfo)}</span>
+            ) : null}
           </span>
           {serverReleaseInfo ? (
             <span className="app-release-chip">
-              {t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}
+              <span>{t("release.server_build").replace("{release}", formatReleaseLabel(serverReleaseInfo))}</span>
+              {formatReleaseDetails(serverReleaseInfo) ? (
+                <span className="app-release-detail">{formatReleaseDetails(serverReleaseInfo)}</span>
+              ) : null}
             </span>
           ) : null}
           {showAvailableUpdateNotice && availableUpdate ? (

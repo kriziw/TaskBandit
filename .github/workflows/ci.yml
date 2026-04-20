@@ -94,3 +94,4 @@ jobs:
             TASKBANDIT_RELEASE_VERSION=ci
             TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}
             TASKBANDIT_COMMIT_SHA=${{ github.sha }}
+            TASKBANDIT_IMAGE_TAG=taskbandit-${{ matrix.name }}:ci
