@@ -375,6 +375,7 @@ model ChoreAttachment {
   clientFilename String
   contentType   String?
   storageKey    String?
+  sizeBytes     Int           @default(0)
   createdAtUtc  DateTime      @default(now())
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   choreInstance ChoreInstance @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)

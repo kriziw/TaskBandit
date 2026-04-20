@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { randomUUID } from "node:crypto";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
@@ -14,12 +14,109 @@ type StoredProofUpload = {
   sizeBytes: number;
 };
 
+type TenantProofScope = {
+  tenantId: string;
+  householdId: string;
+};
+
+type ProofObjectStorageDriver = {
+  deleteObject(storageKey: string): Promise<void>;
+  listObjectKeys(prefix: string): Promise<string[]>;
+  readObject(storageKey: string): Promise<Buffer>;
+  writeObject(storageKey: string, body: Buffer): Promise<void>;
+};
+
+class LocalProofObjectStorageDriver implements ProofObjectStorageDriver {
+  constructor(private readonly rootPath: string) {}
+
+  async writeObject(storageKey: string, body: Buffer) {
+    const absolutePath = this.resolveAbsolutePath(storageKey);
+    await mkdir(path.dirname(absolutePath), { recursive: true });
+    await writeFile(absolutePath, body);
+  }
+
+  readObject(storageKey: string) {
+    return readFile(this.resolveAbsolutePath(storageKey));
+  }
+
+  async deleteObject(storageKey: string) {
+    await rm(this.resolveAbsolutePath(storageKey), {
+      force: true
+    });
+  }
+
+  async listObjectKeys(prefix: string) {
+    const baseDirectory = this.resolveAbsolutePath(prefix);
+
+    try {
+      const baseStat = await stat(baseDirectory);
+      if (!baseStat.isDirectory()) {
+        return [];
+      }
+    } catch {
+      return [];
+    }
+
+    const collected: string[] = [];
+    await this.walkDirectory(baseDirectory, collected);
+
+    return collected
+      .map((absolutePath) => this.toStorageKey(absolutePath))
+      .sort((left, right) => left.localeCompare(right));
+  }
+
+  private async walkDirectory(directoryPath: string, output: string[]) {
+    const entries = await readdir(directoryPath, {
+      withFileTypes: true
+    });
+
+    for (const entry of entries) {
+      const entryPath = path.join(directoryPath, entry.name);
+      if (entry.isDirectory()) {
+        await this.walkDirectory(entryPath, output);
+        continue;
+      }
+
+      if (entry.isFile()) {
+        output.push(entryPath);
+      }
+    }
+  }
+
+  private resolveAbsolutePath(storageKey: string) {
+    const normalizedKey = storageKey
+      .split("/")
+      .map((segment) => segment.trim())
+      .filter(Boolean)
+      .join(path.sep);
+    const absolutePath = path.resolve(this.rootPath, normalizedKey);
+    const relativePath = path.relative(this.rootPath, absolutePath);
+
+    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+      throw new BadRequestException({
+        message: "That proof upload path is invalid."
+      });
+    }
+
+    return absolutePath;
+  }
+
+  private toStorageKey(absolutePath: string) {
+    const relativePath = path.relative(this.rootPath, absolutePath);
+    return relativePath.split(path.sep).join(path.posix.sep);
+  }
+}
+
 @Injectable()
 export class ProofStorageService {
+  private readonly driver: ProofObjectStorageDriver;
+
   constructor(
     private readonly appConfigService: AppConfigService,
     private readonly i18nService: I18nService
-  ) {}
+  ) {
+    this.driver = new LocalProofObjectStorageDriver(this.appConfigService.storageRootPath);
+  }
 
   async storeProofUpload(
     file: Express.Multer.File | undefined,
@@ -44,11 +141,12 @@ export class ProofStorageService {
       : this.resolveExtensionFromMimeType(file.mimetype);
     const originalFilename = this.sanitizeFilename(file.originalname || "proof-image");
     const storedFilename = `${randomUUID()}${safeExtension}`;
-    const storageKey = path.posix.join("tenants", user.tenantId, "proofs", user.householdId, storedFilename);
-    const absolutePath = path.join(this.appConfigService.storageRootPath, ...storageKey.split("/"));
+    const storageKey = path.posix.join(
+      this.buildTenantProofPrefix(user.tenantId, user.householdId),
+      storedFilename
+    );
 
-    await mkdir(path.dirname(absolutePath), { recursive: true });
-    await writeFile(absolutePath, file.buffer);
+    await this.driver.writeObject(storageKey, file.buffer);
 
     return {
       clientFilename: originalFilename,
@@ -58,26 +156,40 @@ export class ProofStorageService {
     };
   }
 
-  async readProofUpload(storageKey: string) {
-    const absolutePath = this.resolveStoragePath(storageKey);
-    return readFile(absolutePath);
+  async readProofUpload(storageKey: string, scope: TenantProofScope) {
+    this.assertStorageKeyBelongsToScope(storageKey, scope);
+    return this.driver.readObject(storageKey);
   }
 
-  private resolveStoragePath(storageKey: string) {
-    const normalizedStorageKey = storageKey.trim();
-    const absolutePath = path.resolve(
-      this.appConfigService.storageRootPath,
-      ...normalizedStorageKey.split("/").filter(Boolean)
-    );
-    const relativePath = path.relative(this.appConfigService.storageRootPath, absolutePath);
+  async deleteProofUpload(storageKey: string, scope: TenantProofScope) {
+    this.assertStorageKeyBelongsToScope(storageKey, scope);
+    await this.driver.deleteObject(storageKey);
+  }
 
-    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+  async listProofObjectKeys(scope: TenantProofScope) {
+    return this.driver.listObjectKeys(this.buildTenantProofPrefix(scope.tenantId, scope.householdId));
+  }
+
+  buildTenantProofPrefix(tenantId: string, householdId: string) {
+    return path.posix.join("tenants", tenantId, "proofs", householdId);
+  }
+
+  assertStorageKeyBelongsToScope(storageKey: string, scope: TenantProofScope) {
+    const normalizedStorageKey = storageKey.trim();
+    const expectedPrefix = `${this.buildTenantProofPrefix(scope.tenantId, scope.householdId)}/`;
+
+    if (!normalizedStorageKey || !normalizedStorageKey.startsWith(expectedPrefix)) {
+      throw new BadRequestException({
+        message: "That proof upload path is invalid for this tenant."
+      });
+    }
+
+    const normalizedPath = normalizedStorageKey.split("/").filter(Boolean).join("/");
+    if (normalizedPath.includes("../") || normalizedPath.startsWith("..")) {
       throw new BadRequestException({
         message: "That proof upload path is invalid."
       });
     }
-
-    return absolutePath;
   }
 
   private sanitizeFilename(filename: string) {

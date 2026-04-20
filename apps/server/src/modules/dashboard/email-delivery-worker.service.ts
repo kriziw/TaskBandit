@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { SmtpService } from "../settings/smtp.service";
 
@@ -17,7 +18,8 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly smtpService: SmtpService,
-    private readonly appConfigService: AppConfigService
+    private readonly appConfigService: AppConfigService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
 
   async onApplicationBootstrap() {
@@ -59,6 +61,10 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
     }
   }
 
+  async runOnceForTenant(tenantId: string, limit = 25) {
+    return this.runInternal(limit, tenantId);
+  }
+
   private async runLoop(
     limit: number
   ): Promise<{ sentCount: number; failedCount: number; skippedCount: number }> {
@@ -80,9 +86,10 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
   }
 
   private async runInternal(
-    limit = 25
+    limit = 25,
+    tenantId?: string
   ): Promise<{ sentCount: number; failedCount: number; skippedCount: number }> {
-    const pendingNotifications = await this.repository.getPendingEmailNotifications(limit);
+    const pendingNotifications = await this.repository.getPendingEmailNotifications(limit, tenantId);
     if (pendingNotifications.length === 0) {
       return {
         sentCount: 0,
@@ -96,10 +103,25 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
     let skippedCount = 0;
 
     for (const notification of pendingNotifications) {
-      if (await this.repository.hasDeliverablePushDevice(notification.recipientUserId)) {
+      const decision = await this.tenantRuntimePolicyService.getActionDecision(
+        notification.tenantId,
+        "notification_delivery"
+      );
+      if (!decision.allowed) {
         skippedCount += 1;
         await this.repository.markNotificationEmailSkipped(
           notification.id,
+          notification.tenantId,
+          decision.reason ?? "Email fallback blocked."
+        );
+        continue;
+      }
+
+      if (await this.repository.hasDeliverablePushDevice(notification.recipientUserId, notification.tenantId)) {
+        skippedCount += 1;
+        await this.repository.markNotificationEmailSkipped(
+          notification.id,
+          notification.tenantId,
           "Email fallback skipped because a push-ready mobile device is now available."
         );
         continue;
@@ -109,6 +131,7 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
         skippedCount += 1;
         await this.repository.markNotificationEmailSkipped(
           notification.id,
+          notification.tenantId,
           "Email fallback skipped because the recipient does not have an email address."
         );
         continue;
@@ -118,6 +141,7 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
         skippedCount += 1;
         await this.repository.markNotificationEmailSkipped(
           notification.id,
+          notification.tenantId,
           "Email fallback skipped because SMTP is currently disabled."
         );
         continue;
@@ -131,6 +155,7 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
         skippedCount += 1;
         await this.repository.markNotificationEmailSkipped(
           notification.id,
+          notification.tenantId,
           "Email fallback skipped because SMTP is incomplete."
         );
         continue;
@@ -143,11 +168,12 @@ export class EmailDeliveryWorkerService implements OnApplicationBootstrap, OnMod
           text: notification.message
         });
         sentCount += 1;
-        await this.repository.markNotificationEmailSent(notification.id);
+        await this.repository.markNotificationEmailSent(notification.id, notification.tenantId);
       } catch (error) {
         failedCount += 1;
         await this.repository.markNotificationEmailFailed(
           notification.id,
+          notification.tenantId,
           error instanceof Error ? error.message : "Unknown SMTP delivery error."
         );
       }

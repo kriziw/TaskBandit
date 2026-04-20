@@ -4,14 +4,17 @@ import { AppConfigService } from "../../common/config/app-config.service";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { EmailDeliveryWorkerService } from "./email-delivery-worker.service";
 import { PushDeliveryWorkerService } from "./push-delivery-worker.service";
 import { ReminderWorkerService } from "./reminder-worker.service";
+import { TenantDataManifestService } from "./tenant-data-manifest.service";
 import { access, mkdir } from "node:fs/promises";
 import { constants } from "node:fs";
 import path from "node:path";
+import { ForbiddenException } from "@nestjs/common";
 
 @Injectable()
 export class DashboardService {
@@ -22,9 +25,11 @@ export class DashboardService {
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
     private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly reminderWorkerService: ReminderWorkerService,
     private readonly emailDeliveryWorkerService: EmailDeliveryWorkerService,
-    private readonly pushDeliveryWorkerService: PushDeliveryWorkerService
+    private readonly pushDeliveryWorkerService: PushDeliveryWorkerService,
+    private readonly tenantDataManifestService: TenantDataManifestService
   ) {}
 
   getSummary(user: AuthenticatedUser) {
@@ -36,7 +41,7 @@ export class DashboardService {
   }
 
   getNotifications(user: AuthenticatedUser) {
-    return this.repository.getNotifications(user.householdId, user.id);
+    return this.repository.getNotifications(user.tenantId, user.householdId, user.id);
   }
 
   createSyncToken(user: AuthenticatedUser) {
@@ -44,21 +49,24 @@ export class DashboardService {
   }
 
   markNotificationRead(user: AuthenticatedUser, notificationId: string) {
-    return this.repository.markNotificationRead(notificationId, user.householdId, user.id);
+    return this.repository.markNotificationRead(notificationId, user.tenantId, user.householdId, user.id);
   }
 
   markAllNotificationsRead(user: AuthenticatedUser) {
-    return this.repository.markAllNotificationsRead(user.householdId, user.id);
+    return this.repository.markAllNotificationsRead(user.tenantId, user.householdId, user.id);
   }
 
   processOverduePenalties(user: AuthenticatedUser) {
     return this.repository.processOverduePenalties(user.householdId, user.id);
   }
 
-  async processNotificationMaintenance() {
+  async processNotificationMaintenance(user: AuthenticatedUser) {
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "notification_enqueue");
     const [reminderResult, deliveryResult] = await Promise.all([
-      this.reminderWorkerService.runOnce(),
-      this.processNotificationDeliveries()
+      this.reminderWorkerService.runOnce({
+        tenantId: user.tenantId
+      }),
+      this.processNotificationDeliveries(user.tenantId)
     ]);
 
     return {
@@ -73,14 +81,16 @@ export class DashboardService {
   }
 
   async sendTestNotification(user: AuthenticatedUser, recipientUserId?: string) {
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "notification_enqueue");
     const notificationResult = await this.repository.createAdminTestNotification({
+      tenantId: user.tenantId,
       householdId: user.householdId,
       actorUserId: user.id,
       actorDisplayName: user.displayName,
       recipientUserId: recipientUserId ?? user.id
     });
 
-    const deliveryResult = await this.processNotificationDeliveries();
+    const deliveryResult = await this.processNotificationDeliveries(user.tenantId);
 
     return {
       recipientUserId: notificationResult.recipientUserId,
@@ -95,10 +105,14 @@ export class DashboardService {
     return this.repository.getNotificationRecovery(user.householdId);
   }
 
-  private async processNotificationDeliveries() {
+  private async processNotificationDeliveries(tenantId?: string) {
     const [pushDeliveryResult, emailDeliveryResult] = await Promise.all([
-      this.pushDeliveryWorkerService.runOnce(50),
-      this.emailDeliveryWorkerService.runOnce(50)
+      tenantId
+        ? this.pushDeliveryWorkerService.runOnceForTenant(tenantId, 50)
+        : this.pushDeliveryWorkerService.runOnce(50),
+      tenantId
+        ? this.emailDeliveryWorkerService.runOnceForTenant(tenantId, 50)
+        : this.emailDeliveryWorkerService.runOnce(50)
     ]);
 
     return {
@@ -111,8 +125,9 @@ export class DashboardService {
   }
 
   async retryPushDelivery(user: AuthenticatedUser, deliveryId: string) {
-    await this.repository.retryFailedPushDelivery(user.householdId, user.id, deliveryId);
-    const deliveryResult = await this.pushDeliveryWorkerService.runOnce(50);
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "notification_retry");
+    await this.repository.retryFailedPushDelivery(user.tenantId, user.householdId, user.id, deliveryId);
+    const deliveryResult = await this.pushDeliveryWorkerService.runOnceForTenant(user.tenantId, 50);
 
     return {
       deliveryId,
@@ -121,8 +136,9 @@ export class DashboardService {
   }
 
   async retryEmailDelivery(user: AuthenticatedUser, notificationId: string) {
-    await this.repository.retryFailedEmailDelivery(user.householdId, user.id, notificationId);
-    const deliveryResult = await this.emailDeliveryWorkerService.runOnce(50);
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "notification_retry");
+    await this.repository.retryFailedEmailDelivery(user.tenantId, user.householdId, user.id, notificationId);
+    const deliveryResult = await this.emailDeliveryWorkerService.runOnceForTenant(user.tenantId, 50);
 
     return {
       notificationId,
@@ -207,14 +223,26 @@ export class DashboardService {
   }
 
   getRuntimeLogs(limit = 200) {
+    if (this.appConfigService.hostedModeEnabled) {
+      throw new ForbiddenException("Runtime logs are available only in self-hosted mode.");
+    }
+
     return this.appLogService.getRecentEntries(limit);
   }
 
   async exportRuntimeLogsText() {
+    if (this.appConfigService.hostedModeEnabled) {
+      throw new ForbiddenException("Runtime logs are available only in self-hosted mode.");
+    }
+
     return this.appLogService.exportText();
   }
 
   exportRuntimeLogsJson(limit = 1000) {
+    if (this.appConfigService.hostedModeEnabled) {
+      throw new ForbiddenException("Runtime logs are available only in self-hosted mode.");
+    }
+
     return this.appLogService.exportJson(limit);
   }
 
@@ -290,6 +318,7 @@ export class DashboardService {
 
     return {
       checkedAt,
+      tenantRuntime: await this.tenantRuntimePolicyService.getTenantAccessState(user.tenantId),
       application: {
         status: "ready",
         port: this.appConfigService.port,
@@ -375,15 +404,21 @@ export class DashboardService {
     return {
       checkedAt,
       hostPaths: {
-        dataRootHint,
-        postgresDataPathHint,
-        appDataPathHint,
-        composeFileHint: this.appConfigService.composeFileHint || null,
-        envFileHint: this.appConfigService.envFileHint || null
+        dataRootHint: this.appConfigService.hostedModeEnabled ? null : dataRootHint,
+        postgresDataPathHint: this.appConfigService.hostedModeEnabled ? null : postgresDataPathHint,
+        appDataPathHint: this.appConfigService.hostedModeEnabled ? null : appDataPathHint,
+        composeFileHint: this.appConfigService.hostedModeEnabled
+          ? null
+          : this.appConfigService.composeFileHint || null,
+        envFileHint: this.appConfigService.hostedModeEnabled ? null : this.appConfigService.envFileHint || null
       },
       serverPaths: {
-        storageRootPath: this.appConfigService.storageRootPath,
-        runtimeLogFilePath: this.appConfigService.runtimeLogFilePath
+        storageRootPath: this.appConfigService.hostedModeEnabled
+          ? null
+          : this.appConfigService.storageRootPath,
+        runtimeLogFilePath: this.appConfigService.hostedModeEnabled
+          ? null
+          : this.appConfigService.runtimeLogFilePath
       },
       exports: {
         householdSnapshotReady: true,
@@ -397,6 +432,14 @@ export class DashboardService {
         pushConfigured: this.appConfigService.fcmEnabled
       }
     };
+  }
+
+  getTenantExportManifest(user: AuthenticatedUser) {
+    return this.tenantDataManifestService.buildExportManifest(user);
+  }
+
+  getTenantDeletionManifest(user: AuthenticatedUser) {
+    return this.tenantDataManifestService.buildDeletionManifest(user);
   }
 
   private escapeCsv(value: string) {
@@ -433,8 +476,8 @@ export class DashboardService {
 
       return {
         status: "ready" as const,
-        rootPath,
-        runtimeLogFilePath,
+        rootPath: this.appConfigService.hostedModeEnabled ? null : rootPath,
+        runtimeLogFilePath: this.appConfigService.hostedModeEnabled ? null : runtimeLogFilePath,
         runtimeLogMaxFileSizeMb: this.appConfigService.runtimeLogMaxFileSizeMb,
         runtimeLogMaxTotalSizeMb: this.appConfigService.runtimeLogMaxTotalSizeMb,
         dockerLogMaxSize: this.appConfigService.dockerLogMaxSize,
@@ -444,8 +487,8 @@ export class DashboardService {
     } catch (error) {
       return {
         status: "error" as const,
-        rootPath,
-        runtimeLogFilePath,
+        rootPath: this.appConfigService.hostedModeEnabled ? null : rootPath,
+        runtimeLogFilePath: this.appConfigService.hostedModeEnabled ? null : runtimeLogFilePath,
         runtimeLogMaxFileSizeMb: this.appConfigService.runtimeLogMaxFileSizeMb,
         runtimeLogMaxTotalSizeMb: this.appConfigService.runtimeLogMaxTotalSizeMb,
         dockerLogMaxSize: this.appConfigService.dockerLogMaxSize,

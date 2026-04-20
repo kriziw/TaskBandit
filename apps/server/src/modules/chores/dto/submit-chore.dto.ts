@@ -3,7 +3,9 @@ import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
   IsArray,
+  IsInt,
   IsOptional,
+  IsPositive,
   IsString,
   IsUUID,
   MaxLength,
@@ -26,6 +28,12 @@ export class SubmitAttachmentDto {
   @IsString()
   @MaxLength(255)
   storageKey!: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @IsPositive()
+  sizeBytes?: number;
 }
 
 export class SubmitChoreDto {

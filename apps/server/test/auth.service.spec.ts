@@ -1,6 +1,7 @@
 import { BadRequestException, ForbiddenException } from "@nestjs/common";
 import { AuthProvider, HouseholdRole } from "@prisma/client";
 import { createHash } from "node:crypto";
+import { sign } from "jsonwebtoken";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AuthService } from "../src/modules/auth/auth.service";
 
@@ -52,6 +53,9 @@ describe("AuthService", () => {
     household: {
       findFirst: ReturnType<typeof vi.fn>;
     };
+    user: {
+      findUniqueOrThrow: ReturnType<typeof vi.fn>;
+    };
     authIdentity: {
       findUnique: ReturnType<typeof vi.fn>;
       update: ReturnType<typeof vi.fn>;
@@ -95,6 +99,23 @@ describe("AuthService", () => {
     prisma = {
       household: {
         findFirst: vi.fn().mockResolvedValue(createHousehold())
+      },
+      user: {
+        findUniqueOrThrow: vi.fn().mockResolvedValue({
+          id: "user-1",
+          tenantId: "tenant-1",
+          householdId: "household-1",
+          displayName: "Alex",
+          role: HouseholdRole.ADMIN,
+          points: 12,
+          currentStreak: 3,
+          identities: [
+            {
+              provider: AuthProvider.LOCAL,
+              email: "alex@example.com"
+            }
+          ]
+        })
       },
       authIdentity: {
         findUnique: vi.fn().mockResolvedValue(null),
@@ -387,5 +408,27 @@ describe("AuthService", () => {
         email: "alex@example.com"
       }
     });
+  });
+
+  it("rejects a bearer token when the trusted host resolves to a different tenant", async () => {
+    tenantContextService.resolveFromRequestHost.mockResolvedValue({
+      tenantId: "tenant-2",
+      householdId: "household-2",
+      slug: "other-home",
+      displayName: "Other Home",
+      source: "hostname"
+    });
+
+    const token = sign(
+      {
+        sub: "user-1",
+        tenantId: "tenant-1",
+        householdId: "household-1",
+        role: "admin"
+      },
+      appConfigService.jwtSecret
+    );
+
+    await expect(service.getCurrentUser(`Bearer ${token}`, "en", "other.taskbandit.app")).rejects.toThrow();
   });
 });

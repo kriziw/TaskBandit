@@ -35,6 +35,7 @@ import {
 } from "../../common/i18n/supported-languages";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import {
   getStarterTemplateDefinitionsByKey,
   getStarterTemplateTranslations,
@@ -95,7 +96,8 @@ const rebalanceEligibleStates = [ChoreState.OPEN, ChoreState.ASSIGNED] as const;
 export class HouseholdRepository {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly appLogService: AppLogService
+    private readonly appLogService: AppLogService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
 
   async getBootstrapStatus() {
@@ -504,9 +506,10 @@ export class HouseholdRepository {
   }
 
   async getNotificationDevices(householdId: string, userId: string) {
-    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const membership = await this.ensureUserBelongsToHousehold(householdId, userId);
     const devices = await this.prisma.notificationDevice.findMany({
       where: {
+        tenantId: membership.tenantId,
         userId
       },
       orderBy: {
@@ -518,6 +521,7 @@ export class HouseholdRepository {
   }
 
   async getHouseholdNotificationHealth(householdId: string) {
+    const tenantId = await this.getTenantIdForHousehold(this.prisma, householdId);
     const [householdSettings, members] = await Promise.all([
       this.prisma.householdSettings.findUnique({
         where: {
@@ -526,6 +530,7 @@ export class HouseholdRepository {
       }),
       this.prisma.user.findMany({
         where: {
+          tenantId,
           householdId
         },
         include: {
@@ -592,40 +597,54 @@ export class HouseholdRepository {
     const installationId = dto.installationId.trim();
     const platform = this.mapNotificationDevicePlatform(dto.platform);
     const provider = this.mapNotificationDeviceProvider(dto.provider);
-    const notificationDevice = await this.prisma.notificationDevice.upsert({
+    const existingDevice = await this.prisma.notificationDevice.findUnique({
       where: {
         installationId
-      },
-      update: {
-        tenantId: membership.tenantId,
-        userId,
-        platform,
-        provider,
-        pushToken: dto.pushToken?.trim() || null,
-        webPushP256dh: dto.webPushP256dh?.trim() || null,
-        webPushAuth: dto.webPushAuth?.trim() || null,
-        deviceName: dto.deviceName?.trim() || null,
-        appVersion: dto.appVersion?.trim() || null,
-        locale: dto.locale?.trim() || null,
-        notificationsEnabled: dto.notificationsEnabled ?? true,
-        lastSeenAtUtc: new Date()
-      },
-      create: {
-        tenantId: membership.tenantId,
-        userId,
-        installationId,
-        platform,
-        provider,
-        pushToken: dto.pushToken?.trim() || null,
-        webPushP256dh: dto.webPushP256dh?.trim() || null,
-        webPushAuth: dto.webPushAuth?.trim() || null,
-        deviceName: dto.deviceName?.trim() || null,
-        appVersion: dto.appVersion?.trim() || null,
-        locale: dto.locale?.trim() || null,
-        notificationsEnabled: dto.notificationsEnabled ?? true,
-        lastSeenAtUtc: new Date()
       }
     });
+
+    if (existingDevice && existingDevice.tenantId !== membership.tenantId) {
+      throw new ForbiddenException({
+        message: "That notification device already belongs to a different tenant."
+      });
+    }
+
+    const notificationDevice = existingDevice
+      ? await this.prisma.notificationDevice.update({
+          where: {
+            id: existingDevice.id
+          },
+          data: {
+            userId,
+            platform,
+            provider,
+            pushToken: dto.pushToken?.trim() || null,
+            webPushP256dh: dto.webPushP256dh?.trim() || null,
+            webPushAuth: dto.webPushAuth?.trim() || null,
+            deviceName: dto.deviceName?.trim() || null,
+            appVersion: dto.appVersion?.trim() || null,
+            locale: dto.locale?.trim() || null,
+            notificationsEnabled: dto.notificationsEnabled ?? true,
+            lastSeenAtUtc: new Date()
+          }
+        })
+      : await this.prisma.notificationDevice.create({
+          data: {
+            tenantId: membership.tenantId,
+            userId,
+            installationId,
+            platform,
+            provider,
+            pushToken: dto.pushToken?.trim() || null,
+            webPushP256dh: dto.webPushP256dh?.trim() || null,
+            webPushAuth: dto.webPushAuth?.trim() || null,
+            deviceName: dto.deviceName?.trim() || null,
+            appVersion: dto.appVersion?.trim() || null,
+            locale: dto.locale?.trim() || null,
+            notificationsEnabled: dto.notificationsEnabled ?? true,
+            lastSeenAtUtc: new Date()
+          }
+        });
 
     await this.recordAuditLog(this.prisma, {
       householdId,
@@ -640,9 +659,11 @@ export class HouseholdRepository {
   }
 
   async deleteNotificationDevice(deviceId: string, householdId: string, userId: string) {
+    const membership = await this.ensureUserBelongsToHousehold(householdId, userId);
     const existingDevice = await this.prisma.notificationDevice.findFirst({
       where: {
         id: deviceId,
+        tenantId: membership.tenantId,
         userId,
         user: {
           householdId
@@ -674,15 +695,16 @@ export class HouseholdRepository {
     return this.getNotificationDevices(householdId, userId);
   }
 
-  async hasDeliverablePushDevice(recipientUserId: string) {
+  async hasDeliverablePushDevice(recipientUserId: string, tenantId: string) {
     const count = await this.prisma.notificationDevice.count({
-      where: this.buildDeliverablePushDeviceWhere(recipientUserId)
+      where: this.buildDeliverablePushDeviceWhere(recipientUserId, tenantId)
     });
 
     return count > 0;
   }
 
   async createAdminTestNotification(input: {
+    tenantId: string;
     householdId: string;
     actorUserId: string;
     actorDisplayName: string;
@@ -691,6 +713,7 @@ export class HouseholdRepository {
     const recipient = await this.prisma.user.findFirst({
       where: {
         id: input.recipientUserId,
+        tenantId: input.tenantId,
         householdId: input.householdId
       },
       select: {
@@ -732,10 +755,11 @@ export class HouseholdRepository {
     };
   }
 
-  async getPendingPushDeliveries(take = 25) {
+  async getPendingPushDeliveries(take = 25, tenantId?: string) {
     const deliveries = await this.prisma.notificationPushDelivery.findMany({
       where: {
-        status: NotificationPushDeliveryStatus.PENDING
+        status: NotificationPushDeliveryStatus.PENDING,
+        ...(tenantId ? { tenantId } : {})
       },
       include: {
         notification: true,
@@ -749,6 +773,8 @@ export class HouseholdRepository {
 
     return deliveries.map((delivery) => ({
       id: delivery.id,
+      tenantId: delivery.tenantId,
+      householdId: delivery.notification.householdId,
       notificationId: delivery.notificationId,
       notificationDeviceId: delivery.notificationDeviceId,
       title: delivery.notification.title,
@@ -840,7 +866,17 @@ export class HouseholdRepository {
     };
   }
 
-  async markPushDeliverySent(deliveryId: string, providerMessageId?: string | null) {
+  async markPushDeliverySent(deliveryId: string, tenantId: string, providerMessageId?: string | null) {
+    await this.prisma.notificationPushDelivery.findFirstOrThrow({
+      where: {
+        id: deliveryId,
+        tenantId
+      },
+      select: {
+        id: true
+      }
+    });
+
     await this.prisma.notificationPushDelivery.update({
       where: {
         id: deliveryId
@@ -854,7 +890,17 @@ export class HouseholdRepository {
     });
   }
 
-  async markPushDeliveryFailed(deliveryId: string, errorMessage: string) {
+  async markPushDeliveryFailed(deliveryId: string, tenantId: string, errorMessage: string) {
+    await this.prisma.notificationPushDelivery.findFirstOrThrow({
+      where: {
+        id: deliveryId,
+        tenantId
+      },
+      select: {
+        id: true
+      }
+    });
+
     await this.prisma.notificationPushDelivery.update({
       where: {
         id: deliveryId
@@ -867,10 +913,11 @@ export class HouseholdRepository {
     });
   }
 
-  async retryFailedPushDelivery(householdId: string, actorUserId: string, deliveryId: string) {
+  async retryFailedPushDelivery(tenantId: string, householdId: string, actorUserId: string, deliveryId: string) {
     const existingDelivery = await this.prisma.notificationPushDelivery.findFirst({
       where: {
         id: deliveryId,
+        tenantId,
         status: NotificationPushDeliveryStatus.FAILED,
         notification: {
           householdId
@@ -914,10 +961,11 @@ export class HouseholdRepository {
     });
   }
 
-  async getPendingEmailNotifications(take = 25) {
+  async getPendingEmailNotifications(take = 25, tenantId?: string) {
     const notifications = await this.prisma.notification.findMany({
       where: {
-        emailDeliveryStatus: NotificationEmailDeliveryStatus.PENDING
+        emailDeliveryStatus: NotificationEmailDeliveryStatus.PENDING,
+        ...(tenantId ? { tenantId } : {})
       },
       include: {
         household: {
@@ -948,6 +996,7 @@ export class HouseholdRepository {
 
     return notifications.map((notification) => ({
       id: notification.id,
+      tenantId: notification.tenantId,
       title: notification.title,
       message: notification.message,
       type: notification.type,
@@ -969,7 +1018,17 @@ export class HouseholdRepository {
     }));
   }
 
-  async markNotificationEmailSent(notificationId: string) {
+  async markNotificationEmailSent(notificationId: string, tenantId: string) {
+    await this.prisma.notification.findFirstOrThrow({
+      where: {
+        id: notificationId,
+        tenantId
+      },
+      select: {
+        id: true
+      }
+    });
+
     await this.prisma.notification.update({
       where: {
         id: notificationId
@@ -983,7 +1042,17 @@ export class HouseholdRepository {
     });
   }
 
-  async markNotificationEmailFailed(notificationId: string, errorMessage: string) {
+  async markNotificationEmailFailed(notificationId: string, tenantId: string, errorMessage: string) {
+    await this.prisma.notification.findFirstOrThrow({
+      where: {
+        id: notificationId,
+        tenantId
+      },
+      select: {
+        id: true
+      }
+    });
+
     await this.prisma.notification.update({
       where: {
         id: notificationId
@@ -996,7 +1065,17 @@ export class HouseholdRepository {
     });
   }
 
-  async markNotificationEmailSkipped(notificationId: string, reason: string) {
+  async markNotificationEmailSkipped(notificationId: string, tenantId: string, reason: string) {
+    await this.prisma.notification.findFirstOrThrow({
+      where: {
+        id: notificationId,
+        tenantId
+      },
+      select: {
+        id: true
+      }
+    });
+
     await this.prisma.notification.update({
       where: {
         id: notificationId
@@ -1009,10 +1088,16 @@ export class HouseholdRepository {
     });
   }
 
-  async retryFailedEmailDelivery(householdId: string, actorUserId: string, notificationId: string) {
+  async retryFailedEmailDelivery(
+    tenantId: string,
+    householdId: string,
+    actorUserId: string,
+    notificationId: string
+  ) {
     const existingNotification = await this.prisma.notification.findFirst({
       where: {
         id: notificationId,
+        tenantId,
         householdId,
         emailDeliveryStatus: NotificationEmailDeliveryStatus.FAILED
       },
@@ -1049,9 +1134,10 @@ export class HouseholdRepository {
     });
   }
 
-  async getNotifications(householdId: string, recipientUserId: string, take = 25) {
+  async getNotifications(tenantId: string, householdId: string, recipientUserId: string, take = 25) {
     const notifications = await this.prisma.notification.findMany({
       where: {
+        tenantId,
         householdId,
         recipientUserId
       },
@@ -1067,10 +1153,16 @@ export class HouseholdRepository {
     return notifications.map((entry) => this.mapNotification(entry));
   }
 
-  async markNotificationRead(notificationId: string, householdId: string, recipientUserId: string) {
+  async markNotificationRead(
+    notificationId: string,
+    tenantId: string,
+    householdId: string,
+    recipientUserId: string
+  ) {
     const existingNotification = await this.prisma.notification.findFirst({
       where: {
         id: notificationId,
+        tenantId,
         householdId,
         recipientUserId
       }
@@ -1092,12 +1184,13 @@ export class HouseholdRepository {
       }
     });
 
-    return this.getNotifications(householdId, recipientUserId);
+    return this.getNotifications(tenantId, householdId, recipientUserId);
   }
 
-  async markAllNotificationsRead(householdId: string, recipientUserId: string) {
+  async markAllNotificationsRead(tenantId: string, householdId: string, recipientUserId: string) {
     await this.prisma.notification.updateMany({
       where: {
+        tenantId,
         householdId,
         recipientUserId,
         isRead: false
@@ -1108,16 +1201,26 @@ export class HouseholdRepository {
       }
     });
 
-    return this.getNotifications(householdId, recipientUserId);
+    return this.getNotifications(tenantId, householdId, recipientUserId);
   }
 
   async processReminderNotifications(options: {
     now: Date;
     dueSoonWindowHours: number;
+    tenantIds?: string[];
   }) {
     const activeHouseholds = await this.prisma.householdSettings.findMany({
       where: {
-        enablePushNotifications: true
+        enablePushNotifications: true,
+        ...(options.tenantIds?.length
+          ? {
+              household: {
+                tenantId: {
+                  in: options.tenantIds
+                }
+              }
+            }
+          : {})
       },
       select: {
         householdId: true
@@ -1221,6 +1324,7 @@ export class HouseholdRepository {
     now: Date;
     summaryHourUtc: number;
     force?: boolean;
+    tenantIds?: string[];
   }) {
     if (!options.force && options.now.getUTCHours() !== options.summaryHourUtc) {
       return {
@@ -1230,7 +1334,16 @@ export class HouseholdRepository {
 
     const activeHouseholds = await this.prisma.householdSettings.findMany({
       where: {
-        enablePushNotifications: true
+        enablePushNotifications: true,
+        ...(options.tenantIds?.length
+          ? {
+              household: {
+                tenantId: {
+                  in: options.tenantIds
+                }
+              }
+            }
+          : {})
       },
       select: {
         householdId: true
@@ -1343,6 +1456,51 @@ export class HouseholdRepository {
     return {
       createdCount
     };
+  }
+
+  async getNotificationEnabledTenantIds() {
+    const rows = await this.prisma.householdSettings.findMany({
+      where: {
+        enablePushNotifications: true
+      },
+      select: {
+        household: {
+          select: {
+            tenantId: true
+          }
+        }
+      }
+    });
+
+    return [...new Set(rows.map((row) => row.household.tenantId))];
+  }
+
+  async getProofStorageUsage(tenantId: string, householdId: string) {
+    const aggregate = await this.prisma.choreAttachment.aggregate({
+      where: {
+        tenantId,
+        choreInstance: {
+          householdId
+        }
+      },
+      _sum: {
+        sizeBytes: true
+      }
+    });
+
+    return aggregate._sum.sizeBytes ?? 0;
+  }
+
+  async getCurrentMonthNotificationCount(tenantId: string, now = new Date()) {
+    const startOfMonthUtc = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1, 0, 0, 0, 0));
+    return this.prisma.notification.count({
+      where: {
+        tenantId,
+        createdAtUtc: {
+          gte: startOfMonthUtc
+        }
+      }
+    });
   }
 
   async processOverduePenalties(householdId: string, actorUserId?: string) {
@@ -2649,7 +2807,8 @@ export class HouseholdRepository {
       choreInstanceId: attachment.choreInstance.id,
       clientFilename: attachment.clientFilename,
       contentType: attachment.contentType,
-      storageKey: attachment.storageKey
+      storageKey: attachment.storageKey,
+      sizeBytes: attachment.sizeBytes
     };
   }
 
@@ -3367,7 +3526,8 @@ export class HouseholdRepository {
             submittedById: input.actingUserId,
             clientFilename: attachment.clientFilename?.trim() || "proof-image",
             contentType: attachment.contentType?.trim() || null,
-            storageKey: attachment.storageKey?.trim() || null
+            storageKey: attachment.storageKey?.trim() || null,
+            sizeBytes: attachment.sizeBytes ?? 0
           }))
         });
       }
@@ -5408,6 +5568,7 @@ export class HouseholdRepository {
         clientFilename: attachment.clientFilename,
         contentType: attachment.contentType,
         storageKey: attachment.storageKey,
+        sizeBytes: attachment.sizeBytes,
         createdAt: attachment.createdAtUtc
       }))
     };
@@ -5889,8 +6050,15 @@ export class HouseholdRepository {
     }
 
     const tenantId = await this.getTenantIdForHousehold(executor, input.householdId);
+    await this.tenantRuntimePolicyService.assertActionAllowed(tenantId, "notification_enqueue");
+    await this.tenantRuntimePolicyService.assertMonthlyNotificationLimit(
+      tenantId,
+      await this.getCurrentMonthNotificationCount(tenantId),
+      1
+    );
     const emailDeliveryStatus = await this.resolveNotificationEmailDeliveryStatus(
       executor,
+      tenantId,
       input.householdId,
       input.recipientUserId
     );
@@ -5916,11 +6084,12 @@ export class HouseholdRepository {
 
   private async resolveNotificationEmailDeliveryStatus(
     executor: PrismaExecutor,
+    tenantId: string,
     householdId: string,
     recipientUserId: string
   ) {
     const [deliverablePushDeviceCount, householdSettings, recipientIdentity] = await Promise.all([
-      this.getDeliverablePushDeviceCount(executor, recipientUserId),
+      this.getDeliverablePushDeviceCount(executor, recipientUserId, tenantId),
       executor.householdSettings.findUnique({
         where: {
           householdId
@@ -5964,8 +6133,16 @@ export class HouseholdRepository {
     recipientUserId: string,
     type: NotificationType
   ) {
+    const notification = await executor.notification.findUniqueOrThrow({
+      where: {
+        id: notificationId
+      },
+      select: {
+        tenantId: true
+      }
+    });
     const devices = await executor.notificationDevice.findMany({
-      where: this.buildDeliverablePushDeviceWhere(recipientUserId),
+      where: this.buildDeliverablePushDeviceWhere(recipientUserId, notification.tenantId),
       orderBy: {
         updatedAtUtc: "desc"
       }
@@ -6033,14 +6210,22 @@ export class HouseholdRepository {
     }
   }
 
-  private getDeliverablePushDeviceCount(executor: PrismaExecutor, recipientUserId: string) {
+  private getDeliverablePushDeviceCount(
+    executor: PrismaExecutor,
+    recipientUserId: string,
+    tenantId: string
+  ) {
     return executor.notificationDevice.count({
-      where: this.buildDeliverablePushDeviceWhere(recipientUserId)
+      where: this.buildDeliverablePushDeviceWhere(recipientUserId, tenantId)
     });
   }
 
-  private buildDeliverablePushDeviceWhere(recipientUserId: string): Prisma.NotificationDeviceWhereInput {
+  private buildDeliverablePushDeviceWhere(
+    recipientUserId: string,
+    tenantId?: string
+  ): Prisma.NotificationDeviceWhereInput {
     return {
+      ...(tenantId ? { tenantId } : {}),
       userId: recipientUserId,
       notificationsEnabled: true,
       OR: [

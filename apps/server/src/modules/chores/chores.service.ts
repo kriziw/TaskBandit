@@ -2,6 +2,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { DashboardSyncService } from "../dashboard/dashboard-sync.service";
 import { PointsService } from "../gamification/points.service";
 import { HouseholdRepository } from "../household/household.repository";
@@ -19,6 +20,7 @@ export class ChoresService {
     private readonly repository: HouseholdRepository,
     private readonly pointsService: PointsService,
     private readonly i18nService: I18nService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly proofStorageService: ProofStorageService,
     private readonly dashboardSyncService: DashboardSyncService
   ) {}
@@ -340,6 +342,21 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
+    return this.handleProofUpload(file, user, language);
+  }
+
+  private async handleProofUpload(
+    file: Express.Multer.File | undefined,
+    user: AuthenticatedUser,
+    language: SupportedLanguage
+  ) {
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "proof_upload");
+    const currentUsageBytes = await this.repository.getProofStorageUsage(user.tenantId, user.householdId);
+    await this.tenantRuntimePolicyService.assertStorageBytesLimit(
+      user.tenantId,
+      currentUsageBytes,
+      file?.size ?? 0
+    );
     return this.proofStorageService.storeProofUpload(file, user, language);
   }
 
@@ -354,7 +371,10 @@ export class ChoresService {
     }
 
     try {
-      const fileBuffer = await this.proofStorageService.readProofUpload(attachment.storageKey);
+      const fileBuffer = await this.proofStorageService.readProofUpload(attachment.storageKey, {
+        tenantId: user.tenantId,
+        householdId: user.householdId
+      });
       return {
         ...attachment,
         fileBuffer
