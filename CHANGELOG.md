@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.41.0](https://github.com/kriziw/TaskBandit/compare/v0.40.0...v0.41.0) (2026-04-20)
+
+
+### Features
+
+* expose runtime container build metadata ([#286](https://github.com/kriziw/TaskBandit/issues/286)) ([2db08eb](https://github.com/kriziw/TaskBandit/commit/2db08eb8f9303a9d66c7aebded0832e5bd446c1e))
+
 ## [0.40.0](https://github.com/kriziw/TaskBandit/compare/v0.39.0...v0.40.0) (2026-04-20)
 
 
