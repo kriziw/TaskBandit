@@ -3,6 +3,7 @@ import { Injectable } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { EmailDeliveryWorkerService } from "./email-delivery-worker.service";
@@ -20,6 +21,7 @@ export class DashboardService {
     private readonly appLogService: AppLogService,
     private readonly prisma: PrismaService,
     private readonly authService: AuthService,
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
     private readonly reminderWorkerService: ReminderWorkerService,
     private readonly emailDeliveryWorkerService: EmailDeliveryWorkerService,
     private readonly pushDeliveryWorkerService: PushDeliveryWorkerService
@@ -225,14 +227,18 @@ export class DashboardService {
       this.getStorageStatus()
     ]);
 
+    const hostedRuntimeConfig = await this.hostedRuntimeConfigService.getTenantRuntimeConfig(user.tenantId);
+    const hostedOidcConfig = hostedRuntimeConfig?.hostedOidcConfig;
     const localAuthForcedByConfig = this.appConfigService.forceLocalAuthEnabled;
     const localAuthEffective = localAuthForcedByConfig || household.settings.localAuthEnabled;
     const oidcSource =
-      household.settings.oidcEnabled && household.settings.oidcAuthority && household.settings.oidcClientId
-        ? "ui"
-        : this.appConfigService.oidcFallbackConfig.enabled
-          ? "env"
-          : "none";
+      hostedOidcConfig?.enabled && hostedOidcConfig.issuer && hostedOidcConfig.clientId
+        ? "control_plane"
+        : household.settings.oidcEnabled && household.settings.oidcAuthority && household.settings.oidcClientId
+          ? "ui"
+          : this.appConfigService.oidcFallbackConfig.enabled
+            ? "env"
+            : "none";
     const oidcEffective = oidcSource !== "none";
     const authStatus =
       localAuthEffective || oidcEffective
@@ -303,11 +309,15 @@ export class DashboardService {
         oidcEffective,
         oidcSource,
         oidcAuthority:
-          oidcSource === "ui"
+          oidcSource === "control_plane"
+            ? hostedOidcConfig?.issuer ?? ""
+            : oidcSource === "ui"
             ? household.settings.oidcAuthority
             : this.appConfigService.oidcFallbackConfig.authority,
         oidcClientId:
-          oidcSource === "ui"
+          oidcSource === "control_plane"
+            ? hostedOidcConfig?.clientId ?? ""
+            : oidcSource === "ui"
             ? household.settings.oidcClientId
             : this.appConfigService.oidcFallbackConfig.clientId
       },

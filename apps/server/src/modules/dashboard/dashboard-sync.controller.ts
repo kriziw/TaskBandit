@@ -1,5 +1,6 @@
-import { Controller, Header, Headers, MessageEvent, Query, Sse, UnauthorizedException } from "@nestjs/common";
+import { Controller, Header, Headers, MessageEvent, Query, Req, Sse, UnauthorizedException } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
+import type { Request } from "express";
 import { Observable } from "rxjs";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { AuthService } from "../auth/auth.service";
@@ -18,6 +19,7 @@ export class DashboardSyncController {
   @Header("Cache-Control", "no-cache")
   @Header("X-Accel-Buffering", "no")
   async streamClientSync(
+    @Req() request: Request,
     @Query("token") token: string | undefined,
     @Headers("accept-language") acceptLanguage?: string
   ): Promise<Observable<MessageEvent>> {
@@ -29,7 +31,12 @@ export class DashboardSyncController {
       });
     }
 
-    const user = await this.authService.getCurrentUserFromDashboardSyncToken(token, language);
+    const forwardedHost = request.headers["x-forwarded-host"];
+    const requestHost =
+      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() ||
+      request.get("host") ||
+      null;
+    const user = await this.authService.getCurrentUserFromDashboardSyncToken(token, language, requestHost);
     return this.dashboardSyncService.streamForHousehold(user.householdId);
   }
 }

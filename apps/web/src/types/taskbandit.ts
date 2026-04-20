@@ -25,6 +25,7 @@ export type ChoreState =
 
 export type AuthenticatedUser = {
   id: string;
+  tenantId: string;
   householdId: string;
   displayName: string;
   role: HouseholdRole;
@@ -39,6 +40,7 @@ export type AuthResponse = {
   expiresIn: string;
   user: {
     id: string;
+    tenantId: string;
     householdId: string;
     role: HouseholdRole;
     email: string | null;
@@ -184,7 +186,7 @@ export type HouseholdSettings = {
   oidcClientSecretConfigured: boolean;
   oidcScope: string;
   oidcEffective: boolean;
-  oidcSource: "ui" | "env" | "none";
+  oidcSource: "ui" | "env" | "control_plane" | "none";
   smtpEnabled: boolean;
   smtpHost: string;
   smtpPort: number;
@@ -265,7 +267,7 @@ export type AdminSystemStatus = {
     localAuthEffective: boolean;
     oidcEnabled: boolean;
     oidcEffective: boolean;
-    oidcSource: "ui" | "env" | "none";
+    oidcSource: "ui" | "env" | "control_plane" | "none";
     oidcAuthority: string;
     oidcClientId: string;
   };

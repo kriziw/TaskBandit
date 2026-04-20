@@ -123,10 +123,28 @@ enum ChoreTakeoverRequestStatus {
   CANCELLED
 }
 
+model Tenant {
+  id           String               @id @default(uuid()) @db.Uuid
+  slug         String               @unique
+  displayName  String
+  createdAtUtc DateTime             @default(now())
+  household    Household?
+  members      User[]
+  attachments  ChoreAttachment[]
+  auditLogs    AuditLog[]
+  pointsLedgerEntries PointsLedgerEntry[]
+  notifications Notification[]
+  notificationPreferences NotificationPreference[]
+  notificationDevices NotificationDevice[]
+  pushDeliveries NotificationPushDelivery[]
+}
+
 model Household {
   id             String              @id @default(uuid()) @db.Uuid
+  tenantId       String              @unique @db.Uuid
   name           String
   createdAtUtc   DateTime            @default(now())
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   settings       HouseholdSettings?
   members        User[]
   choreTemplates ChoreTemplate[]
@@ -164,12 +182,14 @@ model HouseholdSettings {
 
 model User {
   id            String        @id @default(uuid()) @db.Uuid
+  tenantId      String        @db.Uuid
   householdId   String        @db.Uuid
   displayName   String
   role          HouseholdRole
   points        Int           @default(0)
   currentStreak Int           @default(0)
   createdAtUtc  DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   household     Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
   identities    AuthIdentity[]
   auditLogs     AuditLog[]    @relation("AuditActor")
@@ -349,17 +369,20 @@ model ChoreChecklistCompletion {
 
 model ChoreAttachment {
   id            String        @id @default(uuid()) @db.Uuid
+  tenantId       String       @db.Uuid
   choreInstanceId String      @db.Uuid
   submittedById String        @db.Uuid
   clientFilename String
   contentType   String?
   storageKey    String?
   createdAtUtc  DateTime      @default(now())
+  tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   choreInstance ChoreInstance @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)
 }
 
 model AuditLog {
   id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
   householdId     String   @db.Uuid
   actorUserId     String?  @db.Uuid
   action          String
@@ -367,29 +390,35 @@ model AuditLog {
   entityId        String?
   summary         String
   createdAtUtc    DateTime @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
   actor           User?     @relation("AuditActor", fields: [actorUserId], references: [id], onDelete: SetNull)
 
+  @@index([tenantId, createdAtUtc])
   @@index([householdId, createdAtUtc])
 }
 
 model PointsLedgerEntry {
   id             String    @id @default(uuid()) @db.Uuid
+  tenantId       String   @db.Uuid
   householdId     String   @db.Uuid
   userId          String   @db.Uuid
   choreInstanceId String?  @db.Uuid
   amount          Int
   reason          String
   createdAtUtc    DateTime @default(now())
+  tenant         Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   household       Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
   user            User      @relation("PointsLedgerUser", fields: [userId], references: [id], onDelete: Cascade)
 
+  @@index([tenantId, createdAtUtc])
   @@index([householdId, createdAtUtc])
   @@index([userId, createdAtUtc])
 }
 
 model Notification {
   id                      String                          @id @default(uuid()) @db.Uuid
+  tenantId                String                          @db.Uuid
   householdId             String                          @db.Uuid
   recipientUserId         String                          @db.Uuid
   type                    NotificationType
@@ -404,16 +433,19 @@ model Notification {
   emailLastAttemptedAtUtc DateTime?
   createdAtUtc            DateTime                        @default(now())
   readAtUtc               DateTime?
+  tenant                  Tenant                          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   household               Household                       @relation(fields: [householdId], references: [id], onDelete: Cascade)
   recipient               User                            @relation("NotificationRecipient", fields: [recipientUserId], references: [id], onDelete: Cascade)
   pushDeliveries          NotificationPushDelivery[]
 
+  @@index([tenantId, recipientUserId, createdAtUtc])
   @@index([householdId, recipientUserId, createdAtUtc])
   @@index([recipientUserId, isRead, createdAtUtc])
   @@index([emailDeliveryStatus, createdAtUtc])
 }
 
 model NotificationPreference {
+  tenantId                String   @db.Uuid
   userId                  String   @id @db.Uuid
   receiveAssignments      Boolean  @default(true)
   receiveReviewUpdates    Boolean  @default(true)
@@ -421,11 +453,15 @@ model NotificationPreference {
   receiveOverdueAlerts    Boolean  @default(true)
   receiveDailySummary     Boolean  @default(true)
   updatedAtUtc            DateTime @updatedAt
+  tenant                  Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                    User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([tenantId, updatedAtUtc])
 }
 
 model NotificationDevice {
   id                   String                     @id @default(uuid()) @db.Uuid
+  tenantId             String                     @db.Uuid
   userId               String                     @db.Uuid
   installationId       String                     @unique
   platform             NotificationDevicePlatform
@@ -440,14 +476,17 @@ model NotificationDevice {
   lastSeenAtUtc        DateTime                   @default(now())
   createdAtUtc         DateTime                   @default(now())
   updatedAtUtc         DateTime                   @updatedAt
+  tenant               Tenant                     @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   user                 User                       @relation(fields: [userId], references: [id], onDelete: Cascade)
   pushDeliveries       NotificationPushDelivery[]
 
+  @@index([tenantId, notificationsEnabled, updatedAtUtc])
   @@index([userId, notificationsEnabled, updatedAtUtc])
 }
 
 model NotificationPushDelivery {
   id                   String                         @id @default(uuid()) @db.Uuid
+  tenantId             String                         @db.Uuid
   notificationId       String                         @db.Uuid
   notificationDeviceId String                         @db.Uuid
   status               NotificationPushDeliveryStatus @default(PENDING)
@@ -456,9 +495,11 @@ model NotificationPushDelivery {
   attemptedAtUtc       DateTime?
   createdAtUtc         DateTime                       @default(now())
   updatedAtUtc         DateTime                       @updatedAt
+  tenant               Tenant                         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   notification         Notification                   @relation(fields: [notificationId], references: [id], onDelete: Cascade)
   notificationDevice   NotificationDevice             @relation(fields: [notificationDeviceId], references: [id], onDelete: Cascade)
 
   @@unique([notificationId, notificationDeviceId], map: "notification_push_delivery_unique")
+  @@index([tenantId, status, updatedAtUtc])
   @@index([status, updatedAtUtc])
 }

@@ -27,8 +27,8 @@ export class AuthController {
   ) {}
 
   @Get("providers")
-  providers() {
-    return this.authService.getProviders();
+  providers(@Req() request: Request) {
+    return this.authService.getProviders(this.buildRequestHost(request));
   }
 
   @Get("oidc/start")
@@ -44,7 +44,11 @@ export class AuthController {
     const safeReturnTo = this.normalizeReturnTo(request, returnTo);
     try {
       const state = this.authService.createOidcState(safeReturnTo, language);
-      const authorizationUrl = await this.authService.buildOidcAuthorizationUrl(callbackUrl, state);
+      const authorizationUrl = await this.authService.buildOidcAuthorizationUrl(
+        callbackUrl,
+        state,
+        this.buildRequestHost(request)
+      );
       response.redirect(authorizationUrl);
     } catch (error) {
       response.redirect(
@@ -87,7 +91,8 @@ export class AuthController {
       const authResponse = await this.authService.completeOidcLogin(
         code,
         callbackUrl,
-        parsedState.language
+        parsedState.language,
+        this.buildRequestHost(request)
       );
 
       response.redirect(
@@ -105,15 +110,15 @@ export class AuthController {
   }
 
   @Post("login")
-  login(@Body() dto: LoginDto, @Headers("accept-language") acceptLanguage?: string) {
+  login(@Body() dto: LoginDto, @Req() request: Request, @Headers("accept-language") acceptLanguage?: string) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.login(dto, language);
+    return this.authService.login(dto, language, this.buildRequestHost(request));
   }
 
   @Post("signup")
-  signup(@Body() dto: SignupDto, @Headers("accept-language") acceptLanguage?: string) {
+  signup(@Body() dto: SignupDto, @Req() request: Request, @Headers("accept-language") acceptLanguage?: string) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.signup(dto, language);
+    return this.authService.signup(dto, language, this.buildRequestHost(request));
   }
 
   @Post("password-reset/request")
@@ -126,26 +131,29 @@ export class AuthController {
     return this.authService.requestPasswordReset(
       dto,
       this.buildPasswordResetUrl(request),
-      language
+      language,
+      this.buildRequestHost(request)
     );
   }
 
   @Post("password-reset/complete")
   completePasswordReset(
     @Body() dto: CompletePasswordResetDto,
+    @Req() request: Request,
     @Headers("accept-language") acceptLanguage?: string
   ) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.completePasswordReset(dto, language);
+    return this.authService.completePasswordReset(dto, language, this.buildRequestHost(request));
   }
 
   @Get("me")
   me(
+    @Req() request: Request,
     @Headers("authorization") authorizationHeader: string | undefined,
     @Headers("accept-language") acceptLanguage?: string
   ) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.getCurrentUser(authorizationHeader, language);
+    return this.authService.getCurrentUser(authorizationHeader, language, this.buildRequestHost(request));
   }
 
   private buildOidcCallbackUrl(request: Request) {
@@ -230,6 +238,15 @@ export class AuthController {
       request.get("host");
 
     return `${protocol}://${host}`;
+  }
+
+  private buildRequestHost(request: Request) {
+    const forwardedHost = request.headers["x-forwarded-host"];
+    return (
+      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() ||
+      request.get("host") ||
+      null
+    );
   }
 
   private readAuthErrorMessage(error: unknown, fallback = "OIDC sign-in failed.") {
