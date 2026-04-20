@@ -45,6 +45,35 @@ Before first real use, edit `.env`:
 - leave the default log safety limits in place unless you have a reason to change them: the persistent runtime log rotates at `100 MB` with a `500 MB` total cap, and Docker container logs rotate at `100 MB` with `5` retained files per container
 - only use the advanced overrides (`TASKBANDIT_CORS_ALLOWED_ORIGINS`, `TASKBANDIT_REVERSE_PROXY_ENABLED`) if you intentionally need custom browser-origin or proxy behavior
 
+## Hosted Runtime Mode
+
+TaskBandit stays self-hosted-first, but the runtime can now also run in shared hosted mode behind the private control plane.
+
+Use self-hosted mode when:
+
+- one deployment serves one household
+- auth, SMTP, and storage settings are managed locally
+- you do not need tenant subdomain routing
+
+Use hosted mode when:
+
+- one deployment serves many family tenants
+- tenant identity comes from subdomains such as `family-a.taskbandit.app`
+- the private control plane is authoritative for hosted OIDC and other operator-managed config
+
+Hosted mode adds these server environment variables:
+
+```env
+TASKBANDIT_HOSTED_MODE=true
+TASKBANDIT_CONTROL_PLANE_RUNTIME_BASE_URL=https://control.taskbandit.example.com
+TASKBANDIT_CONTROL_PLANE_INTERNAL_SERVICE_TOKEN=replace-me
+TASKBANDIT_HOSTED_RUNTIME_CONFIG_CACHE_TTL_MS=60000
+```
+
+`TASKBANDIT_HOSTED_TENANT_ID` is optional and is mainly for background workers or single-tenant maintenance processes that do not receive a tenant hostname on incoming requests.
+
+In hosted mode, the runtime keeps self-hosted defaults for anything the control plane does not yet override, while blocking household-managed hosted OIDC and SMTP edits from the public runtime UI.
+
 Example domain setup:
 
 ```env

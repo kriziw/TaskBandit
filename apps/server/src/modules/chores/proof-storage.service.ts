@@ -44,7 +44,7 @@ export class ProofStorageService {
       : this.resolveExtensionFromMimeType(file.mimetype);
     const originalFilename = this.sanitizeFilename(file.originalname || "proof-image");
     const storedFilename = `${randomUUID()}${safeExtension}`;
-    const storageKey = path.posix.join("proofs", user.householdId, storedFilename);
+    const storageKey = path.posix.join("tenants", user.tenantId, "proofs", user.householdId, storedFilename);
     const absolutePath = path.join(this.appConfigService.storageRootPath, ...storageKey.split("/"));
 
     await mkdir(path.dirname(absolutePath), { recursive: true });

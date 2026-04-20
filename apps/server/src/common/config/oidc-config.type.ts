@@ -4,5 +4,5 @@ export type OidcConfig = {
   clientId: string;
   clientSecret: string;
   scope: string;
-  source: "ui" | "env" | "none";
+  source: "ui" | "env" | "control_plane" | "none";
 };

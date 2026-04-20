@@ -57,4 +57,20 @@ describe("AppConfigService", () => {
       "https://api.taskbandit.example.com"
     ]);
   });
+
+  it("reads hosted runtime settings for shared SaaS deployments", () => {
+    const service = createService({
+      TASKBANDIT_HOSTED_MODE: "true",
+      TASKBANDIT_HOSTED_TENANT_ID: "tenant-123",
+      TASKBANDIT_CONTROL_PLANE_RUNTIME_BASE_URL: "https://control.taskbandit.example.com/",
+      TASKBANDIT_CONTROL_PLANE_INTERNAL_SERVICE_TOKEN: "internal-token",
+      TASKBANDIT_HOSTED_RUNTIME_CONFIG_CACHE_TTL_MS: "120000"
+    });
+
+    expect(service.hostedModeEnabled).toBe(true);
+    expect(service.hostedTenantId).toBe("tenant-123");
+    expect(service.controlPlaneRuntimeBaseUrl).toBe("https://control.taskbandit.example.com");
+    expect(service.controlPlaneInternalServiceToken).toBe("internal-token");
+    expect(service.hostedRuntimeConfigCacheTtlMs).toBe(120000);
+  });
 });

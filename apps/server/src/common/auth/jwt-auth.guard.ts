@@ -17,6 +17,7 @@ export class JwtAuthGuard implements CanActivate {
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<{
       headers: Record<string, string | undefined>;
+      get?: (header: string) => string | undefined;
       user?: unknown;
     }>();
     const language = this.i18nService.resolveLanguage(request.headers["accept-language"]);
@@ -28,8 +29,11 @@ export class JwtAuthGuard implements CanActivate {
       });
     }
 
-    request.user = await this.authService.getCurrentUser(authorizationHeader, language);
+    request.user = await this.authService.getCurrentUser(
+      authorizationHeader,
+      language,
+      request.headers["x-forwarded-host"] ?? request.get?.("host") ?? null
+    );
     return true;
   }
 }
-

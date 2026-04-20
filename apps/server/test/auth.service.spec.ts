@@ -26,6 +26,7 @@ const createHousehold = (
   overrides: Partial<HouseholdSettingsFixture> = {}
 ) => ({
   id: "household-1",
+  tenantId: "tenant-1",
   settings: {
     localAuthEnabled: true,
     selfSignupEnabled: true,
@@ -82,6 +83,12 @@ describe("AuthService", () => {
   let smtpService: {
     sendMail: ReturnType<typeof vi.fn>;
   };
+  let tenantContextService: {
+    resolveFromRequestHost: ReturnType<typeof vi.fn>;
+  };
+  let hostedRuntimeConfigService: {
+    getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
+  };
   let service: AuthService;
 
   beforeEach(() => {
@@ -135,12 +142,26 @@ describe("AuthService", () => {
     smtpService = {
       sendMail: vi.fn().mockResolvedValue(undefined)
     };
+    tenantContextService = {
+      resolveFromRequestHost: vi.fn().mockResolvedValue({
+        tenantId: "tenant-1",
+        householdId: "household-1",
+        slug: "taskbandit-home",
+        displayName: "TaskBandit Home",
+        source: "self_hosted_default"
+      })
+    };
+    hostedRuntimeConfigService = {
+      getTenantRuntimeConfig: vi.fn().mockResolvedValue(null)
+    };
 
     service = new AuthService(
       prisma as never,
       appConfigService as never,
       i18nService as never,
-      smtpService as never
+      smtpService as never,
+      tenantContextService as never,
+      hostedRuntimeConfigService as never
     );
   });
 
@@ -218,7 +239,8 @@ describe("AuthService", () => {
       email: "alex@example.com",
       passwordHash: "stored-password-hash",
       user: {
-        id: "user-1"
+        id: "user-1",
+        tenantId: "tenant-1"
       }
     });
 
@@ -327,6 +349,7 @@ describe("AuthService", () => {
     const authInternals = service as unknown as {
       buildAuthResponse: (
         userId: string,
+        tenantId: string,
         householdId: string,
         role: HouseholdRole,
         email?: string | null
@@ -336,6 +359,7 @@ describe("AuthService", () => {
         expiresIn: string;
         user: {
           id: string;
+          tenantId: string;
           householdId: string;
           role: string;
           email: string | null;
@@ -343,7 +367,13 @@ describe("AuthService", () => {
       }>;
     };
 
-    const response = await authInternals.buildAuthResponse("user-1", "household-1", HouseholdRole.ADMIN, "alex@example.com");
+    const response = await authInternals.buildAuthResponse(
+      "user-1",
+      "tenant-1",
+      "household-1",
+      HouseholdRole.ADMIN,
+      "alex@example.com"
+    );
 
     expect(response).toEqual({
       accessToken: expect.any(String),
@@ -351,6 +381,7 @@ describe("AuthService", () => {
       expiresIn: "1h",
       user: {
         id: "user-1",
+        tenantId: "tenant-1",
         householdId: "household-1",
         role: "admin",
         email: "alex@example.com"

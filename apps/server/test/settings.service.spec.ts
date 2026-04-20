@@ -6,6 +6,7 @@ import { SettingsService } from "../src/modules/settings/settings.service";
 describe("SettingsService", () => {
   const user: AuthenticatedUser = {
     id: "user-1",
+    tenantId: "tenant-1",
     householdId: "household-1",
     displayName: "Alex",
     role: "admin",
@@ -60,8 +61,12 @@ describe("SettingsService", () => {
     sendMail: ReturnType<typeof vi.fn>;
     verify: ReturnType<typeof vi.fn>;
   };
+  let hostedRuntimeConfigService: {
+    getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
+  };
   let appConfigService: {
     forceLocalAuthEnabled: boolean;
+    hostedModeEnabled: boolean;
     oidcFallbackConfig: {
       enabled: boolean;
       authority: string;
@@ -95,8 +100,12 @@ describe("SettingsService", () => {
       sendMail: vi.fn().mockResolvedValue(undefined),
       verify: vi.fn().mockResolvedValue({ ok: true })
     };
+    hostedRuntimeConfigService = {
+      getTenantRuntimeConfig: vi.fn().mockResolvedValue(null)
+    };
     appConfigService = {
       forceLocalAuthEnabled: false,
+      hostedModeEnabled: false,
       oidcFallbackConfig: {
         enabled: false,
         authority: "",
@@ -124,7 +133,8 @@ describe("SettingsService", () => {
           })[key] ?? key
       } as never,
       appConfigService as never,
-      smtpService as never
+      smtpService as never,
+      hostedRuntimeConfigService as never
     );
   });
 
@@ -171,6 +181,18 @@ describe("SettingsService", () => {
           localAuthEffective: true
         })
       })
+    );
+  });
+
+  it("rejects hosted-managed oidc and smtp edits when hosted mode is enabled", async () => {
+    appConfigService.hostedModeEnabled = true;
+
+    await expect(service.updateSettings({ oidcEnabled: true }, user)).rejects.toBeInstanceOf(
+      BadRequestException
+    );
+
+    await expect(service.updateSettings({ smtpEnabled: true }, user)).rejects.toBeInstanceOf(
+      BadRequestException
     );
   });
 

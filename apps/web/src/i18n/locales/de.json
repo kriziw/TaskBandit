@@ -218,6 +218,7 @@
   "auth.oidc_callback_hint": "Provider-Redirect-URI: <Basis-URL>/api/auth/oidc/callback",
   "auth.oidc_source_ui": "OIDC-Quelle: Haushaltseinstellungen in der UI",
   "auth.oidc_source_env": "OIDC-Quelle: Umgebungskonfiguration",
+  "auth.oidc_source_control_plane": "OIDC-Quelle: gehostete Control Plane",
   "auth.oidc_source_none": "OIDC-Quelle: deaktiviert",
   "auth.demo_ready": "Der vorbereitete Demo-Haushalt ist einsatzbereit.",
   "bootstrap.title": "Ersten Haushalt erstellen",

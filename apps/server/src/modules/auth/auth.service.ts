@@ -3,6 +3,7 @@ import {
   ConflictException,
   ForbiddenException,
   Injectable,
+  NotFoundException,
   UnauthorizedException
 } from "@nestjs/common";
 import { AuthProvider, HouseholdRole } from "@prisma/client";
@@ -14,6 +15,8 @@ import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
+import { TenantContextService } from "../../common/tenancy/tenant-context.service";
 import { SmtpService, type SmtpSettings } from "../settings/smtp.service";
 import { CompletePasswordResetDto } from "./dto/complete-password-reset.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -22,6 +25,7 @@ import { SignupDto } from "./dto/signup.dto";
 
 type AuthTokenPayload = {
   sub: string;
+  tenantId: string;
   householdId: string;
   role: string;
   email?: string;
@@ -30,6 +34,7 @@ type AuthTokenPayload = {
 type DashboardSyncTokenPayload = {
   purpose: "dashboard-sync";
   sub: string;
+  tenantId: string;
   householdId: string;
 };
 
@@ -54,6 +59,8 @@ type OidcProfile = {
 };
 
 type StoredAuthSettings = {
+  tenantId: string;
+  householdId: string;
   selfSignupEnabled: boolean;
   localAuthEnabled: boolean;
   oidcEnabled: boolean;
@@ -65,21 +72,24 @@ type StoredAuthSettings = {
 
 @Injectable()
 export class AuthService {
-  private oidcMetadataPromise: Promise<OidcMetadata> | null = null;
+  private readonly oidcMetadataPromises = new Map<string, Promise<OidcMetadata>>();
 
   constructor(
     private readonly prisma: PrismaService,
     private readonly appConfigService: AppConfigService,
     private readonly i18nService: I18nService,
-    private readonly smtpService: SmtpService
+    private readonly smtpService: SmtpService,
+    private readonly tenantContextService: TenantContextService,
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService
   ) {}
 
   async hashPassword(password: string) {
     return hash(password, 12);
   }
 
-  async login(dto: LoginDto, language: SupportedLanguage) {
-    const localAuthConfig = await this.getEffectiveLocalAuthConfig();
+  async login(dto: LoginDto, language: SupportedLanguage, requestHost?: string | null) {
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.local_disabled", language)
@@ -96,7 +106,12 @@ export class AuthService {
       }
     });
 
-    if (!identity || identity.provider !== AuthProvider.LOCAL || !identity.passwordHash) {
+    if (
+      !identity ||
+      identity.provider !== AuthProvider.LOCAL ||
+      !identity.passwordHash ||
+      identity.user.tenantId !== tenant.tenantId
+    ) {
       throw new UnauthorizedException({
         message: this.i18nService.translate("auth.invalid_credentials", language)
       });
@@ -109,18 +124,25 @@ export class AuthService {
       });
     }
 
-    return this.buildAuthResponse(identity.user.id, identity.user.householdId, identity.user.role, identity.email);
+    return this.buildAuthResponse(
+      identity.user.id,
+      identity.user.tenantId,
+      identity.user.householdId,
+      identity.user.role,
+      identity.email
+    );
   }
 
-  async signup(dto: SignupDto, language: SupportedLanguage) {
-    const settings = await this.getStoredAuthSettings();
+  async signup(dto: SignupDto, language: SupportedLanguage, requestHost?: string | null) {
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const settings = await this.getStoredAuthSettings(tenant.tenantId);
     if (!settings) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.bootstrap_required", language)
       });
     }
 
-    const localAuthConfig = await this.getEffectiveLocalAuthConfig(settings);
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId, settings);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.local_disabled", language)
@@ -155,6 +177,7 @@ export class AuthService {
     const passwordHash = await hash(dto.password, 12);
     const user = await this.prisma.user.create({
       data: {
+        tenantId: tenant.tenantId,
         householdId: localAuthConfig.householdId,
         displayName: dto.displayName.trim(),
         role: HouseholdRole.PARENT,
@@ -169,22 +192,24 @@ export class AuthService {
       }
     });
 
-    return this.buildAuthResponse(user.id, user.householdId, user.role, normalizedEmail);
+    return this.buildAuthResponse(user.id, user.tenantId, user.householdId, user.role, normalizedEmail);
   }
 
   async requestPasswordReset(
     dto: RequestPasswordResetDto,
     resetLinkTemplate: string,
-    language: SupportedLanguage
+    language: SupportedLanguage,
+    requestHost?: string | null
   ) {
-    const localAuthConfig = await this.getEffectiveLocalAuthConfig();
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.local_disabled", language)
       });
     }
 
-    const smtpSettings = await this.getPrimaryHouseholdSmtpSettings();
+    const smtpSettings = await this.getPrimaryHouseholdSmtpSettings(tenant.tenantId);
     if (!smtpSettings || !smtpSettings.enabled) {
       throw new BadRequestException({
         message: this.i18nService.translate("auth.password_reset_unavailable", language)
@@ -201,7 +226,12 @@ export class AuthService {
       }
     });
 
-    if (!identity || identity.provider !== AuthProvider.LOCAL || !identity.passwordHash) {
+    if (
+      !identity ||
+      identity.provider !== AuthProvider.LOCAL ||
+      !identity.passwordHash ||
+      identity.user.tenantId !== tenant.tenantId
+    ) {
       return {
         ok: true,
         message: this.i18nService.translate("auth.password_reset_requested", language)
@@ -247,8 +277,13 @@ export class AuthService {
     };
   }
 
-  async completePasswordReset(dto: CompletePasswordResetDto, language: SupportedLanguage) {
-    const localAuthConfig = await this.getEffectiveLocalAuthConfig();
+  async completePasswordReset(
+    dto: CompletePasswordResetDto,
+    language: SupportedLanguage,
+    requestHost?: string | null
+  ) {
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.local_disabled", language)
@@ -317,8 +352,10 @@ export class AuthService {
 
   async getCurrentUser(
     authorizationHeader: string | undefined,
-    language: SupportedLanguage
+    language: SupportedLanguage,
+    requestHost?: string | null
   ): Promise<AuthenticatedUser> {
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
     const token = this.extractBearerToken(authorizationHeader);
     if (!token) {
       throw new UnauthorizedException({
@@ -337,12 +374,17 @@ export class AuthService {
         }
       });
 
+      if (payload.tenantId !== user.tenantId || user.tenantId !== tenant.tenantId) {
+        throw new Error("Tenant mismatch.");
+      }
+
       const preferredIdentity =
         user.identities.find((identity) => identity.provider === AuthProvider.LOCAL && identity.email) ??
         user.identities.find((identity) => Boolean(identity.email));
 
       return {
         id: user.id,
+        tenantId: user.tenantId,
         householdId: user.householdId,
         displayName: user.displayName,
         role: this.mapRole(user.role),
@@ -362,6 +404,7 @@ export class AuthService {
       {
         purpose: "dashboard-sync",
         sub: user.id,
+        tenantId: user.tenantId,
         householdId: user.householdId
       } satisfies DashboardSyncTokenPayload,
       this.appConfigService.jwtSecret as Secret,
@@ -373,7 +416,8 @@ export class AuthService {
 
   async getCurrentUserFromDashboardSyncToken(
     token: string | undefined,
-    language: SupportedLanguage
+    language: SupportedLanguage,
+    requestHost?: string | null
   ): Promise<AuthenticatedUser> {
     if (!token) {
       throw new UnauthorizedException({
@@ -382,8 +426,9 @@ export class AuthService {
     }
 
     try {
+      const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
       const payload = verify(token, this.appConfigService.jwtSecret) as Partial<DashboardSyncTokenPayload>;
-      if (payload.purpose !== "dashboard-sync" || !payload.sub || !payload.householdId) {
+      if (payload.purpose !== "dashboard-sync" || !payload.sub || !payload.householdId || !payload.tenantId) {
         throw new Error("Invalid dashboard sync token.");
       }
 
@@ -396,7 +441,11 @@ export class AuthService {
         }
       });
 
-      if (user.householdId !== payload.householdId) {
+      if (
+        user.householdId !== payload.householdId ||
+        user.tenantId !== payload.tenantId ||
+        user.tenantId !== tenant.tenantId
+      ) {
         throw new Error("Dashboard sync token household mismatch.");
       }
 
@@ -406,6 +455,7 @@ export class AuthService {
 
       return {
         id: user.id,
+        tenantId: user.tenantId,
         householdId: user.householdId,
         displayName: user.displayName,
         role: this.mapRole(user.role),
@@ -420,10 +470,34 @@ export class AuthService {
     }
   }
 
-  async getProviders() {
-    const settings = await this.getStoredAuthSettings();
-    const local = await this.getEffectiveLocalAuthConfig(settings);
-    const oidc = await this.getEffectiveOidcConfig(settings);
+  async getProviders(requestHost?: string | null) {
+    let tenant: Awaited<ReturnType<TenantContextService["resolveFromRequestHost"]>>;
+    try {
+      tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return {
+          local: {
+            enabled: false,
+            forcedByConfig: this.appConfigService.forceLocalAuthEnabled,
+            selfSignupEnabled: false,
+            householdId: null
+          },
+          oidc: {
+            enabled: false,
+            authority: "",
+            clientId: "",
+            source: "none" as const
+          }
+        };
+      }
+
+      throw error;
+    }
+
+    const settings = await this.getStoredAuthSettings(tenant.tenantId);
+    const local = await this.getEffectiveLocalAuthConfig(tenant.tenantId, settings);
+    const oidc = await this.getEffectiveOidcConfig(tenant.tenantId, settings);
 
     return {
       local,
@@ -473,10 +547,12 @@ export class AuthService {
 
   async buildOidcAuthorizationUrl(
     callbackUrl: string,
-    state: string
+    state: string,
+    requestHost?: string | null
   ) {
-    const metadata = await this.getOidcMetadata();
-    const oidcConfig = await this.getEffectiveOidcConfig();
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const metadata = await this.getOidcMetadata(tenant.tenantId);
+    const oidcConfig = await this.getEffectiveOidcConfig(tenant.tenantId);
     const params = new URLSearchParams({
       client_id: oidcConfig.clientId,
       response_type: "code",
@@ -491,23 +567,19 @@ export class AuthService {
   async completeOidcLogin(
     code: string,
     callbackUrl: string,
-    language: SupportedLanguage
+    language: SupportedLanguage,
+    requestHost?: string | null
   ) {
-    const metadata = await this.getOidcMetadata();
-    const oidcConfig = await this.getEffectiveOidcConfig();
+    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const metadata = await this.getOidcMetadata(tenant.tenantId);
+    const oidcConfig = await this.getEffectiveOidcConfig(tenant.tenantId);
     const tokenResponse = await fetch(metadata.token_endpoint, {
       method: "POST",
       headers: {
         Accept: "application/json",
         "Content-Type": "application/x-www-form-urlencoded"
       },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        redirect_uri: callbackUrl,
-        client_id: oidcConfig.clientId,
-        client_secret: oidcConfig.clientSecret
-      })
+      body: this.buildOidcTokenRequestBody(code, callbackUrl, oidcConfig)
     });
 
     if (!tokenResponse.ok) {
@@ -562,6 +634,10 @@ export class AuthService {
       }
     });
 
+    if (user && user.user.tenantId !== tenant.tenantId) {
+      user = null;
+    }
+
     if (!user && normalizedEmail) {
       const existingIdentity = await this.prisma.authIdentity.findUnique({
         where: {
@@ -573,6 +649,12 @@ export class AuthService {
       });
 
       if (existingIdentity) {
+        if (existingIdentity.user.tenantId !== tenant.tenantId) {
+          throw new ConflictException({
+            message: this.i18nService.translate("auth.email_in_use", language)
+          });
+        }
+
         user = await this.prisma.authIdentity.create({
           data: {
             userId: existingIdentity.userId,
@@ -588,7 +670,7 @@ export class AuthService {
     }
 
     if (!user) {
-      const settings = await this.getStoredAuthSettings();
+      const settings = await this.getStoredAuthSettings(tenant.tenantId);
       if (!settings) {
         throw new ForbiddenException({
           message: this.i18nService.translate("auth.bootstrap_required", language)
@@ -615,6 +697,7 @@ export class AuthService {
 
       const createdUser = await this.prisma.user.create({
         data: {
+          tenantId: tenant.tenantId,
           householdId: oidcConfig.householdId,
           displayName,
           role: HouseholdRole.PARENT,
@@ -633,6 +716,7 @@ export class AuthService {
 
       return this.buildAuthResponse(
         createdUser.id,
+        createdUser.tenantId,
         createdUser.householdId,
         createdUser.role,
         normalizedEmail
@@ -643,16 +727,24 @@ export class AuthService {
 
     return this.buildAuthResponse(
       user.user.id,
+      user.user.tenantId,
       user.user.householdId,
       user.user.role,
       preferredEmail
     );
   }
 
-  private buildAuthResponse(userId: string, householdId: string, role: HouseholdRole, email?: string | null) {
+  private buildAuthResponse(
+    userId: string,
+    tenantId: string,
+    householdId: string,
+    role: HouseholdRole,
+    email?: string | null
+  ) {
     const accessToken = sign(
       {
         sub: userId,
+        tenantId,
         householdId,
         role: role.toLowerCase(),
         email: email ?? undefined
@@ -669,6 +761,7 @@ export class AuthService {
       expiresIn: this.appConfigService.jwtExpiresIn,
       user: {
         id: userId,
+        tenantId,
         householdId,
         role: role.toLowerCase(),
         email: email ?? null
@@ -693,39 +786,66 @@ export class AuthService {
     return email.trim().toLowerCase();
   }
 
-  private async getOidcMetadata() {
-    const oidcConfig = await this.getEffectiveOidcConfig();
+  private async getOidcMetadata(tenantId: string) {
+    const oidcConfig = await this.getEffectiveOidcConfig(tenantId);
     if (!oidcConfig.enabled) {
       throw new UnauthorizedException({
         message: this.i18nService.translate("auth.unauthorized", "en")
       });
     }
 
-    if (!this.oidcMetadataPromise) {
-      const metadataUrl = `${oidcConfig.authority.replace(/\/+$/, "")}/.well-known/openid-configuration`;
-      this.oidcMetadataPromise = fetch(metadataUrl, {
-        headers: {
-          Accept: "application/json"
-        }
-      })
-        .then(async (response) => {
-          if (!response.ok) {
-            throw new Error("Failed to load OIDC metadata.");
-          }
-
-          return (await response.json()) as OidcMetadata;
-        })
-        .catch((error) => {
-          this.oidcMetadataPromise = null;
-          throw error;
-        });
+    const metadataCacheKey = oidcConfig.authority.trim().toLowerCase();
+    const cachedPromise = this.oidcMetadataPromises.get(metadataCacheKey);
+    if (cachedPromise) {
+      return cachedPromise;
     }
 
-    return this.oidcMetadataPromise;
+    const metadataUrl = `${oidcConfig.authority.replace(/\/+$/, "")}/.well-known/openid-configuration`;
+    const metadataPromise = fetch(metadataUrl, {
+      headers: {
+        Accept: "application/json"
+      }
+    })
+      .then(async (response) => {
+        if (!response.ok) {
+          throw new Error("Failed to load OIDC metadata.");
+        }
+
+        return (await response.json()) as OidcMetadata;
+      })
+      .catch((error) => {
+        this.oidcMetadataPromises.delete(metadataCacheKey);
+        throw error;
+      });
+
+    this.oidcMetadataPromises.set(metadataCacheKey, metadataPromise);
+    return metadataPromise;
   }
 
-  private async getStoredAuthSettings(): Promise<(StoredAuthSettings & { householdId: string }) | null> {
+  private buildOidcTokenRequestBody(
+    code: string,
+    callbackUrl: string,
+    oidcConfig: Awaited<ReturnType<AuthService["getEffectiveOidcConfig"]>>
+  ) {
+    const body = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      redirect_uri: callbackUrl,
+      client_id: oidcConfig.clientId
+    });
+
+    if (oidcConfig.clientSecret) {
+      body.set("client_secret", oidcConfig.clientSecret);
+    }
+
+    return body;
+  }
+
+  private async getStoredAuthSettings(tenantId: string): Promise<StoredAuthSettings | null> {
     const household = await this.prisma.household.findFirst({
+      where: {
+        tenantId
+      },
       include: {
         settings: true
       }
@@ -736,6 +856,7 @@ export class AuthService {
     }
 
     return {
+      tenantId,
       householdId: household.id,
       selfSignupEnabled: household.settings?.selfSignupEnabled ?? false,
       localAuthEnabled: household.settings?.localAuthEnabled ?? true,
@@ -747,8 +868,11 @@ export class AuthService {
     };
   }
 
-  private async getPrimaryHouseholdSmtpSettings(): Promise<SmtpSettings | null> {
+  private async getPrimaryHouseholdSmtpSettings(tenantId: string): Promise<SmtpSettings | null> {
     const household = await this.prisma.household.findFirst({
+      where: {
+        tenantId
+      },
       include: {
         settings: true
       }
@@ -785,9 +909,10 @@ export class AuthService {
   }
 
   private async getEffectiveLocalAuthConfig(
-    settings?: (StoredAuthSettings & { householdId: string }) | null
+    tenantId: string,
+    settings?: StoredAuthSettings | null
   ) {
-    const resolvedSettings = settings ?? (await this.getStoredAuthSettings());
+    const resolvedSettings = settings ?? (await this.getStoredAuthSettings(tenantId));
     return {
       enabled:
         this.appConfigService.forceLocalAuthEnabled || (resolvedSettings?.localAuthEnabled ?? true),
@@ -800,9 +925,24 @@ export class AuthService {
   }
 
   private async getEffectiveOidcConfig(
-    settings?: (StoredAuthSettings & { householdId: string }) | null
+    tenantId: string,
+    settings?: StoredAuthSettings | null
   ) {
-    const resolvedSettings = settings ?? (await this.getStoredAuthSettings());
+    const resolvedSettings = settings ?? (await this.getStoredAuthSettings(tenantId));
+    const hostedConfig = await this.hostedRuntimeConfigService.getTenantRuntimeConfig(tenantId);
+    const hostedOidcConfig = hostedConfig?.hostedOidcConfig;
+    if (hostedOidcConfig?.enabled && hostedOidcConfig.issuer && hostedOidcConfig.clientId) {
+      return {
+        enabled: true,
+        authority: hostedOidcConfig.issuer,
+        clientId: hostedOidcConfig.clientId,
+        clientSecret: "",
+        scope: hostedOidcConfig.scopes.join(" ").trim() || "openid profile email",
+        source: "control_plane" as const,
+        householdId: resolvedSettings?.householdId ?? null
+      };
+    }
+
     const fallback = this.appConfigService.oidcFallbackConfig;
     const uiAuthority = resolvedSettings?.oidcAuthority ?? "";
     const uiClientId = resolvedSettings?.oidcClientId ?? "";

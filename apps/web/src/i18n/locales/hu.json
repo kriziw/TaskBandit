@@ -232,6 +232,7 @@
   "auth.oidc_callback_hint": "Szolgáltatói visszairányítási URI: <alap-url>/api/auth/oidc/callback",
   "auth.oidc_source_ui": "OIDC forrás: háztartási UI beállítások",
   "auth.oidc_source_env": "OIDC forrás: környezeti konfiguráció",
+  "auth.oidc_source_control_plane": "OIDC forrás: hosztolt vezérlősík",
   "auth.oidc_source_none": "OIDC forrás: kikapcsolva",
   "auth.demo_ready": "Az előkészített demó háztartás használatra kész.",
   "bootstrap.title": "Első háztartás létrehozása",

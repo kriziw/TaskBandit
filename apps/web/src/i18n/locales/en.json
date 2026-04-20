@@ -221,6 +221,7 @@
   "auth.oidc_callback_hint": "Provider redirect URI: <base-url>/api/auth/oidc/callback",
   "auth.oidc_source_ui": "OIDC source: household UI settings",
   "auth.oidc_source_env": "OIDC source: environment configuration",
+  "auth.oidc_source_control_plane": "OIDC source: hosted control plane",
   "auth.oidc_source_none": "OIDC source: disabled",
   "auth.demo_ready": "The seeded demo household is ready to use.",
   "bootstrap.title": "Create the first household",

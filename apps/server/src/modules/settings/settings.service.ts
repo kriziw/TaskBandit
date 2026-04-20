@@ -3,6 +3,7 @@ import { BadRequestException, Injectable } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
@@ -22,12 +23,13 @@ export class SettingsService {
     private readonly authService: AuthService,
     private readonly i18nService: I18nService,
     private readonly appConfigService: AppConfigService,
-    private readonly smtpService: SmtpService
+    private readonly smtpService: SmtpService,
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService
   ) {}
 
   async getHousehold(user: AuthenticatedUser) {
     const household = await this.repository.getHouseholdForViewer(user.householdId, user.role);
-    return this.applyRuntimeAuthSettings(household, user.role);
+    return this.applyRuntimeAuthSettings(household, user);
   }
 
   getAuditLog(user: AuthenticatedUser) {
@@ -57,6 +59,7 @@ export class SettingsService {
 
   async updateSettings(dto: UpdateSettingsDto, user: AuthenticatedUser) {
     const currentHousehold = await this.repository.getHousehold(user.householdId);
+    this.ensureHostedManagedSettingsAreNotEdited(dto);
     const nextLocalAuthEnabled = dto.localAuthEnabled ?? currentHousehold.settings.localAuthEnabled;
     const nextOidcEnabled = dto.oidcEnabled ?? currentHousehold.settings.oidcEnabled;
     const nextSmtpEnabled = dto.smtpEnabled ?? currentHousehold.settings.smtpEnabled;
@@ -96,7 +99,7 @@ export class SettingsService {
     }
 
     const updatedHousehold = await this.repository.updateSettings(dto, user.householdId, user.id);
-    return this.applyRuntimeAuthSettings(updatedHousehold, user.role);
+    return this.applyRuntimeAuthSettings(updatedHousehold, user);
   }
 
   updateNotificationPreferences(dto: UpdateNotificationPreferencesDto, user: AuthenticatedUser) {
@@ -253,21 +256,35 @@ export class SettingsService {
     });
   }
 
-  private applyRuntimeAuthSettings(
+  private async applyRuntimeAuthSettings(
     household: Awaited<ReturnType<HouseholdRepository["getHousehold"]>>,
-    role: AuthenticatedUser["role"]
+    user: AuthenticatedUser
   ) {
     const localAuthForcedByConfig = this.appConfigService.forceLocalAuthEnabled;
     const localAuthEffective = localAuthForcedByConfig || household.settings.localAuthEnabled;
-    const oidcSource =
-      household.settings.oidcEnabled && household.settings.oidcAuthority && household.settings.oidcClientId
+    const hostedRuntimeConfig = await this.hostedRuntimeConfigService.getTenantRuntimeConfig(user.tenantId);
+    const hostedOidcConfig = hostedRuntimeConfig?.hostedOidcConfig;
+    const controlPlaneManagedOidc =
+      Boolean(hostedOidcConfig?.enabled && hostedOidcConfig.issuer && hostedOidcConfig.clientId);
+    const oidcSource = controlPlaneManagedOidc
+      ? "control_plane"
+      : household.settings.oidcEnabled && household.settings.oidcAuthority && household.settings.oidcClientId
         ? "ui"
         : this.appConfigService.oidcFallbackConfig.enabled
           ? "env"
           : "none";
     const oidcEffective = oidcSource !== "none";
     const oidcConfig =
-      oidcSource === "ui"
+      oidcSource === "control_plane"
+        ? {
+            oidcEnabled: Boolean(hostedOidcConfig?.enabled),
+            oidcAuthority: hostedOidcConfig?.issuer ?? "",
+            oidcClientId: hostedOidcConfig?.clientId ?? "",
+            oidcClientSecret: "",
+            oidcClientSecretConfigured: Boolean(hostedOidcConfig?.clientSecretRef),
+            oidcScope: hostedOidcConfig?.scopes.join(" ").trim() || "openid profile email"
+          }
+        : oidcSource === "ui"
         ? {
             oidcEnabled: household.settings.oidcEnabled,
             oidcAuthority: household.settings.oidcAuthority,
@@ -280,7 +297,8 @@ export class SettingsService {
             oidcEnabled: this.appConfigService.oidcFallbackConfig.enabled,
             oidcAuthority: this.appConfigService.oidcFallbackConfig.authority,
             oidcClientId: this.appConfigService.oidcFallbackConfig.clientId,
-            oidcClientSecret: role === "admin" ? this.appConfigService.oidcFallbackConfig.clientSecret : "",
+            oidcClientSecret:
+              user.role === "admin" ? this.appConfigService.oidcFallbackConfig.clientSecret : "",
             oidcClientSecretConfigured: Boolean(this.appConfigService.oidcFallbackConfig.clientSecret),
             oidcScope: this.appConfigService.oidcFallbackConfig.scope
           };
@@ -294,8 +312,36 @@ export class SettingsService {
         oidcEffective,
         oidcSource,
         ...oidcConfig,
-        oidcClientSecret: role === "admin" ? oidcConfig.oidcClientSecret : ""
+        oidcClientSecret: user.role === "admin" ? oidcConfig.oidcClientSecret : ""
       }
     };
+  }
+
+  private ensureHostedManagedSettingsAreNotEdited(dto: UpdateSettingsDto) {
+    if (!this.appConfigService.hostedModeEnabled) {
+      return;
+    }
+
+    const hostedManagedFieldNames = [
+      "oidcEnabled",
+      "oidcAuthority",
+      "oidcClientId",
+      "oidcClientSecret",
+      "oidcScope",
+      "smtpEnabled",
+      "smtpHost",
+      "smtpPort",
+      "smtpSecure",
+      "smtpUsername",
+      "smtpPassword",
+      "smtpFromEmail",
+      "smtpFromName"
+    ] as const;
+
+    if (hostedManagedFieldNames.some((fieldName) => dto[fieldName] !== undefined)) {
+      throw new BadRequestException(
+        "Hosted identity and delivery settings are managed by the control plane for SaaS tenants."
+      );
+    }
   }
 }

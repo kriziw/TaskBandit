@@ -116,10 +116,22 @@ export class HouseholdRepository {
     language: SupportedLanguage = fallbackLanguage
   ) {
     const normalizedEmail = ownerEmail.trim().toLowerCase();
+    const normalizedHouseholdName = householdName.trim();
+    const tenantId = randomUUID();
     const household = await this.prisma.$transaction(async (tx) => {
+      await tx.tenant.create({
+        data: {
+          id: tenantId,
+          slug: this.buildTenantSlug(normalizedHouseholdName, tenantId),
+          displayName: normalizedHouseholdName
+        }
+      });
+
       const createdHousehold = await tx.household.create({
         data: {
-          name: householdName.trim(),
+          id: tenantId,
+          tenantId,
+          name: normalizedHouseholdName,
           settings: {
             create: {
               selfSignupEnabled,
@@ -136,6 +148,7 @@ export class HouseholdRepository {
           },
           members: {
             create: {
+              tenantId,
               displayName: ownerDisplayName.trim(),
               role: HouseholdRole.ADMIN,
               points: 0,
@@ -444,13 +457,14 @@ export class HouseholdRepository {
   }
 
   async getNotificationPreferences(householdId: string, userId: string) {
-    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const membership = await this.ensureUserBelongsToHousehold(householdId, userId);
     const preference = await this.prisma.notificationPreference.upsert({
       where: {
         userId
       },
       update: {},
       create: {
+        tenantId: membership.tenantId,
         userId
       }
     });
@@ -463,7 +477,7 @@ export class HouseholdRepository {
     householdId: string,
     userId: string
   ) {
-    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const membership = await this.ensureUserBelongsToHousehold(householdId, userId);
     const preference = await this.prisma.notificationPreference.upsert({
       where: {
         userId
@@ -476,6 +490,7 @@ export class HouseholdRepository {
         receiveDailySummary: dto.receiveDailySummary
       },
       create: {
+        tenantId: membership.tenantId,
         userId,
         receiveAssignments: dto.receiveAssignments ?? true,
         receiveReviewUpdates: dto.receiveReviewUpdates ?? true,
@@ -573,7 +588,7 @@ export class HouseholdRepository {
     householdId: string,
     userId: string
   ) {
-    await this.ensureUserBelongsToHousehold(householdId, userId);
+    const membership = await this.ensureUserBelongsToHousehold(householdId, userId);
     const installationId = dto.installationId.trim();
     const platform = this.mapNotificationDevicePlatform(dto.platform);
     const provider = this.mapNotificationDeviceProvider(dto.provider);
@@ -582,6 +597,7 @@ export class HouseholdRepository {
         installationId
       },
       update: {
+        tenantId: membership.tenantId,
         userId,
         platform,
         provider,
@@ -595,6 +611,7 @@ export class HouseholdRepository {
         lastSeenAtUtc: new Date()
       },
       create: {
+        tenantId: membership.tenantId,
         userId,
         installationId,
         platform,
@@ -1460,6 +1477,7 @@ export class HouseholdRepository {
     } | null;
   }> {
     const normalizedEmail = dto.email.trim().toLowerCase();
+    const tenantId = await this.getTenantIdForHousehold(this.prisma, householdId);
     const existingIdentity = await this.prisma.authIdentity.findUnique({
       where: {
         email: normalizedEmail
@@ -1482,6 +1500,7 @@ export class HouseholdRepository {
     await this.prisma.$transaction(async (tx) => {
       const createdUser = await tx.user.create({
         data: {
+          tenantId,
           householdId,
           displayName: dto.displayName.trim(),
           role: dto.role === "child" ? HouseholdRole.CHILD : HouseholdRole.PARENT,
@@ -3340,8 +3359,10 @@ export class HouseholdRepository {
       }
 
       if (input.attachments.length > 0) {
+        const tenantId = await this.getTenantIdForHousehold(tx, input.householdId);
         await tx.choreAttachment.createMany({
           data: input.attachments.map((attachment) => ({
+            tenantId,
             choreInstanceId: input.instanceId,
             submittedById: input.actingUserId,
             clientFilename: attachment.clientFilename?.trim() || "proof-image",
@@ -3982,9 +4003,18 @@ export class HouseholdRepository {
     const dryingTemplateId = "8931210f-1c7e-4890-87da-ebda235fd6f1";
     const demoPasswordHash = await hash("TaskBandit123!", 12);
 
+    await this.prisma.tenant.create({
+      data: {
+        id: householdId,
+        slug: "taskbandit-home",
+        displayName: "TaskBandit Home"
+      }
+    });
+
     await this.prisma.household.create({
       data: {
         id: householdId,
+        tenantId: householdId,
         name: "TaskBandit Home",
         settings: {
           create: {
@@ -4004,6 +4034,7 @@ export class HouseholdRepository {
           create: [
             {
               id: adminId,
+              tenantId: householdId,
               displayName: "Alex",
               role: HouseholdRole.ADMIN,
               points: 120,
@@ -4019,6 +4050,7 @@ export class HouseholdRepository {
             },
             {
               id: parentId,
+              tenantId: householdId,
               displayName: "Maya",
               role: HouseholdRole.PARENT,
               points: 95,
@@ -4034,6 +4066,7 @@ export class HouseholdRepository {
             },
             {
               id: childId,
+              tenantId: householdId,
               displayName: "Luca",
               role: HouseholdRole.CHILD,
               points: 40,
@@ -5801,8 +5834,10 @@ export class HouseholdRepository {
       summary: string;
     }
   ) {
+    const tenantId = await this.getTenantIdForHousehold(executor, input.householdId);
     await executor.auditLog.create({
       data: {
+        tenantId,
         householdId: input.householdId,
         actorUserId: input.actorUserId ?? null,
         action: input.action,
@@ -5823,8 +5858,10 @@ export class HouseholdRepository {
       reason: string;
     }
   ) {
+    const tenantId = await this.getTenantIdForHousehold(executor, input.householdId);
     await executor.pointsLedgerEntry.create({
       data: {
+        tenantId,
         householdId: input.householdId,
         userId: input.userId,
         choreInstanceId: input.choreInstanceId ?? null,
@@ -5851,6 +5888,7 @@ export class HouseholdRepository {
       return false;
     }
 
+    const tenantId = await this.getTenantIdForHousehold(executor, input.householdId);
     const emailDeliveryStatus = await this.resolveNotificationEmailDeliveryStatus(
       executor,
       input.householdId,
@@ -5859,6 +5897,7 @@ export class HouseholdRepository {
 
     const notification = await executor.notification.create({
       data: {
+        tenantId,
         householdId: input.householdId,
         recipientUserId: input.recipientUserId,
         type: input.type,
@@ -5938,6 +5977,7 @@ export class HouseholdRepository {
 
     await executor.notificationPushDelivery.createMany({
       data: devices.map((device) => ({
+        tenantId: device.tenantId,
         notificationId,
         notificationDeviceId: device.id,
         status: NotificationPushDeliveryStatus.PENDING
@@ -6033,7 +6073,8 @@ export class HouseholdRepository {
         householdId
       },
       select: {
-        id: true
+        id: true,
+        tenantId: true
       }
     });
 
@@ -6042,6 +6083,37 @@ export class HouseholdRepository {
         message: "That household member could not be found."
       });
     }
+
+    return user;
+  }
+
+  private async getTenantIdForHousehold(executor: PrismaExecutor, householdId: string) {
+    const household = await executor.household.findUnique({
+      where: {
+        id: householdId
+      },
+      select: {
+        tenantId: true
+      }
+    });
+
+    if (!household) {
+      throw new NotFoundException({
+        message: "That household could not be found."
+      });
+    }
+
+    return household.tenantId;
+  }
+
+  private buildTenantSlug(name: string, fallbackId: string) {
+    const slug = name
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "");
+
+    return slug || fallbackId.toLowerCase();
   }
 
   private mapAssignmentStrategy(strategy: AssignmentStrategyType) {

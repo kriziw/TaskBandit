@@ -304,6 +304,33 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_FORCE_LOCAL_AUTH_ENABLED", "false") === "true";
   }
 
+  get hostedModeEnabled(): boolean {
+    return this.configService.get<string>("TASKBANDIT_HOSTED_MODE", "false") === "true";
+  }
+
+  get hostedTenantId(): string {
+    return this.configService.get<string>("TASKBANDIT_HOSTED_TENANT_ID", "").trim();
+  }
+
+  get controlPlaneRuntimeBaseUrl(): string {
+    return this.normalizeBaseUrl(
+      this.configService.get<string>("TASKBANDIT_CONTROL_PLANE_RUNTIME_BASE_URL", "")
+    ) ?? "";
+  }
+
+  get controlPlaneInternalServiceToken(): string {
+    return this.configService.get<string>("TASKBANDIT_CONTROL_PLANE_INTERNAL_SERVICE_TOKEN", "").trim();
+  }
+
+  get hostedRuntimeConfigCacheTtlMs(): number {
+    const configuredValue = Number(
+      this.configService.get("TASKBANDIT_HOSTED_RUNTIME_CONFIG_CACHE_TTL_MS") ?? 60000
+    );
+    return Number.isFinite(configuredValue) && configuredValue >= 1000
+      ? configuredValue
+      : 60000;
+  }
+
   get oidcFallbackConfig(): OidcConfig {
     const enabled = this.configService.get<string>("TASKBANDIT_OIDC_ENABLED", "false") === "true";
     const authority = this.configService.get<string>("TASKBANDIT_OIDC_AUTHORITY", "").trim();
