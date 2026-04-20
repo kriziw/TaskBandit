@@ -1,5 +1,6 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { HouseholdRepository } from "../household/household.repository";
 
 @Injectable()
@@ -11,7 +12,8 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
 
   constructor(
     private readonly repository: HouseholdRepository,
-    private readonly appConfigService: AppConfigService
+    private readonly appConfigService: AppConfigService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
 
   async onApplicationBootstrap() {
@@ -34,7 +36,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
   }
 
   async runOnce(
-    options?: { forceDailySummary?: boolean }
+    options?: { forceDailySummary?: boolean; tenantId?: string }
   ): Promise<{ reminderCount: number; dailySummaryCount: number }> {
     if (this.activeRun) {
       this.rerunRequested = true;
@@ -54,7 +56,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
   }
 
   private async runLoop(
-    options?: { forceDailySummary?: boolean }
+    options?: { forceDailySummary?: boolean; tenantId?: string }
   ): Promise<{ reminderCount: number; dailySummaryCount: number }> {
     const aggregate = {
       reminderCount: 0,
@@ -72,18 +74,42 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
   }
 
   private async runInternal(
-    options?: { forceDailySummary?: boolean }
+    options?: { forceDailySummary?: boolean; tenantId?: string }
   ): Promise<{ reminderCount: number; dailySummaryCount: number }> {
     try {
+      const candidateTenantIds = options?.tenantId
+        ? [options.tenantId]
+        : await this.repository.getNotificationEnabledTenantIds();
+      const allowedTenantIds: string[] = [];
+
+      for (const tenantId of candidateTenantIds) {
+        const decision = await this.tenantRuntimePolicyService.getActionDecision(
+          tenantId,
+          "notification_enqueue"
+        );
+        if (decision.allowed) {
+          allowedTenantIds.push(tenantId);
+        }
+      }
+
+      if (allowedTenantIds.length === 0) {
+        return {
+          reminderCount: 0,
+          dailySummaryCount: 0
+        };
+      }
+
       const now = new Date();
       const reminderResult = await this.repository.processReminderNotifications({
         now,
-        dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours
+        dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours,
+        tenantIds: allowedTenantIds
       });
       const dailySummaryResult = await this.repository.processDailySummaryNotifications({
         now,
         summaryHourUtc: this.appConfigService.dailySummaryHourUtc,
-        force: options?.forceDailySummary
+        force: options?.forceDailySummary,
+        tenantIds: allowedTenantIds
       });
       const reminderCount = reminderResult.createdCount;
       const dailySummaryCount = dailySummaryResult.createdCount;

@@ -64,6 +64,10 @@ describe("SettingsService", () => {
   let hostedRuntimeConfigService: {
     getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
   };
+  let tenantRuntimePolicyService: {
+    assertActionAllowed: ReturnType<typeof vi.fn>;
+    assertMembersLimit: ReturnType<typeof vi.fn>;
+  };
   let appConfigService: {
     forceLocalAuthEnabled: boolean;
     hostedModeEnabled: boolean;
@@ -103,6 +107,10 @@ describe("SettingsService", () => {
     hostedRuntimeConfigService = {
       getTenantRuntimeConfig: vi.fn().mockResolvedValue(null)
     };
+    tenantRuntimePolicyService = {
+      assertActionAllowed: vi.fn().mockResolvedValue(undefined),
+      assertMembersLimit: vi.fn().mockResolvedValue(undefined)
+    };
     appConfigService = {
       forceLocalAuthEnabled: false,
       hostedModeEnabled: false,
@@ -134,7 +142,8 @@ describe("SettingsService", () => {
       } as never,
       appConfigService as never,
       smtpService as never,
-      hostedRuntimeConfigService as never
+      hostedRuntimeConfigService as never,
+      tenantRuntimePolicyService as never
     );
   });
 
@@ -306,6 +315,24 @@ describe("SettingsService", () => {
         inviteEmailSent: true
       })
     );
+    expect(tenantRuntimePolicyService.assertActionAllowed).toHaveBeenCalledWith("tenant-1", "member_create");
+    expect(tenantRuntimePolicyService.assertMembersLimit).toHaveBeenCalledWith("tenant-1", 0, 1);
+  });
+
+  it("checks the hosted member policy before creating a household member", async () => {
+    await service.createHouseholdMember(
+      {
+        displayName: "Sam",
+        role: "child",
+        email: "sam@example.com",
+        password: "TaskBandit123!"
+      },
+      user,
+      "en"
+    );
+
+    expect(tenantRuntimePolicyService.assertActionAllowed).toHaveBeenCalledWith("tenant-1", "member_create");
+    expect(tenantRuntimePolicyService.assertMembersLimit).toHaveBeenCalledWith("tenant-1", 0, 1);
   });
 
   it("tests smtp against the supplied draft settings even while smtp is disabled", async () => {

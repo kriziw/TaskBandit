@@ -1,6 +1,7 @@
 import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { PushDeliveryService } from "../../common/push/push-delivery.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { HouseholdRepository } from "../household/household.repository";
 
 @Injectable()
@@ -13,7 +14,8 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly pushDeliveryService: PushDeliveryService,
-    private readonly appConfigService: AppConfigService
+    private readonly appConfigService: AppConfigService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
 
   async onApplicationBootstrap() {
@@ -53,6 +55,10 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     }
   }
 
+  async runOnceForTenant(tenantId: string, limit = 25) {
+    return this.runInternal(limit, tenantId);
+  }
+
   private async runLoop(limit: number): Promise<{ sentCount: number; failedCount: number }> {
     const aggregate = {
       sentCount: 0,
@@ -69,8 +75,8 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     return aggregate;
   }
 
-  private async runInternal(limit = 25): Promise<{ sentCount: number; failedCount: number }> {
-    const pendingDeliveries = await this.repository.getPendingPushDeliveries(limit);
+  private async runInternal(limit = 25, tenantId?: string): Promise<{ sentCount: number; failedCount: number }> {
+    const pendingDeliveries = await this.repository.getPendingPushDeliveries(limit, tenantId);
     if (pendingDeliveries.length === 0) {
       return {
         sentCount: 0,
@@ -82,6 +88,20 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     let failedCount = 0;
 
     for (const delivery of pendingDeliveries) {
+      const decision = await this.tenantRuntimePolicyService.getActionDecision(
+        delivery.tenantId,
+        "notification_delivery"
+      );
+      if (!decision.allowed) {
+        failedCount += 1;
+        await this.repository.markPushDeliveryFailed(
+          delivery.id,
+          delivery.tenantId,
+          decision.reason ?? "Push delivery blocked."
+        );
+        continue;
+      }
+
       const result = await this.pushDeliveryService.deliver({
         provider: delivery.provider,
         pushToken: delivery.pushToken,
@@ -97,10 +117,10 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
 
       if (result.status === "sent") {
         sentCount += 1;
-        await this.repository.markPushDeliverySent(delivery.id, result.providerMessageId);
+        await this.repository.markPushDeliverySent(delivery.id, delivery.tenantId, result.providerMessageId);
       } else {
         failedCount += 1;
-        await this.repository.markPushDeliveryFailed(delivery.id, result.errorMessage);
+        await this.repository.markPushDeliveryFailed(delivery.id, delivery.tenantId, result.errorMessage);
       }
     }
 

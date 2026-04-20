@@ -22,6 +22,7 @@ The public documentation site is the main source for setup, deployment, reverse 
 
 Repository-local docs are kept for source-adjacent references that are useful while developing or reviewing implementation details.
 The current release verification baseline is documented in [docs/release-verification.md](docs/release-verification.md).
+Hosted runtime tenancy and SaaS-safe enforcement hooks are documented in [docs/hosted-runtime-tenancy.md](docs/hosted-runtime-tenancy.md).
 
 ## Quick Start
 
@@ -112,6 +113,18 @@ The current Docker deployment uses two runtime containers:
 - `taskbandit-web` / `kriziw/taskbandit-web` for the client UI/PWA at `/` and the admin UI at `/admin`
 
 See the [deployment guide](https://kriziw.github.io/taskbandit/deployment.html) and [reverse proxy guide](https://kriziw.github.io/taskbandit/reverse-proxy.html) for production setup.
+
+## Hosted Runtime Hooks
+
+The public runtime still defaults to self-hosted operation. When `TASKBANDIT_HOSTED_MODE=true`, the runtime switches on only generic hosted hooks that are safe to keep in the public repo:
+
+- trusted tenant resolution from host or hosted runtime state, never from arbitrary client-submitted tenant ids
+- hosted lifecycle and quota enforcement for member creation, proof uploads, and notification side effects
+- tenant-scoped notification/device ownership checks and retry safety
+- tenant-prefixed proof object keys under `tenants/<tenantId>/proofs/<householdId>/...`
+- tenant export and deletion manifests that inventory database rows alongside proof object keys
+
+Hosted mode does not add private billing logic, operator support tooling, or hosted secret management to this repo. Those remain in the private control plane.
 
 ## Local Development
 

@@ -68,8 +68,8 @@ export class DashboardController {
 
   @Post("maintenance/process-notifications")
   @Roles("admin")
-  processNotificationMaintenance() {
-    return this.dashboardService.processNotificationMaintenance();
+  processNotificationMaintenance(@CurrentUser() user: AuthenticatedUser) {
+    return this.dashboardService.processNotificationMaintenance(user);
   }
 
   @Post("maintenance/test-notification")
@@ -83,7 +83,7 @@ export class DashboardController {
 
   @Get("admin/logs")
   @Roles("admin")
-  getRuntimeLogs(@Query("limit") limit?: string) {
+  getRuntimeLogs(@CurrentUser() _user: AuthenticatedUser, @Query("limit") limit?: string) {
     return this.dashboardService.getRuntimeLogs(Number(limit) || 200);
   }
 
@@ -119,7 +119,10 @@ export class DashboardController {
 
   @Get("admin/logs/export.txt")
   @Roles("admin")
-  async exportRuntimeLogsText(@Res({ passthrough: true }) response: Response) {
+  async exportRuntimeLogsText(
+    @CurrentUser() _user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
     response.setHeader("Content-Type", "text/plain; charset=utf-8");
     response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-runtime.log"');
     return this.dashboardService.exportRuntimeLogsText();
@@ -127,7 +130,10 @@ export class DashboardController {
 
   @Get("admin/logs/export.json")
   @Roles("admin")
-  async exportRuntimeLogsJson(@Res({ passthrough: true }) response: Response) {
+  async exportRuntimeLogsJson(
+    @CurrentUser() _user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-runtime-logs.json"');
     return this.dashboardService.exportRuntimeLogsJson();
@@ -142,6 +148,28 @@ export class DashboardController {
     response.setHeader("Content-Type", "application/json; charset=utf-8");
     response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-household-snapshot.json"');
     return this.dashboardService.exportHouseholdSnapshot(user);
+  }
+
+  @Get("admin/exports/tenant-manifest.json")
+  @Roles("admin")
+  async exportTenantManifest(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    response.setHeader("Content-Type", "application/json; charset=utf-8");
+    response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-tenant-export-manifest.json"');
+    return this.dashboardService.getTenantExportManifest(user);
+  }
+
+  @Get("admin/deletion/tenant-manifest.json")
+  @Roles("admin")
+  async exportTenantDeletionManifest(
+    @CurrentUser() user: AuthenticatedUser,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    response.setHeader("Content-Type", "application/json; charset=utf-8");
+    response.setHeader("Content-Disposition", 'attachment; filename="taskbandit-tenant-deletion-manifest.json"');
+    return this.dashboardService.getTenantDeletionManifest(user);
   }
 
   @Get("exports/chores.csv")

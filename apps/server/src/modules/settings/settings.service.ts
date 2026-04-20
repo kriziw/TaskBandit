@@ -4,6 +4,7 @@ import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
@@ -24,7 +25,8 @@ export class SettingsService {
     private readonly i18nService: I18nService,
     private readonly appConfigService: AppConfigService,
     private readonly smtpService: SmtpService,
-    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
 
   async getHousehold(user: AuthenticatedUser) {
@@ -125,6 +127,8 @@ export class SettingsService {
     }
 
     const household = await this.repository.getHousehold(user.householdId);
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "member_create");
+    await this.tenantRuntimePolicyService.assertMembersLimit(user.tenantId, household.members.length, 1);
     const smtpSettings = {
       enabled: household.settings.smtpEnabled,
       host: household.settings.smtpHost,

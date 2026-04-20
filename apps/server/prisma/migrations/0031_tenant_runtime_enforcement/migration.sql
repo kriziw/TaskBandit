@@ -1,0 +1,2 @@
+ALTER TABLE "ChoreAttachment"
+ADD COLUMN "sizeBytes" INTEGER NOT NULL DEFAULT 0;

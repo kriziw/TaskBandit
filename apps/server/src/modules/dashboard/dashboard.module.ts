@@ -9,6 +9,7 @@ import { DashboardService } from "./dashboard.service";
 import { EmailDeliveryWorkerService } from "./email-delivery-worker.service";
 import { PushDeliveryWorkerService } from "./push-delivery-worker.service";
 import { ReminderWorkerService } from "./reminder-worker.service";
+import { TenantDataManifestService } from "./tenant-data-manifest.service";
 
 @Module({
   controllers: [DashboardController, DashboardSyncController],
@@ -20,7 +21,8 @@ import { ReminderWorkerService } from "./reminder-worker.service";
     ReminderWorkerService,
     PushDeliveryWorkerService,
     EmailDeliveryWorkerService,
-    SmtpService
+    SmtpService,
+    TenantDataManifestService
   ],
   exports: [DashboardSyncService]
 })
