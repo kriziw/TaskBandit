@@ -384,5 +384,6 @@ jobs:
             TASKBANDIT_RELEASE_VERSION=${{ needs.release_please.outputs.version }}
             TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}
             TASKBANDIT_COMMIT_SHA=${{ needs.release_please.outputs.sha }}
+            TASKBANDIT_IMAGE_TAG=${{ matrix.image }}:${{ needs.release_please.outputs.version }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}

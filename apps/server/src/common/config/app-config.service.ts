@@ -96,6 +96,10 @@ export class AppConfigService {
     return this.configService.get<string>("TASKBANDIT_COMMIT_SHA", "").trim() || "local";
   }
 
+  get imageTag(): string {
+    return this.configService.get<string>("TASKBANDIT_IMAGE_TAG", "").trim();
+  }
+
   get databaseUrl(): string {
     const databaseUrl = this.configService.get<string>("DATABASE_URL");
     if (!databaseUrl) {

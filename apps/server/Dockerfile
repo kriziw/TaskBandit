@@ -1,6 +1,7 @@
 ARG TASKBANDIT_RELEASE_VERSION=0.0.0-dev
 ARG TASKBANDIT_BUILD_NUMBER=local
 ARG TASKBANDIT_COMMIT_SHA=local
+ARG TASKBANDIT_IMAGE_TAG=
 
 FROM node:22-bookworm-slim AS server-build
 WORKDIR /workspace/apps/server
@@ -25,6 +26,7 @@ WORKDIR /workspace/apps/server
 ARG TASKBANDIT_RELEASE_VERSION
 ARG TASKBANDIT_BUILD_NUMBER
 ARG TASKBANDIT_COMMIT_SHA
+ARG TASKBANDIT_IMAGE_TAG
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends openssl wget ca-certificates \
@@ -45,6 +47,7 @@ ENV TASKBANDIT_STORAGE_ROOT=/var/lib/taskbandit/storage
 ENV TASKBANDIT_RELEASE_VERSION=${TASKBANDIT_RELEASE_VERSION}
 ENV TASKBANDIT_BUILD_NUMBER=${TASKBANDIT_BUILD_NUMBER}
 ENV TASKBANDIT_COMMIT_SHA=${TASKBANDIT_COMMIT_SHA}
+ENV TASKBANDIT_IMAGE_TAG=${TASKBANDIT_IMAGE_TAG}
 
 HEALTHCHECK --interval=30s --timeout=5s --start-period=40s --retries=5 CMD wget -q -O /dev/null "http://127.0.0.1:${PORT:-8080}/health" || exit 1
 

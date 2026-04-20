@@ -56,6 +56,7 @@ export type ReleaseInfo = {
   releaseVersion: string;
   buildNumber: string;
   commitSha: string;
+  imageTag?: string | null;
 };
 
 export type ServerCompatibility = {
