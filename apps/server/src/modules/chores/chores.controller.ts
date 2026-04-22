@@ -23,11 +23,14 @@ import { RolesGuard } from "../../common/auth/roles.guard";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { ChoresService } from "./chores.service";
+import { CompleteExternalChoreDto } from "./dto/complete-external-chore.dto";
 import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
 import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
+import { ReleaseDeferredChoreDto } from "./dto/release-deferred-chore.dto";
 import { RequestChoreTakeoverDto } from "./dto/request-chore-takeover.dto";
 import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
+import { SnoozeDeferredChoreDto } from "./dto/snooze-deferred-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
 import { memoryStorage } from "multer";
 
@@ -313,6 +316,54 @@ export class ChoresController {
     @Headers("accept-language") acceptLanguage?: string
   ) {
     return this.choresService.submitInstance(
+      instanceId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("instances/:id/complete-external")
+  @Roles("admin", "parent")
+  completeExternal(
+    @Param("id") instanceId: string,
+    @Body() dto: CompleteExternalChoreDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.completeInstanceExternally(
+      instanceId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("instances/:id/release")
+  @Roles("admin", "parent")
+  releaseDeferred(
+    @Param("id") instanceId: string,
+    @Body() dto: ReleaseDeferredChoreDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.releaseDeferredInstance(
+      instanceId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
+  @Post("instances/:id/snooze")
+  @Roles("admin", "parent")
+  snoozeDeferred(
+    @Param("id") instanceId: string,
+    @Body() dto: SnoozeDeferredChoreDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.snoozeDeferredInstance(
       instanceId,
       dto,
       user,

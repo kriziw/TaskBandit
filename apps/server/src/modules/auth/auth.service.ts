@@ -15,6 +15,7 @@ import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { FeatureAccessService } from "../../common/tenancy/feature-access.service";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { TenantContextService } from "../../common/tenancy/tenant-context.service";
 import { TenantRequestContext } from "../../common/http/request-url.util";
@@ -81,7 +82,8 @@ export class AuthService {
     private readonly i18nService: I18nService,
     private readonly smtpService: SmtpService,
     private readonly tenantContextService: TenantContextService,
-    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
+    private readonly featureAccessService: FeatureAccessService
   ) {}
 
   async hashPassword(password: string) {
@@ -391,7 +393,8 @@ export class AuthService {
         role: this.mapRole(user.role),
         email: preferredIdentity?.email ?? null,
         points: user.points,
-        currentStreak: user.currentStreak
+        currentStreak: user.currentStreak,
+        featureAccess: await this.featureAccessService.getFeatureAccessForTenant(user.tenantId)
       };
     } catch {
       throw new UnauthorizedException({
@@ -462,7 +465,8 @@ export class AuthService {
         role: this.mapRole(user.role),
         email: preferredIdentity?.email ?? null,
         points: user.points,
-        currentStreak: user.currentStreak
+        currentStreak: user.currentStreak,
+        featureAccess: await this.featureAccessService.getFeatureAccessForTenant(user.tenantId)
       };
     } catch {
       throw new UnauthorizedException({

@@ -667,6 +667,54 @@ export const taskBanditApi = {
       }
     });
   },
+  completeChoreExternal(
+    token: string,
+    language: AppLanguage,
+    instanceId: string,
+    payload: {
+      externalCompleterName: string;
+      completedChecklistItemIds: string[];
+      attachments: Array<{
+        clientFilename: string;
+        contentType?: string;
+        storageKey: string;
+      }>;
+      note?: string;
+    }
+  ) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/complete-external`, {
+      method: "POST",
+      token,
+      language,
+      body: {
+        externalCompleterName: payload.externalCompleterName,
+        completedChecklistItemIds: payload.completedChecklistItemIds,
+        note: payload.note,
+        attachments: payload.attachments
+      }
+    });
+  },
+  releaseDeferredChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/release`, {
+      method: "POST",
+      token,
+      language,
+      body: { note }
+    });
+  },
+  snoozeDeferredChore(
+    token: string,
+    language: AppLanguage,
+    instanceId: string,
+    payload: { notBeforeAt: string; note?: string }
+  ) {
+    return request<ChoreInstance>(`/api/chores/instances/${instanceId}/snooze`, {
+      method: "POST",
+      token,
+      language,
+      body: payload
+    });
+  },
   async uploadProof(token: string, language: AppLanguage, file: File) {
     const formData = new FormData();
     formData.append("file", file);

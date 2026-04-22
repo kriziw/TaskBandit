@@ -8,6 +8,7 @@ export type HostedTenantRuntimeConfig = {
   graceEndsAt: string | null;
   billingStatus: string;
   entitlementState: string;
+  featureAccess: Record<string, boolean>;
   hostedOidcConfig: {
     enabled: boolean;
     issuer: string | null;
@@ -17,6 +18,9 @@ export type HostedTenantRuntimeConfig = {
     allowedDomains: string[];
   };
   lifecycleState: string;
+  packageCode: string;
+  packageRevisionId: string | null;
+  packageRevisionNumber: number | null;
   planCode: string;
   providerConfigRefs: Array<{
     id: string;
