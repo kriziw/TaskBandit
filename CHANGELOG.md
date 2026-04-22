@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.42.0](https://github.com/kriziw/TaskBandit/compare/v0.41.0...v0.42.0) (2026-04-22)
+
+
+### Features
+
+* **server:** enforce hosted tenant runtime boundaries ([#288](https://github.com/kriziw/TaskBandit/issues/288)) ([1c2acd9](https://github.com/kriziw/TaskBandit/commit/1c2acd9c754086002da4c766c480154ea7090ac2))
+* support hosted path-based runtime routing ([#290](https://github.com/kriziw/TaskBandit/issues/290)) ([1e987d1](https://github.com/kriziw/TaskBandit/commit/1e987d19c63c3118f4c50aa506ad3ece0a623138))
+
 ## [0.41.0](https://github.com/kriziw/TaskBandit/compare/v0.40.0...v0.41.0) (2026-04-20)
 
 
