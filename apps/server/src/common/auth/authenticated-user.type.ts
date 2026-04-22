@@ -1,3 +1,5 @@
+import type { FeatureAccess } from "../tenancy/feature-access.service";
+
 export type AuthenticatedUser = {
   id: string;
   tenantId: string;
@@ -7,4 +9,5 @@ export type AuthenticatedUser = {
   email: string | null;
   points: number;
   currentStreak: number;
+  featureAccess: FeatureAccess;
 };

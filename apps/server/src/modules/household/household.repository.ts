@@ -2459,6 +2459,7 @@ export class HouseholdRepository {
   }
 
   async getInstances(householdId: string, language: SupportedLanguage = fallbackLanguage) {
+    await this.releaseEligibleDeferredInstances(householdId);
     const instances = await this.prisma.choreInstance.findMany({
       where: {
         householdId
@@ -2486,6 +2487,7 @@ export class HouseholdRepository {
     householdId: string;
     role: "admin" | "parent" | "child";
   }, language: SupportedLanguage = fallbackLanguage) {
+    await this.releaseEligibleDeferredInstances(user.householdId);
     const [settings, instances] = await Promise.all([
       this.prisma.householdSettings.findUnique({
         where: {
@@ -2543,6 +2545,23 @@ export class HouseholdRepository {
         assigneeDisplayName: instance.assigneeId ? assigneeDisplayNameById.get(instance.assigneeId) ?? null : null
       }, language)
     );
+  }
+
+  async releaseEligibleDeferredInstances(householdId: string) {
+    await this.prisma.choreInstance.updateMany({
+      where: {
+        householdId,
+        state: ChoreState.DEFERRED,
+        notBeforeAtUtc: {
+          lte: new Date()
+        }
+      },
+      data: {
+        state: ChoreState.OPEN,
+        deferredReason: null,
+        notBeforeAtUtc: null
+      }
+    });
   }
 
   async getPendingTakeoverRequests(
@@ -3414,6 +3433,9 @@ export class HouseholdRepository {
     attachments: SubmitAttachmentDto[];
     note?: string;
     awardedPoints: number;
+    completedByExternal?: boolean;
+    externalCompleterName?: string;
+    externalCompletionNote?: string;
     nextState: "pending_approval" | "completed";
     language?: SupportedLanguage;
   }) {
@@ -3445,7 +3467,17 @@ export class HouseholdRepository {
           completedChecklistItems,
           awardedPoints: input.awardedPoints,
           completedAtUtc: input.nextState === "completed" ? new Date() : null,
-          completedById: input.nextState === "completed" ? input.actingUserId : null
+          completedById:
+            input.nextState === "completed" && !input.completedByExternal ? input.actingUserId : null,
+          completedByExternal: Boolean(input.completedByExternal && input.nextState === "completed"),
+          externalCompleterName:
+            input.completedByExternal && input.nextState === "completed"
+              ? input.externalCompleterName?.trim() || "Outside helper"
+              : null,
+          externalCompletionNote:
+            input.completedByExternal && input.nextState === "completed"
+              ? input.externalCompletionNote?.trim() || null
+              : null
         }
       });
 
@@ -3558,7 +3590,7 @@ export class HouseholdRepository {
     const updatedInstance = submissionResult.instance;
     let completionMilestone: CompletionMilestone | null = null;
 
-    if (submissionResult.didTransition && input.nextState === "completed") {
+    if (submissionResult.didTransition && input.nextState === "completed" && !input.completedByExternal) {
       const beneficiaryUserId = updatedInstance.assigneeId ?? input.actingUserId;
       await this.prisma.user.update({
         where: {
@@ -3629,7 +3661,7 @@ export class HouseholdRepository {
       });
     }
 
-    if (submissionResult.didTransition && input.nextState === "completed") {
+    if (submissionResult.didTransition && input.nextState === "completed" && !input.completedByExternal) {
       await this.rebalanceFlexibleAssignments(input.householdId, {
         actorUserId: input.actingUserId
       });
@@ -3813,6 +3845,100 @@ export class HouseholdRepository {
 
     const mappedInstance = this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
     return completionMilestone ? { ...mappedInstance, completionMilestone } : mappedInstance;
+  }
+
+  async releaseDeferredFollowUp(input: {
+    instanceId: string;
+    actingUserId: string;
+    householdId: string;
+    note?: string;
+    language?: SupportedLanguage;
+  }) {
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: input.instanceId
+      },
+      data: {
+        state: ChoreState.OPEN,
+        notBeforeAtUtc: null,
+        deferredReason: input.note?.trim() || null
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        variant: true,
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId: input.householdId,
+      actorUserId: input.actingUserId,
+      action: "instance.released",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: `Released deferred chore "${updatedInstance.title}".`
+    });
+
+    if (updatedInstance.assigneeId && updatedInstance.assigneeId !== input.actingUserId) {
+      await this.recordNotification(this.prisma, {
+        householdId: input.householdId,
+        recipientUserId: updatedInstance.assigneeId,
+        type: NotificationType.CHORE_ASSIGNED,
+        title: "Deferred chore released",
+        message: `"${updatedInstance.title}" is ready to work on now.`,
+        entityType: "chore_instance",
+        entityId: updatedInstance.id
+      });
+    }
+
+    return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
+  }
+
+  async snoozeDeferredFollowUp(input: {
+    instanceId: string;
+    actingUserId: string;
+    householdId: string;
+    notBeforeAt: string;
+    note?: string;
+    language?: SupportedLanguage;
+  }) {
+    const notBeforeAtUtc = new Date(input.notBeforeAt);
+    const updatedInstance = await this.prisma.choreInstance.update({
+      where: {
+        id: input.instanceId
+      },
+      data: {
+        state: ChoreState.DEFERRED,
+        notBeforeAtUtc,
+        deferredReason: input.note?.trim() || "Waiting for follow-up readiness."
+      },
+      include: {
+        template: {
+          include: {
+            checklistItems: true
+          }
+        },
+        variant: true,
+        checklistCompletions: true,
+        attachments: true
+      }
+    });
+
+    await this.recordAuditLog(this.prisma, {
+      householdId: input.householdId,
+      actorUserId: input.actingUserId,
+      action: "instance.snoozed",
+      entityType: "chore_instance",
+      entityId: updatedInstance.id,
+      summary: `Deferred chore "${updatedInstance.title}" until ${notBeforeAtUtc.toISOString()}.`
+    });
+
+    return this.mapInstance(updatedInstance, undefined, input.language ?? fallbackLanguage);
   }
 
   async cancelInstance(
@@ -4842,6 +4968,13 @@ export class HouseholdRepository {
           : null;
         const followUpTitle = this.composeChoreTitle(template.title, carriedSubtypeLabel);
         const effectiveFollowUpRequirePhotoProof = carriedRequirePhotoProof || template.requirePhotoProof;
+        const followUpState =
+          followUpDueAt.getTime() > Date.now()
+            ? ChoreState.DEFERRED
+            : assignmentDecision.assigneeId
+              ? ChoreState.ASSIGNED
+              : ChoreState.OPEN;
+        const notBeforeAtUtc = followUpState === ChoreState.DEFERRED ? followUpDueAt : null;
 
         await tx.choreInstance.create({
           data: {
@@ -4849,19 +4982,23 @@ export class HouseholdRepository {
             templateId: template.id,
             cycleId,
             occurrenceRootId,
+            dependencySourceInstanceId: instance.id,
             title: followUpTitle,
             subtypeLabel: carriedSubtypeLabel,
             requirePhotoProofOverride: effectiveFollowUpRequirePhotoProof,
-            state: assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+            state: followUpState,
             assigneeId: assignmentDecision.assigneeId,
             dueAtUtc: followUpDueAt,
+            notBeforeAtUtc,
+            deferredReason:
+              followUpState === ChoreState.DEFERRED ? "Waiting for follow-up readiness window." : null,
             variantId: matchingVariant?.id ?? null,
             assignmentLocked: assignmentDecision.locked,
             assignmentReason: assignmentDecision.reason
           }
         });
 
-        if (assignmentDecision.assigneeId) {
+        if (assignmentDecision.assigneeId && followUpState !== ChoreState.DEFERRED) {
           await this.recordNotification(tx, {
             householdId: instance.householdId,
             recipientUserId: assignmentDecision.assigneeId,
@@ -5502,7 +5639,13 @@ export class HouseholdRepository {
             instance.dueAtUtc.getTime() < Date.now()),
         attachmentCount: 0,
         overduePenaltyPoints: 0,
+        notBeforeAt: null,
+        deferredReason: null,
+        dependencySourceInstanceId: null,
         completedAt: null,
+        completedByExternal: false,
+        externalCompleterName: null,
+        externalCompletionNote: null,
         cancelledAt: null,
         submittedAt: null,
         submittedById: null,
@@ -5544,7 +5687,13 @@ export class HouseholdRepository {
           instance.dueAtUtc.getTime() < Date.now()),
       attachmentCount: instance.attachmentCount,
       overduePenaltyPoints: instance.overduePenaltyPoints,
+      notBeforeAt: (instance as any).notBeforeAtUtc ?? null,
+      deferredReason: (instance as any).deferredReason ?? null,
+      dependencySourceInstanceId: (instance as any).dependencySourceInstanceId ?? null,
       completedAt: instance.completedAtUtc,
+      completedByExternal: Boolean((instance as any).completedByExternal),
+      externalCompleterName: (instance as any).externalCompleterName ?? null,
+      externalCompletionNote: (instance as any).externalCompletionNote ?? null,
       cancelledAt: (instance as any).cancelledAtUtc ?? null,
       submittedAt: instance.submittedAtUtc,
       submittedById: instance.submittedById,

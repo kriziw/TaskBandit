@@ -17,6 +17,7 @@ export type ChoreState =
   | "open"
   | "assigned"
   | "in_progress"
+  | "deferred"
   | "pending_approval"
   | "needs_fixes"
   | "completed"
@@ -32,6 +33,18 @@ export type AuthenticatedUser = {
   email: string | null;
   points: number;
   currentStreak: number;
+  featureAccess: {
+    templates_manage: boolean;
+    chores_manage: boolean;
+    reassignment: boolean;
+    takeover_direct: boolean;
+    takeover_requests: boolean;
+    approvals: boolean;
+    proof_uploads: boolean;
+    follow_up_automation: boolean;
+    external_completion: boolean;
+    deferred_follow_up_control: boolean;
+  };
 };
 
 export type AuthResponse = {
@@ -464,7 +477,13 @@ export type ChoreInstance = {
   completedChecklistItems: number;
   isOverdue: boolean;
   attachmentCount: number;
+  notBeforeAt: string | null;
+  deferredReason: string | null;
+  dependencySourceInstanceId: string | null;
   completedAt: string | null;
+  completedByExternal: boolean;
+  externalCompleterName: string | null;
+  externalCompletionNote: string | null;
   cancelledAt: string | null;
   submittedAt: string | null;
   submittedById: string | null;

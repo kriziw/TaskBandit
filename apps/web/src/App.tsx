@@ -162,6 +162,7 @@ const householdBoardStateOrder: ChoreState[] = [
   "open",
   "assigned",
   "in_progress",
+  "deferred",
   "pending_approval",
   "needs_fixes",
   "overdue",
@@ -173,10 +174,26 @@ const activeChoreStates: ChoreState[] = [
   "open",
   "assigned",
   "in_progress",
+  "deferred",
   "pending_approval",
   "needs_fixes",
   "overdue"
 ];
+
+type PackageFeatureId = keyof AuthenticatedUser["featureAccess"];
+
+const fullFeatureAccess: AuthenticatedUser["featureAccess"] = {
+  templates_manage: true,
+  chores_manage: true,
+  reassignment: true,
+  takeover_direct: true,
+  takeover_requests: true,
+  approvals: true,
+  proof_uploads: true,
+  follow_up_automation: true,
+  external_completion: true,
+  deferred_follow_up_control: true
+};
 
 const historicChoreStates: ChoreState[] = ["completed", "cancelled"];
 const choreHistoryPageSize = 25;
@@ -1551,6 +1568,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     [payload]
   );
 
+  const featureAccess = payload?.currentUser.featureAccess ?? fullFeatureAccess;
+  const hasFeature = (featureId: PackageFeatureId) => featureAccess[featureId];
+
   const pendingTakeoverRequests = useMemo(
     () =>
       payload?.compatibility.takeoverRequests
@@ -1731,6 +1751,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const myInProgressChores = useMemo(
     () => myChores.filter((instance) => instance.state === "in_progress"),
     [myChores]
+  );
+
+  const myDeferredChores = useMemo(
+    () => activeInstances.filter((instance) => instance.assigneeId === payload?.currentUser.id && instance.state === "deferred"),
+    [activeInstances, payload]
   );
 
   const myReadyToStartChores = useMemo(
@@ -2561,6 +2586,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   function renderHouseholdChoreCard(instance: ChoreInstance, options?: { historic?: boolean }) {
+    const canManageChores = hasFeature("chores_manage");
+    const canUseExternalCompletion = hasFeature("external_completion");
+    const canManageDeferredFollowUps = hasFeature("deferred_follow_up_control");
     const choreHeading = (
       <div>
         <p className="inline-message">{instance.groupTitle}</p>
@@ -2602,13 +2630,36 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <strong>{t(`assignment_reason.${instance.assignmentReason}`)}</strong>
             </div>
           ) : null}
+          {instance.state === "deferred" && instance.notBeforeAt ? (
+            <div className="task-row-meta-item">
+              <span>{t("task.not_before")}</span>
+              <strong>{formatDate(instance.notBeforeAt)}</strong>
+            </div>
+          ) : null}
+          {instance.completedByExternal && instance.externalCompleterName ? (
+            <div className="task-row-meta-item">
+              <span>{t("task.completed_by")}</span>
+              <strong>{instance.externalCompleterName}</strong>
+            </div>
+          ) : null}
         </div>
+        {instance.deferredReason ? (
+          <p className="inline-message">{instance.deferredReason}</p>
+        ) : null}
+        {instance.completedByExternal && instance.externalCompleterName ? (
+          <p className="inline-message">
+            {t("submission.external_completed_by").replace("{name}", instance.externalCompleterName)}
+          </p>
+        ) : null}
         {!options?.historic &&
           payload?.currentUser.role !== "child" &&
           instance.state !== "completed" &&
           instance.state !== "cancelled" ? (
             <div className="button-row task-row-actions">
-              {instance.state !== "pending_approval" && instance.assigneeId !== payload?.currentUser.id ? (
+              {instance.state !== "pending_approval" &&
+              instance.state !== "deferred" &&
+              instance.assigneeId !== payload?.currentUser.id &&
+              canManageChores ? (
                 <button
                   className="secondary-button"
                   type="button"
@@ -2618,25 +2669,56 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   {t("instances.claim")}
                 </button>
               ) : null}
-              {instance.state !== "pending_approval" ? (
+              {instance.state === "deferred" && canManageDeferredFollowUps ? (
+                <>
+                  <button
+                    className="primary-button"
+                    type="button"
+                    disabled={busyAction === `release:${instance.id}`}
+                    onClick={() => void handleReleaseDeferredChore(instance.id)}
+                  >
+                    {t("instances.release_now")}
+                  </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    disabled={busyAction === `snooze:${instance.id}`}
+                    onClick={() => void handleSnoozeDeferredChore(instance.id, instance.notBeforeAt)}
+                  >
+                    {t("instances.snooze")}
+                  </button>
+                </>
+              ) : null}
+              {instance.state !== "pending_approval" && canManageChores ? (
                 <button
                   className="ghost-button"
                   type="button"
                   onClick={() => startEditingInstance(instance)}
-              >
-                {t("common.edit")}
-              </button>
-            ) : null}
-            {!instance.supportsOccurrenceCancellation ? (
-              <button
-                className="secondary-button"
-                type="button"
-                disabled={busyAction === `cancel:${instance.id}`}
-                onClick={() => void handleCancelInstance(instance.id)}
-              >
-                {t("instances.cancel")}
-              </button>
-            ) : (
+                >
+                  {t("common.edit")}
+                </button>
+              ) : null}
+              {canUseExternalCompletion && instance.state !== "pending_approval" ? (
+                <button
+                  className="secondary-button"
+                  type="button"
+                  disabled={busyAction === `complete-external:${instance.id}`}
+                  onClick={() => void handleCompleteExternalChore(instance.id)}
+                >
+                  {t("submission.mark_external_complete")}
+                </button>
+              ) : null}
+              {canManageChores ? (
+                !instance.supportsOccurrenceCancellation ? (
+                  <button
+                    className="secondary-button"
+                    type="button"
+                    disabled={busyAction === `cancel:${instance.id}`}
+                    onClick={() => void handleCancelInstance(instance.id)}
+                  >
+                    {t("instances.cancel")}
+                  </button>
+                ) : (
               <>
                 <button
                   className="secondary-button"
@@ -2659,7 +2741,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     : t("instances.cancel_series")}
                 </button>
               </>
-            )}
+                )
+              ) : null}
           </div>
         ) : null}
       </div>
@@ -3120,6 +3203,127 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t("submission.failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleCompleteExternalChore(instanceId: string) {
+    if (!token || !payload) {
+      return;
+    }
+
+    const targetInstance = payload.instances.find((item) => item.id === instanceId);
+    if (!targetInstance) {
+      setPageError(t("error.missing_template"));
+      return;
+    }
+
+    const externalCompleterName = window.prompt(
+      t("submission.external_name_prompt"),
+      targetInstance.externalCompleterName ?? ""
+    );
+    if (externalCompleterName === null) {
+      return;
+    }
+
+    const trimmedExternalCompleterName = externalCompleterName.trim();
+    if (!trimmedExternalCompleterName) {
+      setPageError(t("submission.external_name_required"));
+      return;
+    }
+
+    const selectedChecklistIds = submitSelections[instanceId] ?? targetInstance.checklistCompletionIds;
+    const selectedFiles = selectedProofFiles[instanceId] ?? [];
+    const missingRequiredItems = targetInstance.checklist.filter(
+      (item) => item.required && !selectedChecklistIds.includes(item.id)
+    );
+
+    if (missingRequiredItems.length > 0) {
+      setPageError(t("submission.complete_required"));
+      return;
+    }
+
+    if (targetInstance.requirePhotoProof && selectedFiles.length < 1) {
+      setPageError(t("submission.photo_required_missing"));
+      return;
+    }
+
+    setBusyAction(`complete-external:${instanceId}`);
+    try {
+      const attachments =
+        selectedFiles.length > 0
+          ? await Promise.all(
+              selectedFiles.map((file) => taskBanditApi.uploadProof(token, language, file))
+            )
+          : [];
+
+      await taskBanditApi.completeChoreExternal(token, language, instanceId, {
+        externalCompleterName: trimmedExternalCompleterName,
+        completedChecklistItemIds: selectedChecklistIds,
+        attachments,
+        note: submitNotes[instanceId]
+      });
+      setNotice(
+        t("submission.external_success").replace("{name}", trimmedExternalCompleterName)
+      );
+      setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
+      setSubmitSelections((current) => ({ ...current, [instanceId]: [] }));
+      setSelectedProofFiles((current) => ({ ...current, [instanceId]: [] }));
+      await refreshDashboard(token, { silent: true });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("submission.external_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleReleaseDeferredChore(instanceId: string) {
+    if (!token) {
+      return;
+    }
+
+    const note = window.prompt(t("instances.release_note_prompt"), "") ?? undefined;
+    setBusyAction(`release:${instanceId}`);
+    try {
+      await taskBanditApi.releaseDeferredChore(token, language, instanceId, note?.trim() || undefined);
+      setNotice(t("instances.released"));
+      await refreshDashboard(token, { silent: true });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.release_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleSnoozeDeferredChore(instanceId: string, currentNotBeforeAt?: string | null) {
+    if (!token) {
+      return;
+    }
+
+    const defaultValue = currentNotBeforeAt ? currentNotBeforeAt.slice(0, 16) : "";
+    const notBeforeAtInput = window.prompt(t("instances.snooze_until_prompt"), defaultValue);
+    if (notBeforeAtInput === null) {
+      return;
+    }
+
+    const notBeforeAt = new Date(notBeforeAtInput);
+    if (Number.isNaN(notBeforeAt.getTime())) {
+      setPageError(t("instances.snooze_invalid_datetime"));
+      return;
+    }
+
+    const note = window.prompt(t("instances.snooze_note_prompt"), "") ?? undefined;
+    setBusyAction(`snooze:${instanceId}`);
+    try {
+      await taskBanditApi.snoozeDeferredChore(token, language, instanceId, {
+        notBeforeAt: notBeforeAt.toISOString(),
+        note: note?.trim() || undefined
+      });
+      setNotice(t("instances.snoozed"));
+      await refreshDashboard(token, { silent: true });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.snooze_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -4716,6 +4920,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
         <form className="login-form member-form schedule-form" onSubmit={handleCreateInstance}>
+          {!hasFeature("chores_manage") ? (
+            <p className="inline-message">{t("feature.chores_manage_disabled")}</p>
+          ) : null}
           <label>
             <span>{t("instances.group")}</span>
             <select
@@ -4793,6 +5000,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <span>{t("instances.assignee")}</span>
             <select
               value={instanceForm.assigneeId ?? ""}
+              disabled={!hasFeature("reassignment")}
               onChange={(event) =>
                 setInstanceForm((current) => ({
                   ...current,
@@ -4905,7 +5113,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <button
               className="primary-button"
               type="submit"
-              disabled={busyAction === "create-instance" || payload.templates.length === 0}
+              disabled={
+                busyAction === "create-instance" || payload.templates.length === 0 || !hasFeature("chores_manage")
+              }
             >
               {editingInstanceId ? t("instances.save") : t("instances.create")}
             </button>
@@ -5824,7 +6034,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           {isLoading ? <div className="notice-banner info">{t("common.loading")}</div> : null}
 
           <section className="content-grid dashboard-grid">
-            {payload.currentUser.role !== "child" ? (
+            {payload.currentUser.role !== "child" && hasFeature("approvals") ? (
               <article className="panel page-panel page-overview" ref={approvalQueueRef}>
                 <div className="section-heading">
                   <h2>{t("panel.approval_queue")}</h2>
@@ -5899,7 +6109,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.compatibility.takeoverRequests && pendingTakeoverRequests.length > 0 ? (
+            {payload.compatibility.takeoverRequests && hasFeature("takeover_requests") && pendingTakeoverRequests.length > 0 ? (
               <article className="panel page-panel page-chores page-takeover-requests" ref={takeoverRequestsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.takeover_approvals")}</h2>
@@ -5946,6 +6156,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ) : (
                 <div className="stack-list my-chore-groups">
                   <p className="inline-message">{t("submission.priority_hint")}</p>
+                  {renderVisibleCompactChoreSection(
+                    t("panel.waiting_readiness"),
+                    myDeferredChores,
+                    t("submission.empty_deferred")
+                  )}
                   {renderMyChoreSection(
                     t("panel.needs_fixes"),
                     myNeedsFixesChores,
@@ -7852,6 +8067,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         <button
                           className="ghost-button"
                           type="button"
+                          disabled={!hasFeature("templates_manage")}
                           onClick={() => {
                             setTemplateSearch("");
                             resetTemplateForm();
@@ -7964,6 +8180,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       )}
                     </div>
                   <form className="login-form member-form template-editor-panel" onSubmit={handleCreateTemplate}>
+                    {!hasFeature("templates_manage") ? (
+                      <p className="inline-message">{t("feature.templates_manage_disabled")}</p>
+                    ) : null}
                     <div className="stack-list">
                       <div className="section-heading">
                         <h3>{t("templates.edit_language")}</h3>
@@ -8293,6 +8512,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         <span className="section-kicker">{selectedTemplateDependencyRules.length}</span>
                       </summary>
                       <div className="stack-list template-advanced-body">
+                        {!hasFeature("follow_up_automation") ? (
+                          <p className="inline-message">{t("feature.follow_up_automation_disabled")}</p>
+                        ) : null}
                         {!templateForm.groupTitle.trim() ? (
                           <p className="inline-message">{t("templates.follow_up_group_required")}</p>
                         ) : sameGroupFollowUpCandidates.length === 0 ? (
@@ -8317,6 +8539,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                       <input
                                         type="checkbox"
                                         checked={selected}
+                                        disabled={!hasFeature("follow_up_automation")}
                                         onChange={(event) =>
                                           toggleTemplateDependencyRule(template.id, event.target.checked)
                                         }
@@ -8344,6 +8567,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                           min={1}
                                           max={365}
                                           value={selectedRule.delayValue}
+                                          disabled={!hasFeature("follow_up_automation")}
                                           onChange={(event) =>
                                             updateTemplateDependencyRule(selectedRule.templateId, {
                                               delayValue: Number(event.target.value || 1)
@@ -8355,6 +8579,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                         <span>{t("templates.follow_up_delay_unit")}</span>
                                         <select
                                           value={selectedRule.delayUnit}
+                                          disabled={!hasFeature("follow_up_automation")}
                                           onChange={(event) =>
                                             updateTemplateDependencyRule(selectedRule.templateId, {
                                               delayUnit: event.target.value as FollowUpDelayUnit
@@ -8421,14 +8646,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       </div>
                     </details>
                     <div className="template-editor-actions">
-                      <button className="primary-button" type="submit" disabled={busyAction === "create-template"}>
+                      <button
+                        className="primary-button"
+                        type="submit"
+                        disabled={busyAction === "create-template" || !hasFeature("templates_manage")}
+                      >
                         {editingTemplateId ? t("templates.save") : t("templates.create")}
                       </button>
                       {editingTemplateId ? (
                         <button
                           className="ghost-button"
                           type="button"
-                          disabled={busyAction === `delete-template:${editingTemplateId}`}
+                          disabled={
+                            busyAction === `delete-template:${editingTemplateId}` || !hasFeature("templates_manage")
+                          }
                           onClick={() => void handleDeleteTemplate(editingTemplateId)}
                         >
                           {busyAction === `delete-template:${editingTemplateId}`

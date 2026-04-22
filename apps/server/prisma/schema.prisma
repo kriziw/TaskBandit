@@ -28,6 +28,7 @@ enum ChoreState {
   OPEN
   ASSIGNED
   IN_PROGRESS
+  DEFERRED
   PENDING_APPROVAL
   NEEDS_FIXES
   COMPLETED
@@ -306,11 +307,17 @@ model ChoreInstance {
   completedChecklistItems Int   @default(0)
   createdAtUtc    DateTime      @default(now())
   overduePenaltyAppliedAtUtc DateTime?
+  notBeforeAtUtc  DateTime?
+  deferredReason  String?
+  dependencySourceInstanceId String? @db.Uuid
   submittedAtUtc  DateTime?
   submittedById   String?       @db.Uuid
   submissionNote  String?
   completedAtUtc  DateTime?
   completedById   String?       @db.Uuid
+  completedByExternal Boolean   @default(false)
+  externalCompleterName String?
+  externalCompletionNote String?
   cancelledAtUtc  DateTime?
   reviewedAtUtc   DateTime?
   reviewedById    String?       @db.Uuid
