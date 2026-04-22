@@ -92,6 +92,21 @@ const activeAssignmentStates = [
 ] as const;
 const rebalanceEligibleStates = [ChoreState.OPEN, ChoreState.ASSIGNED] as const;
 
+function trimSurroundingHyphens(value: string) {
+  let start = 0;
+  let end = value.length;
+
+  while (start < end && value.charCodeAt(start) === 45) {
+    start += 1;
+  }
+
+  while (end > start && value.charCodeAt(end - 1) === 45) {
+    end -= 1;
+  }
+
+  return value.slice(start, end);
+}
+
 @Injectable()
 export class HouseholdRepository {
   constructor(
@@ -6441,11 +6456,12 @@ export class HouseholdRepository {
   }
 
   private buildTenantSlug(name: string, fallbackId: string) {
-    const slug = name
-      .trim()
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "");
+    const slug = trimSurroundingHyphens(
+      name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, "-")
+    );
 
     return slug || fallbackId.toLowerCase();
   }
