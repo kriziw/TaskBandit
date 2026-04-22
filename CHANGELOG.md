@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.0](https://github.com/kriziw/TaskBandit/compare/v0.42.0...v0.43.0) (2026-04-22)
+
+
+### Features
+
+* add package-gated chore workflows ([#291](https://github.com/kriziw/TaskBandit/issues/291)) ([344bb83](https://github.com/kriziw/TaskBandit/commit/344bb8304d877b56a4c97008776fa1040cce8dfd))
+
 ## [0.42.0](https://github.com/kriziw/TaskBandit/compare/v0.41.0...v0.42.0) (2026-04-22)
 
 
