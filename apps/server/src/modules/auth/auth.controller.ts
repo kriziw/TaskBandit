@@ -11,6 +11,12 @@ import {
 } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request, Response } from "express";
+import { AppConfigService } from "../../common/config/app-config.service";
+import {
+  buildRequestOrigin,
+  buildTenantRequestContext,
+  resolveMountedAppPath
+} from "../../common/http/request-url.util";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { AuthService } from "./auth.service";
 import { CompletePasswordResetDto } from "./dto/complete-password-reset.dto";
@@ -23,12 +29,13 @@ import { SignupDto } from "./dto/signup.dto";
 export class AuthController {
   constructor(
     private readonly authService: AuthService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
+    private readonly appConfigService: AppConfigService
   ) {}
 
   @Get("providers")
   providers(@Req() request: Request) {
-    return this.authService.getProviders(this.buildRequestHost(request));
+    return this.authService.getProviders(buildTenantRequestContext(request));
   }
 
   @Get("oidc/start")
@@ -47,7 +54,7 @@ export class AuthController {
       const authorizationUrl = await this.authService.buildOidcAuthorizationUrl(
         callbackUrl,
         state,
-        this.buildRequestHost(request)
+        buildTenantRequestContext(request)
       );
       response.redirect(authorizationUrl);
     } catch (error) {
@@ -92,7 +99,7 @@ export class AuthController {
         code,
         callbackUrl,
         parsedState.language,
-        this.buildRequestHost(request)
+        buildTenantRequestContext(request)
       );
 
       response.redirect(
@@ -112,13 +119,13 @@ export class AuthController {
   @Post("login")
   login(@Body() dto: LoginDto, @Req() request: Request, @Headers("accept-language") acceptLanguage?: string) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.login(dto, language, this.buildRequestHost(request));
+    return this.authService.login(dto, language, buildTenantRequestContext(request));
   }
 
   @Post("signup")
   signup(@Body() dto: SignupDto, @Req() request: Request, @Headers("accept-language") acceptLanguage?: string) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.signup(dto, language, this.buildRequestHost(request));
+    return this.authService.signup(dto, language, buildTenantRequestContext(request));
   }
 
   @Post("password-reset/request")
@@ -132,7 +139,7 @@ export class AuthController {
       dto,
       this.buildPasswordResetUrl(request),
       language,
-      this.buildRequestHost(request)
+      buildTenantRequestContext(request)
     );
   }
 
@@ -143,7 +150,7 @@ export class AuthController {
     @Headers("accept-language") acceptLanguage?: string
   ) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.completePasswordReset(dto, language, this.buildRequestHost(request));
+    return this.authService.completePasswordReset(dto, language, buildTenantRequestContext(request));
   }
 
   @Get("me")
@@ -153,11 +160,15 @@ export class AuthController {
     @Headers("accept-language") acceptLanguage?: string
   ) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.getCurrentUser(authorizationHeader, language, this.buildRequestHost(request));
+    return this.authService.getCurrentUser(
+      authorizationHeader,
+      language,
+      buildTenantRequestContext(request)
+    );
   }
 
   private buildOidcCallbackUrl(request: Request) {
-    const currentUrl = new URL(request.originalUrl || request.url, this.buildRequestOrigin(request));
+    const currentUrl = new URL(request.originalUrl || request.url, buildRequestOrigin(request));
     currentUrl.search = "";
     currentUrl.hash = "";
     currentUrl.pathname = currentUrl.pathname.replace(/\/start$/, "/callback");
@@ -165,7 +176,7 @@ export class AuthController {
   }
 
   private normalizeReturnTo(request: Request, requestedReturnTo?: string) {
-    const requestOrigin = this.buildRequestOrigin(request);
+    const requestOrigin = this.buildAppOrigin(request);
     const fallbackUrl = new URL(this.resolveAppPath(request), requestOrigin);
 
     if (!requestedReturnTo?.trim()) {
@@ -197,56 +208,39 @@ export class AuthController {
   }
 
   private appendOidcTokenToReturnUrl(returnTo: string, request: Request, accessToken: string) {
-    const url = new URL(returnTo, this.buildRequestOrigin(request));
+    const url = new URL(returnTo, this.buildAppOrigin(request));
     url.searchParams.set("oidcToken", accessToken);
     url.searchParams.delete("oidcError");
     return url.toString();
   }
 
   private appendOidcErrorToReturnUrl(returnTo: string, request: Request, message: string) {
-    const url = new URL(returnTo, this.buildRequestOrigin(request));
+    const url = new URL(returnTo, this.buildAppOrigin(request));
     url.searchParams.set("oidcError", message);
     url.searchParams.delete("oidcToken");
     return url.toString();
   }
 
   private buildPasswordResetUrl(request: Request) {
-    const url = new URL(this.resolveAppPath(request), this.buildRequestOrigin(request));
+    const url = new URL(this.resolveAppPath(request), this.buildAppOrigin(request));
     url.searchParams.set("resetToken", "__TASKBANDIT_RESET_TOKEN__");
     return url.toString();
   }
 
   private resolveAppPath(request: Request) {
-    const originalUrl = request.originalUrl || request.url;
-    const apiRouteIndex = originalUrl.indexOf("/api/auth/");
-    if (apiRouteIndex < 0) {
-      return "/";
+    return resolveMountedAppPath(request, "/api/auth/");
+  }
+
+  private buildAppOrigin(request: Request) {
+    if (
+      this.appConfigService.hostedModeEnabled &&
+      this.appConfigService.hostedTenantRoutingMode === "path" &&
+      this.appConfigService.publicWebBaseUrl
+    ) {
+      return this.appConfigService.publicWebBaseUrl;
     }
 
-    const appPath = originalUrl.slice(0, apiRouteIndex).replace(/\/+$/, "");
-    return appPath || "/";
-  }
-
-  private buildRequestOrigin(request: Request) {
-    const forwardedProtocol = request.headers["x-forwarded-proto"];
-    const forwardedHost = request.headers["x-forwarded-host"];
-    const protocol =
-      (Array.isArray(forwardedProtocol) ? forwardedProtocol[0] : forwardedProtocol)?.split(",")[0]?.trim() ||
-      request.protocol;
-    const host =
-      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() ||
-      request.get("host");
-
-    return `${protocol}://${host}`;
-  }
-
-  private buildRequestHost(request: Request) {
-    const forwardedHost = request.headers["x-forwarded-host"];
-    return (
-      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() ||
-      request.get("host") ||
-      null
-    );
+    return buildRequestOrigin(request);
   }
 
   private readAuthErrorMessage(error: unknown, fallback = "OIDC sign-in failed.") {

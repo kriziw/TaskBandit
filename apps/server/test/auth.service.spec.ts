@@ -3,6 +3,7 @@ import { AuthProvider, HouseholdRole } from "@prisma/client";
 import { createHash } from "node:crypto";
 import { sign } from "jsonwebtoken";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { TenantRequestContext } from "../src/common/http/request-url.util";
 import { AuthService } from "../src/modules/auth/auth.service";
 
 type HouseholdSettingsFixture = {
@@ -88,7 +89,7 @@ describe("AuthService", () => {
     sendMail: ReturnType<typeof vi.fn>;
   };
   let tenantContextService: {
-    resolveFromRequestHost: ReturnType<typeof vi.fn>;
+    resolveFromRequest: ReturnType<typeof vi.fn>;
   };
   let hostedRuntimeConfigService: {
     getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
@@ -164,7 +165,7 @@ describe("AuthService", () => {
       sendMail: vi.fn().mockResolvedValue(undefined)
     };
     tenantContextService = {
-      resolveFromRequestHost: vi.fn().mockResolvedValue({
+      resolveFromRequest: vi.fn().mockResolvedValue({
         tenantId: "tenant-1",
         householdId: "household-1",
         slug: "taskbandit-home",
@@ -411,7 +412,7 @@ describe("AuthService", () => {
   });
 
   it("rejects a bearer token when the trusted host resolves to a different tenant", async () => {
-    tenantContextService.resolveFromRequestHost.mockResolvedValue({
+    tenantContextService.resolveFromRequest.mockResolvedValue({
       tenantId: "tenant-2",
       householdId: "household-2",
       slug: "other-home",
@@ -429,6 +430,11 @@ describe("AuthService", () => {
       appConfigService.jwtSecret
     );
 
-    await expect(service.getCurrentUser(`Bearer ${token}`, "en", "other.taskbandit.app")).rejects.toThrow();
+    await expect(
+      service.getCurrentUser(`Bearer ${token}`, "en", {
+        hostHeader: "other.taskbandit.app",
+        originalUrl: "/api/auth/me"
+      } satisfies TenantRequestContext)
+    ).rejects.toThrow();
   });
 });

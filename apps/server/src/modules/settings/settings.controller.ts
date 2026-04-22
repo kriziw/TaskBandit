@@ -6,6 +6,8 @@ import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
 import { Roles } from "../../common/auth/roles.decorator";
 import { RolesGuard } from "../../common/auth/roles.guard";
+import { AppConfigService } from "../../common/config/app-config.service";
+import { buildRequestOrigin, resolveMountedAppPath } from "../../common/http/request-url.util";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SettingsService } from "./settings.service";
 import { CreateHouseholdMemberDto } from "./dto/create-household-member.dto";
@@ -21,7 +23,8 @@ import { UpdateSettingsDto } from "./dto/update-settings.dto";
 export class SettingsController {
   constructor(
     private readonly settingsService: SettingsService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
+    private readonly appConfigService: AppConfigService
   ) {}
 
   @Get("household")
@@ -125,23 +128,13 @@ export class SettingsController {
   }
 
   private buildSignInUrl(request: Request) {
-    const origin = this.buildRequestOrigin(request);
-    const originalUrl = request.originalUrl || request.url;
-    const apiRouteIndex = originalUrl.indexOf("/api/settings/");
-    const appPath = apiRouteIndex < 0 ? "/" : originalUrl.slice(0, apiRouteIndex) || "/";
+    const origin =
+      this.appConfigService.hostedModeEnabled &&
+      this.appConfigService.hostedTenantRoutingMode === "path" &&
+      this.appConfigService.publicWebBaseUrl
+        ? this.appConfigService.publicWebBaseUrl
+        : buildRequestOrigin(request);
+    const appPath = resolveMountedAppPath(request, "/api/settings/");
     return new URL(appPath, origin).toString();
-  }
-
-  private buildRequestOrigin(request: Request) {
-    const forwardedProtocol = request.headers["x-forwarded-proto"];
-    const forwardedHost = request.headers["x-forwarded-host"];
-    const protocol =
-      (Array.isArray(forwardedProtocol) ? forwardedProtocol[0] : forwardedProtocol)?.split(",")[0]?.trim() ||
-      request.protocol;
-    const host =
-      (Array.isArray(forwardedHost) ? forwardedHost[0] : forwardedHost)?.split(",")[0]?.trim() ||
-      request.get("host");
-
-    return `${protocol}://${host}`;
   }
 }
