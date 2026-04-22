@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.1](https://github.com/kriziw/TaskBandit/compare/v0.43.0...v0.43.1) (2026-04-22)
+
+
+### Bug Fixes
+
+* avoid regex backtracking in tenant slugging ([#293](https://github.com/kriziw/TaskBandit/issues/293)) ([c84ce1a](https://github.com/kriziw/TaskBandit/commit/c84ce1af0ee48056f6364b8879d6bb1212a85bbf))
+
 ## [0.43.0](https://github.com/kriziw/TaskBandit/compare/v0.42.0...v0.43.0) (2026-04-22)
 
 
