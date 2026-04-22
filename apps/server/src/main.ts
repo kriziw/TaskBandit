@@ -2,10 +2,12 @@ import { ValidationPipe } from "@nestjs/common";
 import { NestFactory } from "@nestjs/core";
 import type { NestExpressApplication } from "@nestjs/platform-express";
 import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
+import type { NextFunction, Request, Response } from "express";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { AppModule } from "./app.module";
 import { AppConfigService } from "./common/config/app-config.service";
+import { rewriteHostedApiPath } from "./common/http/path-routing.util";
 import { AppLogService } from "./common/logging/app-log.service";
 
 async function bootstrap() {
@@ -49,6 +51,17 @@ async function bootstrap() {
 
   if (config.reverseProxyEnabled) {
     expressApp.set("trust proxy", true);
+  }
+
+  if (config.hostedModeEnabled && config.hostedTenantRoutingMode === "path") {
+    app.use((request: Request, _response: Response, next: NextFunction) => {
+      const rewrittenPath = rewriteHostedApiPath(request.url, config.tenantPathPrefix);
+      if (rewrittenPath) {
+        request.url = rewrittenPath;
+      }
+
+      next();
+    });
   }
 
   if (config.reverseProxyPathBase) {

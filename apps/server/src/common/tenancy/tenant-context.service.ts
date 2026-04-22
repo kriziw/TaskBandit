@@ -1,4 +1,5 @@
 import { Injectable, NotFoundException } from "@nestjs/common";
+import { TenantRequestContext } from "../http/request-url.util";
 import { PrismaService } from "../prisma/prisma.service";
 import { AppConfigService } from "../config/app-config.service";
 
@@ -7,7 +8,7 @@ export type ResolvedTenantContext = {
   householdId: string;
   slug: string;
   displayName: string;
-  source: "hosted_env" | "hostname" | "self_hosted_default";
+  source: "hosted_env" | "hostname" | "path" | "self_hosted_default";
 };
 
 type TenantRecord = {
@@ -26,7 +27,17 @@ export class TenantContextService {
     private readonly appConfigService: AppConfigService
   ) {}
 
+  async resolveFromRequest(request?: TenantRequestContext | null): Promise<ResolvedTenantContext> {
+    return this.resolveTenantContext(request);
+  }
+
   async resolveFromRequestHost(hostHeader?: string | null): Promise<ResolvedTenantContext> {
+    return this.resolveTenantContext({
+      hostHeader
+    });
+  }
+
+  private async resolveTenantContext(request?: TenantRequestContext | null): Promise<ResolvedTenantContext> {
     if (this.appConfigService.hostedModeEnabled && this.appConfigService.hostedTenantId) {
       return this.mapTenantContext(
         await this.getTenantById(this.appConfigService.hostedTenantId),
@@ -34,21 +45,25 @@ export class TenantContextService {
       );
     }
 
-    const normalizedHost = this.normalizeHost(hostHeader);
+    const normalizedHost = this.normalizeHost(request?.hostHeader);
+
+    if (
+      this.appConfigService.hostedModeEnabled &&
+      this.appConfigService.hostedTenantRoutingMode === "path"
+    ) {
+      const pathSlug = this.resolveSlugFromPath(request?.originalUrl);
+      if (pathSlug) {
+        return this.mapTenantContext(await this.getTenantBySlug(pathSlug), "path");
+      }
+
+      if (normalizedHost && this.isConfiguredHostedPathHost(normalizedHost)) {
+        throw new NotFoundException("Tenant was not found.");
+      }
+    }
+
     const slug = normalizedHost ? this.resolveSlugFromHost(normalizedHost) : null;
     if (slug) {
-      const tenant = await this.prisma.tenant.findUnique({
-        where: { slug },
-        include: {
-          household: {
-            select: { id: true }
-          }
-        }
-      });
-
-      if (tenant?.household) {
-        return this.mapTenantContext(tenant, "hostname");
-      }
+      return this.mapTenantContext(await this.getTenantBySlug(slug), "hostname");
     }
 
     return this.mapTenantContext(await this.getDefaultTenant(), "self_hosted_default");
@@ -80,6 +95,23 @@ export class TenantContextService {
   private async getTenantById(tenantId: string): Promise<TenantRecord> {
     const tenant = await this.prisma.tenant.findUnique({
       where: { id: tenantId },
+      include: {
+        household: {
+          select: { id: true }
+        }
+      }
+    });
+
+    if (!tenant?.household) {
+      throw new NotFoundException("Tenant was not found.");
+    }
+
+    return tenant;
+  }
+
+  private async getTenantBySlug(slug: string): Promise<TenantRecord> {
+    const tenant = await this.prisma.tenant.findUnique({
+      where: { slug },
       include: {
         household: {
           select: { id: true }
@@ -132,5 +164,57 @@ export class TenantContextService {
     }
 
     return segments[0];
+  }
+
+  private resolveSlugFromPath(originalUrl?: string | null) {
+    const pathname = this.normalizePathname(originalUrl);
+    if (!pathname) {
+      return null;
+    }
+
+    const match = pathname.match(
+      new RegExp(
+        `^${this.escapeRegExp(this.appConfigService.tenantPathPrefix)}/([a-z0-9][a-z0-9-]*)(?:/.*)?$`,
+        "i"
+      )
+    );
+
+    return match?.[1]?.toLowerCase() ?? null;
+  }
+
+  private normalizePathname(originalUrl?: string | null) {
+    const rawValue = String(originalUrl ?? "").trim();
+    if (!rawValue) {
+      return null;
+    }
+
+    try {
+      return new URL(rawValue, "http://taskbandit.local").pathname.replace(/\/+$/, "") || "/";
+    } catch {
+      return null;
+    }
+  }
+
+  private isConfiguredHostedPathHost(host: string) {
+    return [this.appConfigService.publicWebBaseUrl, this.appConfigService.publicApiBaseUrl]
+      .map((value) => this.extractHostname(value))
+      .filter(Boolean)
+      .includes(host);
+  }
+
+  private extractHostname(value: string) {
+    if (!value) {
+      return null;
+    }
+
+    try {
+      return new URL(value).hostname.toLowerCase();
+    } catch {
+      return null;
+    }
+  }
+
+  private escapeRegExp(value: string) {
+    return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   }
 }

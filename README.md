@@ -45,6 +45,7 @@ Before first real use, edit `.env`:
 - for most installs, only set `TASKBANDIT_PUBLIC_WEB_BASE_URL` and `TASKBANDIT_PUBLIC_API_BASE_URL`; TaskBandit derives the admin URL automatically and also derives CORS/reverse-proxy behavior from those public URLs
 - leave the default log safety limits in place unless you have a reason to change them: the persistent runtime log rotates at `100 MB` with a `500 MB` total cap, and Docker container logs rotate at `100 MB` with `5` retained files per container
 - leave `TASKBANDIT_HOSTED_MODE=false` for self-hosted installs; the hosted runtime settings are only needed when this public runtime is operated by the private TaskBandit control plane
+- if you run the hosted runtime behind fixed public hosts, set `TASKBANDIT_HOSTED_TENANT_ROUTING_MODE=path` and keep tenant URLs under `/t/<slug>` instead of per-tenant subdomains
 - only use the advanced overrides (`TASKBANDIT_CORS_ALLOWED_ORIGINS`, `TASKBANDIT_REVERSE_PROXY_ENABLED`) if you intentionally need custom browser-origin or proxy behavior
 
 Example domain setup:
@@ -125,6 +126,23 @@ The public runtime still defaults to self-hosted operation. When `TASKBANDIT_HOS
 - tenant export and deletion manifests that inventory database rows alongside proof object keys
 
 Hosted mode does not add private billing logic, operator support tooling, or hosted secret management to this repo. Those remain in the private control plane.
+
+For fixed-hostname hosted deployments, the public runtime also supports path-based tenant routing:
+
+- tenant web: `https://my.taskbandit.app/t/<slug>`
+- tenant API: `https://api.taskbandit.app/t/<slug>/...`
+
+That mode is enabled with:
+
+```env
+TASKBANDIT_HOSTED_MODE=true
+TASKBANDIT_PUBLIC_WEB_BASE_URL=https://my.taskbandit.app
+TASKBANDIT_PUBLIC_API_BASE_URL=https://api.taskbandit.app
+TASKBANDIT_HOSTED_TENANT_ROUTING_MODE=path
+TASKBANDIT_TENANT_PATH_PREFIX=/t
+```
+
+Self-hosted installs do not need any of the hosted routing settings above.
 
 ## Local Development
 

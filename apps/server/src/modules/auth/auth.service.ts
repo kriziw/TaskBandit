@@ -17,6 +17,7 @@ import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PrismaService } from "../../common/prisma/prisma.service";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { TenantContextService } from "../../common/tenancy/tenant-context.service";
+import { TenantRequestContext } from "../../common/http/request-url.util";
 import { SmtpService, type SmtpSettings } from "../settings/smtp.service";
 import { CompletePasswordResetDto } from "./dto/complete-password-reset.dto";
 import { LoginDto } from "./dto/login.dto";
@@ -87,8 +88,8 @@ export class AuthService {
     return hash(password, 12);
   }
 
-  async login(dto: LoginDto, language: SupportedLanguage, requestHost?: string | null) {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+  async login(dto: LoginDto, language: SupportedLanguage, requestContext?: TenantRequestContext | null) {
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
@@ -133,8 +134,8 @@ export class AuthService {
     );
   }
 
-  async signup(dto: SignupDto, language: SupportedLanguage, requestHost?: string | null) {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+  async signup(dto: SignupDto, language: SupportedLanguage, requestContext?: TenantRequestContext | null) {
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const settings = await this.getStoredAuthSettings(tenant.tenantId);
     if (!settings) {
       throw new ForbiddenException({
@@ -199,9 +200,9 @@ export class AuthService {
     dto: RequestPasswordResetDto,
     resetLinkTemplate: string,
     language: SupportedLanguage,
-    requestHost?: string | null
+    requestContext?: TenantRequestContext | null
   ) {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
@@ -280,9 +281,9 @@ export class AuthService {
   async completePasswordReset(
     dto: CompletePasswordResetDto,
     language: SupportedLanguage,
-    requestHost?: string | null
+    requestContext?: TenantRequestContext | null
   ) {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
@@ -353,9 +354,9 @@ export class AuthService {
   async getCurrentUser(
     authorizationHeader: string | undefined,
     language: SupportedLanguage,
-    requestHost?: string | null
+    requestContext?: TenantRequestContext | null
   ): Promise<AuthenticatedUser> {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const token = this.extractBearerToken(authorizationHeader);
     if (!token) {
       throw new UnauthorizedException({
@@ -417,7 +418,7 @@ export class AuthService {
   async getCurrentUserFromDashboardSyncToken(
     token: string | undefined,
     language: SupportedLanguage,
-    requestHost?: string | null
+    requestContext?: TenantRequestContext | null
   ): Promise<AuthenticatedUser> {
     if (!token) {
       throw new UnauthorizedException({
@@ -426,7 +427,7 @@ export class AuthService {
     }
 
     try {
-      const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+      const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
       const payload = verify(token, this.appConfigService.jwtSecret) as Partial<DashboardSyncTokenPayload>;
       if (payload.purpose !== "dashboard-sync" || !payload.sub || !payload.householdId || !payload.tenantId) {
         throw new Error("Invalid dashboard sync token.");
@@ -470,10 +471,10 @@ export class AuthService {
     }
   }
 
-  async getProviders(requestHost?: string | null) {
-    let tenant: Awaited<ReturnType<TenantContextService["resolveFromRequestHost"]>>;
+  async getProviders(requestContext?: TenantRequestContext | null) {
+    let tenant: Awaited<ReturnType<TenantContextService["resolveFromRequest"]>>;
     try {
-      tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+      tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     } catch (error) {
       if (error instanceof NotFoundException) {
         return {
@@ -548,9 +549,9 @@ export class AuthService {
   async buildOidcAuthorizationUrl(
     callbackUrl: string,
     state: string,
-    requestHost?: string | null
+    requestContext?: TenantRequestContext | null
   ) {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const metadata = await this.getOidcMetadata(tenant.tenantId);
     const oidcConfig = await this.getEffectiveOidcConfig(tenant.tenantId);
     const params = new URLSearchParams({
@@ -568,9 +569,9 @@ export class AuthService {
     code: string,
     callbackUrl: string,
     language: SupportedLanguage,
-    requestHost?: string | null
+    requestContext?: TenantRequestContext | null
   ) {
-    const tenant = await this.tenantContextService.resolveFromRequestHost(requestHost);
+    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const metadata = await this.getOidcMetadata(tenant.tenantId);
     const oidcConfig = await this.getEffectiveOidcConfig(tenant.tenantId);
     const tokenResponse = await fetch(metadata.token_endpoint, {

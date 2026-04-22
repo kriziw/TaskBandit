@@ -10,9 +10,16 @@ This note captures the public runtime boundary for hosted TaskBandit while prese
 
 ## Tenant Context
 
-- Tenant context comes from trusted server-side state such as the request host or hosted runtime tenant binding.
+- Tenant context comes from trusted server-side state such as the request host, a hosted tenant path, or hosted runtime tenant binding.
 - Browser clients do not submit authoritative tenant ids.
 - Auth/session validation rejects tokens that do not match the resolved tenant.
+
+Hosted deployments can use either:
+
+- subdomain routing, such as `family.taskbandit.app`
+- fixed-host path routing, such as `my.taskbandit.app/t/family` and `api.taskbandit.app/t/family/...`
+
+Self-hosted remains the normal default and does not require either hosted routing mode.
 
 ## Tenant-Aware Runtime Enforcement
 

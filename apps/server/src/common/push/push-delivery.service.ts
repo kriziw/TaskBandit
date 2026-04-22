@@ -177,7 +177,7 @@ export class PushDeliveryService {
         message: input.message,
         entityType: input.entityType ?? "",
         entityId: input.entityId ?? "",
-        path: "./client.html#notifications"
+        path: "./#notifications"
       });
 
       const result = await webPushModule.sendNotification(

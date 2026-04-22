@@ -2,6 +2,7 @@ import { Injectable } from "@nestjs/common";
 import { ConfigService } from "@nestjs/config";
 import fs from "node:fs";
 import path from "node:path";
+import { normalizeTenantPathPrefix } from "../http/path-routing.util";
 import { OidcConfig } from "./oidc-config.type";
 
 type FirebaseServiceAccount = {
@@ -310,6 +311,21 @@ export class AppConfigService {
 
   get hostedModeEnabled(): boolean {
     return this.configService.get<string>("TASKBANDIT_HOSTED_MODE", "false") === "true";
+  }
+
+  get hostedTenantRoutingMode(): "subdomain" | "path" {
+    const configuredValue = this.configService
+      .get<string>("TASKBANDIT_HOSTED_TENANT_ROUTING_MODE", "")
+      .trim()
+      .toLowerCase();
+
+    return configuredValue === "path" ? "path" : "subdomain";
+  }
+
+  get tenantPathPrefix(): string {
+    return normalizeTenantPathPrefix(
+      this.configService.get<string>("TASKBANDIT_TENANT_PATH_PREFIX", "/t")
+    );
   }
 
   get hostedTenantId(): string {

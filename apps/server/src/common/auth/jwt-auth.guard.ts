@@ -6,6 +6,7 @@ import {
 } from "@nestjs/common";
 import { I18nService } from "../i18n/i18n.service";
 import { AuthService } from "../../modules/auth/auth.service";
+import { buildTenantRequestContext } from "../http/request-url.util";
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -32,7 +33,7 @@ export class JwtAuthGuard implements CanActivate {
     request.user = await this.authService.getCurrentUser(
       authorizationHeader,
       language,
-      request.headers["x-forwarded-host"] ?? request.get?.("host") ?? null
+      buildTenantRequestContext(request)
     );
     return true;
   }

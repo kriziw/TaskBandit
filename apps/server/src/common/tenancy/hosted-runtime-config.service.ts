@@ -1,6 +1,7 @@
 import { Injectable, ServiceUnavailableException } from "@nestjs/common";
 import { AppConfigService } from "../config/app-config.service";
 import { TenantContextService } from "./tenant-context.service";
+import { TenantRequestContext } from "../http/request-url.util";
 
 export type HostedTenantRuntimeConfig = {
   configVersion: string;
@@ -47,11 +48,17 @@ export class HostedRuntimeConfigService {
   ) {}
 
   async getTenantRuntimeConfigForHost(hostHeader?: string | null) {
+    return this.getTenantRuntimeConfigForRequest({
+      hostHeader
+    });
+  }
+
+  async getTenantRuntimeConfigForRequest(request?: TenantRequestContext | null) {
     if (!this.appConfigService.hostedModeEnabled) {
       return null;
     }
 
-    const tenant = await this.tenantContextService.resolveFromRequestHost(hostHeader);
+    const tenant = await this.tenantContextService.resolveFromRequest(request);
     return this.getTenantRuntimeConfig(tenant.tenantId);
   }
 
