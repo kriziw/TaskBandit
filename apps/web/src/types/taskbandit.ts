@@ -509,6 +509,7 @@ export type AuthProviders = {
   local: {
     enabled: boolean;
     forcedByConfig: boolean;
+    householdId: string | null;
     selfSignupEnabled: boolean;
   };
   oidc: {

@@ -210,6 +210,7 @@
   "auth.setup_retry": "Einrichtung erneut prufen",
   "auth.local_provider": "Lokal",
   "auth.local_disabled_notice": "Die lokale Anmeldung ist fuer diesen Haushalt derzeit deaktiviert.",
+  "auth.tenant_not_ready_notice": "Dieser gehostete Arbeitsbereich ist unter dieser URL noch nicht fuer die Anmeldung bereit. Schliessen Sie zuerst die Tenant-Einrichtung ab oder verwenden Sie den tenant-spezifischen Anmeldelink, sobald er bereitgestellt wurde.",
   "auth.local_forced_note": "Die lokale Anmeldung wird als Wiederherstellungspfad per Konfiguration erzwungen aktiviert.",
   "auth.oidc_provider": "OIDC",
   "auth.oidc_sign_in": "Mit OIDC fortfahren",

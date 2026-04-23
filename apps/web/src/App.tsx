@@ -1413,6 +1413,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   ];
   const activeBootstrapStepIndex = bootstrapStepItems.findIndex((step) => step.key === bootstrapSetupStep);
+  const noAuthProvidersAvailable = !providers?.local.enabled && !providers?.oidc.enabled;
+  const authUnavailableNoticeKey =
+    noAuthProvidersAvailable
+      ? providers?.local.householdId
+        ? "auth.local_disabled_notice"
+        : "auth.tenant_not_ready_notice"
+      : null;
 
   const templateGroups = useMemo(() => {
     const grouped = new Map<string, ChoreTemplate[]>();
@@ -5764,8 +5771,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       </label>
                     </>
                   ) : null}
-                  {!providers?.local.enabled && !providers?.oidc.enabled ? (
-                    <p className="inline-message">{t("auth.local_disabled_notice")}</p>
+                  {authUnavailableNoticeKey ? (
+                    <p className="inline-message">{t(authUnavailableNoticeKey)}</p>
                   ) : null}
                   {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
                   <div className="button-row">
