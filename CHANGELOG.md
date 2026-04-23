@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.2](https://github.com/kriziw/TaskBandit/compare/v0.43.1...v0.43.2) (2026-04-23)
+
+
+### Bug Fixes
+
+* disable hosted first-household bootstrap ([#300](https://github.com/kriziw/TaskBandit/issues/300)) ([388a2c2](https://github.com/kriziw/TaskBandit/commit/388a2c2905f352f4e46d3c933ea3872af14d5612))
+
 ## [0.43.1](https://github.com/kriziw/TaskBandit/compare/v0.43.0...v0.43.1) (2026-04-22)
 
 
