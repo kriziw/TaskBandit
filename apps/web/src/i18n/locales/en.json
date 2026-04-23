@@ -213,6 +213,7 @@
   "auth.setup_retry": "Retry setup check",
   "auth.local_provider": "Local",
   "auth.local_disabled_notice": "Local sign-in is disabled right now for this household.",
+  "auth.tenant_not_ready_notice": "This hosted workspace is not ready for sign-in on this URL yet. Finish tenant setup first, or use the tenant-specific sign-in link once it has been provisioned.",
   "auth.local_forced_note": "Local sign-in is being force-enabled from config as a recovery path.",
   "auth.oidc_provider": "OIDC",
   "auth.oidc_sign_in": "Continue with OIDC",
