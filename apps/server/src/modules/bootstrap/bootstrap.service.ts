@@ -1,4 +1,4 @@
-import { ConflictException, Injectable, OnModuleInit } from "@nestjs/common";
+import { ConflictException, ForbiddenException, Injectable, OnModuleInit } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
@@ -20,15 +20,32 @@ export class BootstrapService implements OnModuleInit {
     await this.repository.seedDemoDataIfNeeded(this.appConfigService.seedDemoData);
   }
 
-  getStatus() {
+  async getStatus() {
+    if (this.appConfigService.hostedModeEnabled) {
+      return {
+        isBootstrapped: true,
+        householdCount: 1
+      };
+    }
+
     return this.repository.getBootstrapStatus();
   }
 
   getStarterTemplateOptions(language: SupportedLanguage) {
+    if (this.appConfigService.hostedModeEnabled) {
+      return [];
+    }
+
     return getStarterTemplateOptionCatalog(language);
   }
 
   async bootstrapHousehold(dto: BootstrapHouseholdDto, language: SupportedLanguage) {
+    if (this.appConfigService.hostedModeEnabled) {
+      throw new ForbiddenException({
+        message: "Hosted households are provisioned through the control plane."
+      });
+    }
+
     const status = await this.repository.getBootstrapStatus();
     if (status.isBootstrapped) {
       throw new ConflictException({
