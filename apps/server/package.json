@@ -40,7 +40,7 @@
     "@types/nodemailer": "^8.0.0",
     "@types/web-push": "^3.6.4",
     "typescript": "^6.0.2",
-    "vitest": "^4.1.4"
+    "vitest": "^4.1.5"
   },
   "overrides": {
     "@google-cloud/firestore": "8.5.0",
