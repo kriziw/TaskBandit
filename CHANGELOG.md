@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.3](https://github.com/kriziw/TaskBandit/compare/v0.43.2...v0.43.3) (2026-04-23)
+
+
+### Bug Fixes
+
+* clarify hosted tenant auth empty state ([#302](https://github.com/kriziw/TaskBandit/issues/302)) ([694bce2](https://github.com/kriziw/TaskBandit/commit/694bce2370150242c9c9e2022c03598c1571b719))
+
 ## [0.43.2](https://github.com/kriziw/TaskBandit/compare/v0.43.1...v0.43.2) (2026-04-23)
 
 
