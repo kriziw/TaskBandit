@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.4](https://github.com/kriziw/TaskBandit/compare/v0.43.3...v0.43.4) (2026-05-06)
+
+
+### Bug Fixes
+
+* **android-web:** align SaaS entitlement gating and optional control-data fetches ([#307](https://github.com/kriziw/TaskBandit/issues/307)) ([3836556](https://github.com/kriziw/TaskBandit/commit/383655689a6275f1c037ff9c25f19514f5f817a6))
+
 ## [0.43.3](https://github.com/kriziw/TaskBandit/compare/v0.43.2...v0.43.3) (2026-04-23)
 
 
