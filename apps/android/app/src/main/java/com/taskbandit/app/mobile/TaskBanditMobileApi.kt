@@ -14,9 +14,18 @@ import java.net.URLEncoder
 import java.nio.charset.StandardCharsets
 
 class TaskBanditUnauthorizedException : IllegalStateException()
-class TaskBanditApiException(val status: Int, message: String) : IllegalStateException(message)
+class TaskBanditApiException(
+    val status: Int,
+    message: String,
+    val code: String? = null
+) : IllegalStateException(message)
 class TaskBanditTransportException(message: String, cause: Throwable? = null) :
     IllegalStateException(message, cause)
+
+private data class TaskBanditErrorDetails(
+    val message: String,
+    val code: String? = null
+)
 
 class TaskBanditMobileApi {
     private val httpClient = OkHttpClient()
@@ -94,7 +103,8 @@ class TaskBanditMobileApi {
             displayName = userJson.optString("displayName"),
             role = userJson.optString("role"),
             points = userJson.optInt("points"),
-            currentStreak = userJson.optInt("currentStreak")
+            currentStreak = userJson.optInt("currentStreak"),
+            featureAccess = parseFeatureAccess(userJson.optJSONObject("featureAccess"))
         )
 
         val leaderboard = buildList {
@@ -494,7 +504,12 @@ class TaskBanditMobileApi {
                     throw TaskBanditUnauthorizedException()
                 }
 
-                throw TaskBanditApiException(response.code, readErrorMessage(responseText))
+                val errorDetails = readErrorDetails(responseText)
+                throw TaskBanditApiException(
+                    status = response.code,
+                    message = errorDetails.message,
+                    code = errorDetails.code
+                )
             }
         } catch (exception: IOException) {
             throw TaskBanditTransportException(
@@ -513,7 +528,7 @@ class TaskBanditMobileApi {
         return try {
             requestJsonArray(baseUrl, path, token, method) to true
         } catch (exception: TaskBanditApiException) {
-            if (exception.status in setOf(404, 405, 501)) {
+            if (exception.status in setOf(404, 405, 501) || isPackageFeatureDisabled(exception)) {
                 JSONArray() to false
             } else {
                 throw exception
@@ -584,9 +599,11 @@ class TaskBanditMobileApi {
                     throw TaskBanditUnauthorizedException()
                 }
 
+                val errorDetails = readErrorDetails(responseText, response.header("Content-Type"))
                 throw TaskBanditApiException(
-                    response.code,
-                    readErrorMessage(responseText, response.header("Content-Type"))
+                    status = response.code,
+                    message = errorDetails.message,
+                    code = errorDetails.code
                 )
             }
         } catch (exception: IOException) {
@@ -630,23 +647,37 @@ class TaskBanditMobileApi {
         }
     }
 
-    private fun readErrorMessage(responseText: String, contentType: String? = null): String {
+    private fun readErrorDetails(responseText: String, contentType: String? = null): TaskBanditErrorDetails {
         return runCatching {
             when (val parsed = JSONTokener(responseText).nextValue()) {
-                is JSONObject -> when {
-                    parsed.has("message") -> parsed.get("message").toString()
-                    parsed.has("error") -> parsed.get("error").toString()
-                    else -> parsed.toString()
+                is JSONObject -> {
+                    val code = parsed.optString("code")
+                        .trim()
+                        .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
+                    val message = when {
+                        parsed.has("message") -> parsed.get("message").toString()
+                        parsed.has("error") -> parsed.get("error").toString()
+                        else -> parsed.toString()
+                    }
+                    TaskBanditErrorDetails(
+                        message = message.ifBlank { "Request failed." },
+                        code = code
+                    )
                 }
+
                 else -> if (responseText.isBlank()) {
-                    "Request failed."
+                    TaskBanditErrorDetails(message = "Request failed.")
                 } else {
-                    responseText
+                    TaskBanditErrorDetails(message = responseText)
                 }
             }
         }.getOrElse {
-            buildUnexpectedResponseMessage(responseText, contentType)
+            TaskBanditErrorDetails(message = buildUnexpectedResponseMessage(responseText, contentType))
         }
+    }
+
+    private fun isPackageFeatureDisabled(exception: TaskBanditApiException): Boolean {
+        return exception.status == 403 && exception.code == "package_feature_disabled"
     }
 
     private fun reviewChore(
@@ -811,6 +842,25 @@ class TaskBanditMobileApi {
                 )
             }
         }
+    }
+
+    private fun parseFeatureAccess(entry: JSONObject?): MobileFeatureAccess {
+        if (entry == null) {
+            return MobileFeatureAccess()
+        }
+
+        return MobileFeatureAccess(
+            templatesManage = entry.optBoolean("templates_manage", true),
+            choresManage = entry.optBoolean("chores_manage", true),
+            reassignment = entry.optBoolean("reassignment", true),
+            takeoverDirect = entry.optBoolean("takeover_direct", true),
+            takeoverRequests = entry.optBoolean("takeover_requests", true),
+            approvals = entry.optBoolean("approvals", true),
+            proofUploads = entry.optBoolean("proof_uploads", true),
+            followUpAutomation = entry.optBoolean("follow_up_automation", true),
+            externalCompletion = entry.optBoolean("external_completion", true),
+            deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true)
+        )
     }
 
     private fun parseMembers(entries: JSONArray?): List<MobileHouseholdMember> {

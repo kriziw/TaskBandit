@@ -749,7 +749,12 @@ type BeforeInstallPromptEvent = Event & {
 };
 
 function isOptionalFeatureUnavailable(error: unknown) {
-  return error instanceof TaskBanditApiError && [404, 405, 501].includes(error.status);
+  if (!(error instanceof TaskBanditApiError)) {
+    return false;
+  }
+
+  return [404, 405, 501].includes(error.status) ||
+    (error.status === 403 && error.code === "package_feature_disabled");
 }
 
 async function loadOptionalFeature<T>(loader: () => Promise<T>, fallbackValue: T) {
@@ -2757,6 +2762,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   function renderMyChoreCard(instance: ChoreInstance) {
+    const canUploadProofs = hasFeature("proof_uploads");
     const selectedChecklistIds = getSelectedChecklistIds(instance);
     const selectedFiles = selectedProofFiles[instance.id] ?? [];
     const choreHeading = (
@@ -2789,7 +2795,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </div>
           ) : null}
         </div>
-        {instance.requirePhotoProof ? (
+        {instance.requirePhotoProof && !canUploadProofs ? (
+          <p className="inline-message">{t("feature.proof_uploads_disabled")}</p>
+        ) : instance.requirePhotoProof ? (
           <p className="inline-message">{t("submission.photo_hint_required")}</p>
         ) : (
           <p className="inline-message">{t("submission.photo_hint_optional")}</p>
@@ -2818,16 +2826,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         ) : (
           <p className="inline-message">{t("submission.one_tap")}</p>
         )}
-        <label className="inline-field">
-          <span>{t("task.attachments")}</span>
-          <input
-            type="file"
-            accept="image/*"
-            multiple
-            onChange={(event) => handleProofFilesSelected(instance.id, event.target.files)}
-          />
-        </label>
-        {selectedFiles.length > 0 ? (
+        {canUploadProofs ? (
+          <label className="inline-field">
+            <span>{t("task.attachments")}</span>
+            <input
+              type="file"
+              accept="image/*"
+              multiple
+              onChange={(event) => handleProofFilesSelected(instance.id, event.target.files)}
+            />
+          </label>
+        ) : null}
+        {canUploadProofs && selectedFiles.length > 0 ? (
           <p className="inline-message">
             {t("submission.selected_files")}: {selectedFiles.length}
           </p>
@@ -3183,6 +3193,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       setPageError(t("submission.photo_required_missing"));
       return;
     }
+    if (targetInstance.requirePhotoProof && !hasFeature("proof_uploads")) {
+      setPageError(t("feature.proof_uploads_disabled"));
+      return;
+    }
 
     setBusyAction(`submit:${instanceId}`);
     try {
@@ -3253,6 +3267,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     if (targetInstance.requirePhotoProof && selectedFiles.length < 1) {
       setPageError(t("submission.photo_required_missing"));
+      return;
+    }
+    if (targetInstance.requirePhotoProof && !hasFeature("proof_uploads")) {
+      setPageError(t("feature.proof_uploads_disabled"));
       return;
     }
 

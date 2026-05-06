@@ -767,6 +767,7 @@
   "feature.templates_manage_disabled": "Dieses Paket erlaubt nur schreibgeschuetztes Vorlagenlesen.",
   "feature.follow_up_automation_disabled": "Dieses Paket enthaelt keine Bearbeitung fuer Folgeaufgaben.",
   "feature.chores_manage_disabled": "Dieses Paket enthaelt keine Planung oder Bearbeitung von Aufgaben.",
+  "feature.proof_uploads_disabled": "Dieses Paket enthaelt keine Nachweis-Uploads.",
   "exports.download_chores": "CSV herunterladen",
   "exports.assignment_filter": "Export nach Zuweisung",
   "exports.assignment_mine": "Mir zugewiesen",

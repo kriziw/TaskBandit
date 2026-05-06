@@ -781,6 +781,7 @@
   "feature.templates_manage_disabled": "This package keeps template editing read-only.",
   "feature.follow_up_automation_disabled": "This package does not include follow-up automation editing.",
   "feature.chores_manage_disabled": "This package does not include chore scheduling and editing.",
+  "feature.proof_uploads_disabled": "This package does not include proof uploads.",
   "exports.download_chores": "Download CSV",
   "exports.assignment_filter": "Export assignment",
   "exports.assignment_mine": "Assigned to me",

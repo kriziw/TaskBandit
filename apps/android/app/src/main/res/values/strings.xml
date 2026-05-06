@@ -28,7 +28,7 @@
     <string name="leaderboard_name_maya">Maya</string>
     <string name="leaderboard_name_luca">Luca</string>
     <string name="mobile_login_title">Sign in to TaskBandit</string>
-    <string name="mobile_login_hint">Connect your Android app to the self-hosted server and pull your live chores.</string>
+    <string name="mobile_login_hint">Sign in to TaskBandit Cloud and keep your chores in sync.</string>
     <string name="mobile_app_release">App %1$s</string>
     <string name="mobile_server_release">Server %1$s</string>
     <string name="mobile_update_available_title">Newer version available</string>
@@ -47,6 +47,8 @@
     <string name="mobile_password">Password</string>
     <string name="mobile_login_action">Sign in</string>
     <string name="mobile_login_sso_action">Sign in with SSO</string>
+    <string name="mobile_self_hosted_setup_action">Use self-hosted setup</string>
+    <string name="mobile_self_hosted_back_to_saas">Back to TaskBandit Cloud</string>
     <string name="mobile_unexpected_server_response">The server returned an unexpected response. Please check the server URL and reverse proxy setup.</string>
     <string name="common_loading_short">Loading...</string>
     <string name="mobile_dashboard_summary">%1$d approvals waiting, %2$d active chores, %3$d streak</string>
@@ -159,6 +161,8 @@
     <string name="mobile_create_ready">Choose a template, schedule the chore, and confirm the assignment behavior.</string>
     <string name="mobile_create_no_permission">Only admin or parent roles can create chores.</string>
     <string name="mobile_create_no_templates">No templates available yet. Add templates from web first.</string>
+    <string name="mobile_feature_templates_manage_disabled">Your current package does not include template management in this app.</string>
+    <string name="mobile_feature_chores_manage_disabled">Your current package does not include chore management in this app.</string>
     <string name="mobile_create_variant">Subtype</string>
     <string name="mobile_create_select_variant_prompt">Select a subtype…</string>
     <string name="mobile_create_no_subtype">No subtype</string>
@@ -254,6 +258,10 @@
     <string name="mobile_request_takeover_cancel">Cancel</string>
     <string name="mobile_takeover_pending_with_name">Pending approval from %1$s. You can keep working on this chore until they decide.</string>
     <string name="mobile_takeover_pending_short_with_name">Waiting for %1$s</string>
+    <string name="mobile_feature_takeover_direct_disabled">Direct takeover is not available in your current package.</string>
+    <string name="mobile_feature_takeover_requests_disabled">Takeover requests are not available in your current package.</string>
+    <string name="mobile_feature_approvals_disabled">Approvals are not available in your current package.</string>
+    <string name="mobile_feature_proof_uploads_disabled">Proof uploads are not available in your current package.</string>
     <string name="mobile_checklist_required">Complete all required checklist items before submitting.</string>
     <string name="mobile_photo_required_hint">This chore needs at least one proof photo.</string>
     <string name="mobile_photo_required_missing">Add at least one proof photo before submitting.</string>
