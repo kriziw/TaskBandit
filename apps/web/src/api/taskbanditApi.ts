@@ -51,11 +51,13 @@ type ApiErrorShape = {
 
 export class TaskBanditApiError extends Error {
   readonly status: number;
+  readonly code?: string;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, code?: string) {
     super(message);
     this.name = "TaskBanditApiError";
     this.status = status;
+    this.code = code;
   }
 }
 
@@ -105,14 +107,14 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
   });
 
   if (!response.ok) {
-    const message = await readErrorMessage(response);
-    throw new TaskBanditApiError(message, response.status);
+    const errorDetails = await readErrorDetails(response);
+    throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
   }
 
   return await readJsonResponse<T>(response);
 }
 
-async function readErrorMessage(response: Response) {
+async function readErrorDetails(response: Response): Promise<{ message: string; code?: string }> {
   const responseText = await response.text();
 
   try {
@@ -122,17 +124,15 @@ async function readErrorMessage(response: Response) {
       ? data.message.join(", ")
       : data.message ?? data.error ?? buildUnexpectedResponseMessage(response, responseText);
 
-    if (code && message) {
-      return `${code}: ${message}`;
-    }
-
-    if (code) {
-      return code;
-    }
-
-    return message;
+    return {
+      message:
+        code && message
+          ? `${code}: ${message}`
+          : code || message,
+      code: code || undefined
+    };
   } catch {
-    return buildUnexpectedResponseMessage(response, responseText);
+    return { message: buildUnexpectedResponseMessage(response, responseText) };
   }
 }
 
@@ -571,9 +571,9 @@ export const taskBanditApi = {
       headers: buildHeaders(token, language)
     });
 
-    if (!response.ok) {
-      const message = await readErrorMessage(response);
-      throw new TaskBanditApiError(message, response.status);
+  if (!response.ok) {
+      const errorDetails = await readErrorDetails(response);
+      throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
     return response.blob();
@@ -584,9 +584,9 @@ export const taskBanditApi = {
       headers: buildHeaders(token, language)
     });
 
-    if (!response.ok) {
-      const message = await readErrorMessage(response);
-      throw new TaskBanditApiError(message, response.status);
+  if (!response.ok) {
+      const errorDetails = await readErrorDetails(response);
+      throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
     return response.blob();
@@ -597,9 +597,9 @@ export const taskBanditApi = {
       headers: buildHeaders(token, language)
     });
 
-    if (!response.ok) {
-      const message = await readErrorMessage(response);
-      throw new TaskBanditApiError(message, response.status);
+  if (!response.ok) {
+      const errorDetails = await readErrorDetails(response);
+      throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
     return response.blob();
@@ -610,9 +610,9 @@ export const taskBanditApi = {
       headers: buildHeaders(token, language)
     });
 
-    if (!response.ok) {
-      const message = await readErrorMessage(response);
-      throw new TaskBanditApiError(message, response.status);
+  if (!response.ok) {
+      const errorDetails = await readErrorDetails(response);
+      throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
     return response.blob();
@@ -725,9 +725,9 @@ export const taskBanditApi = {
       body: formData
     });
 
-    if (!response.ok) {
-      const message = await readErrorMessage(response);
-      throw new TaskBanditApiError(message, response.status);
+  if (!response.ok) {
+      const errorDetails = await readErrorDetails(response);
+      throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
     return await readJsonResponse<UploadedProof>(response);
@@ -738,9 +738,9 @@ export const taskBanditApi = {
       headers: buildHeaders(token, language)
     });
 
-    if (!response.ok) {
-      const message = await readErrorMessage(response);
-      throw new TaskBanditApiError(message, response.status);
+  if (!response.ok) {
+      const errorDetails = await readErrorDetails(response);
+      throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
     const contentDisposition = response.headers.get("Content-Disposition");

@@ -3,7 +3,7 @@ package com.taskbandit.app.mobile
 import android.content.SharedPreferences
 import java.util.UUID
 
-private const val defaultApiBaseUrl = "http://10.0.2.2:8080"
+private const val defaultApiBaseUrl = "https://api.taskbandit.app"
 
 class TaskBanditSessionStore(
     private val preferences: SharedPreferences

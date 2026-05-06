@@ -28,7 +28,21 @@ data class MobileUser(
     val displayName: String,
     val role: String,
     val points: Int,
-    val currentStreak: Int
+    val currentStreak: Int,
+    val featureAccess: MobileFeatureAccess = MobileFeatureAccess()
+)
+
+data class MobileFeatureAccess(
+    val templatesManage: Boolean = true,
+    val choresManage: Boolean = true,
+    val reassignment: Boolean = true,
+    val takeoverDirect: Boolean = true,
+    val takeoverRequests: Boolean = true,
+    val approvals: Boolean = true,
+    val proofUploads: Boolean = true,
+    val followUpAutomation: Boolean = true,
+    val externalCompletion: Boolean = true,
+    val deferredFollowUpControl: Boolean = true
 )
 
 data class MobileLeaderboardEntry(

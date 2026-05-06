@@ -733,6 +733,7 @@
   "feature.templates_manage_disabled": "Ez a csomag csak olvasási módban engedi a sablonokat.",
   "feature.follow_up_automation_disabled": "Ez a csomag nem tartalmazza a követő feladatok szerkesztését.",
   "feature.chores_manage_disabled": "Ez a csomag nem tartalmazza a feladatok ütemezését és szerkesztését.",
+  "feature.proof_uploads_disabled": "Ez a csomag nem tartalmazza a bizonyíték feltöltését.",
   "exports.download_chores": "CSV letöltése",
   "exports.assignment_filter": "Export szűrés felelős szerint",
   "exports.assignment_mine": "Nekem kiosztva",
