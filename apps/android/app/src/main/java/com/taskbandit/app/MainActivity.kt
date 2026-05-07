@@ -1775,6 +1775,12 @@ private fun LoginMethodsForm(
 ) {
     val localAuthEnabled = authProviders?.local?.enabled == true
     val oidcAuthEnabled = authProviders?.oidc?.enabled == true
+    val noSupportedMethodsMessage =
+        if (showSelfHostedSetup) {
+            stringResource(R.string.mobile_auth_methods_unavailable)
+        } else {
+            stringResource(R.string.mobile_auth_methods_tenant_not_ready)
+        }
 
     if (showSelfHostedSetup) {
         OutlinedTextField(
@@ -1821,7 +1827,7 @@ private fun LoginMethodsForm(
                     stringResource(R.string.mobile_auth_methods_sso_only)
                 localAuthEnabled ->
                     stringResource(R.string.mobile_auth_methods_local_only)
-                else -> stringResource(R.string.mobile_auth_methods_unavailable)
+                else -> noSupportedMethodsMessage
             },
             color = if (!authProvidersErrorMessage.isNullOrBlank()) {
                 MaterialTheme.colorScheme.error
@@ -1886,13 +1892,6 @@ private fun LoginMethodsForm(
         ) {
             Text(stringResource(R.string.mobile_login_sso_action))
         }
-    }
-    if (!showLocalLogin && !showOidcLogin && !isAuthProvidersLoading) {
-        Text(
-            text = stringResource(R.string.mobile_auth_methods_unavailable),
-            color = MaterialTheme.colorScheme.error,
-            style = MaterialTheme.typography.bodySmall
-        )
     }
     TextButton(
         onClick = {

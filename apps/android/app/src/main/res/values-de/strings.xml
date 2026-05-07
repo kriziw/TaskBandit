@@ -43,6 +43,7 @@
     <string name="mobile_auth_methods_sso_only">Dieser Server unterstÃ¼tzt SSO-Anmeldung.</string>
     <string name="mobile_auth_methods_local_and_sso">Dieser Server unterstÃ¼tzt lokale Anmeldung und SSO.</string>
     <string name="mobile_auth_methods_unavailable">FÃ¼r diesen Server sind derzeit keine unterstÃ¼tzten Anmeldemethoden verfÃ¼gbar.</string>
+    <string name="mobile_auth_methods_tenant_not_ready">Dieser TaskBandit-Cloud-Workspace ist noch nicht fuer die Anmeldung bereit. Schliesse zuerst das Tenant-Setup ab und versuche es dann erneut.</string>
     <string name="mobile_email">E-Mail</string>
     <string name="mobile_password">Passwort</string>
     <string name="mobile_login_action">Anmelden</string>
