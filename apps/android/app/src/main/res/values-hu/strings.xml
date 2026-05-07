@@ -43,6 +43,7 @@
     <string name="mobile_auth_methods_sso_only">Ez a szerver az SSO-bejelentkezést támogatja.</string>
     <string name="mobile_auth_methods_local_and_sso">Ez a szerver a helyi bejelentkezést és az SSO-t is támogatja.</string>
     <string name="mobile_auth_methods_unavailable">Ehhez a szerverhez jelenleg nem érhető el támogatott bejelentkezési mód.</string>
+    <string name="mobile_auth_methods_tenant_not_ready">Ez a TaskBandit Cloud munkaterulet meg nincs keszen a bejelentkezesre. Fejezd be elobb a tenant beallitast, majd probald ujra.</string>
     <string name="mobile_email">E-mail</string>
     <string name="mobile_password">Jelszó</string>
     <string name="mobile_login_action">Bejelentkezés</string>
