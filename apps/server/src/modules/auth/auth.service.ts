@@ -91,23 +91,22 @@ export class AuthService {
   }
 
   async login(dto: LoginDto, language: SupportedLanguage, requestContext?: TenantRequestContext | null) {
-    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
+    const normalizedEmail = this.normalizeEmail(dto.email);
+    const identity = await this.findIdentityByEmail(normalizedEmail);
+    const tenant = await this.resolveTenantForIdentityAuth(identity?.user.tenantId, requestContext);
+
+    if (!tenant) {
+      throw new UnauthorizedException({
+        message: this.i18nService.translate("auth.invalid_credentials", language)
+      });
+    }
+
     const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.local_disabled", language)
       });
     }
-
-    const normalizedEmail = this.normalizeEmail(dto.email);
-    const identity = await this.prisma.authIdentity.findUnique({
-      where: {
-        email: normalizedEmail
-      },
-      include: {
-        user: true
-      }
-    });
 
     if (
       !identity ||
@@ -204,41 +203,53 @@ export class AuthService {
     language: SupportedLanguage,
     requestContext?: TenantRequestContext | null
   ) {
-    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
-    const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
+    const requestTenant = await this.resolveTenantFromRequestOrNull(requestContext);
+    if (requestTenant) {
+      const localAuthConfig = await this.getEffectiveLocalAuthConfig(requestTenant.tenantId);
+      if (!localAuthConfig.enabled) {
+        throw new ForbiddenException({
+          message: this.i18nService.translate("auth.local_disabled", language)
+        });
+      }
+
+      const smtpSettings = await this.getPrimaryHouseholdSmtpSettings(requestTenant.tenantId);
+      if (!smtpSettings || !smtpSettings.enabled) {
+        throw new BadRequestException({
+          message: this.i18nService.translate("auth.password_reset_unavailable", language)
+        });
+      }
+    }
+
+    const normalizedEmail = this.normalizeEmail(dto.email);
+    const identity = await this.findIdentityByEmail(normalizedEmail);
+    const resolvedTenantId = requestTenant
+      ? requestTenant.tenantId
+      : await this.resolveTenantIdForIdentityAuth(identity?.user.tenantId, requestContext);
+
+    if (
+      !identity ||
+      identity.provider !== AuthProvider.LOCAL ||
+      !identity.passwordHash ||
+      identity.user.tenantId !== resolvedTenantId
+    ) {
+      return {
+        ok: true,
+        message: this.i18nService.translate("auth.password_reset_requested", language)
+      };
+    }
+
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(identity.user.tenantId);
     if (!localAuthConfig.enabled) {
       throw new ForbiddenException({
         message: this.i18nService.translate("auth.local_disabled", language)
       });
     }
 
-    const smtpSettings = await this.getPrimaryHouseholdSmtpSettings(tenant.tenantId);
+    const smtpSettings = await this.getPrimaryHouseholdSmtpSettings(identity.user.tenantId);
     if (!smtpSettings || !smtpSettings.enabled) {
       throw new BadRequestException({
         message: this.i18nService.translate("auth.password_reset_unavailable", language)
       });
-    }
-
-    const normalizedEmail = this.normalizeEmail(dto.email);
-    const identity = await this.prisma.authIdentity.findUnique({
-      where: {
-        email: normalizedEmail
-      },
-      include: {
-        user: true
-      }
-    });
-
-    if (
-      !identity ||
-      identity.provider !== AuthProvider.LOCAL ||
-      !identity.passwordHash ||
-      identity.user.tenantId !== tenant.tenantId
-    ) {
-      return {
-        ok: true,
-        message: this.i18nService.translate("auth.password_reset_requested", language)
-      };
     }
 
     const rawToken = randomBytes(32).toString("hex");
@@ -285,21 +296,17 @@ export class AuthService {
     language: SupportedLanguage,
     requestContext?: TenantRequestContext | null
   ) {
-    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
-    const localAuthConfig = await this.getEffectiveLocalAuthConfig(tenant.tenantId);
-    if (!localAuthConfig.enabled) {
-      throw new ForbiddenException({
-        message: this.i18nService.translate("auth.local_disabled", language)
-      });
-    }
-
     const tokenHash = this.hashResetToken(dto.token);
     const resetToken = await this.prisma.passwordResetToken.findUnique({
       where: {
         tokenHash
       },
       include: {
-        authIdentity: true
+        authIdentity: {
+          include: {
+            user: true
+          }
+        }
       }
     });
 
@@ -312,6 +319,23 @@ export class AuthService {
     if (resetToken.authIdentity.provider !== AuthProvider.LOCAL) {
       throw new BadRequestException({
         message: this.i18nService.translate("auth.password_reset_invalid", language)
+      });
+    }
+
+    const resolvedTenantId = await this.resolveTenantIdForIdentityAuth(
+      resetToken.authIdentity.user.tenantId,
+      requestContext
+    );
+    if (resetToken.authIdentity.user.tenantId !== resolvedTenantId) {
+      throw new BadRequestException({
+        message: this.i18nService.translate("auth.password_reset_invalid", language)
+      });
+    }
+
+    const localAuthConfig = await this.getEffectiveLocalAuthConfig(resetToken.authIdentity.user.tenantId);
+    if (!localAuthConfig.enabled) {
+      throw new ForbiddenException({
+        message: this.i18nService.translate("auth.local_disabled", language)
       });
     }
 
@@ -789,6 +813,55 @@ export class AuthService {
 
   private normalizeEmail(email: string) {
     return email.trim().toLowerCase();
+  }
+
+  private async findIdentityByEmail(email: string) {
+    return this.prisma.authIdentity.findUnique({
+      where: {
+        email
+      },
+      include: {
+        user: true
+      }
+    });
+  }
+
+  private async resolveTenantForIdentityAuth(
+    identityTenantId: string | undefined,
+    requestContext?: TenantRequestContext | null
+  ) {
+    if (!identityTenantId) {
+      return null;
+    }
+
+    try {
+      const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
+      return tenant.tenantId === identityTenantId ? tenant : null;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return this.tenantContextService.resolveByTenantId(identityTenantId);
+      }
+      throw error;
+    }
+  }
+
+  private async resolveTenantIdForIdentityAuth(
+    identityTenantId: string | undefined,
+    requestContext?: TenantRequestContext | null
+  ) {
+    const tenant = await this.resolveTenantForIdentityAuth(identityTenantId, requestContext);
+    return tenant?.tenantId ?? null;
+  }
+
+  private async resolveTenantFromRequestOrNull(requestContext?: TenantRequestContext | null) {
+    try {
+      return await this.tenantContextService.resolveFromRequest(requestContext);
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return null;
+      }
+      throw error;
+    }
   }
 
   private async getOidcMetadata(tenantId: string) {
