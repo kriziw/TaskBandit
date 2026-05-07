@@ -1339,9 +1339,6 @@ private fun TaskBanditApp(
             if (session.token == null) {
                 LoginScreen(
                     serverUrl = serverUrl,
-                    currentReleaseLabel = currentReleaseLabel,
-                    serverReleaseLabel = serverReleaseLabel,
-                    availableUpdate = visibleUpdate,
                     authProviders = authProviders,
                     authProvidersCheckedBaseUrl = authProvidersCheckedBaseUrl,
                     isAuthProvidersLoading = isAuthProvidersLoading,
@@ -1350,7 +1347,6 @@ private fun TaskBanditApp(
                     password = password,
                     isBusy = isBusy,
                     errorMessage = errorMessage,
-                    onDismissUpdate = ::dismissUpdateNotice,
                     onServerUrlChange = {
                         val previousBaseUrl = normalizedServerUrl()
                         serverUrl = it
@@ -1525,9 +1521,6 @@ private fun readAppVersion(context: android.content.Context): String? {
 @Composable
 private fun LoginScreen(
     serverUrl: String,
-    currentReleaseLabel: String,
-    serverReleaseLabel: String?,
-    availableUpdate: MobileReleaseInfo?,
     authProviders: MobileAuthProviders?,
     authProvidersCheckedBaseUrl: String?,
     isAuthProvidersLoading: Boolean,
@@ -1536,7 +1529,6 @@ private fun LoginScreen(
     password: String,
     isBusy: Boolean,
     errorMessage: String?,
-    onDismissUpdate: () -> Unit,
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -1601,40 +1593,6 @@ private fun LoginScreen(
                             text = stringResource(R.string.mobile_login_hint),
                             style = MaterialTheme.typography.bodyLarge
                         )
-                        SettingsValueLine(
-                            label = stringResource(R.string.mobile_settings_app_release),
-                            value = currentReleaseLabel
-                        )
-                        serverReleaseLabel?.let {
-                            SettingsValueLine(
-                                label = stringResource(R.string.mobile_settings_server_release),
-                                value = it
-                            )
-                        }
-                        availableUpdate?.let {
-                            Card {
-                                Column(
-                                    modifier = Modifier.padding(14.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.mobile_update_available_title),
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Text(
-                                        text = stringResource(
-                                            R.string.mobile_update_available_body,
-                                            currentReleaseLabel,
-                                            formatReleaseLabel(it)
-                                        ),
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                    Button(onClick = onDismissUpdate) {
-                                        Text(stringResource(R.string.mobile_update_dismiss))
-                                    }
-                                }
-                            }
-                        }
                     }
                     Column(
                         modifier = Modifier.weight(1.15f),
@@ -1684,40 +1642,6 @@ private fun LoginScreen(
                         text = stringResource(R.string.mobile_login_hint),
                         style = MaterialTheme.typography.bodyMedium
                     )
-                    Text(
-                        text = stringResource(R.string.mobile_app_release, currentReleaseLabel),
-                        style = MaterialTheme.typography.bodySmall
-                    )
-                    if (serverReleaseLabel != null) {
-                        Text(
-                            text = stringResource(R.string.mobile_server_release, serverReleaseLabel),
-                            style = MaterialTheme.typography.bodySmall
-                        )
-                    }
-                    if (availableUpdate != null) {
-                        Card {
-                            Column(
-                                modifier = Modifier.padding(14.dp),
-                                verticalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.mobile_update_available_title),
-                                    style = MaterialTheme.typography.titleMedium
-                                )
-                                Text(
-                                    text = stringResource(
-                                        R.string.mobile_update_available_body,
-                                        currentReleaseLabel,
-                                        formatReleaseLabel(availableUpdate)
-                                    ),
-                                    style = MaterialTheme.typography.bodySmall
-                                )
-                                Button(onClick = onDismissUpdate) {
-                                    Text(stringResource(R.string.mobile_update_dismiss))
-                                }
-                            }
-                        }
-                    }
                     LoginMethodsForm(
                         serverUrl = serverUrl,
                         email = email,
@@ -1775,8 +1699,12 @@ private fun LoginMethodsForm(
 ) {
     val localAuthEnabled = authProviders?.local?.enabled == true
     val oidcAuthEnabled = authProviders?.oidc?.enabled == true
+    val hostedCredentialFallback = !showSelfHostedSetup && !localAuthEnabled && !oidcAuthEnabled
+    val showLocalLoginControls = showLocalLogin || hostedCredentialFallback
     val noSupportedMethodsMessage =
-        if (showSelfHostedSetup) {
+        if (hostedCredentialFallback) {
+            stringResource(R.string.mobile_auth_methods_cloud_login_ready)
+        } else if (showSelfHostedSetup) {
             stringResource(R.string.mobile_auth_methods_unavailable)
         } else {
             stringResource(R.string.mobile_auth_methods_tenant_not_ready)
@@ -1843,7 +1771,7 @@ private fun LoginMethodsForm(
             style = MaterialTheme.typography.bodySmall
         )
     }
-    if (showLocalLogin) {
+    if (showLocalLoginControls) {
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,

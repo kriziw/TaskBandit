@@ -1419,12 +1419,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   ];
   const activeBootstrapStepIndex = bootstrapStepItems.findIndex((step) => step.key === bootstrapSetupStep);
   const noAuthProvidersAvailable = !providers?.local.enabled && !providers?.oidc.enabled;
-  const authUnavailableNoticeKey =
-    noAuthProvidersAvailable
-      ? providers?.local.householdId
-        ? "auth.local_disabled_notice"
-        : "auth.tenant_not_ready_notice"
-      : null;
+  const allowCredentialLogin = providers?.local.enabled || noAuthProvidersAvailable;
+  const authUnavailableNoticeKey = noAuthProvidersAvailable && providers?.local.householdId
+    ? "auth.local_disabled_notice"
+    : null;
 
   const templateGroups = useMemo(() => {
     const grouped = new Map<string, ChoreTemplate[]>();
@@ -5763,7 +5761,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </form>
               ) : (
                 <form className="login-form" onSubmit={handleLoginSubmit}>
-                  {providers?.local.enabled ? (
+                  {allowCredentialLogin ? (
                     <>
                       <label>
                         <span>{t("auth.email")}</span>
@@ -5794,7 +5792,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   ) : null}
                   {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
                   <div className="button-row">
-                    {providers?.local.enabled ? (
+                    {allowCredentialLogin ? (
                       <button className="primary-button" type="submit" disabled={isAuthenticating}>
                         {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
                       </button>
@@ -5811,7 +5809,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     ) : null}
                   </div>
                   <div className="button-row">
-                    {providers?.local.enabled ? (
+                    {allowCredentialLogin ? (
                       <button
                         className="ghost-button"
                         type="button"
