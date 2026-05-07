@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.6](https://github.com/kriziw/TaskBandit/compare/v0.43.5...v0.43.6) (2026-05-07)
+
+
+### Bug Fixes
+
+* **auth:** enable hosted root tenant-aware cloud sign-in ([#311](https://github.com/kriziw/TaskBandit/issues/311)) ([6d9947d](https://github.com/kriziw/TaskBandit/commit/6d9947de2dcf8a1360f503e98af089d9fd8340f1))
+
 ## [0.43.5](https://github.com/kriziw/TaskBandit/compare/v0.43.4...v0.43.5) (2026-05-07)
 
 
