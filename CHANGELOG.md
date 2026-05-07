@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.5](https://github.com/kriziw/TaskBandit/compare/v0.43.4...v0.43.5) (2026-05-07)
+
+
+### Bug Fixes
+
+* **android:** remove duplicate auth-method error and clarify tenant setup ([#309](https://github.com/kriziw/TaskBandit/issues/309)) ([1410012](https://github.com/kriziw/TaskBandit/commit/14100123aace24d3e14f70ade59c067aca6bccf3))
+
 ## [0.43.4](https://github.com/kriziw/TaskBandit/compare/v0.43.3...v0.43.4) (2026-05-06)
 
 
