@@ -1,5 +1,6 @@
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
+import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { FeatureAccessService, PackageFeatureId } from "../../common/tenancy/feature-access.service";
@@ -24,13 +25,17 @@ export class ChoresService {
     private readonly repository: HouseholdRepository,
     private readonly pointsService: PointsService,
     private readonly i18nService: I18nService,
+    private readonly appConfigService: AppConfigService,
     private readonly featureAccessService: FeatureAccessService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly proofStorageService: ProofStorageService,
     private readonly dashboardSyncService: DashboardSyncService
   ) {}
 
-  getTemplates(user: AuthenticatedUser, language: SupportedLanguage) {
+  async getTemplates(user: AuthenticatedUser, language: SupportedLanguage) {
+    if (this.appConfigService.hostedModeEnabled) {
+      await this.repository.ensureDefaultTemplatesForHousehold(user.householdId, language);
+    }
     return this.repository.getTemplates(user.householdId, language);
   }
 

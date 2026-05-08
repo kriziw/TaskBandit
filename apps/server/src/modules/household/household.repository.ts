@@ -1920,6 +1920,74 @@ export class HouseholdRepository {
       .sort((left, right) => left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title));
   }
 
+  async ensureDefaultTemplatesForHousehold(
+    householdId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const household = await tx.household.findFirst({
+        where: {
+          id: householdId
+        },
+        select: {
+          id: true
+        }
+      });
+
+      if (!household) {
+        throw new NotFoundException({
+          message: "That household could not be found."
+        });
+      }
+
+      const currentTemplateCount = await tx.choreTemplate.count({
+        where: {
+          householdId
+        }
+      });
+      if (currentTemplateCount > 0) {
+        return {
+          seeded: false,
+          templateCount: currentTemplateCount
+        };
+      }
+
+      await this.importStarterTemplates(tx, householdId, undefined, language);
+
+      const nextTemplateCount = await tx.choreTemplate.count({
+        where: {
+          householdId
+        }
+      });
+      return {
+        seeded: true,
+        templateCount: nextTemplateCount
+      };
+    });
+  }
+
+  async ensureDefaultTemplatesForTenant(
+    tenantId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    const household = await this.prisma.household.findFirst({
+      where: {
+        tenantId
+      },
+      select: {
+        id: true
+      }
+    });
+
+    if (!household) {
+      throw new NotFoundException({
+        message: "Hosted tenant household was not found."
+      });
+    }
+
+    return this.ensureDefaultTemplatesForHousehold(household.id, language);
+  }
+
   async getTemplateForHousehold(
     templateId: string,
     householdId: string,
