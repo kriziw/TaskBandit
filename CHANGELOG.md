@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.9](https://github.com/kriziw/TaskBandit/compare/v0.43.8...v0.43.9) (2026-05-08)
+
+
+### Bug Fixes
+
+* **android:** disable login password autocorrect and suggestions ([#318](https://github.com/kriziw/TaskBandit/issues/318)) ([f0cfbd6](https://github.com/kriziw/TaskBandit/commit/f0cfbd6fefd17fcbf4e682897daf2daed65304f6))
+* **android:** prevent hosted runtime config login crash on null canonical urls ([#317](https://github.com/kriziw/TaskBandit/issues/317)) ([0d1b85f](https://github.com/kriziw/TaskBandit/commit/0d1b85f080240672dea071c43e39662c53279e93))
+
 ## [0.43.8](https://github.com/kriziw/TaskBandit/compare/v0.43.7...v0.43.8) (2026-05-08)
 
 
