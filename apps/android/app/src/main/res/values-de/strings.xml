@@ -160,7 +160,7 @@
     <string name="mobile_create_creating">Wird erstellt...</string>
     <string name="mobile_create_ready">WÃ¤hle eine Vorlage, plane die Aufgabe und bestÃ¤tige das Zuweisungsverhalten.</string>
     <string name="mobile_create_no_permission">Nur Admin- oder Elternrollen kÃ¶nnen Aufgaben erstellen.</string>
-    <string name="mobile_create_no_templates">Noch keine Vorlagen vorhanden. Bitte zuerst Vorlagen im Web anlegen.</string>
+    <string name="mobile_create_no_templates">Noch keine Vorlagen vorhanden. Standardvorlagen werden synchronisiert, bitte zum Aktualisieren herunterziehen.</string>
     <string name="mobile_create_variant">Untertyp</string>
     <string name="mobile_create_select_variant_prompt">Untertyp auswÃ¤hlenâ€¦</string>
     <string name="mobile_create_no_subtype">Kein Untertyp</string>
@@ -215,6 +215,7 @@
     <string name="mobile_settings_actions">Sitzung</string>
     <string name="mobile_settings_unknown">Unbekannt</string>
     <string name="mobile_settings_plan_features">Tarif und Funktionen</string>
+    <string name="mobile_plan_package_name">Paketname</string>
     <string name="mobile_plan_code">Tarif</string>
     <string name="mobile_plan_package">Paket</string>
     <string name="mobile_plan_entitlement">Berechtigungsstatus</string>
@@ -224,8 +225,12 @@
     <string name="mobile_plan_grace_ends">Kulanzzeit endet</string>
     <string name="mobile_plan_suspension_reason">Sperrgrund</string>
     <string name="mobile_plan_members_limit">Mitgliederlimit</string>
+    <string name="mobile_plan_members_usage">Mitgliedernutzung</string>
     <string name="mobile_plan_storage_limit_bytes">Speicherlimit (Bytes)</string>
+    <string name="mobile_plan_storage_limit">Speicherlimit</string>
+    <string name="mobile_plan_storage_usage">Speichernutzung</string>
     <string name="mobile_plan_monthly_notifications_limit">Monatliches Benachrichtigungslimit</string>
+    <string name="mobile_plan_monthly_notifications_usage">Monatliche Benachrichtigungsnutzung</string>
     <string name="mobile_plan_export_retention_days">Export-Aufbewahrung (Tage)</string>
     <string name="mobile_plan_proof_retention_days">Nachweis-Aufbewahrung (Tage)</string>
     <string name="mobile_plan_audit_retention_days">Audit-Aufbewahrung (Tage)</string>

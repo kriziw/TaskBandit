@@ -154,6 +154,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.text.NumberFormat
 import java.time.Instant
 import java.time.DayOfWeek
 import java.time.LocalDate
@@ -173,6 +174,7 @@ private const val syncDisconnectNoticeDelayMs = 3500L
 private const val mutationReconnectWindowMs = 5000L
 private const val mutationReconnectRetryDelayMs = 750L
 private val historicChoreStates = setOf("completed", "approved", "rejected", "cancelled")
+private val numberFormatter: NumberFormat = NumberFormat.getIntegerInstance()
 
 private data class AndroidOidcResult(
     val accessToken: String? = null,
@@ -1933,8 +1935,8 @@ private fun DashboardScreen(
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
     val featureAccess = dashboard?.user?.featureAccess ?: MobileFeatureAccess()
-    val canManageTemplates = featureAccess.templatesManage
-    val canManageChores = featureAccess.choresManage
+    val canManageTemplates = featureAccess.templatesManage || hostedSubscription.featureAccess.templatesManage
+    val canManageChores = featureAccess.choresManage || hostedSubscription.featureAccess.choresManage
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val currentUserId = dashboard?.user?.id
@@ -2621,8 +2623,6 @@ private fun DashboardScreen(
                     item { Text(text = stringResource(R.string.mobile_create_no_permission), style = MaterialTheme.typography.bodyMedium) }
                 } else if (!canManageChores) {
                     item { Text(text = stringResource(R.string.mobile_feature_chores_manage_disabled), style = MaterialTheme.typography.bodyMedium) }
-                } else if (!canManageTemplates) {
-                    item { Text(text = stringResource(R.string.mobile_feature_templates_manage_disabled), style = MaterialTheme.typography.bodyMedium) }
                 } else if (templates.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
                 } else {
@@ -5047,6 +5047,24 @@ private fun SettingsReleaseContent(
 private fun SettingsPlanContent(
     hostedSubscription: MobileHostedSubscriptionOverview
 ) {
+    val packageDisplayName = hostedSubscription.packageDisplayName ?: hostedSubscription.packageCode ?: stringResource(R.string.mobile_settings_unknown)
+    val storageLimit = hostedSubscription.quotas.storageBytesLimit
+    val storageUsed = hostedSubscription.usage.storageBytesUsed
+    val memberUsage = formatUsageSummary(
+        hostedSubscription.usage.membersUsed?.toLong(),
+        hostedSubscription.quotas.membersLimit?.toLong()
+    )
+    val notificationUsage = formatUsageSummary(
+        hostedSubscription.usage.monthlyNotificationsUsed?.toLong(),
+        hostedSubscription.quotas.monthlyNotificationLimit?.toLong()
+    )
+    val storageUsage = formatUsageSummary(
+        storageUsed,
+        storageLimit,
+        formatter = ::formatByteSize
+    )
+
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_package_name), value = packageDisplayName)
     SettingsValueLine(label = stringResource(R.string.mobile_plan_code), value = hostedSubscription.planCode ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_package), value = hostedSubscription.packageCode ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_entitlement), value = hostedSubscription.entitlementState ?: stringResource(R.string.mobile_settings_unknown))
@@ -5065,14 +5083,17 @@ private fun SettingsPlanContent(
         label = stringResource(R.string.mobile_plan_members_limit),
         value = hostedSubscription.quotas.membersLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
     )
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_members_usage), value = memberUsage)
     SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_storage_limit_bytes),
-        value = hostedSubscription.quotas.storageBytesLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
+        label = stringResource(R.string.mobile_plan_storage_limit),
+        value = storageLimit?.let(::formatByteSize) ?: stringResource(R.string.mobile_unlimited)
     )
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_storage_usage), value = storageUsage)
     SettingsValueLine(
         label = stringResource(R.string.mobile_plan_monthly_notifications_limit),
         value = hostedSubscription.quotas.monthlyNotificationLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
     )
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_monthly_notifications_usage), value = notificationUsage)
     SettingsValueLine(
         label = stringResource(R.string.mobile_plan_export_retention_days),
         value = hostedSubscription.quotas.exportRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
@@ -5300,6 +5321,40 @@ private fun formatApiTimestamp(value: String): String {
             .withZone(ZoneId.systemDefault())
             .format(Instant.parse(value))
     }.getOrDefault(value)
+}
+
+private fun formatByteSize(value: Long): String {
+    if (value < 1024L) {
+        return "${numberFormatter.format(value)} B"
+    }
+    val units = arrayOf("KB", "MB", "GB", "TB")
+    var size = value.toDouble() / 1024.0
+    var index = 0
+    while (size >= 1024.0 && index < units.lastIndex) {
+        size /= 1024.0
+        index += 1
+    }
+    val digits = when {
+        size >= 100.0 -> 0
+        size >= 10.0 -> 1
+        else -> 2
+    }
+    return "%.${digits}f %s".format(Locale.getDefault(), size, units[index])
+}
+
+private fun formatUsageSummary(
+    used: Long?,
+    limit: Long?,
+    formatter: (Long) -> String = { numberFormatter.format(it) }
+): String {
+    if (used == null) {
+        return "n/a / ${limit?.let(formatter) ?: "unlimited"}"
+    }
+    if (limit == null || limit <= 0L) {
+        return "${formatter(used)} / unlimited"
+    }
+    val percentage = ((used.toDouble() / limit.toDouble()) * 100.0).toInt().coerceIn(0, 100)
+    return "${formatter(used)} / ${formatter(limit)} ($percentage%)"
 }
 
 private fun formatDueAtForCard(value: String): String {

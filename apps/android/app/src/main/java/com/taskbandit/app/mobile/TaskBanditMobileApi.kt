@@ -104,12 +104,14 @@ class TaskBanditMobileApi {
     fun getHostedSubscriptionOverview(baseUrl: String, token: String): MobileHostedSubscriptionOverview {
         val responseJson = requestJson(baseUrl, "/api/settings/subscription", token = token)
         val quotasJson = responseJson.optJSONObject("quotas") ?: JSONObject()
+        val usageJson = responseJson.optJSONObject("usage") ?: JSONObject()
         return MobileHostedSubscriptionOverview(
             hostedMode = responseJson.optBoolean("hostedMode"),
             tenantId = responseJson.optNullableString("tenantId"),
             tenantSlug = responseJson.optNullableString("tenantSlug"),
             planCode = responseJson.optNullableString("planCode"),
             packageCode = responseJson.optNullableString("packageCode"),
+            packageDisplayName = responseJson.optNullableString("packageDisplayName"),
             lifecycleState = responseJson.optNullableString("lifecycleState"),
             entitlementState = responseJson.optNullableString("entitlementState"),
             billingStatus = responseJson.optNullableString("billingStatus"),
@@ -128,6 +130,11 @@ class TaskBanditMobileApi {
                 auditRetentionDays = quotasJson.optInt("auditRetentionDays").takeIf { !quotasJson.isNull("auditRetentionDays") },
                 customDomainEnabled = quotasJson.optBoolean("customDomainEnabled").takeIf { !quotasJson.isNull("customDomainEnabled") },
                 brandingEnabled = quotasJson.optBoolean("brandingEnabled").takeIf { !quotasJson.isNull("brandingEnabled") }
+            ),
+            usage = MobileHostedUsage(
+                membersUsed = usageJson.optInt("membersUsed").takeIf { !usageJson.isNull("membersUsed") },
+                storageBytesUsed = usageJson.optLong("storageBytesUsed").takeIf { !usageJson.isNull("storageBytesUsed") },
+                monthlyNotificationsUsed = usageJson.optInt("monthlyNotificationsUsed").takeIf { !usageJson.isNull("monthlyNotificationsUsed") }
             ),
             featureAccess = parseFeatureAccess(responseJson.optJSONObject("featureAccess")),
             canonicalApiBaseUrl = responseJson.optNullableString("canonicalApiBaseUrl"),

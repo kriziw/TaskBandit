@@ -75,6 +75,7 @@ data class MobileHostedSubscriptionOverview(
     val tenantSlug: String? = null,
     val planCode: String? = null,
     val packageCode: String? = null,
+    val packageDisplayName: String? = null,
     val lifecycleState: String? = null,
     val entitlementState: String? = null,
     val billingStatus: String? = null,
@@ -85,9 +86,16 @@ data class MobileHostedSubscriptionOverview(
     val configVersion: String? = null,
     val updatedAt: String? = null,
     val quotas: MobileHostedQuotas = MobileHostedQuotas(),
+    val usage: MobileHostedUsage = MobileHostedUsage(),
     val featureAccess: MobileFeatureAccess = MobileFeatureAccess(),
     val canonicalApiBaseUrl: String? = null,
     val canonicalWebBaseUrl: String? = null
+)
+
+data class MobileHostedUsage(
+    val membersUsed: Int? = null,
+    val storageBytesUsed: Long? = null,
+    val monthlyNotificationsUsed: Int? = null
 )
 
 data class MobileLeaderboardEntry(

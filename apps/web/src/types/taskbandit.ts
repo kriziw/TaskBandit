@@ -73,6 +73,7 @@ export type HostedSubscriptionOverview = {
   tenantSlug?: string | null;
   planCode?: string;
   packageCode?: string;
+  packageDisplayName?: string;
   lifecycleState?: string;
   entitlementState?: string;
   billingStatus?: string;
@@ -91,6 +92,11 @@ export type HostedSubscriptionOverview = {
     auditRetentionDays: number | null;
     customDomainEnabled: boolean | null;
     brandingEnabled: boolean | null;
+  };
+  usage?: {
+    membersUsed: number;
+    storageBytesUsed: number;
+    monthlyNotificationsUsed: number;
   };
   featureAccess?: AuthenticatedUser["featureAccess"];
   canonicalApiBaseUrl?: string | null;

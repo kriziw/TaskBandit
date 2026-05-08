@@ -53,6 +53,8 @@ describe("SettingsService", () => {
     updateSettings: ReturnType<typeof vi.fn>;
     createHouseholdMember: ReturnType<typeof vi.fn>;
     updateHouseholdMember: ReturnType<typeof vi.fn>;
+    getProofStorageUsage: ReturnType<typeof vi.fn>;
+    getCurrentMonthNotificationCount: ReturnType<typeof vi.fn>;
   };
   let authService: {
     hashPassword: ReturnType<typeof vi.fn>;
@@ -99,7 +101,9 @@ describe("SettingsService", () => {
           email: "sam@example.com"
         }
       }),
-      updateHouseholdMember: vi.fn().mockResolvedValue(householdFixture)
+      updateHouseholdMember: vi.fn().mockResolvedValue(householdFixture),
+      getProofStorageUsage: vi.fn().mockResolvedValue(128 * 1024 * 1024),
+      getCurrentMonthNotificationCount: vi.fn().mockResolvedValue(42)
     };
     authService = {
       hashPassword: vi.fn().mockResolvedValue("hashed-password")
@@ -476,5 +480,51 @@ describe("SettingsService", () => {
         })
       })
     );
+  });
+
+  it("returns hosted subscription with package display name and usage telemetry", async () => {
+    appConfigService.hostedModeEnabled = true;
+    tenantRuntimePolicyService.getTenantAccessState.mockResolvedValue({
+      hostedMode: true,
+      lifecycleState: "active",
+      entitlementState: "active",
+      billingStatus: "paid",
+      suspensionReason: null,
+      trialEndsAt: null,
+      graceEndsAt: null,
+      planCode: "family_plus",
+      quotaPolicyVersion: "quota-v1",
+      configVersion: "cfg-v1",
+      updatedAt: "2026-05-08T16:00:00.000Z",
+      quotas: {
+        membersLimit: 8,
+        storageBytesLimit: 5368709120,
+        monthlyNotificationLimit: 1000,
+        exportRetentionDays: 30,
+        proofRetentionDays: 30,
+        auditRetentionDays: 90,
+        customDomainEnabled: true,
+        brandingEnabled: true
+      }
+    });
+    hostedRuntimeConfigService.getTenantRuntimeConfig.mockResolvedValue({
+      packageCode: "family_plus",
+      packageDisplayName: "Family Plus"
+    });
+    repository.getHousehold.mockResolvedValue({
+      ...householdFixture,
+      members: [{ id: "u1" }, { id: "u2" }, { id: "u3" }]
+    });
+
+    const response = await service.getHostedSubscriptionOverview(user);
+
+    expect(response.hostedMode).toBe(true);
+    expect(response.packageCode).toBe("family_plus");
+    expect(response.packageDisplayName).toBe("Family Plus");
+    expect(response.usage).toEqual({
+      membersUsed: 3,
+      storageBytesUsed: 128 * 1024 * 1024,
+      monthlyNotificationsUsed: 42
+    });
   });
 });

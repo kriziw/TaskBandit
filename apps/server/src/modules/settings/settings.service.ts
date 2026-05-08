@@ -74,6 +74,12 @@ export class SettingsService {
       this.hostedRuntimeConfigService.getTenantRuntimeConfig(user.tenantId),
       this.tenantContextService.resolveByTenantId(user.tenantId)
     ]);
+    const [household, storageBytesUsed, monthlyNotificationsUsed] = await Promise.all([
+      this.repository.getHousehold(user.householdId),
+      this.repository.getProofStorageUsage(user.tenantId, user.householdId),
+      this.repository.getCurrentMonthNotificationCount(user.tenantId)
+    ]);
+    const membersUsed = household.members.length;
 
     return {
       hostedMode: true,
@@ -81,6 +87,7 @@ export class SettingsService {
       tenantSlug: tenantContext.slug,
       planCode: accessState.planCode,
       packageCode: runtimeConfig?.packageCode ?? accessState.planCode,
+      packageDisplayName: runtimeConfig?.packageDisplayName ?? runtimeConfig?.packageCode ?? accessState.planCode,
       lifecycleState: accessState.lifecycleState,
       entitlementState: accessState.entitlementState,
       billingStatus: accessState.billingStatus,
@@ -91,6 +98,11 @@ export class SettingsService {
       configVersion: accessState.configVersion,
       updatedAt: accessState.updatedAt,
       quotas: accessState.quotas,
+      usage: {
+        membersUsed,
+        monthlyNotificationsUsed,
+        storageBytesUsed
+      },
       featureAccess: user.featureAccess,
       canonicalApiBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicApiBaseUrl, tenantContext.slug),
       canonicalWebBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicWebBaseUrl, tenantContext.slug)

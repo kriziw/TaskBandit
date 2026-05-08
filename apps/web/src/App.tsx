@@ -690,6 +690,40 @@ function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
 }
 
+function formatByteSize(value: number | null | undefined) {
+  if (value === null || value === undefined || !Number.isFinite(value)) {
+    return "unlimited";
+  }
+  if (value < 1024) {
+    return `${formatNumber(value)} B`;
+  }
+  const units = ["KB", "MB", "GB", "TB"];
+  let size = value / 1024;
+  let unitIndex = 0;
+  while (size >= 1024 && unitIndex < units.length - 1) {
+    size /= 1024;
+    unitIndex += 1;
+  }
+  return `${new Intl.NumberFormat(undefined, {
+    maximumFractionDigits: size >= 100 ? 0 : size >= 10 ? 1 : 2
+  }).format(size)} ${units[unitIndex]}`;
+}
+
+function formatUsageLine(
+  used: number | null | undefined,
+  limit: number | null | undefined,
+  valueFormatter: (value: number) => string = formatNumber
+) {
+  if (used === null || used === undefined || !Number.isFinite(used)) {
+    return `n/a / ${limit === null || limit === undefined ? "unlimited" : valueFormatter(limit)}`;
+  }
+  if (limit === null || limit === undefined || !Number.isFinite(limit) || limit <= 0) {
+    return `${valueFormatter(used)} / unlimited`;
+  }
+  const percent = Math.max(0, Math.min(100, Math.round((used / limit) * 100)));
+  return `${valueFormatter(used)} / ${valueFormatter(limit)} (${percent}%)`;
+}
+
 function parseReleaseVersionParts(value: string) {
   return value
     .split(/[.-]/)
@@ -6920,11 +6954,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               >
                 <div className="section-heading">
                   <h2>Plan &amp; Features</h2>
-                  <span className="section-kicker">{payload.hostedSubscription.planCode ?? "Hosted plan"}</span>
+                  <span className="section-kicker">{payload.hostedSubscription.packageDisplayName ?? "Hosted plan"}</span>
                 </div>
                 <div className="stack-list">
                   <div className="task-row compact">
-                    <p>Package: {payload.hostedSubscription.packageCode ?? "n/a"}</p>
+                    <p>Package: {payload.hostedSubscription.packageDisplayName ?? payload.hostedSubscription.packageCode ?? "n/a"}</p>
+                    <p>Package code: {payload.hostedSubscription.packageCode ?? "n/a"}</p>
+                    <p>Plan code: {payload.hostedSubscription.planCode ?? "n/a"}</p>
                     <p>Entitlement: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
                     <p>Lifecycle: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
                     <p>Billing: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
@@ -6933,16 +6969,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <p>Suspension reason: {payload.hostedSubscription.suspensionReason ?? t("common.none")}</p>
                   </div>
                   <div className="task-row compact">
-                    <strong>Quotas</strong>
-                    <p>Members limit: {payload.hostedSubscription.quotas?.membersLimit ?? "unlimited"}</p>
-                    <p>
-                      Storage limit (bytes):{" "}
-                      {payload.hostedSubscription.quotas?.storageBytesLimit ?? "unlimited"}
-                    </p>
-                    <p>
-                      Monthly notifications:{" "}
-                      {payload.hostedSubscription.quotas?.monthlyNotificationLimit ?? "unlimited"}
-                    </p>
+                    <strong>Usage vs quota</strong>
+                    <p>Members: {formatUsageLine(payload.hostedSubscription.usage?.membersUsed, payload.hostedSubscription.quotas?.membersLimit)}</p>
+                    <p>Storage: {formatUsageLine(payload.hostedSubscription.usage?.storageBytesUsed, payload.hostedSubscription.quotas?.storageBytesLimit, (value) => formatByteSize(value))}</p>
+                    <p>Monthly notifications: {formatUsageLine(payload.hostedSubscription.usage?.monthlyNotificationsUsed, payload.hostedSubscription.quotas?.monthlyNotificationLimit)}</p>
                     <p>
                       Export retention (days):{" "}
                       {payload.hostedSubscription.quotas?.exportRetentionDays ?? "n/a"}
@@ -6955,6 +6985,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       Audit retention (days):{" "}
                       {payload.hostedSubscription.quotas?.auditRetentionDays ?? "n/a"}
                     </p>
+                    <p>Storage limit: {formatByteSize(payload.hostedSubscription.quotas?.storageBytesLimit)}</p>
                   </div>
                   <div className="task-row compact">
                     <strong>Feature Access</strong>
