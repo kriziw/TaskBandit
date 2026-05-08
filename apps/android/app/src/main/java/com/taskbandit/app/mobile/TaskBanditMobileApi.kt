@@ -49,10 +49,10 @@ class TaskBanditMobileApi {
             tenantContext = tenantContextJson?.let {
                 MobileAuthTenantContext(
                     tenantId = it.optString("tenantId"),
-                    tenantSlug = it.optString("tenantSlug").ifBlank { null },
+                    tenantSlug = it.optNullableString("tenantSlug"),
                     hostedMode = it.optBoolean("hostedMode"),
-                    canonicalApiBaseUrl = it.optString("canonicalApiBaseUrl").ifBlank { null },
-                    canonicalWebBaseUrl = it.optString("canonicalWebBaseUrl").ifBlank { null }
+                    canonicalApiBaseUrl = it.optNullableString("canonicalApiBaseUrl"),
+                    canonicalWebBaseUrl = it.optNullableString("canonicalWebBaseUrl")
                 )
             }
         )
@@ -106,19 +106,19 @@ class TaskBanditMobileApi {
         val quotasJson = responseJson.optJSONObject("quotas") ?: JSONObject()
         return MobileHostedSubscriptionOverview(
             hostedMode = responseJson.optBoolean("hostedMode"),
-            tenantId = responseJson.optString("tenantId").ifBlank { null },
-            tenantSlug = responseJson.optString("tenantSlug").ifBlank { null },
-            planCode = responseJson.optString("planCode").ifBlank { null },
-            packageCode = responseJson.optString("packageCode").ifBlank { null },
-            lifecycleState = responseJson.optString("lifecycleState").ifBlank { null },
-            entitlementState = responseJson.optString("entitlementState").ifBlank { null },
-            billingStatus = responseJson.optString("billingStatus").ifBlank { null },
-            suspensionReason = responseJson.optString("suspensionReason").ifBlank { null },
-            trialEndsAt = responseJson.optString("trialEndsAt").ifBlank { null },
-            graceEndsAt = responseJson.optString("graceEndsAt").ifBlank { null },
-            quotaPolicyVersion = responseJson.optString("quotaPolicyVersion").ifBlank { null },
-            configVersion = responseJson.optString("configVersion").ifBlank { null },
-            updatedAt = responseJson.optString("updatedAt").ifBlank { null },
+            tenantId = responseJson.optNullableString("tenantId"),
+            tenantSlug = responseJson.optNullableString("tenantSlug"),
+            planCode = responseJson.optNullableString("planCode"),
+            packageCode = responseJson.optNullableString("packageCode"),
+            lifecycleState = responseJson.optNullableString("lifecycleState"),
+            entitlementState = responseJson.optNullableString("entitlementState"),
+            billingStatus = responseJson.optNullableString("billingStatus"),
+            suspensionReason = responseJson.optNullableString("suspensionReason"),
+            trialEndsAt = responseJson.optNullableString("trialEndsAt"),
+            graceEndsAt = responseJson.optNullableString("graceEndsAt"),
+            quotaPolicyVersion = responseJson.optNullableString("quotaPolicyVersion"),
+            configVersion = responseJson.optNullableString("configVersion"),
+            updatedAt = responseJson.optNullableString("updatedAt"),
             quotas = MobileHostedQuotas(
                 membersLimit = quotasJson.optInt("membersLimit").takeIf { !quotasJson.isNull("membersLimit") },
                 storageBytesLimit = quotasJson.optLong("storageBytesLimit").takeIf { !quotasJson.isNull("storageBytesLimit") },
@@ -130,8 +130,8 @@ class TaskBanditMobileApi {
                 brandingEnabled = quotasJson.optBoolean("brandingEnabled").takeIf { !quotasJson.isNull("brandingEnabled") }
             ),
             featureAccess = parseFeatureAccess(responseJson.optJSONObject("featureAccess")),
-            canonicalApiBaseUrl = responseJson.optString("canonicalApiBaseUrl").ifBlank { null },
-            canonicalWebBaseUrl = responseJson.optString("canonicalWebBaseUrl").ifBlank { null }
+            canonicalApiBaseUrl = responseJson.optNullableString("canonicalApiBaseUrl"),
+            canonicalWebBaseUrl = responseJson.optNullableString("canonicalWebBaseUrl")
         )
     }
 
