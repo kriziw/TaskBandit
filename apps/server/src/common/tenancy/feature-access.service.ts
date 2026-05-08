@@ -39,7 +39,7 @@ export class FeatureAccessService {
 
     for (const featureId of packageFeatureIds) {
       if (Object.prototype.hasOwnProperty.call(input, featureId)) {
-        next[featureId] = Boolean(input[featureId]);
+        next[featureId] = coerceFeatureAccessFlag(input[featureId], next[featureId]);
       }
     }
 
@@ -56,4 +56,31 @@ export class FeatureAccessService {
       message: `The ${featureId} feature is not enabled for this package.`
     });
   }
+}
+
+function coerceFeatureAccessFlag(value: unknown, fallbackValue: boolean) {
+  if (value === null || value === undefined) {
+    return fallbackValue;
+  }
+
+  if (typeof value === "boolean") {
+    return value;
+  }
+
+  if (typeof value === "string") {
+    const normalized = value.trim().toLowerCase();
+    if (["false", "0", "off", "no"].includes(normalized)) {
+      return false;
+    }
+    if (["true", "1", "on", "yes"].includes(normalized)) {
+      return true;
+    }
+    return fallbackValue;
+  }
+
+  if (typeof value === "number") {
+    return value !== 0;
+  }
+
+  return fallbackValue;
 }
