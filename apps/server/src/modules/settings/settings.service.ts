@@ -4,6 +4,7 @@ import { AppConfigService } from "../../common/config/app-config.service";
 import { normalizeTenantPathPrefix } from "../../common/http/path-routing.util";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { FeatureAccessService } from "../../common/tenancy/feature-access.service";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { TenantContextService } from "../../common/tenancy/tenant-context.service";
 import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
@@ -28,6 +29,7 @@ export class SettingsService {
     private readonly appConfigService: AppConfigService,
     private readonly smtpService: SmtpService,
     private readonly tenantContextService: TenantContextService,
+    private readonly featureAccessService: FeatureAccessService,
     private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
@@ -103,7 +105,9 @@ export class SettingsService {
         monthlyNotificationsUsed,
         storageBytesUsed
       },
-      featureAccess: user.featureAccess,
+      featureAccess: this.featureAccessService.normalizeFeatureAccess(
+        runtimeConfig?.featureAccess ?? user.featureAccess
+      ),
       canonicalApiBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicApiBaseUrl, tenantContext.slug),
       canonicalWebBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicWebBaseUrl, tenantContext.slug)
     };
@@ -205,21 +209,35 @@ export class SettingsService {
     );
 
     if (dto.sendInviteEmail && created.createdMember && signInUrl) {
+      const inviteIntro = this.i18nService.translate("members.invite_email_intro", language).replace(
+        "{name}",
+        created.createdMember.displayName
+      );
+      const inviteSignInLine = `${this.i18nService.translate("members.invite_email_sign_in", language)}: ${signInUrl}`;
+      const inviteEmailLine = `${this.i18nService.translate("members.invite_email_email", language)}: ${created.createdMember.email}`;
+      const invitePasswordLine = `${this.i18nService.translate("members.invite_email_password", language)}: ${dto.password}`;
+      const inviteFooter = this.i18nService.translate("members.invite_email_footer", language);
+      const inviteText = [
+        inviteIntro,
+        "",
+        inviteSignInLine,
+        inviteEmailLine,
+        invitePasswordLine,
+        "",
+        inviteFooter
+      ].join("\n");
+
       await this.smtpService.sendMail(smtpSettings, {
         to: created.createdMember.email,
         subject: this.i18nService.translate("members.invite_email_subject", language),
-        text: [
-          this.i18nService.translate("members.invite_email_intro", language).replace(
-            "{name}",
-            created.createdMember.displayName
-          ),
-          "",
-          `${this.i18nService.translate("members.invite_email_sign_in", language)}: ${signInUrl}`,
-          `${this.i18nService.translate("members.invite_email_email", language)}: ${created.createdMember.email}`,
-          `${this.i18nService.translate("members.invite_email_password", language)}: ${dto.password}`,
-          "",
-          this.i18nService.translate("members.invite_email_footer", language)
-        ].join("\n")
+        text: inviteText,
+        html: this.buildBrandedInviteHtml({
+          intro: inviteIntro,
+          signInLine: inviteSignInLine,
+          emailLine: inviteEmailLine,
+          passwordLine: invitePasswordLine,
+          footer: inviteFooter
+        })
       });
     }
 
@@ -399,6 +417,53 @@ export class SettingsService {
         oidcClientSecret: user.role === "admin" ? oidcConfig.oidcClientSecret : ""
       }
     };
+  }
+
+  private buildBrandedInviteHtml({
+    intro,
+    signInLine,
+    emailLine,
+    passwordLine,
+    footer
+  }: {
+    intro: string;
+    signInLine: string;
+    emailLine: string;
+    passwordLine: string;
+    footer: string;
+  }) {
+    return [
+      "<!doctype html>",
+      "<html>",
+      "<body style=\"margin:0;background:#f6efe4;padding:24px;font-family:Arial,sans-serif;color:#2b2318;\">",
+      "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:620px;margin:0 auto;background:#fffdf8;border:1px solid #e3d6c3;border-radius:16px;overflow:hidden;\">",
+      "<tr><td style=\"padding:18px 24px;background:linear-gradient(135deg,#f2dec2,#e8cfab);\">",
+      "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>",
+      "<td style=\"width:58px;vertical-align:middle;\"><img src=\"https://my.taskbandit.app/taskbandit-icon.png\" alt=\"TaskBandit mascot\" width=\"42\" height=\"42\" style=\"display:block;border-radius:12px;background:#fff7ea;border:1px solid #d9c4a4;padding:4px;\"></td>",
+      "<td style=\"vertical-align:middle;\"><p style=\"margin:0;color:#3f2f1c;font-size:18px;font-weight:800;\">TaskBandit</p></td>",
+      "</tr></table>",
+      "</td></tr>",
+      "<tr><td style=\"padding:24px;\">",
+      `<p style=\"margin:0 0 14px 0;color:#2b2318;font-size:14px;line-height:1.6;\">${this.escapeHtml(intro)}</p>`,
+      `<p style=\"margin:0 0 10px 0;color:#2b2318;font-size:14px;line-height:1.6;\">${this.escapeHtml(signInLine)}</p>`,
+      `<p style=\"margin:0 0 10px 0;color:#2b2318;font-size:14px;line-height:1.6;\">${this.escapeHtml(emailLine)}</p>`,
+      `<p style=\"margin:0 0 14px 0;color:#2b2318;font-size:14px;line-height:1.6;\">${this.escapeHtml(passwordLine)}</p>`,
+      `<p style=\"margin:0;color:#6a5a46;font-size:13px;line-height:1.5;\">${this.escapeHtml(footer)}</p>`,
+      "<p style=\"margin:24px 0 0 0;color:#4f3f2c;font-size:14px;\">Thanks,<br>TaskBandit</p>",
+      "</td></tr>",
+      "</table>",
+      "</body>",
+      "</html>"
+    ].join("");
+  }
+
+  private escapeHtml(value: string) {
+    return String(value)
+      .replaceAll("&", "&amp;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;")
+      .replaceAll("\"", "&quot;")
+      .replaceAll("'", "&#39;");
   }
 
   private ensureHostedManagedSettingsAreNotEdited(dto: UpdateSettingsDto) {

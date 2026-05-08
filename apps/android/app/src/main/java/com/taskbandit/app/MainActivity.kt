@@ -5085,10 +5085,12 @@ private fun SettingsPlanContent(
     SettingsValueLine(label = stringResource(R.string.mobile_plan_entitlement), value = hostedSubscription.entitlementState ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_lifecycle), value = hostedSubscription.lifecycleState ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_billing), value = hostedSubscription.billingStatus ?: stringResource(R.string.mobile_settings_unknown))
-    SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_trial_ends),
-        value = hostedSubscription.trialEndsAt?.let(::formatApiTimestamp) ?: stringResource(R.string.mobile_settings_unknown)
-    )
+    if (!hostedSubscription.trialEndsAt.isNullOrBlank()) {
+        SettingsValueLine(
+            label = stringResource(R.string.mobile_plan_trial_ends),
+            value = formatApiTimestamp(hostedSubscription.trialEndsAt)
+        )
+    }
     SettingsValueLine(
         label = stringResource(R.string.mobile_plan_grace_ends),
         value = hostedSubscription.graceEndsAt?.let(::formatApiTimestamp) ?: stringResource(R.string.mobile_settings_unknown)
