@@ -15,9 +15,11 @@ import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { PrismaService } from "../../common/prisma/prisma.service";
+import { normalizeTenantPathPrefix } from "../../common/http/path-routing.util";
 import { FeatureAccessService } from "../../common/tenancy/feature-access.service";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { TenantContextService } from "../../common/tenancy/tenant-context.service";
+import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { TenantRequestContext } from "../../common/http/request-url.util";
 import { SmtpService, type SmtpSettings } from "../settings/smtp.service";
 import { CompletePasswordResetDto } from "./dto/complete-password-reset.dto";
@@ -82,6 +84,7 @@ export class AuthService {
     private readonly i18nService: I18nService,
     private readonly smtpService: SmtpService,
     private readonly tenantContextService: TenantContextService,
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
     private readonly featureAccessService: FeatureAccessService
   ) {}
@@ -107,6 +110,7 @@ export class AuthService {
         message: this.i18nService.translate("auth.local_disabled", language)
       });
     }
+    await this.assertTenantCanAuthenticate(tenant.tenantId);
 
     if (
       !identity ||
@@ -382,7 +386,6 @@ export class AuthService {
     language: SupportedLanguage,
     requestContext?: TenantRequestContext | null
   ): Promise<AuthenticatedUser> {
-    const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
     const token = this.extractBearerToken(authorizationHeader);
     if (!token) {
       throw new UnauthorizedException({
@@ -392,6 +395,10 @@ export class AuthService {
 
     try {
       const payload = verify(token, this.appConfigService.jwtSecret) as AuthTokenPayload;
+      const tenant = await this.resolveTenantForTokenAuth(payload.tenantId, requestContext);
+      if (!tenant) {
+        throw new Error("Tenant was not found for token.");
+      }
       const user = await this.prisma.user.findUniqueOrThrow({
         where: {
           id: payload.sub
@@ -454,10 +461,13 @@ export class AuthService {
     }
 
     try {
-      const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
       const payload = verify(token, this.appConfigService.jwtSecret) as Partial<DashboardSyncTokenPayload>;
       if (payload.purpose !== "dashboard-sync" || !payload.sub || !payload.householdId || !payload.tenantId) {
         throw new Error("Invalid dashboard sync token.");
+      }
+      const tenant = await this.resolveTenantForTokenAuth(payload.tenantId, requestContext);
+      if (!tenant) {
+        throw new Error("Tenant was not found for dashboard sync token.");
       }
 
       const user = await this.prisma.user.findUniqueOrThrow({
@@ -763,7 +773,7 @@ export class AuthService {
     );
   }
 
-  private buildAuthResponse(
+  private async buildAuthResponse(
     userId: string,
     tenantId: string,
     householdId: string,
@@ -784,6 +794,8 @@ export class AuthService {
       }
     );
 
+    const tenantContext = await this.buildLoginTenantContext(tenantId);
+
     return {
       accessToken,
       tokenType: "Bearer",
@@ -794,7 +806,8 @@ export class AuthService {
         householdId,
         role: role.toLowerCase(),
         email: email ?? null
-      }
+      },
+      tenantContext
     };
   }
 
@@ -853,6 +866,25 @@ export class AuthService {
     return tenant?.tenantId ?? null;
   }
 
+  private async resolveTenantForTokenAuth(
+    tokenTenantId: string | undefined,
+    requestContext?: TenantRequestContext | null
+  ) {
+    if (!tokenTenantId) {
+      return null;
+    }
+
+    try {
+      const tenant = await this.tenantContextService.resolveFromRequest(requestContext);
+      return tenant.tenantId === tokenTenantId ? tenant : null;
+    } catch (error) {
+      if (error instanceof NotFoundException) {
+        return this.tenantContextService.resolveByTenantId(tokenTenantId);
+      }
+      throw error;
+    }
+  }
+
   private async resolveTenantFromRequestOrNull(requestContext?: TenantRequestContext | null) {
     try {
       return await this.tenantContextService.resolveFromRequest(requestContext);
@@ -862,6 +894,88 @@ export class AuthService {
       }
       throw error;
     }
+  }
+
+  private async assertTenantCanAuthenticate(tenantId: string) {
+    const accessState = await this.tenantRuntimePolicyService.getTenantAccessState(tenantId);
+    if (!accessState.hostedMode) {
+      return;
+    }
+
+    if (
+      accessState.lifecycleState === "provisioning" ||
+      accessState.lifecycleState === "archived" ||
+      accessState.lifecycleState === "deleting" ||
+      accessState.lifecycleState === "deleted" ||
+      accessState.lifecycleState === "suspended"
+    ) {
+      throw new ForbiddenException("This tenant account is not currently available for sign-in.");
+    }
+
+    if (
+      accessState.entitlementState === "suspended" ||
+      accessState.entitlementState === "not_ready"
+    ) {
+      throw new ForbiddenException("This tenant account is not currently available for sign-in.");
+    }
+  }
+
+  private async buildLoginTenantContext(tenantId: string) {
+    const hostedMode = this.appConfigService.hostedModeEnabled;
+    try {
+      const resolvedTenant = await this.tenantContextService.resolveByTenantId(tenantId);
+      return {
+        tenantId,
+        tenantSlug: resolvedTenant.slug,
+        hostedMode,
+        canonicalApiBaseUrl: this.buildCanonicalHostedBaseUrl(
+          this.appConfigService.publicApiBaseUrl,
+          resolvedTenant.slug
+        ),
+        canonicalWebBaseUrl: this.buildCanonicalHostedBaseUrl(
+          this.appConfigService.publicWebBaseUrl,
+          resolvedTenant.slug
+        )
+      };
+    } catch {
+      return {
+        tenantId,
+        tenantSlug: null,
+        hostedMode,
+        canonicalApiBaseUrl: null,
+        canonicalWebBaseUrl: null
+      };
+    }
+  }
+
+  private buildCanonicalHostedBaseUrl(baseUrl: string, tenantSlug: string) {
+    if (!baseUrl) {
+      return null;
+    }
+
+    if (!this.appConfigService.hostedModeEnabled) {
+      return baseUrl;
+    }
+
+    if (this.appConfigService.hostedTenantRoutingMode !== "path") {
+      return baseUrl;
+    }
+
+    const normalizedPrefix = normalizeTenantPathPrefix(this.appConfigService.tenantPathPrefix);
+    const normalizedSlug = tenantSlug.trim().toLowerCase();
+    if (!normalizedSlug) {
+      return baseUrl;
+    }
+
+    const parsedBaseUrl = new URL(baseUrl);
+    const normalizedPathname = parsedBaseUrl.pathname.replace(/\/+$/, "");
+    parsedBaseUrl.pathname = `${normalizedPathname}${normalizedPrefix}/${normalizedSlug}`.replace(
+      /\/+/g,
+      "/"
+    );
+    parsedBaseUrl.search = "";
+    parsedBaseUrl.hash = "";
+    return parsedBaseUrl.toString().replace(/\/$/, "");
   }
 
   private async getOidcMetadata(tenantId: string) {

@@ -19,6 +19,7 @@ import type {
   DashboardSyncToken,
   Household,
   HouseholdSettings,
+  HostedSubscriptionOverview,
   HouseholdNotificationHealthEntry,
   NotificationDevice,
   NotificationRecovery,
@@ -380,6 +381,12 @@ export const taskBanditApi = {
   },
   getNotificationDevices(token: string, language: AppLanguage) {
     return request<NotificationDevice[]>("/api/settings/notification-devices", {
+      token,
+      language
+    });
+  },
+  getHostedSubscriptionOverview(token: string, language: AppLanguage) {
+    return request<HostedSubscriptionOverview>("/api/settings/subscription", {
       token,
       language
     });

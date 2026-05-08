@@ -71,6 +71,11 @@ describe("AuthService", () => {
   };
   let appConfigService: {
     forceLocalAuthEnabled: boolean;
+    hostedModeEnabled: boolean;
+    hostedTenantRoutingMode: "path" | "subdomain";
+    tenantPathPrefix: string;
+    publicApiBaseUrl: string;
+    publicWebBaseUrl: string;
     oidcFallbackConfig: {
       enabled: boolean;
       authority: string;
@@ -94,6 +99,9 @@ describe("AuthService", () => {
   };
   let hostedRuntimeConfigService: {
     getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
+  };
+  let tenantRuntimePolicyService: {
+    getTenantAccessState: ReturnType<typeof vi.fn>;
   };
   let featureAccessService: {
     getFeatureAccessForTenant: ReturnType<typeof vi.fn>;
@@ -137,6 +145,11 @@ describe("AuthService", () => {
 
     appConfigService = {
       forceLocalAuthEnabled: false,
+      hostedModeEnabled: false,
+      hostedTenantRoutingMode: "path",
+      tenantPathPrefix: "/t",
+      publicApiBaseUrl: "https://api.taskbandit.app",
+      publicWebBaseUrl: "https://app.taskbandit.app",
       oidcFallbackConfig: {
         enabled: false,
         authority: "",
@@ -187,6 +200,13 @@ describe("AuthService", () => {
     hostedRuntimeConfigService = {
       getTenantRuntimeConfig: vi.fn().mockResolvedValue(null)
     };
+    tenantRuntimePolicyService = {
+      getTenantAccessState: vi.fn().mockResolvedValue({
+        hostedMode: false,
+        lifecycleState: "active",
+        entitlementState: "active"
+      })
+    };
     featureAccessService = {
       getFeatureAccessForTenant: vi.fn().mockResolvedValue({})
     };
@@ -197,6 +217,7 @@ describe("AuthService", () => {
       i18nService as never,
       smtpService as never,
       tenantContextService as never,
+      tenantRuntimePolicyService as never,
       hostedRuntimeConfigService as never,
       featureAccessService as never
     );
@@ -352,6 +373,41 @@ describe("AuthService", () => {
     expect(tenantContextService.resolveByTenantId).toHaveBeenCalledWith("tenant-1");
   });
 
+  it("blocks hosted login when tenant lifecycle or entitlement is suspended", async () => {
+    const passwordHash = await service.hashPassword("password-123");
+    prisma.authIdentity.findUnique.mockResolvedValue({
+      id: "identity-1",
+      provider: AuthProvider.LOCAL,
+      email: "alex@example.com",
+      passwordHash,
+      user: {
+        id: "user-1",
+        tenantId: "tenant-1",
+        householdId: "household-1",
+        role: HouseholdRole.ADMIN
+      }
+    });
+    tenantRuntimePolicyService.getTenantAccessState.mockResolvedValue({
+      hostedMode: true,
+      lifecycleState: "suspended",
+      entitlementState: "active"
+    });
+
+    await expect(
+      service.login(
+        {
+          email: "alex@example.com",
+          password: "password-123"
+        },
+        "en",
+        {
+          hostHeader: "api.taskbandit.app",
+          originalUrl: "/api/auth/login"
+        }
+      )
+    ).rejects.toBeInstanceOf(ForbiddenException);
+  });
+
   it("supports hosted root password reset request by resolving tenant from identity", async () => {
     tenantContextService.resolveFromRequest.mockRejectedValue(new NotFoundException("Tenant was not found."));
     prisma.authIdentity.findUnique.mockResolvedValue({
@@ -499,6 +555,13 @@ describe("AuthService", () => {
         householdId: "household-1",
         role: "admin",
         email: "alex@example.com"
+      },
+      tenantContext: {
+        tenantId: "tenant-1",
+        tenantSlug: "taskbandit-home",
+        hostedMode: false,
+        canonicalApiBaseUrl: "https://api.taskbandit.app",
+        canonicalWebBaseUrl: "https://app.taskbandit.app"
       }
     });
   });
@@ -528,5 +591,27 @@ describe("AuthService", () => {
         originalUrl: "/api/auth/me"
       } satisfies TenantRequestContext)
     ).rejects.toThrow();
+  });
+
+  it("falls back to token tenant resolution when request context cannot resolve tenant host", async () => {
+    tenantContextService.resolveFromRequest.mockRejectedValue(new NotFoundException("Tenant was not found."));
+
+    const token = sign(
+      {
+        sub: "user-1",
+        tenantId: "tenant-1",
+        householdId: "household-1",
+        role: "admin"
+      },
+      appConfigService.jwtSecret
+    );
+
+    const currentUser = await service.getCurrentUser(`Bearer ${token}`, "en", {
+      hostHeader: "api.taskbandit.app",
+      originalUrl: "/api/auth/me"
+    } satisfies TenantRequestContext);
+
+    expect(currentUser.tenantId).toBe("tenant-1");
+    expect(tenantContextService.resolveByTenantId).toHaveBeenCalledWith("tenant-1");
   });
 });

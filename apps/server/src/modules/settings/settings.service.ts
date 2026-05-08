@@ -1,9 +1,11 @@
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { BadRequestException, Injectable } from "@nestjs/common";
 import { AppConfigService } from "../../common/config/app-config.service";
+import { normalizeTenantPathPrefix } from "../../common/http/path-routing.util";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
+import { TenantContextService } from "../../common/tenancy/tenant-context.service";
 import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { AuthService } from "../auth/auth.service";
 import { HouseholdRepository } from "../household/household.repository";
@@ -25,6 +27,7 @@ export class SettingsService {
     private readonly i18nService: I18nService,
     private readonly appConfigService: AppConfigService,
     private readonly smtpService: SmtpService,
+    private readonly tenantContextService: TenantContextService,
     private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
@@ -57,6 +60,41 @@ export class SettingsService {
 
   getHouseholdNotificationHealth(user: AuthenticatedUser) {
     return this.repository.getHouseholdNotificationHealth(user.householdId);
+  }
+
+  async getHostedSubscriptionOverview(user: AuthenticatedUser) {
+    const accessState = await this.tenantRuntimePolicyService.getTenantAccessState(user.tenantId);
+    if (!accessState.hostedMode) {
+      return {
+        hostedMode: false
+      };
+    }
+
+    const [runtimeConfig, tenantContext] = await Promise.all([
+      this.hostedRuntimeConfigService.getTenantRuntimeConfig(user.tenantId),
+      this.tenantContextService.resolveByTenantId(user.tenantId)
+    ]);
+
+    return {
+      hostedMode: true,
+      tenantId: user.tenantId,
+      tenantSlug: tenantContext.slug,
+      planCode: accessState.planCode,
+      packageCode: runtimeConfig?.packageCode ?? accessState.planCode,
+      lifecycleState: accessState.lifecycleState,
+      entitlementState: accessState.entitlementState,
+      billingStatus: accessState.billingStatus,
+      suspensionReason: accessState.suspensionReason,
+      trialEndsAt: accessState.trialEndsAt,
+      graceEndsAt: accessState.graceEndsAt,
+      quotaPolicyVersion: accessState.quotaPolicyVersion,
+      configVersion: accessState.configVersion,
+      updatedAt: accessState.updatedAt,
+      quotas: accessState.quotas,
+      featureAccess: user.featureAccess,
+      canonicalApiBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicApiBaseUrl, tenantContext.slug),
+      canonicalWebBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicWebBaseUrl, tenantContext.slug)
+    };
   }
 
   async updateSettings(dto: UpdateSettingsDto, user: AuthenticatedUser) {
@@ -258,6 +296,36 @@ export class SettingsService {
       fromEmail: settings.fromEmail,
       fromName: settings.fromName
     });
+  }
+
+  private buildCanonicalHostedBaseUrl(baseUrl: string, tenantSlug: string) {
+    if (!baseUrl) {
+      return null;
+    }
+
+    if (!this.appConfigService.hostedModeEnabled) {
+      return baseUrl;
+    }
+
+    if (this.appConfigService.hostedTenantRoutingMode !== "path") {
+      return baseUrl;
+    }
+
+    const normalizedSlug = tenantSlug.trim().toLowerCase();
+    if (!normalizedSlug) {
+      return baseUrl;
+    }
+
+    const normalizedPrefix = normalizeTenantPathPrefix(this.appConfigService.tenantPathPrefix);
+    const parsedBaseUrl = new URL(baseUrl);
+    const normalizedPathname = parsedBaseUrl.pathname.replace(/\/+$/, "");
+    parsedBaseUrl.pathname = `${normalizedPathname}${normalizedPrefix}/${normalizedSlug}`.replace(
+      /\/+/g,
+      "/"
+    );
+    parsedBaseUrl.search = "";
+    parsedBaseUrl.hash = "";
+    return parsedBaseUrl.toString().replace(/\/$/, "");
   }
 
   private async applyRuntimeAuthSettings(

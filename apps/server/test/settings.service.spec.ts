@@ -64,9 +64,13 @@ describe("SettingsService", () => {
   let hostedRuntimeConfigService: {
     getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
   };
+  let tenantContextService: {
+    resolveByTenantId: ReturnType<typeof vi.fn>;
+  };
   let tenantRuntimePolicyService: {
     assertActionAllowed: ReturnType<typeof vi.fn>;
     assertMembersLimit: ReturnType<typeof vi.fn>;
+    getTenantAccessState: ReturnType<typeof vi.fn>;
   };
   let appConfigService: {
     forceLocalAuthEnabled: boolean;
@@ -107,9 +111,21 @@ describe("SettingsService", () => {
     hostedRuntimeConfigService = {
       getTenantRuntimeConfig: vi.fn().mockResolvedValue(null)
     };
+    tenantContextService = {
+      resolveByTenantId: vi.fn().mockResolvedValue({
+        tenantId: "tenant-1",
+        householdId: "household-1",
+        slug: "taskbandit-home",
+        displayName: "TaskBandit Home",
+        source: "hosted_env"
+      })
+    };
     tenantRuntimePolicyService = {
       assertActionAllowed: vi.fn().mockResolvedValue(undefined),
-      assertMembersLimit: vi.fn().mockResolvedValue(undefined)
+      assertMembersLimit: vi.fn().mockResolvedValue(undefined),
+      getTenantAccessState: vi.fn().mockResolvedValue({
+        hostedMode: false
+      })
     };
     appConfigService = {
       forceLocalAuthEnabled: false,
@@ -142,6 +158,7 @@ describe("SettingsService", () => {
       } as never,
       appConfigService as never,
       smtpService as never,
+      tenantContextService as never,
       hostedRuntimeConfigService as never,
       tenantRuntimePolicyService as never
     );
