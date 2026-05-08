@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.8](https://github.com/kriziw/TaskBandit/compare/v0.43.7...v0.43.8) (2026-05-08)
+
+
+### Bug Fixes
+
+* **server:** surface hosted runtime config failures with safe diagnostics ([#315](https://github.com/kriziw/TaskBandit/issues/315)) ([52ebc24](https://github.com/kriziw/TaskBandit/commit/52ebc24d261a857091833908d586d8d86eba5dc5))
+
 ## [0.43.7](https://github.com/kriziw/TaskBandit/compare/v0.43.6...v0.43.7) (2026-05-08)
 
 
