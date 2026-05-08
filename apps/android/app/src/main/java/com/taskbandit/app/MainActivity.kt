@@ -1252,13 +1252,17 @@ private fun TaskBanditApp(
     LaunchedEffect(activeBaseUrl, session.token) {
         val token = session.token ?: return@LaunchedEffect
 
-        dashboardSyncClient.connect(activeBaseUrl, token).collect { signal ->
-            when (signal) {
-                MobileDashboardSyncSignal.Connected -> isDashboardSyncConnected = true
-                MobileDashboardSyncSignal.Disconnected -> isDashboardSyncConnected = false
-                MobileDashboardSyncSignal.RefreshRequested -> requestDashboardRefresh()
-                MobileDashboardSyncSignal.Unauthorized -> logout()
+        runCatching {
+            dashboardSyncClient.connect(activeBaseUrl, token).collect { signal ->
+                when (signal) {
+                    MobileDashboardSyncSignal.Connected -> isDashboardSyncConnected = true
+                    MobileDashboardSyncSignal.Disconnected -> isDashboardSyncConnected = false
+                    MobileDashboardSyncSignal.RefreshRequested -> requestDashboardRefresh()
+                    MobileDashboardSyncSignal.Unauthorized -> logout()
+                }
             }
+        }.onFailure {
+            isDashboardSyncConnected = false
         }
     }
 

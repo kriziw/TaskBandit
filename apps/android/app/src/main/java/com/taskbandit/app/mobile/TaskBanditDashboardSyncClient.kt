@@ -33,69 +33,79 @@ class TaskBanditDashboardSyncClient {
 
         val worker = launch {
             while (keepRunning) {
-                val connectionEnded = CompletableDeferred<Unit>()
-                var openedThisAttempt = false
+                try {
+                    val connectionEnded = CompletableDeferred<Unit>()
+                    var openedThisAttempt = false
 
-                val request = Request.Builder()
-                    .url("${baseUrl.trim().trimEnd('/')}/api/dashboard/sync/stream")
-                    .header("Accept", "text/event-stream")
-                    .header("Authorization", "Bearer $token")
-                    .build()
+                    val request = Request.Builder()
+                        .url("${baseUrl.trim().trimEnd('/')}/api/dashboard/sync/stream")
+                        .header("Accept", "text/event-stream")
+                        .header("Authorization", "Bearer $token")
+                        .build()
 
-                activeEventSource = eventSourceFactory.newEventSource(request, object : EventSourceListener() {
-                    override fun onOpen(eventSource: EventSource, response: Response) {
-                        trySend(MobileDashboardSyncSignal.Connected)
-                        trySend(MobileDashboardSyncSignal.RefreshRequested)
-                        openedThisAttempt = true
-                    }
-
-                    override fun onEvent(
-                        eventSource: EventSource,
-                        id: String?,
-                        type: String?,
-                        data: String
-                    ) {
-                        if (type == "heartbeat") {
-                            return
+                    activeEventSource = eventSourceFactory.newEventSource(request, object : EventSourceListener() {
+                        override fun onOpen(eventSource: EventSource, response: Response) {
+                            trySend(MobileDashboardSyncSignal.Connected)
+                            trySend(MobileDashboardSyncSignal.RefreshRequested)
+                            openedThisAttempt = true
                         }
 
-                        trySend(MobileDashboardSyncSignal.RefreshRequested)
-                    }
+                        override fun onEvent(
+                            eventSource: EventSource,
+                            id: String?,
+                            type: String?,
+                            data: String
+                        ) {
+                            if (type == "heartbeat") {
+                                return
+                            }
 
-                    override fun onClosed(eventSource: EventSource) {
-                        trySend(MobileDashboardSyncSignal.Disconnected)
-                        if (!connectionEnded.isCompleted) {
-                            connectionEnded.complete(Unit)
+                            trySend(MobileDashboardSyncSignal.RefreshRequested)
                         }
-                    }
 
-                    override fun onFailure(
-                        eventSource: EventSource,
-                        t: Throwable?,
-                        response: Response?
-                    ) {
-                        if (response?.code == 401) {
-                            trySend(MobileDashboardSyncSignal.Unauthorized)
-                            keepRunning = false
-                        } else {
+                        override fun onClosed(eventSource: EventSource) {
                             trySend(MobileDashboardSyncSignal.Disconnected)
+                            if (!connectionEnded.isCompleted) {
+                                connectionEnded.complete(Unit)
+                            }
                         }
 
-                        if (!connectionEnded.isCompleted) {
-                            connectionEnded.complete(Unit)
+                        override fun onFailure(
+                            eventSource: EventSource,
+                            t: Throwable?,
+                            response: Response?
+                        ) {
+                            if (response?.code == 401) {
+                                trySend(MobileDashboardSyncSignal.Unauthorized)
+                                keepRunning = false
+                            } else {
+                                trySend(MobileDashboardSyncSignal.Disconnected)
+                            }
+
+                            if (!connectionEnded.isCompleted) {
+                                connectionEnded.complete(Unit)
+                            }
                         }
+                    })
+
+                    connectionEnded.await()
+                    activeEventSource?.cancel()
+                    activeEventSource = null
+
+                    if (!keepRunning) {
+                        break
                     }
-                })
 
-                connectionEnded.await()
-                activeEventSource?.cancel()
-                activeEventSource = null
-
-                if (!keepRunning) {
-                    break
+                    delay(if (openedThisAttempt) 1500 else 3000)
+                } catch (_: Throwable) {
+                    trySend(MobileDashboardSyncSignal.Disconnected)
+                    activeEventSource?.cancel()
+                    activeEventSource = null
+                    if (!keepRunning) {
+                        break
+                    }
+                    delay(3000)
                 }
-
-                delay(if (openedThisAttempt) 1500 else 3000)
             }
         }
 
