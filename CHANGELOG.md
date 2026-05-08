@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.7](https://github.com/kriziw/TaskBandit/compare/v0.43.6...v0.43.7) (2026-05-08)
+
+
+### Bug Fixes
+
+* **hosted-auth:** resolve tenant context drift and add SaaS plan visibility ([#313](https://github.com/kriziw/TaskBandit/issues/313)) ([6765c38](https://github.com/kriziw/TaskBandit/commit/6765c381cfe2a52cbb9d7ff5b0403b628100243d))
+
 ## [0.43.6](https://github.com/kriziw/TaskBandit/compare/v0.43.5...v0.43.6) (2026-05-07)
 
 
