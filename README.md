@@ -126,6 +126,7 @@ The public runtime still defaults to self-hosted operation. When `TASKBANDIT_HOS
 - tenant export and deletion manifests that inventory database rows alongside proof object keys
 
 Hosted mode does not add private billing logic, operator support tooling, or hosted secret management to this repo. Those remain in the private control plane.
+The hosted runtime config bridge requests `/internal/runtime/tenants/:tenantId/config` using the runtime tenant id resolved from trusted runtime context.
 
 For fixed-hostname hosted deployments, the public runtime also supports path-based tenant routing:
 
