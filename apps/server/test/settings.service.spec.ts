@@ -66,6 +66,9 @@ describe("SettingsService", () => {
   let hostedRuntimeConfigService: {
     getTenantRuntimeConfig: ReturnType<typeof vi.fn>;
   };
+  let featureAccessService: {
+    normalizeFeatureAccess: ReturnType<typeof vi.fn>;
+  };
   let tenantContextService: {
     resolveByTenantId: ReturnType<typeof vi.fn>;
   };
@@ -115,6 +118,20 @@ describe("SettingsService", () => {
     hostedRuntimeConfigService = {
       getTenantRuntimeConfig: vi.fn().mockResolvedValue(null)
     };
+    featureAccessService = {
+      normalizeFeatureAccess: vi.fn().mockImplementation((input: Record<string, unknown> | undefined) => ({
+        templates_manage: Boolean(input?.templates_manage ?? true),
+        chores_manage: Boolean(input?.chores_manage ?? true),
+        reassignment: Boolean(input?.reassignment ?? true),
+        takeover_direct: Boolean(input?.takeover_direct ?? true),
+        takeover_requests: Boolean(input?.takeover_requests ?? true),
+        approvals: Boolean(input?.approvals ?? true),
+        proof_uploads: Boolean(input?.proof_uploads ?? true),
+        follow_up_automation: Boolean(input?.follow_up_automation ?? true),
+        external_completion: Boolean(input?.external_completion ?? true),
+        deferred_follow_up_control: Boolean(input?.deferred_follow_up_control ?? true)
+      }))
+    };
     tenantContextService = {
       resolveByTenantId: vi.fn().mockResolvedValue({
         tenantId: "tenant-1",
@@ -163,6 +180,7 @@ describe("SettingsService", () => {
       appConfigService as never,
       smtpService as never,
       tenantContextService as never,
+      featureAccessService as never,
       hostedRuntimeConfigService as never,
       tenantRuntimePolicyService as never
     );
@@ -509,7 +527,10 @@ describe("SettingsService", () => {
     });
     hostedRuntimeConfigService.getTenantRuntimeConfig.mockResolvedValue({
       packageCode: "family_plus",
-      packageDisplayName: "Family Plus"
+      packageDisplayName: "Family Plus",
+      featureAccess: {
+        templates_manage: false
+      }
     });
     repository.getHousehold.mockResolvedValue({
       ...householdFixture,
@@ -521,6 +542,7 @@ describe("SettingsService", () => {
     expect(response.hostedMode).toBe(true);
     expect(response.packageCode).toBe("family_plus");
     expect(response.packageDisplayName).toBe("Family Plus");
+    expect(response.featureAccess.templates_manage).toBe(false);
     expect(response.usage).toEqual({
       membersUsed: 3,
       storageBytesUsed: 128 * 1024 * 1024,

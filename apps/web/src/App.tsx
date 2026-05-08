@@ -1636,7 +1636,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     [payload]
   );
 
-  const featureAccess = payload?.currentUser.featureAccess ?? fullFeatureAccess;
+  const featureAccess = {
+    ...fullFeatureAccess,
+    ...(payload?.currentUser.featureAccess ?? {}),
+    ...(payload?.hostedSubscription.featureAccess ?? {})
+  };
   const hasFeature = (featureId: PackageFeatureId) => featureAccess[featureId];
   const showTemplateManager = Boolean(payload?.currentUser.role !== "child" && hasFeature("templates_manage"));
 
@@ -6987,7 +6991,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <p>Entitlement: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
                     <p>Lifecycle: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
                     <p>Billing: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
-                    <p>Trial ends: {formatDate(payload.hostedSubscription.trialEndsAt ?? null)}</p>
+                    {payload.hostedSubscription.trialEndsAt ? (
+                      <p>Trial ends: {formatDate(payload.hostedSubscription.trialEndsAt)}</p>
+                    ) : null}
                     <p>Grace ends: {formatDate(payload.hostedSubscription.graceEndsAt ?? null)}</p>
                     <p>Suspension reason: {payload.hostedSubscription.suspensionReason ?? t("common.none")}</p>
                   </div>

@@ -4,6 +4,7 @@ import { AppConfigService } from "../../common/config/app-config.service";
 import { normalizeTenantPathPrefix } from "../../common/http/path-routing.util";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { FeatureAccessService } from "../../common/tenancy/feature-access.service";
 import { HostedRuntimeConfigService } from "../../common/tenancy/hosted-runtime-config.service";
 import { TenantContextService } from "../../common/tenancy/tenant-context.service";
 import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
@@ -28,6 +29,7 @@ export class SettingsService {
     private readonly appConfigService: AppConfigService,
     private readonly smtpService: SmtpService,
     private readonly tenantContextService: TenantContextService,
+    private readonly featureAccessService: FeatureAccessService,
     private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
   ) {}
@@ -103,7 +105,9 @@ export class SettingsService {
         monthlyNotificationsUsed,
         storageBytesUsed
       },
-      featureAccess: user.featureAccess,
+      featureAccess: this.featureAccessService.normalizeFeatureAccess(
+        runtimeConfig?.featureAccess ?? user.featureAccess
+      ),
       canonicalApiBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicApiBaseUrl, tenantContext.slug),
       canonicalWebBaseUrl: this.buildCanonicalHostedBaseUrl(this.appConfigService.publicWebBaseUrl, tenantContext.slug)
     };

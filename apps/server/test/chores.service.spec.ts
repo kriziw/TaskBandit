@@ -17,6 +17,11 @@ describe("ChoresService", () => {
   let repository: {
     ensureDefaultTemplatesForHousehold: ReturnType<typeof vi.fn>;
     getTemplates: ReturnType<typeof vi.fn>;
+    createTemplate: ReturnType<typeof vi.fn>;
+  };
+  let featureAccessService: {
+    assertEnabled: ReturnType<typeof vi.fn>;
+    getFeatureAccessForTenant: ReturnType<typeof vi.fn>;
   };
   let appConfigService: {
     hostedModeEnabled: boolean;
@@ -35,10 +40,28 @@ describe("ChoresService", () => {
           groupTitle: "Kitchen",
           title: "Unload dishwasher"
         }
-      ])
+      ]),
+      createTemplate: vi.fn().mockResolvedValue({
+        id: "template-2"
+      })
     };
     appConfigService = {
       hostedModeEnabled: true
+    };
+    featureAccessService = {
+      assertEnabled: vi.fn(),
+      getFeatureAccessForTenant: vi.fn().mockResolvedValue({
+        templates_manage: true,
+        chores_manage: true,
+        reassignment: true,
+        takeover_direct: true,
+        takeover_requests: true,
+        approvals: true,
+        proof_uploads: true,
+        follow_up_automation: true,
+        external_completion: true,
+        deferred_follow_up_control: true
+      })
     };
 
     service = new ChoresService(
@@ -46,13 +69,11 @@ describe("ChoresService", () => {
       {} as never,
       {} as never,
       appConfigService as never,
-      {
-        assertEnabled: vi.fn()
-      } as never,
+      featureAccessService as never,
       {} as never,
       {} as never,
       {
-        publish: vi.fn()
+        publishChoreUpdate: vi.fn()
       } as never
     );
   });
@@ -77,5 +98,17 @@ describe("ChoresService", () => {
 
     expect(repository.ensureDefaultTemplatesForHousehold).not.toHaveBeenCalled();
     expect(repository.getTemplates).toHaveBeenCalledWith("household-1", "en");
+  });
+
+  it("uses live hosted feature access when checking template manager permissions", async () => {
+    await service.createTemplate({} as never, user, "en");
+
+    expect(featureAccessService.getFeatureAccessForTenant).toHaveBeenCalledWith("tenant-1");
+    expect(featureAccessService.assertEnabled).toHaveBeenCalledWith(
+      expect.objectContaining({
+        templates_manage: true
+      }),
+      "templates_manage"
+    );
   });
 });
