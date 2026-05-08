@@ -412,20 +412,22 @@ h4,
 }
 
 .ghost-button {
-  background: transparent;
-  border: 1px solid var(--line);
+  background: rgba(255, 251, 243, 0.72);
+  border: 1px solid #d6ba91;
 }
 
 .primary-button {
-  color: var(--ink);
-  background: linear-gradient(135deg, var(--gold), #ffd980);
-  box-shadow: 0 14px 28px rgba(255, 201, 74, 0.34);
+  color: #3f2f1c;
+  background: linear-gradient(180deg, #f4e2c7 0%, #e9cfaa 62%, #dec29a 100%);
+  border: 1px solid #d6ba91;
+  box-shadow: 0 12px 24px rgba(122, 92, 52, 0.22);
 }
 
 .secondary-button {
-  color: white;
-  background: linear-gradient(135deg, var(--coral), #ff978c);
-  box-shadow: 0 14px 28px rgba(255, 122, 107, 0.26);
+  color: #4f3f2c;
+  background: linear-gradient(180deg, #fff5e6 0%, #f3dfbf 62%, #e7cfa7 100%);
+  border: 1px solid #d6ba91;
+  box-shadow: 0 10px 20px rgba(122, 92, 52, 0.18);
 }
 
 .hero {
