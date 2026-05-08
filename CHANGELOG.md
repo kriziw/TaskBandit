@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.12](https://github.com/kriziw/TaskBandit/compare/v0.43.11...v0.43.12) (2026-05-08)
+
+
+### Bug Fixes
+
+* **server:** enforce hosted feature-access parity after package changes ([#327](https://github.com/kriziw/TaskBandit/issues/327)) ([120ce05](https://github.com/kriziw/TaskBandit/commit/120ce051b38b4686c7e720cebe826da724b7154f))
+
 ## [0.43.11](https://github.com/kriziw/TaskBandit/compare/v0.43.10...v0.43.11) (2026-05-08)
 
 
