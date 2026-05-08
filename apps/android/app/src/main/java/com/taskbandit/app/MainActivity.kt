@@ -193,6 +193,23 @@ private enum class MobileChoreSection {
     OTHERS
 }
 
+internal data class TemplateCreateCapabilities(
+    val canOpenCreateTab: Boolean,
+    val canEditTemplates: Boolean
+)
+
+internal fun resolveTemplateCreateCapabilities(
+    userFeatureAccess: MobileFeatureAccess,
+    hostedFeatureAccess: MobileFeatureAccess
+): TemplateCreateCapabilities {
+    val canManageChores = userFeatureAccess.choresManage || hostedFeatureAccess.choresManage
+    val canManageTemplates = userFeatureAccess.templatesManage || hostedFeatureAccess.templatesManage
+    return TemplateCreateCapabilities(
+        canOpenCreateTab = canManageChores,
+        canEditTemplates = canManageTemplates
+    )
+}
+
 private enum class MobileChoreSectionTone {
     MINE,
     UNASSIGNED,
@@ -1935,8 +1952,8 @@ private fun DashboardScreen(
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
     val featureAccess = dashboard?.user?.featureAccess ?: MobileFeatureAccess()
-    val canManageTemplates = featureAccess.templatesManage || hostedSubscription.featureAccess.templatesManage
-    val canManageChores = featureAccess.choresManage || hostedSubscription.featureAccess.choresManage
+    val templateCreateCapabilities = resolveTemplateCreateCapabilities(featureAccess, hostedSubscription.featureAccess)
+    val canManageChores = templateCreateCapabilities.canOpenCreateTab
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val currentUserId = dashboard?.user?.id
@@ -2484,7 +2501,7 @@ private fun DashboardScreen(
                             selected = activeTab == MobileDashboardTab.CREATE,
                             label = stringResource(R.string.mobile_tab_create),
                             icon = Icons.Rounded.AddCircle,
-                            enabled = isCreatorRole && canManageChores && canManageTemplates,
+                            enabled = isCreatorRole && canManageChores,
                             onClick = {
                                 activeTab = MobileDashboardTab.CREATE
                                 expandedChoreIds = emptySet()
@@ -5065,8 +5082,6 @@ private fun SettingsPlanContent(
     )
 
     SettingsValueLine(label = stringResource(R.string.mobile_plan_package_name), value = packageDisplayName)
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_code), value = hostedSubscription.planCode ?: stringResource(R.string.mobile_settings_unknown))
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_package), value = hostedSubscription.packageCode ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_entitlement), value = hostedSubscription.entitlementState ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_lifecycle), value = hostedSubscription.lifecycleState ?: stringResource(R.string.mobile_settings_unknown))
     SettingsValueLine(label = stringResource(R.string.mobile_plan_billing), value = hostedSubscription.billingStatus ?: stringResource(R.string.mobile_settings_unknown))

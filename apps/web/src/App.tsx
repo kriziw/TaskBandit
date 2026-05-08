@@ -6959,8 +6959,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <div className="stack-list">
                   <div className="task-row compact">
                     <p>Package: {payload.hostedSubscription.packageDisplayName ?? payload.hostedSubscription.packageCode ?? "n/a"}</p>
-                    <p>Package code: {payload.hostedSubscription.packageCode ?? "n/a"}</p>
-                    <p>Plan code: {payload.hostedSubscription.planCode ?? "n/a"}</p>
                     <p>Entitlement: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
                     <p>Lifecycle: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
                     <p>Billing: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
