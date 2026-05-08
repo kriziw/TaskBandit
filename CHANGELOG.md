@@ -2,6 +2,15 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.10](https://github.com/kriziw/TaskBandit/compare/v0.43.9...v0.43.10) (2026-05-08)
+
+
+### Bug Fixes
+
+* **client:** improve hosted plan clarity and template access parity ([#322](https://github.com/kriziw/TaskBandit/issues/322)) ([aaf0c36](https://github.com/kriziw/TaskBandit/commit/aaf0c36e9d60a5d189041f42bff5ce33676975a8))
+* **client:** remove technical plan codes and restore template manager create access ([#323](https://github.com/kriziw/TaskBandit/issues/323)) ([02f86b5](https://github.com/kriziw/TaskBandit/commit/02f86b53c4415a64d80016b6b782f9e2a57e2a77))
+* **server:** guarantee hosted default templates with mobile-safe diagnostics ([#320](https://github.com/kriziw/TaskBandit/issues/320)) ([4474cf2](https://github.com/kriziw/TaskBandit/commit/4474cf2b69e24360a6de41aa8a9682e9a97d7f11))
+
 ## [0.43.9](https://github.com/kriziw/TaskBandit/compare/v0.43.8...v0.43.9) (2026-05-08)
 
 
