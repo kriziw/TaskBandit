@@ -9,7 +9,7 @@ import {
   syncClientWebPushRegistration,
   type ClientWebPushStatus
 } from "./pwa/clientPush";
-import { resolveApiBaseUrl } from "./runtimeConfig";
+import { resolveApiBaseUrl, setApiBaseUrlOverride } from "./runtimeConfig";
 import type {
   AdminSystemStatus,
   AuditLogEntry,
@@ -30,6 +30,7 @@ import type {
   DashboardSummary,
   Household,
   HouseholdNotificationHealthEntry,
+  HostedSubscriptionOverview,
   HouseholdSettings,
   LocalizedTemplateTranslation,
   NotificationDevice,
@@ -71,6 +72,7 @@ type DashboardPayload = {
   templates: ChoreTemplate[];
   instances: ChoreInstance[];
   takeoverRequests: TakeoverRequestEntry[];
+  hostedSubscription: HostedSubscriptionOverview;
   compatibility: ServerCompatibility;
 };
 
@@ -740,6 +742,12 @@ function formatReleaseDetails(release: ReleaseInfo) {
     : null;
   const image = release.imageTag ? `image ${release.imageTag}` : null;
   return [commit, image].filter(Boolean).join(" | ");
+}
+
+function formatFeatureLabel(featureId: string) {
+  return featureId
+    .replace(/_/g, " ")
+    .replace(/\b\w/g, (value: string) => value.toUpperCase());
 }
 
 type BeforeInstallPromptEvent = Event & {
@@ -2402,6 +2410,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         templates,
         instances,
         takeoverRequestsResult,
+        hostedSubscriptionResult,
         nextRuntimeLogs
       ] =
         await Promise.all([
@@ -2449,10 +2458,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           () => taskBanditApi.getTakeoverRequests(accessToken, language),
           [] as TakeoverRequestEntry[]
         ),
+        loadOptionalFeature(
+          () => taskBanditApi.getHostedSubscriptionOverview(accessToken, language),
+          { hostedMode: false } as HostedSubscriptionOverview
+        ),
         currentUser.role === "admin" && activePage === "admin"
           ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
           : Promise.resolve(runtimeLogs)
         ]);
+
+      if (hostedSubscriptionResult.value.hostedMode && hostedSubscriptionResult.value.canonicalApiBaseUrl) {
+        setApiBaseUrlOverride(hostedSubscriptionResult.value.canonicalApiBaseUrl);
+      } else {
+        setApiBaseUrlOverride(null);
+      }
 
       setPayload({
         currentUser,
@@ -2470,6 +2489,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         templates,
         instances,
         takeoverRequests: takeoverRequestsResult.value,
+        hostedSubscription: hostedSubscriptionResult.value,
         compatibility: {
           notificationDevices: notificationDevicesResult.supported,
           notificationHealth: householdNotificationHealthResult.supported,
@@ -3021,6 +3041,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function handleLogout(message?: string) {
     clearStoredToken(workspaceVariant);
+    setApiBaseUrlOverride(null);
     setToken(null);
     setPayload(null);
     setRuntimeLogs([]);
@@ -3039,6 +3060,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     try {
       const response = await taskBanditApi.login(loginForm.email, loginForm.password, language);
+      if (response.tenantContext?.hostedMode && response.tenantContext.canonicalApiBaseUrl) {
+        setApiBaseUrlOverride(response.tenantContext.canonicalApiBaseUrl);
+      } else {
+        setApiBaseUrlOverride(null);
+      }
       writeStoredToken(workspaceVariant, response.accessToken);
       setToken(response.accessToken);
       setNotice(t("auth.login_success"));
@@ -3076,6 +3102,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     try {
       const response = await taskBanditApi.signup(signupForm, language);
+      if (response.tenantContext?.hostedMode && response.tenantContext.canonicalApiBaseUrl) {
+        setApiBaseUrlOverride(response.tenantContext.canonicalApiBaseUrl);
+      } else {
+        setApiBaseUrlOverride(null);
+      }
       writeStoredToken(workspaceVariant, response.accessToken);
       setToken(response.accessToken);
       setSignupForm({
@@ -3151,6 +3182,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         bootstrapForm.ownerPassword,
         language
       );
+      if (authResponse.tenantContext?.hostedMode && authResponse.tenantContext.canonicalApiBaseUrl) {
+        setApiBaseUrlOverride(authResponse.tenantContext.canonicalApiBaseUrl);
+      } else {
+        setApiBaseUrlOverride(null);
+      }
       writeStoredToken(workspaceVariant, authResponse.accessToken);
       setToken(authResponse.accessToken);
       setBootstrapStatus({
@@ -6873,6 +6909,62 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     ))}
                   </div>
                 )}
+              </article>
+            ) : null}
+
+            {payload.hostedSubscription.hostedMode ? (
+              <article
+                className={`panel page-panel ${
+                  workspaceVariant === "client" ? "page-settings" : "page-admin"
+                }`}
+              >
+                <div className="section-heading">
+                  <h2>Plan &amp; Features</h2>
+                  <span className="section-kicker">{payload.hostedSubscription.planCode ?? "Hosted plan"}</span>
+                </div>
+                <div className="stack-list">
+                  <div className="task-row compact">
+                    <p>Package: {payload.hostedSubscription.packageCode ?? "n/a"}</p>
+                    <p>Entitlement: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
+                    <p>Lifecycle: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
+                    <p>Billing: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
+                    <p>Trial ends: {formatDate(payload.hostedSubscription.trialEndsAt ?? null)}</p>
+                    <p>Grace ends: {formatDate(payload.hostedSubscription.graceEndsAt ?? null)}</p>
+                    <p>Suspension reason: {payload.hostedSubscription.suspensionReason ?? t("common.none")}</p>
+                  </div>
+                  <div className="task-row compact">
+                    <strong>Quotas</strong>
+                    <p>Members limit: {payload.hostedSubscription.quotas?.membersLimit ?? "unlimited"}</p>
+                    <p>
+                      Storage limit (bytes):{" "}
+                      {payload.hostedSubscription.quotas?.storageBytesLimit ?? "unlimited"}
+                    </p>
+                    <p>
+                      Monthly notifications:{" "}
+                      {payload.hostedSubscription.quotas?.monthlyNotificationLimit ?? "unlimited"}
+                    </p>
+                    <p>
+                      Export retention (days):{" "}
+                      {payload.hostedSubscription.quotas?.exportRetentionDays ?? "n/a"}
+                    </p>
+                    <p>
+                      Proof retention (days):{" "}
+                      {payload.hostedSubscription.quotas?.proofRetentionDays ?? "n/a"}
+                    </p>
+                    <p>
+                      Audit retention (days):{" "}
+                      {payload.hostedSubscription.quotas?.auditRetentionDays ?? "n/a"}
+                    </p>
+                  </div>
+                  <div className="task-row compact">
+                    <strong>Feature Access</strong>
+                    {Object.entries(payload.hostedSubscription.featureAccess ?? {}).map(([featureId, enabled]) => (
+                      <p key={featureId}>
+                        {formatFeatureLabel(featureId)}: {enabled ? t("common.enabled") : t("common.disabled")}
+                      </p>
+                    ))}
+                  </div>
+                </div>
               </article>
             ) : null}
 

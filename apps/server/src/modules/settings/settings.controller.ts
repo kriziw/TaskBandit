@@ -59,6 +59,11 @@ export class SettingsController {
     return this.settingsService.getHouseholdNotificationHealth(user);
   }
 
+  @Get("subscription")
+  getHostedSubscriptionOverview(@CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.getHostedSubscriptionOverview(user);
+  }
+
   @Put("household")
   @Roles("admin")
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {

@@ -5,6 +5,8 @@ type TaskBanditRuntimeConfig = {
   tenantPathPrefix?: string;
 };
 
+const apiBaseUrlOverrideStorageKey = "taskbandit-api-base-url-override";
+
 function normalizeBaseUrl(value: string | undefined) {
   const trimmedValue = value?.trim();
   if (!trimmedValue) {
@@ -76,7 +78,34 @@ function appendTenantMountPath(baseUrl: string | undefined) {
   return `${normalizedBaseUrl}${tenantMountPath}`;
 }
 
+function readApiBaseUrlOverride() {
+  if (typeof window === "undefined") {
+    return undefined;
+  }
+
+  return normalizeBaseUrl(window.localStorage.getItem(apiBaseUrlOverrideStorageKey) ?? undefined);
+}
+
+export function setApiBaseUrlOverride(baseUrl: string | null | undefined) {
+  if (typeof window === "undefined") {
+    return;
+  }
+
+  const normalizedBaseUrl = normalizeBaseUrl(baseUrl ?? undefined);
+  if (!normalizedBaseUrl) {
+    window.localStorage.removeItem(apiBaseUrlOverrideStorageKey);
+    return;
+  }
+
+  window.localStorage.setItem(apiBaseUrlOverrideStorageKey, normalizedBaseUrl);
+}
+
 export function resolveApiBaseUrl() {
+  const overrideBaseUrl = readApiBaseUrlOverride();
+  if (overrideBaseUrl) {
+    return overrideBaseUrl;
+  }
+
   const runtimeConfigured = appendTenantMountPath(normalizeBaseUrl(readRuntimeConfig().apiBaseUrl));
   if (runtimeConfigured) {
     return runtimeConfigured;

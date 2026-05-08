@@ -131,6 +131,7 @@ import com.taskbandit.app.mobile.MobileChoreTemplate
 import com.taskbandit.app.mobile.MobileFeatureAccess
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
+import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
 import com.taskbandit.app.mobile.MobileTakeoverRequest
 import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
@@ -204,7 +205,8 @@ private fun isTabletWidth(maxWidth: Dp): Boolean = maxWidth >= 840.dp
 private data class MobileDashboardRefresh(
     val dashboard: MobileDashboard,
     val latestReleaseInfo: MobileReleaseInfo?,
-    val notificationDevices: List<MobileNotificationDevice>
+    val notificationDevices: List<MobileNotificationDevice>,
+    val hostedSubscription: MobileHostedSubscriptionOverview
 )
 
 private data class MobileChoiceOption(
@@ -481,6 +483,7 @@ private fun TaskBanditApp(
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
     var serverReleaseInfo by remember { mutableStateOf<MobileReleaseInfo?>(null) }
+    var hostedSubscription by remember { mutableStateOf(MobileHostedSubscriptionOverview()) }
     var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
     var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
     var isBusy by remember { mutableStateOf(session.token != null) }
@@ -636,6 +639,7 @@ private fun TaskBanditApp(
         session = TaskBanditSession(baseUrl = baseUrl, token = null)
         serverUrl = baseUrl
         dashboard = null
+        hostedSubscription = MobileHostedSubscriptionOverview()
         serverReleaseInfo = null
         notificationDevices = emptyList()
         isDashboardSyncConnected = true
@@ -718,6 +722,9 @@ private fun TaskBanditApp(
                     MobileDashboardRefresh(
                         dashboard = api.loadDashboard(baseUrl, token),
                         latestReleaseInfo = latestReleaseInfo,
+                        hostedSubscription = runCatching {
+                            api.getHostedSubscriptionOverview(baseUrl, token)
+                        }.getOrDefault(MobileHostedSubscriptionOverview()),
                         notificationDevices = runCatching {
                             api.getNotificationDevices(baseUrl, token)
                         }.getOrDefault(emptyList())
@@ -725,11 +732,17 @@ private fun TaskBanditApp(
                 }
                 refreshPayload
             }.onSuccess { loadedPayload ->
+                val canonicalApiBaseUrl = loadedPayload.hostedSubscription.canonicalApiBaseUrl
+                    ?.trim()
+                    ?.ifBlank { null }
+                val resolvedBaseUrl = canonicalApiBaseUrl ?: baseUrl
                 dashboard = loadedPayload.dashboard
+                hostedSubscription = loadedPayload.hostedSubscription
                 serverReleaseInfo = loadedPayload.latestReleaseInfo
                 notificationDevices = loadedPayload.notificationDevices
-                serverUrl = baseUrl
-                sessionStore.saveSession(baseUrl, token)
+                serverUrl = resolvedBaseUrl
+                sessionStore.saveSession(resolvedBaseUrl, token)
+                session = TaskBanditSession(baseUrl = resolvedBaseUrl, token = token)
                 queuedSubmissionCount = 0
                 widgetStore.saveDashboard(loadedPayload.dashboard, 0)
                 TaskBanditWidgetProvider.refreshAllWidgets(context)
@@ -1385,10 +1398,14 @@ private fun TaskBanditApp(
                                 withContext(Dispatchers.IO) {
                                     api.login(baseUrl, email, password)
                                 }
-                            }.onSuccess { token ->
-                                serverUrl = baseUrl
-                                sessionStore.saveSession(baseUrl, token)
-                                session = TaskBanditSession(baseUrl = baseUrl, token = token)
+                            }.onSuccess { loginResult ->
+                                val canonicalApiBaseUrl = loginResult.tenantContext?.canonicalApiBaseUrl
+                                    ?.trim()
+                                    ?.ifBlank { null }
+                                val resolvedBaseUrl = canonicalApiBaseUrl ?: baseUrl
+                                serverUrl = resolvedBaseUrl
+                                sessionStore.saveSession(resolvedBaseUrl, loginResult.accessToken)
+                                session = TaskBanditSession(baseUrl = resolvedBaseUrl, token = loginResult.accessToken)
                             }.onFailure { throwable ->
                                 errorMessage = resolveLoginScreenErrorMessage(throwable)
                             }
@@ -1399,6 +1416,7 @@ private fun TaskBanditApp(
             } else {
                 DashboardScreen(
                     dashboard = dashboard,
+                    hostedSubscription = hostedSubscription,
                     serverUrl = serverUrl,
                     currentReleaseLabel = currentReleaseLabel,
                     serverReleaseLabel = serverReleaseLabel,
@@ -1852,6 +1870,7 @@ private fun LoginMethodsForm(
 @Composable
 private fun DashboardScreen(
     dashboard: MobileDashboard?,
+    hostedSubscription: MobileHostedSubscriptionOverview,
     serverUrl: String,
     currentReleaseLabel: String,
     serverReleaseLabel: String?,
@@ -2890,6 +2909,13 @@ private fun DashboardScreen(
                             }
                         }
                     }
+                    if (hostedSubscription.hostedMode) {
+                        item {
+                            SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
+                                SettingsPlanContent(hostedSubscription = hostedSubscription)
+                            }
+                        }
+                    }
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -2913,6 +2939,13 @@ private fun DashboardScreen(
                     item {
                         SettingsSectionCard(icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
                             SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
+                        }
+                    }
+                    if (hostedSubscription.hostedMode) {
+                        item {
+                            SettingsSectionCard(icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
+                                SettingsPlanContent(hostedSubscription = hostedSubscription)
+                            }
                         }
                     }
                     item {
@@ -4999,6 +5032,71 @@ private fun SettingsReleaseContent(
                 Button(onClick = onDismissUpdate) { Text(stringResource(R.string.mobile_update_dismiss)) }
             }
         }
+    }
+}
+
+@Composable
+private fun SettingsPlanContent(
+    hostedSubscription: MobileHostedSubscriptionOverview
+) {
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_code), value = hostedSubscription.planCode ?: stringResource(R.string.mobile_settings_unknown))
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_package), value = hostedSubscription.packageCode ?: stringResource(R.string.mobile_settings_unknown))
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_entitlement), value = hostedSubscription.entitlementState ?: stringResource(R.string.mobile_settings_unknown))
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_lifecycle), value = hostedSubscription.lifecycleState ?: stringResource(R.string.mobile_settings_unknown))
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_billing), value = hostedSubscription.billingStatus ?: stringResource(R.string.mobile_settings_unknown))
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_trial_ends),
+        value = hostedSubscription.trialEndsAt?.let(::formatApiTimestamp) ?: stringResource(R.string.mobile_settings_unknown)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_grace_ends),
+        value = hostedSubscription.graceEndsAt?.let(::formatApiTimestamp) ?: stringResource(R.string.mobile_settings_unknown)
+    )
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_suspension_reason), value = hostedSubscription.suspensionReason ?: stringResource(R.string.mobile_none))
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_members_limit),
+        value = hostedSubscription.quotas.membersLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_storage_limit_bytes),
+        value = hostedSubscription.quotas.storageBytesLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_monthly_notifications_limit),
+        value = hostedSubscription.quotas.monthlyNotificationLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_export_retention_days),
+        value = hostedSubscription.quotas.exportRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_proof_retention_days),
+        value = hostedSubscription.quotas.proofRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_audit_retention_days),
+        value = hostedSubscription.quotas.auditRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
+    )
+    Text(text = stringResource(R.string.mobile_plan_feature_access), style = MaterialTheme.typography.titleMedium)
+    val featureEntries = remember(hostedSubscription.featureAccess) {
+        listOf(
+            "templates_manage" to hostedSubscription.featureAccess.templatesManage,
+            "chores_manage" to hostedSubscription.featureAccess.choresManage,
+            "reassignment" to hostedSubscription.featureAccess.reassignment,
+            "takeover_direct" to hostedSubscription.featureAccess.takeoverDirect,
+            "takeover_requests" to hostedSubscription.featureAccess.takeoverRequests,
+            "approvals" to hostedSubscription.featureAccess.approvals,
+            "proof_uploads" to hostedSubscription.featureAccess.proofUploads,
+            "follow_up_automation" to hostedSubscription.featureAccess.followUpAutomation,
+            "external_completion" to hostedSubscription.featureAccess.externalCompletion,
+            "deferred_follow_up_control" to hostedSubscription.featureAccess.deferredFollowUpControl
+        )
+    }
+    featureEntries.forEach { (featureId, enabled) ->
+        SettingsValueLine(
+            label = featureId.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
+            value = stringResource(if (enabled) R.string.mobile_enabled else R.string.mobile_disabled)
+        )
     }
 }
 

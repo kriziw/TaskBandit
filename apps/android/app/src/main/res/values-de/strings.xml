@@ -214,6 +214,26 @@
     <string name="mobile_settings_commit">Commit</string>
     <string name="mobile_settings_actions">Sitzung</string>
     <string name="mobile_settings_unknown">Unbekannt</string>
+    <string name="mobile_settings_plan_features">Tarif und Funktionen</string>
+    <string name="mobile_plan_code">Tarif</string>
+    <string name="mobile_plan_package">Paket</string>
+    <string name="mobile_plan_entitlement">Berechtigungsstatus</string>
+    <string name="mobile_plan_lifecycle">Mandantenstatus</string>
+    <string name="mobile_plan_billing">Abrechnungsstatus</string>
+    <string name="mobile_plan_trial_ends">Testphase endet</string>
+    <string name="mobile_plan_grace_ends">Kulanzzeit endet</string>
+    <string name="mobile_plan_suspension_reason">Sperrgrund</string>
+    <string name="mobile_plan_members_limit">Mitgliederlimit</string>
+    <string name="mobile_plan_storage_limit_bytes">Speicherlimit (Bytes)</string>
+    <string name="mobile_plan_monthly_notifications_limit">Monatliches Benachrichtigungslimit</string>
+    <string name="mobile_plan_export_retention_days">Export-Aufbewahrung (Tage)</string>
+    <string name="mobile_plan_proof_retention_days">Nachweis-Aufbewahrung (Tage)</string>
+    <string name="mobile_plan_audit_retention_days">Audit-Aufbewahrung (Tage)</string>
+    <string name="mobile_plan_feature_access">Enthaltene Funktionen</string>
+    <string name="mobile_none">Keine</string>
+    <string name="mobile_unlimited">Unbegrenzt</string>
+    <string name="mobile_enabled">Aktiv</string>
+    <string name="mobile_disabled">Deaktiviert</string>
     <string name="mobile_notifications">Benachrichtigungen</string>
     <string name="mobile_notifications_empty">Keine aktuellen Benachrichtigungen.</string>
     <string name="mobile_mark_read">Als gelesen markieren</string>
@@ -358,6 +378,8 @@
     <string name="mobile_cancel_series_confirm_body">"%1$s" stornieren und alle noch offenen zukuenftigen Aufgaben dieser Serie stoppen? Verknuepfte Folgeaufgaben der Serie werden ebenfalls storniert.</string>
     <string name="mobile_cancel_series_confirm_action">Gesamte Serie stornieren</string>
 </resources>
+
+
 
 
 

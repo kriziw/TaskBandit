@@ -31,17 +31,31 @@ class TaskBanditMobileApi {
     private val httpClient = OkHttpClient()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
 
-    fun login(baseUrl: String, email: String, password: String): String {
+    fun login(baseUrl: String, email: String, password: String): MobileLoginResult {
         val payload = JSONObject()
             .put("email", email.trim())
             .put("password", password)
 
-        return requestJson(
+        val responseJson = requestJson(
             baseUrl = baseUrl,
             path = "/api/auth/login",
             method = "POST",
             body = payload
-        ).getString("accessToken")
+        )
+
+        val tenantContextJson = responseJson.optJSONObject("tenantContext")
+        return MobileLoginResult(
+            accessToken = responseJson.getString("accessToken"),
+            tenantContext = tenantContextJson?.let {
+                MobileAuthTenantContext(
+                    tenantId = it.optString("tenantId"),
+                    tenantSlug = it.optString("tenantSlug").ifBlank { null },
+                    hostedMode = it.optBoolean("hostedMode"),
+                    canonicalApiBaseUrl = it.optString("canonicalApiBaseUrl").ifBlank { null },
+                    canonicalWebBaseUrl = it.optString("canonicalWebBaseUrl").ifBlank { null }
+                )
+            }
+        )
     }
 
     fun getAuthProviders(baseUrl: String): MobileAuthProviders {
@@ -84,6 +98,40 @@ class TaskBanditMobileApi {
             releaseVersion = releaseJson.optString("releaseVersion"),
             buildNumber = releaseJson.optString("buildNumber"),
             commitSha = releaseJson.optString("commitSha")
+        )
+    }
+
+    fun getHostedSubscriptionOverview(baseUrl: String, token: String): MobileHostedSubscriptionOverview {
+        val responseJson = requestJson(baseUrl, "/api/settings/subscription", token = token)
+        val quotasJson = responseJson.optJSONObject("quotas") ?: JSONObject()
+        return MobileHostedSubscriptionOverview(
+            hostedMode = responseJson.optBoolean("hostedMode"),
+            tenantId = responseJson.optString("tenantId").ifBlank { null },
+            tenantSlug = responseJson.optString("tenantSlug").ifBlank { null },
+            planCode = responseJson.optString("planCode").ifBlank { null },
+            packageCode = responseJson.optString("packageCode").ifBlank { null },
+            lifecycleState = responseJson.optString("lifecycleState").ifBlank { null },
+            entitlementState = responseJson.optString("entitlementState").ifBlank { null },
+            billingStatus = responseJson.optString("billingStatus").ifBlank { null },
+            suspensionReason = responseJson.optString("suspensionReason").ifBlank { null },
+            trialEndsAt = responseJson.optString("trialEndsAt").ifBlank { null },
+            graceEndsAt = responseJson.optString("graceEndsAt").ifBlank { null },
+            quotaPolicyVersion = responseJson.optString("quotaPolicyVersion").ifBlank { null },
+            configVersion = responseJson.optString("configVersion").ifBlank { null },
+            updatedAt = responseJson.optString("updatedAt").ifBlank { null },
+            quotas = MobileHostedQuotas(
+                membersLimit = quotasJson.optInt("membersLimit").takeIf { !quotasJson.isNull("membersLimit") },
+                storageBytesLimit = quotasJson.optLong("storageBytesLimit").takeIf { !quotasJson.isNull("storageBytesLimit") },
+                monthlyNotificationLimit = quotasJson.optInt("monthlyNotificationLimit").takeIf { !quotasJson.isNull("monthlyNotificationLimit") },
+                exportRetentionDays = quotasJson.optInt("exportRetentionDays").takeIf { !quotasJson.isNull("exportRetentionDays") },
+                proofRetentionDays = quotasJson.optInt("proofRetentionDays").takeIf { !quotasJson.isNull("proofRetentionDays") },
+                auditRetentionDays = quotasJson.optInt("auditRetentionDays").takeIf { !quotasJson.isNull("auditRetentionDays") },
+                customDomainEnabled = quotasJson.optBoolean("customDomainEnabled").takeIf { !quotasJson.isNull("customDomainEnabled") },
+                brandingEnabled = quotasJson.optBoolean("brandingEnabled").takeIf { !quotasJson.isNull("brandingEnabled") }
+            ),
+            featureAccess = parseFeatureAccess(responseJson.optJSONObject("featureAccess")),
+            canonicalApiBaseUrl = responseJson.optString("canonicalApiBaseUrl").ifBlank { null },
+            canonicalWebBaseUrl = responseJson.optString("canonicalWebBaseUrl").ifBlank { null }
         )
     }
 

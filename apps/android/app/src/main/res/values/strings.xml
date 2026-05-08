@@ -218,6 +218,26 @@
     <string name="mobile_settings_commit">Commit</string>
     <string name="mobile_settings_actions">Session</string>
     <string name="mobile_settings_unknown">Unknown</string>
+    <string name="mobile_settings_plan_features">Plan and features</string>
+    <string name="mobile_plan_code">Plan</string>
+    <string name="mobile_plan_package">Package</string>
+    <string name="mobile_plan_entitlement">Entitlement status</string>
+    <string name="mobile_plan_lifecycle">Tenant lifecycle</string>
+    <string name="mobile_plan_billing">Billing status</string>
+    <string name="mobile_plan_trial_ends">Trial ends</string>
+    <string name="mobile_plan_grace_ends">Grace period ends</string>
+    <string name="mobile_plan_suspension_reason">Suspension reason</string>
+    <string name="mobile_plan_members_limit">Members limit</string>
+    <string name="mobile_plan_storage_limit_bytes">Storage limit (bytes)</string>
+    <string name="mobile_plan_monthly_notifications_limit">Monthly notifications limit</string>
+    <string name="mobile_plan_export_retention_days">Export retention (days)</string>
+    <string name="mobile_plan_proof_retention_days">Proof retention (days)</string>
+    <string name="mobile_plan_audit_retention_days">Audit retention (days)</string>
+    <string name="mobile_plan_feature_access">Included features</string>
+    <string name="mobile_none">None</string>
+    <string name="mobile_unlimited">Unlimited</string>
+    <string name="mobile_enabled">Enabled</string>
+    <string name="mobile_disabled">Disabled</string>
     <string name="mobile_notifications">Notifications</string>
     <string name="mobile_notifications_empty">No recent notifications.</string>
     <string name="mobile_mark_read">Mark read</string>
@@ -373,3 +393,4 @@
     <string name="mobile_push_channel_name">TaskBandit alerts</string>
     <string name="mobile_push_channel_description">Due-soon reminders, approvals, and household TaskBandit updates.</string>
 </resources>
+

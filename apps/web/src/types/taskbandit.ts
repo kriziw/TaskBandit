@@ -51,6 +51,13 @@ export type AuthResponse = {
   accessToken: string;
   tokenType: "Bearer";
   expiresIn: string;
+  tenantContext?: {
+    tenantId: string;
+    tenantSlug: string | null;
+    hostedMode: boolean;
+    canonicalApiBaseUrl: string | null;
+    canonicalWebBaseUrl: string | null;
+  };
   user: {
     id: string;
     tenantId: string;
@@ -58,6 +65,36 @@ export type AuthResponse = {
     role: HouseholdRole;
     email: string | null;
   };
+};
+
+export type HostedSubscriptionOverview = {
+  hostedMode: boolean;
+  tenantId?: string;
+  tenantSlug?: string | null;
+  planCode?: string;
+  packageCode?: string;
+  lifecycleState?: string;
+  entitlementState?: string;
+  billingStatus?: string;
+  suspensionReason?: string | null;
+  trialEndsAt?: string | null;
+  graceEndsAt?: string | null;
+  quotaPolicyVersion?: string;
+  configVersion?: string;
+  updatedAt?: string | null;
+  quotas?: {
+    membersLimit: number | null;
+    storageBytesLimit: number | null;
+    monthlyNotificationLimit: number | null;
+    exportRetentionDays: number | null;
+    proofRetentionDays: number | null;
+    auditRetentionDays: number | null;
+    customDomainEnabled: boolean | null;
+    brandingEnabled: boolean | null;
+  };
+  featureAccess?: AuthenticatedUser["featureAccess"];
+  canonicalApiBaseUrl?: string | null;
+  canonicalWebBaseUrl?: string | null;
 };
 
 export type ApiStatusResponse = {

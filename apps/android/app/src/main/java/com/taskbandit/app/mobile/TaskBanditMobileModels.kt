@@ -23,6 +23,19 @@ data class MobileAuthProviders(
     val oidc: MobileOidcAuthProvider
 )
 
+data class MobileAuthTenantContext(
+    val tenantId: String,
+    val tenantSlug: String?,
+    val hostedMode: Boolean,
+    val canonicalApiBaseUrl: String?,
+    val canonicalWebBaseUrl: String?
+)
+
+data class MobileLoginResult(
+    val accessToken: String,
+    val tenantContext: MobileAuthTenantContext? = null
+)
+
 data class MobileUser(
     val id: String,
     val displayName: String,
@@ -43,6 +56,38 @@ data class MobileFeatureAccess(
     val followUpAutomation: Boolean = true,
     val externalCompletion: Boolean = true,
     val deferredFollowUpControl: Boolean = true
+)
+
+data class MobileHostedQuotas(
+    val membersLimit: Int? = null,
+    val storageBytesLimit: Long? = null,
+    val monthlyNotificationLimit: Int? = null,
+    val exportRetentionDays: Int? = null,
+    val proofRetentionDays: Int? = null,
+    val auditRetentionDays: Int? = null,
+    val customDomainEnabled: Boolean? = null,
+    val brandingEnabled: Boolean? = null
+)
+
+data class MobileHostedSubscriptionOverview(
+    val hostedMode: Boolean = false,
+    val tenantId: String? = null,
+    val tenantSlug: String? = null,
+    val planCode: String? = null,
+    val packageCode: String? = null,
+    val lifecycleState: String? = null,
+    val entitlementState: String? = null,
+    val billingStatus: String? = null,
+    val suspensionReason: String? = null,
+    val trialEndsAt: String? = null,
+    val graceEndsAt: String? = null,
+    val quotaPolicyVersion: String? = null,
+    val configVersion: String? = null,
+    val updatedAt: String? = null,
+    val quotas: MobileHostedQuotas = MobileHostedQuotas(),
+    val featureAccess: MobileFeatureAccess = MobileFeatureAccess(),
+    val canonicalApiBaseUrl: String? = null,
+    val canonicalWebBaseUrl: String? = null
 )
 
 data class MobileLeaderboardEntry(
