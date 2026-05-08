@@ -346,9 +346,11 @@ describe("SettingsService", () => {
       }),
       expect.objectContaining({
         to: "sam@example.com",
-        subject: "Invite"
+        subject: "Invite",
+        html: expect.stringContaining("taskbandit-icon.png")
       })
     );
+    expect(smtpService.sendMail.mock.calls[0][1].html).toContain("#f6efe4");
     expect(result).toEqual(
       expect.objectContaining({
         inviteEmailSent: true
