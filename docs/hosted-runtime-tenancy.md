@@ -21,6 +21,25 @@ Hosted deployments can use either:
 
 Self-hosted remains the normal default and does not require either hosted routing mode.
 
+## Runtime Config Contract Troubleshooting
+
+Hosted runtime policy and auth flows depend on control-plane runtime config reads. The runtime bridge calls:
+
+- `GET /internal/runtime/tenants/:tenantId/config`
+
+Expected behavior:
+
+- `:tenantId` is the runtime tenant id resolved from trusted runtime context.
+- Control plane may support control-plane-tenant-id fallback for compatibility, but runtime callers should use runtime tenant id.
+- Calls require `x-internal-service-token` and private/internal networking between runtime and control plane.
+
+Safe failure categories surfaced by runtime responses/logs include:
+
+- `token_missing`
+- `token_invalid`
+- `runtime_tenant_not_mapped`
+- `control_plane_unavailable`
+
 ## Tenant-Aware Runtime Enforcement
 
 The runtime now enforces hosted policy at the public boundary for:
