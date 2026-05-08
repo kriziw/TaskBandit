@@ -686,6 +686,11 @@ function readStoredWorkspacePage(variant: WorkspaceVariant) {
   return getDefaultWorkspacePage(variant);
 }
 
+function readLoginEmailFromRoute() {
+  const loginEmail = new URL(window.location.href).searchParams.get("loginEmail");
+  return loginEmail ? loginEmail.trim() : "";
+}
+
 function formatNumber(value: number) {
   return new Intl.NumberFormat().format(value);
 }
@@ -890,7 +895,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [isAuthEntryLoading, setIsAuthEntryLoading] = useState<boolean>(() => !readStoredToken(workspaceVariant));
   const [authEntryError, setAuthEntryError] = useState<string | null>(null);
   const [loginForm, setLoginForm] = useState<LoginFormState>({
-    email: "",
+    email: readLoginEmailFromRoute(),
     password: ""
   });
   const [signupForm, setSignupForm] = useState<SignupFormState>({
@@ -1363,6 +1368,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }, [payload]);
 
   useEffect(() => {
+    const currentUrl = new URL(window.location.href);
+    if (!currentUrl.searchParams.has("loginEmail")) {
+      return;
+    }
+
+    currentUrl.searchParams.delete("loginEmail");
+    currentUrl.searchParams.delete("source");
+    window.history.replaceState({}, document.title, currentUrl.toString());
+  }, []);
+
+  useEffect(() => {
     let cancelled = false;
     const refreshReleaseInfo = () =>
       taskBanditApi
@@ -1622,6 +1638,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   const featureAccess = payload?.currentUser.featureAccess ?? fullFeatureAccess;
   const hasFeature = (featureId: PackageFeatureId) => featureAccess[featureId];
+  const showTemplateManager = Boolean(payload?.currentUser.role !== "child" && hasFeature("templates_manage"));
 
   const pendingTakeoverRequests = useMemo(
     () =>
@@ -1921,19 +1938,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
 
     if (isClientMobileViewport) {
-      return [
+      const pages: Array<{ key: WorkspacePage; label: string }> = [
         { key: "chores", label: t("nav.chores") },
         { key: "settings", label: t("nav.settings") }
       ];
+      if (showTemplateManager) {
+        pages.splice(1, 0, { key: "templates", label: t("nav.templates") });
+      }
+      return pages;
     }
 
-    return [
+    const pages: Array<{ key: WorkspacePage; label: string }> = [
       { key: "overview", label: t("nav.overview") },
       { key: "chores", label: t("nav.chores") },
       { key: "notifications", label: t("nav.notifications") },
       { key: "settings", label: t("nav.settings") }
     ];
-  }, [isClientMobileViewport, payload, t, workspaceVariant]);
+    if (showTemplateManager) {
+      pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
+    }
+    return pages;
+  }, [isClientMobileViewport, payload, showTemplateManager, t, workspaceVariant]);
   const mobileBottomNavPages = useMemo(
     () =>
       availablePages.filter((page) =>
@@ -8190,7 +8215,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </section>
                   </div>
                 </article>
+              </>
+            ) : null}
 
+            {showTemplateManager ? (
                 <article className="panel panel-wide page-panel page-templates" ref={templatesRef}>
                   <div className="section-heading">
                     <h2>{t("panel.chore_templates")}</h2>
@@ -8824,8 +8852,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </form>
                   </div>
                 </article>
-
-              </>
             ) : null}
 
             <article className="panel page-panel page-overview">
