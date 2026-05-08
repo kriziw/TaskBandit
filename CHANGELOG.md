@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.13](https://github.com/kriziw/TaskBandit/compare/v0.43.12...v0.43.13) (2026-05-08)
+
+
+### Bug Fixes
+
+* **client:** make boxed desktop widths adaptive by viewport ([#331](https://github.com/kriziw/TaskBandit/issues/331)) ([55e722f](https://github.com/kriziw/TaskBandit/commit/55e722f00155a9e6fd87445b662923d162505a8c))
+* **client:** widen boxed layouts for desktop web app ([#329](https://github.com/kriziw/TaskBandit/issues/329)) ([eedb6e1](https://github.com/kriziw/TaskBandit/commit/eedb6e15fd130f669f032f9203bf71df48633d07))
+
 ## [0.43.12](https://github.com/kriziw/TaskBandit/compare/v0.43.11...v0.43.12) (2026-05-08)
 
 
