@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.43.11](https://github.com/kriziw/TaskBandit/compare/v0.43.10...v0.43.11) (2026-05-08)
+
+
+### Bug Fixes
+
+* **client:** align web buttons with beige branding palette ([#325](https://github.com/kriziw/TaskBandit/issues/325)) ([e0a3f5c](https://github.com/kriziw/TaskBandit/commit/e0a3f5c504e6477426caa3e3c7f349f0cd24f92a))
+* **client:** restore template manager access and login handoff UX ([#324](https://github.com/kriziw/TaskBandit/issues/324)) ([3f1639f](https://github.com/kriziw/TaskBandit/commit/3f1639f5d1b0e4e310e2fd27efe26da895293224))
+
 ## [0.43.10](https://github.com/kriziw/TaskBandit/compare/v0.43.9...v0.43.10) (2026-05-08)
 
 
