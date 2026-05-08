@@ -124,6 +124,8 @@ The public runtime still defaults to self-hosted operation. When `TASKBANDIT_HOS
 - tenant-scoped notification/device ownership checks and retry safety
 - tenant-prefixed proof object keys under `tenants/<tenantId>/proofs/<householdId>/...`
 - tenant export and deletion manifests that inventory database rows alongside proof object keys
+- hosted plan telemetry in `/api/settings/subscription` with package display naming plus usage-vs-quota fields for members, storage, and monthly notifications
+- hosted template availability safety (seed defaults eagerly during provisioning or lazily when template lists are empty)
 
 Hosted mode does not add private billing logic, operator support tooling, or hosted secret management to this repo. Those remain in the private control plane.
 The hosted runtime config bridge requests `/internal/runtime/tenants/:tenantId/config` using the runtime tenant id resolved from trusted runtime context.

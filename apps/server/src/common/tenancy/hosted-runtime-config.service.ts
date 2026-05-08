@@ -20,6 +20,7 @@ export type HostedTenantRuntimeConfig = {
   };
   lifecycleState: string;
   packageCode: string;
+  packageDisplayName: string | null;
   packageRevisionId: string | null;
   packageRevisionNumber: number | null;
   planCode: string;

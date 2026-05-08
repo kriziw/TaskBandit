@@ -40,6 +40,18 @@ Safe failure categories surfaced by runtime responses/logs include:
 - `runtime_tenant_not_mapped`
 - `control_plane_unavailable`
 
+Successful runtime-config reads also carry customer-facing package metadata (`packageDisplayName`) so the runtime can show friendly plan labels while retaining technical package codes for diagnostics.
+
+## Hosted Template Availability
+
+Hosted tenants should always have starter templates available for chore creation.
+
+- Eager path: provisioning can call the internal template seed hook.
+- Lazy safety path: runtime template reads seed defaults automatically if the tenant has zero templates.
+- Package feature controls still govern template editing operations (create/update/delete), while chore creation can use available templates as long as chore-management permissions are active.
+
+If a hosted tenant reports an empty template list, check runtime logs for the hosted template seed trigger/result and verify the tenant role has access to `/api/chores/templates` (`admin` or `parent`).
+
 ## Tenant-Aware Runtime Enforcement
 
 The runtime now enforces hosted policy at the public boundary for:

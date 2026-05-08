@@ -151,7 +151,7 @@
     <string name="mobile_create_creating">Létrehozás...</string>
     <string name="mobile_create_ready">Válassz sablont, ütemezd a feladatot, és erősítsd meg a kiosztás módját.</string>
     <string name="mobile_create_no_permission">Csak admin vagy szülő szerepkör hozhat létre feladatot.</string>
-    <string name="mobile_create_no_templates">Még nincs elérhető sablon. Először a webes felületen hozz létre sablonokat.</string>
+    <string name="mobile_create_no_templates">Még nincs elérhető sablon. Az alap sablonok szinkronizálása folyamatban, húzd le frissítéshez.</string>
     <string name="mobile_create_variant">Altípus</string>
     <string name="mobile_create_select_variant_prompt">Válassz altípust…</string>
     <string name="mobile_create_no_subtype">Nincs altípus</string>
@@ -206,6 +206,7 @@
     <string name="mobile_settings_actions">Munkamenet</string>
     <string name="mobile_settings_unknown">Ismeretlen</string>
     <string name="mobile_settings_plan_features">Csomag es funkciok</string>
+    <string name="mobile_plan_package_name">Csomag neve</string>
     <string name="mobile_plan_code">Csomag</string>
     <string name="mobile_plan_package">Konstrukcio</string>
     <string name="mobile_plan_entitlement">Jogosultsagi allapot</string>
@@ -215,8 +216,12 @@
     <string name="mobile_plan_grace_ends">Turelmi ido vege</string>
     <string name="mobile_plan_suspension_reason">Felfuggesztes oka</string>
     <string name="mobile_plan_members_limit">Tag letszam limit</string>
+    <string name="mobile_plan_members_usage">Tagletszam hasznalat</string>
     <string name="mobile_plan_storage_limit_bytes">Tarhely limit (byte)</string>
+    <string name="mobile_plan_storage_limit">Tarhely limit</string>
+    <string name="mobile_plan_storage_usage">Tarhely hasznalat</string>
     <string name="mobile_plan_monthly_notifications_limit">Havi ertesitesi limit</string>
+    <string name="mobile_plan_monthly_notifications_usage">Havi ertesitesi hasznalat</string>
     <string name="mobile_plan_export_retention_days">Export megorzes (nap)</string>
     <string name="mobile_plan_proof_retention_days">Bizonyitek megorzes (nap)</string>
     <string name="mobile_plan_audit_retention_days">Audit megorzes (nap)</string>
