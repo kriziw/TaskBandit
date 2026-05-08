@@ -57,13 +57,13 @@ select {
 }
 
 .app-shell {
-  max-width: 1440px;
+  max-width: 1660px;
   margin: 0 auto;
   padding: 24px 18px 40px;
 }
 
 .app-shell.variant-client {
-  max-width: 980px;
+  max-width: 1240px;
 }
 
 .app-shell.variant-client .hero {
