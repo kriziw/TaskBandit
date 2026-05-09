@@ -24,12 +24,40 @@ export type HostedTenantRuntimeConfig = {
   packageRevisionId: string | null;
   packageRevisionNumber: number | null;
   planCode: string;
-  providerConfigRefs: Array<{
-    id: string;
-    kind: string;
-    environment: string;
-    secretRef: string;
+  integrations: Array<{
     active: boolean;
+    category: string | null;
+    health: {
+      basic: {
+        checks: Array<{
+          depth: "basic" | "deep";
+          detail: string;
+          label: string;
+          status: string;
+        }>;
+        status: string;
+      };
+      deep: {
+        checks: Array<{
+          depth: "basic" | "deep";
+          detail: string;
+          label: string;
+          status: string;
+        }>;
+        status: string;
+      };
+    };
+    lastValidatedAt: string | null;
+    pluginId: string;
+    providerId: string | null;
+    providerKey: string | null;
+    status: string;
+    updatedAt: string | null;
+    validation: {
+      lastResult: string;
+      message: string | null;
+      summary: string | null;
+    };
   }>;
   quotaPolicy: Record<string, unknown>;
   quotaPolicyVersion: string;
