@@ -32,6 +32,47 @@
                     android:host="auth"
                     android:path="/callback" />
             </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="taskbandit"
+                    android:host="onboarding" />
+            </intent-filter>
+            <intent-filter android:autoVerify="true">
+                <action android:name="android.intent.action.VIEW" />
+
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+
+                <data
+                    android:scheme="https"
+                    android:host="control-plane.taskbandit.app"
+                    android:pathPrefix="/activate" />
+                <data
+                    android:scheme="https"
+                    android:host="control-plane.taskbandit.app"
+                    android:pathPrefix="/onboarding" />
+                <data
+                    android:scheme="https"
+                    android:host="my.taskbandit.app"
+                    android:pathPrefix="/activate" />
+                <data
+                    android:scheme="https"
+                    android:host="my.taskbandit.app"
+                    android:pathPrefix="/onboarding" />
+                <data
+                    android:scheme="https"
+                    android:host="taskbandit.app"
+                    android:pathPrefix="/activate" />
+                <data
+                    android:scheme="https"
+                    android:host="taskbandit.app"
+                    android:pathPrefix="/onboarding" />
+            </intent-filter>
         </activity>
 
         <provider

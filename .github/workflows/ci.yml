@@ -69,6 +69,30 @@ jobs:
       - name: Assemble debug APK
         run: gradle :app:assembleDebug
 
+  android_onboarding_e2e:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/android
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: android-actions/setup-android@v3
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "9.4.1"
+      - name: Run onboarding instrumentation tests
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 34
+          arch: x86_64
+          profile: pixel_6
+          working-directory: apps/android
+          script: gradle :app:connectedDebugAndroidTest --no-daemon
+
   docker:
     runs-on: ubuntu-latest
     strategy:

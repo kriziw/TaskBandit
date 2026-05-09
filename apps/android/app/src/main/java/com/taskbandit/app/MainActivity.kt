@@ -136,8 +136,11 @@ import com.taskbandit.app.mobile.MobileTakeoverRequest
 import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
 import com.taskbandit.app.mobile.MobileUploadedProof
+import com.taskbandit.app.mobile.MobileOnboardingDeepLink
+import com.taskbandit.app.mobile.MobileResolvedInvite
 import com.taskbandit.app.mobile.TaskBanditDashboardSyncClient
 import com.taskbandit.app.mobile.TaskBanditMobileApi
+import com.taskbandit.app.mobile.TaskBanditOnboardingDeepLinks
 import com.taskbandit.app.mobile.TaskBanditAppPreferencesStore
 import com.taskbandit.app.mobile.TaskBanditOutboxStore
 import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
@@ -385,6 +388,7 @@ private fun buildMobileCompletionCelebration(
 
 class MainActivity : AppCompatActivity() {
     private val pendingOidcResult = mutableStateOf<AndroidOidcResult?>(null)
+    private val pendingOnboardingDeepLink = mutableStateOf<MobileOnboardingDeepLink?>(null)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         val sharedPreferences = getSharedPreferences("taskbandit-session", MODE_PRIVATE)
@@ -400,7 +404,7 @@ class MainActivity : AppCompatActivity() {
 
         AppCompatDelegate.setApplicationLocales(initialLocaleList)
         super.onCreate(savedInstanceState)
-        consumeOidcIntent(intent)
+        consumeIncomingIntent(intent)
 
         setContent {
             TaskBanditApp(
@@ -408,7 +412,8 @@ class MainActivity : AppCompatActivity() {
                 sessionStore = sessionStore,
                 appPreferencesStore = appPreferencesStore,
                 widgetStore = widgetStore,
-                pendingOidcResult = pendingOidcResult
+                pendingOidcResult = pendingOidcResult,
+                pendingOnboardingDeepLink = pendingOnboardingDeepLink
             )
         }
     }
@@ -416,21 +421,24 @@ class MainActivity : AppCompatActivity() {
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
-        consumeOidcIntent(intent)
+        consumeIncomingIntent(intent)
     }
 
-    private fun consumeOidcIntent(intent: Intent?) {
+    private fun consumeIncomingIntent(intent: Intent?) {
         val data = intent?.data ?: return
-        if (data.scheme != "taskbandit" || data.host != "auth" || data.path != "/callback") {
+        if (data.scheme == "taskbandit" && data.host == "auth" && data.path == "/callback") {
+            val accessToken = data.getQueryParameter("oidcToken")
+            val errorMessage = data.getQueryParameter("oidcError")
+            pendingOidcResult.value = AndroidOidcResult(
+                accessToken = accessToken?.takeIf { it.isNotBlank() },
+                errorMessage = errorMessage?.takeIf { it.isNotBlank() }
+            )
+            intent.data = null
             return
         }
 
-        val accessToken = data.getQueryParameter("oidcToken")
-        val errorMessage = data.getQueryParameter("oidcError")
-        pendingOidcResult.value = AndroidOidcResult(
-            accessToken = accessToken?.takeIf { it.isNotBlank() },
-            errorMessage = errorMessage?.takeIf { it.isNotBlank() }
-        )
+        val onboardingDeepLink = TaskBanditOnboardingDeepLinks.parse(data) ?: return
+        pendingOnboardingDeepLink.value = onboardingDeepLink
         intent.data = null
     }
 }
@@ -441,7 +449,8 @@ private fun TaskBanditApp(
     sessionStore: TaskBanditSessionStore,
     appPreferencesStore: TaskBanditAppPreferencesStore,
     widgetStore: TaskBanditWidgetStore,
-    pendingOidcResult: MutableState<AndroidOidcResult?>
+    pendingOidcResult: MutableState<AndroidOidcResult?>,
+    pendingOnboardingDeepLink: MutableState<MobileOnboardingDeepLink?>
 ) {
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
@@ -469,6 +478,7 @@ private fun TaskBanditApp(
     val deviceRemovingMessage = stringResource(R.string.mobile_device_removing)
     val choreStartedMessage = stringResource(R.string.mobile_chore_started)
     val choreTakenOverMessage = stringResource(R.string.mobile_chore_taken_over)
+    val onboardingInviteLoadedMessage = stringResource(R.string.mobile_onboarding_invite_loaded)
     val takeoverRequestSentMessage = stringResource(R.string.mobile_takeover_request_sent)
     val takeoverApprovedMessage = stringResource(R.string.mobile_takeover_request_approved_notice)
     val takeoverDeclinedMessage = stringResource(R.string.mobile_takeover_request_declined_notice)
@@ -494,6 +504,8 @@ private fun TaskBanditApp(
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var onboardingDeepLink by remember { mutableStateOf<MobileOnboardingDeepLink?>(null) }
+    var onboardingInvite by remember { mutableStateOf<MobileResolvedInvite?>(null) }
     var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
     var authProvidersCheckedBaseUrl by remember { mutableStateOf<String?>(null) }
     var isAuthProvidersLoading by remember { mutableStateOf(false) }
@@ -1312,6 +1324,43 @@ private fun TaskBanditApp(
         }
     }
 
+    LaunchedEffect(pendingOnboardingDeepLink.value) {
+        val deepLink = pendingOnboardingDeepLink.value ?: return@LaunchedEffect
+        pendingOnboardingDeepLink.value = null
+        onboardingDeepLink = deepLink
+        if (!deepLink.email.isNullOrBlank() && email.isBlank()) {
+            email = deepLink.email
+        }
+
+        runCatching {
+            withContext(Dispatchers.IO) {
+                api.resolveTenantInvite(
+                    controlPlaneBaseUrl = deepLink.controlPlaneBaseUrl,
+                    inviteToken = deepLink.inviteToken,
+                    expectedTenantSlug = deepLink.tenantSlug
+                )
+            }
+        }.onSuccess { resolvedInvite ->
+            onboardingInvite = resolvedInvite
+            val resolvedApiBaseUrl = resolvedInvite.tenantContext.tenantApiUrl.trim()
+                .ifBlank { deepLink.tenantApiUrl?.trim().orEmpty() }
+                .ifBlank { defaultApiBaseUrl }
+            serverUrl = resolvedApiBaseUrl
+            sessionStore.saveBaseUrl(resolvedApiBaseUrl)
+            noticeMessage = onboardingInviteLoadedMessage
+            errorMessage = null
+        }.onFailure { throwable ->
+            deepLink.tenantApiUrl
+                ?.trim()
+                ?.takeIf { it.isNotBlank() }
+                ?.let { fallbackApiUrl ->
+                    serverUrl = fallbackApiUrl
+                    sessionStore.saveBaseUrl(fallbackApiUrl)
+                }
+            errorMessage = resolveLoginScreenErrorMessage(throwable)
+        }
+    }
+
     LaunchedEffect(pendingOidcResult.value) {
         val oidcResult = pendingOidcResult.value ?: return@LaunchedEffect
         pendingOidcResult.value = null
@@ -1383,6 +1432,9 @@ private fun TaskBanditApp(
                     password = password,
                     isBusy = isBusy,
                     errorMessage = errorMessage,
+                    onboardingHint = onboardingInvite?.let {
+                        context.getString(R.string.mobile_onboarding_hint, it.tenantContext.tenantSlug)
+                    },
                     onServerUrlChange = {
                         val previousBaseUrl = normalizedServerUrl()
                         serverUrl = it
@@ -1417,18 +1469,46 @@ private fun TaskBanditApp(
                         errorMessage = null
                         coroutineScope.launch {
                             val baseUrl = normalizedServerUrl()
+                            val activeOnboardingInvite = onboardingInvite
+                            val activeOnboardingDeepLink = onboardingDeepLink
                             runCatching {
                                 withContext(Dispatchers.IO) {
-                                    api.login(baseUrl, email, password)
+                                    var resolvedBaseUrl = baseUrl
+                                    var activatedInvite: MobileResolvedInvite? = null
+                                    if (
+                                        activeOnboardingInvite != null &&
+                                        activeOnboardingInvite.status.equals("active", ignoreCase = true) &&
+                                        activeOnboardingDeepLink != null
+                                    ) {
+                                        activatedInvite = api.activateTenantInvite(
+                                            controlPlaneBaseUrl = activeOnboardingDeepLink.controlPlaneBaseUrl,
+                                            inviteToken = activeOnboardingInvite.inviteToken,
+                                            email = email,
+                                            password = password,
+                                            expectedTenantSlug = activeOnboardingInvite.tenantContext.tenantSlug
+                                        )
+                                        resolvedBaseUrl = activatedInvite.tenantContext.tenantApiUrl
+                                            .trim()
+                                            .ifBlank { resolvedBaseUrl }
+                                    }
+                                    Triple(
+                                        api.login(resolvedBaseUrl, email, password),
+                                        resolvedBaseUrl,
+                                        activatedInvite
+                                    )
                                 }
-                            }.onSuccess { loginResult ->
+                            }.onSuccess { (loginResult, resolvedBaseUrl, activatedInvite) ->
                                 val canonicalApiBaseUrl = loginResult.tenantContext?.canonicalApiBaseUrl
                                     ?.trim()
                                     ?.ifBlank { null }
-                                val resolvedBaseUrl = canonicalApiBaseUrl ?: baseUrl
-                                serverUrl = resolvedBaseUrl
-                                sessionStore.saveSession(resolvedBaseUrl, loginResult.accessToken)
-                                session = TaskBanditSession(baseUrl = resolvedBaseUrl, token = loginResult.accessToken)
+                                val effectiveBaseUrl = canonicalApiBaseUrl ?: resolvedBaseUrl
+                                if (activatedInvite != null) {
+                                    onboardingInvite = activatedInvite
+                                }
+                                serverUrl = effectiveBaseUrl
+                                sessionStore.saveSession(effectiveBaseUrl, loginResult.accessToken)
+                                session = TaskBanditSession(baseUrl = effectiveBaseUrl, token = loginResult.accessToken)
+                                noticeMessage = null
                             }.onFailure { throwable ->
                                 errorMessage = resolveLoginScreenErrorMessage(throwable)
                             }
@@ -1570,6 +1650,7 @@ private fun LoginScreen(
     password: String,
     isBusy: Boolean,
     errorMessage: String?,
+    onboardingHint: String?,
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
@@ -1645,6 +1726,7 @@ private fun LoginScreen(
                             password = password,
                             isBusy = isBusy,
                             errorMessage = errorMessage,
+                            onboardingHint = onboardingHint,
                             authProviders = authProviders,
                             showProviderStatus = showProviderStatus,
                             showLocalLogin = showLocalLogin,
@@ -1689,6 +1771,7 @@ private fun LoginScreen(
                         password = password,
                         isBusy = isBusy,
                         errorMessage = errorMessage,
+                        onboardingHint = onboardingHint,
                         authProviders = authProviders,
                         showProviderStatus = showProviderStatus,
                         showLocalLogin = showLocalLogin,
@@ -1720,6 +1803,7 @@ private fun LoginMethodsForm(
     password: String,
     isBusy: Boolean,
     errorMessage: String?,
+    onboardingHint: String?,
     authProviders: MobileAuthProviders?,
     showProviderStatus: Boolean,
     showLocalLogin: Boolean,
@@ -1890,6 +1974,13 @@ private fun LoginMethodsForm(
         Text(
             text = errorMessage,
             color = MaterialTheme.colorScheme.error
+        )
+    }
+    if (!onboardingHint.isNullOrBlank()) {
+        Text(
+            text = onboardingHint,
+            color = MaterialTheme.colorScheme.primary,
+            style = MaterialTheme.typography.bodySmall
         )
     }
 }
