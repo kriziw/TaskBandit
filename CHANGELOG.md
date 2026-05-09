@@ -2,6 +2,15 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.45.1](https://github.com/kriziw/TaskBandit/compare/v0.45.0...v0.45.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **ci:** harden android onboarding emulator readiness ([#341](https://github.com/kriziw/TaskBandit/issues/341)) ([7e3e4c4](https://github.com/kriziw/TaskBandit/commit/7e3e4c4fc20ebb47c07fe4b15f35b53ffb42950a))
+* **ci:** remove unstable emulator launch flags ([#343](https://github.com/kriziw/TaskBandit/issues/343)) ([6b3a068](https://github.com/kriziw/TaskBandit/commit/6b3a068b33604157a41d56db2d9b5b3d5aaacbf7))
+* **web:** restore original mascot icon rendering ([#342](https://github.com/kriziw/TaskBandit/issues/342)) ([381a441](https://github.com/kriziw/TaskBandit/commit/381a441c829bd11bbbb307e3e0b074bd53d84cb5))
+
 ## [0.45.0](https://github.com/kriziw/TaskBandit/compare/v0.44.0...v0.45.0) (2026-05-09)
 
 
