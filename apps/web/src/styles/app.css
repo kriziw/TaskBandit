@@ -326,6 +326,7 @@ select {
 }
 
 .toolbar-brand-mascot {
+  display: block;
   width: 34px;
   height: 34px;
   object-fit: contain;
@@ -624,6 +625,7 @@ h4,
 }
 
 .mascot-art {
+  display: block;
   width: min(100%, 145px);
   height: auto;
   filter: drop-shadow(0 18px 30px rgba(36, 48, 67, 0.18));
@@ -797,6 +799,7 @@ h4,
 }
 
 .celebration-mascot {
+  display: block;
   position: relative;
   width: min(100%, 180px);
   justify-self: center;

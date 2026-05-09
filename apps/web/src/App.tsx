@@ -880,6 +880,7 @@ const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
+  const mascotAssetPath = "/taskbandit-raccoon.svg";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
@@ -5260,7 +5261,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       <section className="toolbar">
         <div className="toolbar-group">
           <div className="toolbar-brand" aria-label="TaskBandit">
-            <img className="toolbar-brand-mascot" src="./taskbandit-raccoon.svg" alt="" aria-hidden="true" />
+            <img className="toolbar-brand-mascot" src={mascotAssetPath} alt="" aria-hidden="true" />
             <div>
               <strong>TaskBandit</strong>
               <span>{workspaceVariantLabel}</span>
@@ -5308,7 +5309,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </p>
           </div>
           <div className="mascot-card" aria-label="TaskBandit mascot placeholder">
-            <img className="mascot-art" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
+            <img className="mascot-art" src={mascotAssetPath} alt={t("hero.mascot_alt")} />
             <p>{workspaceVariant === "admin" ? t("hero.login_admin_mascot") : t("hero.login_client_mascot")}</p>
           </div>
         </section>
@@ -5332,7 +5333,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <span />
               <span />
             </div>
-            <img className="celebration-mascot" src="./taskbandit-raccoon.svg" alt={t("hero.mascot_alt")} />
+            <img className="celebration-mascot" src={mascotAssetPath} alt={t("hero.mascot_alt")} />
             <div className="celebration-copy">
               <p className="eyebrow">{t(completionCelebration.eyebrowKey)}</p>
               <h2 id="completion-celebration-title">{t(completionCelebration.titleKey)}</h2>
