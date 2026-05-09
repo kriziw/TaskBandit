@@ -36,7 +36,7 @@ describe("TenantRuntimePolicyService", () => {
           scopes: [],
           allowedDomains: []
         },
-        providerConfigRefs: [],
+        integrations: [],
         quotaPolicy: {
           membersLimit: 5,
           storageBytesLimit: 1024,

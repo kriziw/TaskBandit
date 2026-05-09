@@ -42,6 +42,11 @@ Safe failure categories surfaced by runtime responses/logs include:
 
 Successful runtime-config reads also carry customer-facing package metadata (`packageDisplayName`) so the runtime can show friendly plan labels while retaining technical package codes for diagnostics.
 
+Integration contract note:
+
+- runtime config now includes `tenantConfig.integrations` (active provider metadata plus basic/deep health summaries)
+- the payload does not include raw integration secrets
+
 ## Hosted Template Availability
 
 Hosted tenants should always have starter templates available for chore creation.
