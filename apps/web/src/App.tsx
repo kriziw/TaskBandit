@@ -880,7 +880,7 @@ const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
-  const mascotAssetPath = "/taskbandit-raccoon.svg";
+  const mascotAssetPath = "/taskbandit-raccoon-classic.svg";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
