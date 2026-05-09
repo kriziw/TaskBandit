@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.46.1](https://github.com/kriziw/TaskBandit/compare/v0.46.0...v0.46.1) (2026-05-09)
+
+
+### Bug Fixes
+
+* **web:** restore mascot icon and bust client cache ([#353](https://github.com/kriziw/TaskBandit/issues/353)) ([fd8611a](https://github.com/kriziw/TaskBandit/commit/fd8611a274bc798611573af836524c166373abe5))
+
 ## [0.46.0](https://github.com/kriziw/TaskBandit/compare/v0.45.1...v0.46.0) (2026-05-09)
 
 
