@@ -97,9 +97,23 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-snapshot-save -wipe-data
           working-directory: apps/android
-          script: timeout 20m gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
+          script: |
+            set -euo pipefail
+            adb wait-for-device
+            timeout 180 bash -c 'until adb shell cmd package list packages >/dev/null 2>&1; do sleep 2; done'
+            timeout 180 bash -c 'until adb shell cmd activity get-config >/dev/null 2>&1; do sleep 2; done'
+            timeout 20m gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
+      - name: Upload Android onboarding test reports
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-onboarding-test-reports
+          path: |
+            apps/android/app/build/reports/androidTests/connected
+            apps/android/app/build/outputs/androidTest-results/connected
+          if-no-files-found: warn
 
   docker:
     runs-on: ubuntu-latest
