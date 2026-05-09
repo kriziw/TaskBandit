@@ -42,19 +42,6 @@ jobs:
         run: |
           echo "value=$(tr -d '\r\n' < version.txt)" >> "$GITHUB_OUTPUT"
 
-      - name: Resolve prerelease setting
-        id: prerelease
-        shell: bash
-        run: |
-          raw_value="${{ vars.PRE_RELEASE_SETTING }}"
-          normalized="$(printf '%s' "$raw_value" | tr '[:upper:]' '[:lower:]')"
-
-          if [[ "$normalized" =~ ^(1|true|tru|yes|y|on)$ ]]; then
-            echo "value=true" >> "$GITHUB_OUTPUT"
-          else
-            echo "value=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Log in to Docker Hub
         uses: docker/login-action@v3
         with:
@@ -67,8 +54,7 @@ jobs:
         with:
           images: ${{ matrix.image }}
           tags: |
-            type=raw,value=latest,enable=${{ github.ref_name == 'main' && steps.prerelease.outputs.value != 'true' }}
-            type=raw,value=prerelease,enable=${{ github.ref_name == 'main' && steps.prerelease.outputs.value == 'true' }}
+            type=raw,value=latest,enable=${{ github.ref_name == 'main' }}
 
       - name: Build and push image (${{ matrix.name }})
         uses: docker/build-push-action@v6
@@ -81,6 +67,6 @@ jobs:
             TASKBANDIT_RELEASE_VERSION=${{ steps.version.outputs.value }}
             TASKBANDIT_BUILD_NUMBER=${{ github.run_number }}
             TASKBANDIT_COMMIT_SHA=${{ github.sha }}
-            TASKBANDIT_IMAGE_TAG=${{ matrix.image }}:${{ steps.prerelease.outputs.value == 'true' && 'prerelease' || 'latest' }}
+            TASKBANDIT_IMAGE_TAG=${{ matrix.image }}:latest
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
