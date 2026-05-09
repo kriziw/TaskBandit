@@ -5,7 +5,10 @@
   "packages": {
     ".": {
       "release-type": "simple",
-      "package-name": "taskbandit"
+      "package-name": "taskbandit",
+      "exclude-paths": [
+        ".github/workflows/**"
+      ]
     }
   }
 }

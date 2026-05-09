@@ -97,10 +97,10 @@ jobs:
           profile: pixel_6
           disable-animations: true
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -no-snapshot -no-snapshot-save -wipe-data
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
           working-directory: apps/android
           script: |
-            set -euo pipefail
+            set -eu
             adb wait-for-device
             timeout 180 bash -c 'until adb shell cmd package list packages >/dev/null 2>&1; do sleep 2; done'
             timeout 180 bash -c 'until adb shell cmd activity get-config >/dev/null 2>&1; do sleep 2; done'
