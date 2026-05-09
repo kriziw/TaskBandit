@@ -2,6 +2,19 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.44.0](https://github.com/kriziw/TaskBandit/compare/v0.43.13...v0.44.0) (2026-05-09)
+
+
+### Features
+
+* **server:** consume hosted runtime integrations contract ([#334](https://github.com/kriziw/TaskBandit/issues/334)) ([f35a766](https://github.com/kriziw/TaskBandit/commit/f35a766cbf9c037aeff190eaf53b244bcb4d6ca9))
+* **server:** send runtime contract version and handle bridge incompatibility ([#335](https://github.com/kriziw/TaskBandit/issues/335)) ([6cb6b4d](https://github.com/kriziw/TaskBandit/commit/6cb6b4d1a0c3ab4e52d0e36c94c79f16f11bdf3b))
+
+
+### Bug Fixes
+
+* **ci:** simplify release-please workflows ([#333](https://github.com/kriziw/TaskBandit/issues/333)) ([c60bd79](https://github.com/kriziw/TaskBandit/commit/c60bd79b6773bd71be2e0060850670214f1547a3))
+
 ## [0.43.13](https://github.com/kriziw/TaskBandit/compare/v0.43.12...v0.43.13) (2026-05-08)
 
 
