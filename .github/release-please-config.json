@@ -7,7 +7,7 @@
       "release-type": "simple",
       "package-name": "taskbandit",
       "exclude-paths": [
-        ".github/workflows/**"
+        ".github/**"
       ]
     }
   }
