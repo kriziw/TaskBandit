@@ -5,7 +5,9 @@ import { TenantContextService } from "./tenant-context.service";
 import { TenantRequestContext } from "../http/request-url.util";
 
 export type HostedTenantRuntimeConfig = {
+  compatibilityMode: string;
   configVersion: string;
+  contractVersion: string;
   graceEndsAt: string | null;
   billingStatus: string;
   entitlementState: string;
@@ -144,7 +146,8 @@ export class HostedRuntimeConfigService {
     const response = await fetch(`${baseUrl}/internal/runtime/tenants/${encodeURIComponent(tenantId)}/config`, {
       headers: {
         accept: "application/json",
-        "x-internal-service-token": token
+        "x-internal-service-token": token,
+        [runtimeConfigContractVersionHeader]: runtimeConfigContractVersion
       }
     });
 
@@ -209,6 +212,9 @@ export class HostedRuntimeConfigService {
     if (statusCode === 401) {
       return "control_plane_unauthorized";
     }
+    if (statusCode === 409) {
+      return "runtime_contract_version_incompatible";
+    }
     if (statusCode >= 500) {
       return "control_plane_unavailable";
     }
@@ -251,7 +257,11 @@ export class HostedRuntimeConfigService {
 
 const allowedControlPlaneReasonCodes = new Set([
   "internal_service_token_not_configured",
+  "runtime_contract_version_incompatible",
   "runtime_tenant_not_mapped",
   "token_invalid",
   "token_missing"
 ]);
+
+const runtimeConfigContractVersion = "1.0.0";
+const runtimeConfigContractVersionHeader = "x-taskbandit-runtime-contract-version";
