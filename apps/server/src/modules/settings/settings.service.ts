@@ -439,7 +439,7 @@ export class SettingsService {
       "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\" style=\"max-width:620px;margin:0 auto;background:#fffdf8;border:1px solid #e3d6c3;border-radius:16px;overflow:hidden;\">",
       "<tr><td style=\"padding:18px 24px;background:linear-gradient(135deg,#f2dec2,#e8cfab);\">",
       "<table role=\"presentation\" width=\"100%\" cellpadding=\"0\" cellspacing=\"0\"><tr>",
-      "<td style=\"width:58px;vertical-align:middle;\"><img src=\"https://my.taskbandit.app/taskbandit-icon.png\" alt=\"TaskBandit mascot\" width=\"42\" height=\"42\" style=\"display:block;border-radius:12px;background:#fff7ea;border:1px solid #d9c4a4;padding:4px;\"></td>",
+      "<td style=\"width:58px;vertical-align:middle;\"><img src=\"https://my.taskbandit.app/brand/icon.png\" alt=\"TaskBandit mascot\" width=\"42\" height=\"42\" style=\"display:block;border-radius:12px;background:#fff7ea;border:1px solid #d9c4a4;padding:4px;\"></td>",
       "<td style=\"vertical-align:middle;\"><p style=\"margin:0;color:#3f2f1c;font-size:18px;font-weight:800;\">TaskBandit</p></td>",
       "</tr></table>",
       "</td></tr>",

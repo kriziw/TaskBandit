@@ -1,11 +1,14 @@
-const SHELL_CACHE = "taskbandit-client-shell-v4";
-const RUNTIME_CACHE = "taskbandit-client-runtime-v4";
+const SHELL_CACHE = "taskbandit-client-shell-v5";
+const RUNTIME_CACHE = "taskbandit-client-runtime-v5";
 const CLIENT_NOTIFICATIONS_URL = "./#notifications";
 const APP_SHELL = [
   "./",
   "./client.html",
-  "./favicon.svg",
-  "./taskbandit-raccoon-classic.svg",
+  "./brand/icon.png",
+  "./brand/icon-192.png",
+  "./brand/icon-512.png",
+  "./brand/mascot-login.png",
+  "./brand/mascot-celebration.png",
   "./pwa/icon-192.png",
   "./pwa/icon-512.png"
 ];
