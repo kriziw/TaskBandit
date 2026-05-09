@@ -89,22 +89,26 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.4.1"
+      - name: Prebuild onboarding test APKs
+        run: gradle :app:assembleDebug :app:assembleDebugAndroidTest --no-daemon --stacktrace
       - name: Run onboarding instrumentation tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 34
+          api-level: 33
           arch: x86_64
           profile: pixel_6
           disable-animations: true
           emulator-boot-timeout: 900
-          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -no-metrics -camera-back none -camera-front none -partition-size 2048
           working-directory: apps/android
           script: |
             set -eu
             adb wait-for-device
-            timeout 180 bash -c 'until adb shell cmd package list packages >/dev/null 2>&1; do sleep 2; done'
-            timeout 180 bash -c 'until adb shell cmd activity get-config >/dev/null 2>&1; do sleep 2; done'
-            timeout 20m gradle :app:connectedDebugAndroidTest --no-daemon --stacktrace --info
+            timeout 240 bash -c 'until adb shell cmd package list packages >/dev/null 2>&1; do sleep 2; done'
+            timeout 240 bash -c 'until adb shell cmd activity get-config >/dev/null 2>&1; do sleep 2; done'
+            timeout 240 bash -c 'until adb shell service check package 2>/dev/null | grep -q "Service package: found"; do sleep 2; done'
+            timeout 240 bash -c 'until adb shell service check activity 2>/dev/null | grep -q "Service activity: found"; do sleep 2; done'
+            timeout 20m gradle :app:connectedDebugAndroidTest -x :app:assembleDebug -x :app:assembleDebugAndroidTest --no-daemon --stacktrace --info
       - name: Upload Android onboarding test reports
         if: failure()
         uses: actions/upload-artifact@v4

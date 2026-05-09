@@ -6,6 +6,10 @@ on:
       - main
   workflow_dispatch:
 
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: true
+
 permissions:
   contents: write
   pull-requests: write
@@ -28,7 +32,6 @@ jobs:
           token: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
           config-file: .github/release-please-config.json
           manifest-file: .github/.release-please-manifest.json
-          skip-labeling: true
 
       - name: Mark release channel
         id: prerelease
