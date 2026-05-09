@@ -32,6 +32,15 @@ Expected behavior:
 - `:tenantId` is the runtime tenant id resolved from trusted runtime context.
 - Control plane may support control-plane-tenant-id fallback for compatibility, but runtime callers should use runtime tenant id.
 - Calls require `x-internal-service-token` and private/internal networking between runtime and control plane.
+- Runtime sends `x-taskbandit-runtime-contract-version` (semver) so control-plane can enforce compatibility.
+
+Runtime bridge contract compatibility (`soft` mode, current contract `1.0.0`):
+
+| Runtime declared contract version | Result |
+| --- | --- |
+| _missing header_ | Allowed for backward compatibility |
+| `1.x.x` | Allowed |
+| non-`1` major or malformed declared semver | Rejected with `409` and reason `runtime_contract_version_incompatible` |
 
 Safe failure categories surfaced by runtime responses/logs include:
 
@@ -39,6 +48,7 @@ Safe failure categories surfaced by runtime responses/logs include:
 - `token_invalid`
 - `runtime_tenant_not_mapped`
 - `control_plane_unavailable`
+- `runtime_contract_version_incompatible`
 
 Successful runtime-config reads also carry customer-facing package metadata (`packageDisplayName`) so the runtime can show friendly plan labels while retaining technical package codes for diagnostics.
 
