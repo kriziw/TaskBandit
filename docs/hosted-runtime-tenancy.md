@@ -104,3 +104,13 @@ Each manifest inventories:
 - proof object keys and byte totals
 
 These manifests are generic public-runtime hooks only. Private control-plane orchestration, approval, and operator workflows stay outside this repo.
+
+## Android Hosted Onboarding Handoff
+
+Hosted Android onboarding is now link-driven by default:
+
+- HTTPS app-link style onboarding URLs (for example `/activate?invite=...`) can open the app directly.
+- Custom scheme onboarding URLs (`taskbandit://onboarding?...`) are also supported for explicit mobile handoff paths.
+- Invite payloads carry tenant slug and canonical tenant API URL hints, so Android can resolve the invite and target the correct tenant runtime without manual API URL guessing.
+
+Self-hosted setup is still available from Android as an explicit advanced path.

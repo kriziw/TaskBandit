@@ -36,6 +36,21 @@ data class MobileLoginResult(
     val tenantContext: MobileAuthTenantContext? = null
 )
 
+data class MobileInviteTenantContext(
+    val tenantId: String,
+    val tenantSlug: String,
+    val tenantApiUrl: String,
+    val tenantWebUrl: String
+)
+
+data class MobileResolvedInvite(
+    val inviteToken: String,
+    val inviteType: String,
+    val status: String,
+    val recipientEmail: String?,
+    val tenantContext: MobileInviteTenantContext
+)
+
 data class MobileUser(
     val id: String,
     val displayName: String,

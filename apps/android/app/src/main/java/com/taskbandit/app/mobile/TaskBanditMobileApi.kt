@@ -78,6 +78,50 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun resolveTenantInvite(
+        controlPlaneBaseUrl: String,
+        inviteToken: String,
+        expectedTenantSlug: String? = null
+    ): MobileResolvedInvite {
+        val encodedToken = URLEncoder.encode(inviteToken.trim(), StandardCharsets.UTF_8)
+        val encodedTenantSlug = expectedTenantSlug
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { URLEncoder.encode(it, StandardCharsets.UTF_8) }
+        val tenantSlugQuery = encodedTenantSlug?.let { "&tenantSlug=$it" } ?: ""
+        val responseJson = requestJson(
+            baseUrl = controlPlaneBaseUrl,
+            path = "/api/public/tenant-invites/resolve?token=$encodedToken$tenantSlugQuery"
+        )
+        return parseResolvedInvite(responseJson)
+    }
+
+    fun activateTenantInvite(
+        controlPlaneBaseUrl: String,
+        inviteToken: String,
+        email: String,
+        password: String,
+        expectedTenantSlug: String? = null,
+        displayName: String? = null
+    ): MobileResolvedInvite {
+        val payload = JSONObject()
+            .put("token", inviteToken.trim())
+            .put("email", email.trim())
+            .put("password", password)
+            .put("displayName", displayName?.trim().takeUnless { it.isNullOrBlank() } ?: deriveDisplayNameFromEmail(email))
+        expectedTenantSlug
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?.let { payload.put("expectedTenantSlug", it) }
+        val responseJson = requestJson(
+            baseUrl = controlPlaneBaseUrl,
+            path = "/api/public/tenant-invites/activate",
+            method = "POST",
+            body = payload
+        )
+        return parseResolvedInvite(responseJson)
+    }
+
     fun getOidcStartUrl(baseUrl: String, languageTag: String? = null, returnTo: String? = null): String {
         val normalizedBaseUrl = baseUrl.trim().trimEnd('/')
         val queryParts = buildList {
@@ -772,6 +816,37 @@ class TaskBanditMobileApi {
                 )
             }
         }
+    }
+
+    private fun parseResolvedInvite(responseJson: JSONObject): MobileResolvedInvite {
+        val inviteJson = responseJson.optJSONObject("invite")
+            ?: throw IllegalStateException("Invite response is missing invite details.")
+        val tenantJson = responseJson.optJSONObject("tenantContext")
+            ?: throw IllegalStateException("Invite response is missing tenant context.")
+
+        return MobileResolvedInvite(
+            inviteToken = inviteJson.optString("inviteToken"),
+            inviteType = inviteJson.optString("inviteType"),
+            status = inviteJson.optString("status"),
+            recipientEmail = inviteJson.optNullableString("recipientEmail"),
+            tenantContext = MobileInviteTenantContext(
+                tenantId = tenantJson.optString("tenantId"),
+                tenantSlug = tenantJson.optString("slug"),
+                tenantApiUrl = tenantJson.optString("tenantApiUrl"),
+                tenantWebUrl = tenantJson.optString("tenantWebUrl")
+            )
+        )
+    }
+
+    private fun deriveDisplayNameFromEmail(email: String): String {
+        val localPart = email.substringBefore("@").trim()
+        return localPart
+            .split('.', '-', '_')
+            .filter { it.isNotBlank() }
+            .joinToString(" ") { token ->
+                token.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
+            }
+            .ifBlank { "TaskBandit User" }
     }
 
     private fun JSONObject.optNullableString(key: String): String? {
