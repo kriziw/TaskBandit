@@ -257,6 +257,7 @@ export class DashboardService {
 
     const hostedRuntimeConfig = await this.hostedRuntimeConfigService.getTenantRuntimeConfig(user.tenantId);
     const hostedOidcConfig = hostedRuntimeConfig?.hostedOidcConfig;
+    const hostedFcmConfig = hostedRuntimeConfig?.hostedPushConfig?.fcm;
     const localAuthForcedByConfig = this.appConfigService.forceLocalAuthEnabled;
     const localAuthEffective = localAuthForcedByConfig || household.settings.localAuthEnabled;
     const oidcSource =
@@ -301,11 +302,16 @@ export class DashboardService {
     const membersWithoutDeliveryPath = notificationHealth.filter(
       (entry) => entry.deliveryMode === "none"
     ).length;
-    const serviceAccountConfigured = Boolean(this.appConfigService.fcmServiceAccount);
+    const hostedFcmConfigured = Boolean(
+      hostedFcmConfig?.enabled && hostedFcmConfig.serviceAccountBase64
+    );
+    const envFcmConfigured = Boolean(this.appConfigService.fcmServiceAccount);
+    const fcmConfigured = hostedFcmConfigured || envFcmConfigured;
     const webPushConfigured = this.appConfigService.webPushEnabled;
+    const fcmEnabled = hostedFcmConfigured || this.appConfigService.fcmEnabled;
     const pushStatus =
       household.settings.enablePushNotifications &&
-      ((this.appConfigService.fcmEnabled && serviceAccountConfigured) || webPushConfigured) &&
+      ((fcmEnabled && fcmConfigured) || webPushConfigured) &&
       pushReadyDeviceCount > 0
         ? "ready"
         : household.settings.enablePushNotifications
@@ -362,8 +368,8 @@ export class DashboardService {
       push: {
         status: pushStatus,
         householdPushEnabled: household.settings.enablePushNotifications,
-        serverFcmEnabled: this.appConfigService.fcmEnabled,
-        serviceAccountConfigured,
+        serverFcmEnabled: fcmEnabled,
+        serviceAccountConfigured: fcmConfigured,
         serverWebPushEnabled: webPushConfigured,
         registeredDeviceCount,
         pushReadyDeviceCount,
@@ -384,7 +390,14 @@ export class DashboardService {
 
   async getBackupReadiness(user: AuthenticatedUser) {
     const checkedAt = new Date().toISOString();
-    const household = await this.repository.getHousehold(user.householdId);
+    const [household, hostedRuntimeConfig] = await Promise.all([
+      this.repository.getHousehold(user.householdId),
+      this.hostedRuntimeConfigService.getTenantRuntimeConfig(user.tenantId)
+    ]);
+    const hostedFcmConfigured = Boolean(
+      hostedRuntimeConfig?.hostedPushConfig?.fcm?.enabled &&
+        hostedRuntimeConfig?.hostedPushConfig?.fcm?.serviceAccountBase64
+    );
     const dataRootHint = this.appConfigService.dataRootHint || null;
     const postgresDataPathHint = dataRootHint ? path.posix.join(dataRootHint, "postgres") : null;
     const appDataPathHint = dataRootHint ? path.posix.join(dataRootHint, "taskbandit") : null;
@@ -429,7 +442,7 @@ export class DashboardService {
         oidcUiConfigured,
         oidcEnvFallbackEnabled: this.appConfigService.oidcFallbackConfig.enabled,
         smtpConfigured,
-        pushConfigured: this.appConfigService.fcmEnabled
+        pushConfigured: hostedFcmConfigured || this.appConfigService.fcmEnabled
       }
     };
   }

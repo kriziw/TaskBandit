@@ -20,6 +20,12 @@ export type HostedTenantRuntimeConfig = {
     scopes: string[];
     allowedDomains: string[];
   };
+  hostedPushConfig?: {
+    fcm?: {
+      enabled: boolean;
+      serviceAccountBase64: string | null;
+    };
+  };
   lifecycleState: string;
   packageCode: string;
   packageDisplayName: string | null;

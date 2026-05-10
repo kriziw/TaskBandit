@@ -92,6 +92,12 @@ describe("HostedRuntimeConfigService", () => {
             issuer: null,
             scopes: []
           },
+          hostedPushConfig: {
+            fcm: {
+              enabled: true,
+              serviceAccountBase64: "base64-payload"
+            }
+          },
           lifecycleState: "active",
           packageCode: "family_plus",
           packageDisplayName: "Family Plus",
@@ -99,7 +105,7 @@ describe("HostedRuntimeConfigService", () => {
           packageRevisionNumber: null,
           billingStatus: "active",
           planCode: "family_plus",
-          providerConfigRefs: [],
+          integrations: [],
           quotaPolicy: {},
           quotaPolicyVersion: "2026-05-09T09:00:00.000Z",
           suspensionReason: null,

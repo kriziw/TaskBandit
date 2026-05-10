@@ -56,6 +56,14 @@ Integration contract note:
 
 - runtime config now includes `tenantConfig.integrations` (active provider metadata plus basic/deep health summaries)
 - the payload does not include raw integration secrets
+- runtime config can also include `tenantConfig.hostedPushConfig.fcm` for hosted/shared FCM delivery in hosted mode
+
+Hosted push diagnostics note:
+
+- runtime exposes internal-token protected operator bridge endpoints used by control-plane diagnostics:
+  - `GET /internal/runtime/tenants/:tenantId/users/:userId/notification-devices`
+  - `POST /internal/runtime/tenants/:tenantId/push/device-tests`
+- targeted device test push requests validate tenant/user/device ownership before enqueueing delivery.
 
 ## Hosted Template Availability
 
