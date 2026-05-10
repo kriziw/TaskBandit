@@ -219,6 +219,8 @@
     <string name="mobile_settings_server_url">Server URL</string>
     <string name="mobile_settings_commit">Commit</string>
     <string name="mobile_settings_actions">Session</string>
+    <string name="mobile_settings_download_logs">Download logs</string>
+    <string name="mobile_settings_logs_saved">Settings logs saved.</string>
     <string name="mobile_settings_unknown">Unknown</string>
     <string name="mobile_settings_plan_features">Plan and features</string>
     <string name="mobile_plan_package_name">Package name</string>

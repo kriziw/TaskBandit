@@ -327,8 +327,8 @@ select {
 
 .toolbar-brand-mascot {
   display: block;
-  width: 34px;
-  height: 34px;
+  width: clamp(112px, 13vw, 170px);
+  height: auto;
   object-fit: contain;
   filter: drop-shadow(0 6px 10px rgba(36, 48, 67, 0.12));
 }
@@ -2381,8 +2381,8 @@ h4,
   }
 
   .app-shell.variant-client .toolbar-brand-mascot {
-    width: 26px;
-    height: 26px;
+    width: clamp(90px, 20vw, 132px);
+    height: auto;
   }
 
   .app-shell.variant-client .user-badge,

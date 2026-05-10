@@ -880,7 +880,7 @@ const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
-  const brandIconAssetPath = "/brand/icon.png";
+  const brandIconAssetPath = "/brand/logo-dark.png";
   const mascotLoginAssetPath = "/brand/mascot-login.png";
   const mascotCelebrationAssetPath = "/brand/mascot-celebration.png";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
