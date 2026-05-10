@@ -539,6 +539,7 @@ private fun TaskBanditApp(
     var pendingPhotoCaptureChoreId by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureUriString by remember { mutableStateOf<String?>(null) }
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
+    var pendingSettingsLogExportContent by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(0) }
     var completionCelebration by remember { mutableStateOf<MobileCompletionCelebration?>(null) }
     var lastCompletionCelebrationPhraseResource by remember { mutableIntStateOf(0) }
@@ -607,6 +608,26 @@ private fun TaskBanditApp(
         pendingPhotoCaptureFilePath = null
     }
 
+    val settingsLogExportLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.CreateDocument("text/plain")
+    ) { uri ->
+        val exportContent = pendingSettingsLogExportContent
+        pendingSettingsLogExportContent = null
+        if (uri == null || exportContent.isNullOrBlank()) {
+            return@rememberLauncherForActivityResult
+        }
+
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
+                writer.write(exportContent)
+            } ?: throw IllegalStateException("Unable to open the selected destination.")
+        }.onSuccess {
+            noticeMessage = context.getString(R.string.mobile_settings_logs_saved)
+        }.onFailure { throwable ->
+            errorMessage = throwable.message
+        }
+    }
+
     LaunchedEffect(isDashboardSyncConnected) {
         if (isDashboardSyncConnected) {
             showDashboardSyncNotice = false
@@ -626,6 +647,46 @@ private fun TaskBanditApp(
 
     fun resolveLoginScreenErrorMessage(throwable: Throwable): String {
         return throwable.message ?: loginFailedMessage
+    }
+
+    fun buildSettingsLogReport(): String {
+        val generatedAt = Instant.now().toString()
+        val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
+        val lines = mutableListOf<String>()
+        lines += "TaskBandit Android Settings Log Export"
+        lines += "GeneratedAt=$generatedAt"
+        lines += "AppRelease=${formatReleaseLabel(currentReleaseInfo)}"
+        lines += "AppCommit=${BuildConfig.TASKBANDIT_COMMIT_SHA}"
+        lines += "ServerRelease=${serverReleaseInfo?.let(::formatReleaseLabel) ?: "unknown"}"
+        lines += "ServerUrl=${normalizedServerUrl()}"
+        lines += "ThemeMode=${themeMode.name}"
+        lines += "LanguageTag=$languageTag"
+        lines += "InstallationId=$installationId"
+        lines += "NotificationsPermissionGranted=$notificationsPermissionGranted"
+        lines += "CurrentDeviceId=${currentDevice?.id ?: "missing"}"
+        lines += "CurrentDeviceProvider=${currentDevice?.provider ?: "unknown"}"
+        lines += "CurrentDevicePushTokenConfigured=${currentDevice?.pushTokenConfigured ?: false}"
+        lines += "CurrentDeviceNotificationsEnabled=${currentDevice?.notificationsEnabled ?: false}"
+        lines += "CurrentDeviceLastSeenAt=${currentDevice?.lastSeenAt ?: "unknown"}"
+        lines += "RegisteredDeviceCount=${notificationDevices.size}"
+        notificationDevices.forEachIndexed { index, device ->
+            lines += "Device[$index].Id=${device.id}"
+            lines += "Device[$index].InstallationId=${device.installationId}"
+            lines += "Device[$index].Provider=${device.provider}"
+            lines += "Device[$index].PushTokenConfigured=${device.pushTokenConfigured}"
+            lines += "Device[$index].NotificationsEnabled=${device.notificationsEnabled}"
+            lines += "Device[$index].LastSeenAt=${device.lastSeenAt}"
+            lines += "Device[$index].AppVersion=${device.appVersion ?: "unknown"}"
+            lines += "Device[$index].Locale=${device.locale ?: "unknown"}"
+            lines += "Device[$index].DeviceName=${device.deviceName ?: "unknown"}"
+        }
+        return lines.joinToString(separator = "\n")
+    }
+
+    fun downloadSettingsLogs() {
+        val safeTimestamp = Instant.now().toString().replace(":", "-")
+        pendingSettingsLogExportContent = buildSettingsLogReport()
+        settingsLogExportLauncher.launch("taskbandit-settings-$safeTimestamp.txt")
     }
 
     fun clearAuthProviderState() {
@@ -1550,6 +1611,7 @@ private fun TaskBanditApp(
                     onDismissCompletionCelebration = { completionCelebration = null },
                     onDismissUpdate = ::dismissUpdateNotice,
                     onRefresh = ::requestDashboardRefresh,
+                    onDownloadSettingsLogs = ::downloadSettingsLogs,
                     onLogout = ::logout,
                     onApprove = { instanceId -> reviewPendingChore(instanceId, true) },
                     onReject = { instanceId -> reviewPendingChore(instanceId, false) },
@@ -2019,6 +2081,7 @@ private fun DashboardScreen(
     onDismissCompletionCelebration: () -> Unit,
     onDismissUpdate: () -> Unit,
     onRefresh: () -> Unit,
+    onDownloadSettingsLogs: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
@@ -3042,7 +3105,7 @@ private fun DashboardScreen(
                                 SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
                             }
                             SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
-                                SettingsActionsContent(isBusy = isBusy, onRefresh = onRefresh, onLogout = onLogout)
+                                SettingsActionsContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs, onLogout = onLogout)
                             }
                         }
                     }
@@ -3071,7 +3134,7 @@ private fun DashboardScreen(
                     }
                     item {
                         SettingsSectionCard(icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
-                            SettingsActionsContent(isBusy = isBusy, onRefresh = onRefresh, onLogout = onLogout)
+                            SettingsActionsContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs, onLogout = onLogout)
                         }
                     }
                 }
@@ -5105,11 +5168,7 @@ private fun SettingsDeviceContent(
     Text(text = stringResource(R.string.mobile_device_push_readiness_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_installation_id), value = installationId)
     currentDevice?.let { device ->
-        SettingsValueLine(label = stringResource(R.string.mobile_settings_provider), value = device.provider)
-        SettingsValueLine(label = stringResource(R.string.mobile_settings_device_name), value = device.deviceName ?: stringResource(R.string.mobile_settings_unknown))
         SettingsValueLine(label = stringResource(R.string.mobile_settings_last_seen), value = formatApiTimestamp(device.lastSeenAt))
-        device.appVersion?.let { version -> SettingsValueLine(label = stringResource(R.string.mobile_settings_app_version), value = version) }
-        device.locale?.let { locale -> SettingsValueLine(label = stringResource(R.string.mobile_settings_locale), value = locale) }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_device_refresh)) }
@@ -5241,10 +5300,12 @@ private fun SettingsPlanContent(
 private fun SettingsActionsContent(
     isBusy: Boolean,
     onRefresh: () -> Unit,
+    onDownloadSettingsLogs: () -> Unit,
     onLogout: () -> Unit
 ) {
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_refresh)) }
+        OutlinedButton(onClick = onDownloadSettingsLogs) { Text(stringResource(R.string.mobile_settings_download_logs)) }
         OutlinedButton(onClick = onLogout) { Text(stringResource(R.string.mobile_logout)) }
     }
 }
