@@ -718,6 +718,162 @@ export class HouseholdRepository {
     return count > 0;
   }
 
+  async listNotificationDevicesForTenantUser(tenantId: string, userId: string) {
+    const recipient = await this.prisma.user.findFirst({
+      where: {
+        id: userId,
+        tenantId
+      },
+      select: {
+        id: true,
+        displayName: true,
+        householdId: true
+      }
+    });
+
+    if (!recipient) {
+      throw new NotFoundException({
+        message: "That tenant user could not be found."
+      });
+    }
+
+    const devices = await this.prisma.notificationDevice.findMany({
+      where: {
+        tenantId,
+        userId
+      },
+      orderBy: {
+        updatedAtUtc: "desc"
+      }
+    });
+
+    return {
+      user: {
+        id: recipient.id,
+        displayName: recipient.displayName,
+        householdId: recipient.householdId
+      },
+      devices: devices.map((device) => this.mapNotificationDevice(device))
+    };
+  }
+
+  async enqueueTargetedDeviceTestPush(input: {
+    tenantId: string;
+    userId: string;
+    deviceId: string;
+    requestedBy?: string | null;
+    reason?: string | null;
+    title: string;
+    message: string;
+  }) {
+    await this.tenantRuntimePolicyService.assertActionAllowed(input.tenantId, "notification_enqueue");
+    await this.tenantRuntimePolicyService.assertMonthlyNotificationLimit(
+      input.tenantId,
+      await this.getCurrentMonthNotificationCount(input.tenantId),
+      1
+    );
+
+    const [recipient, device] = await Promise.all([
+      this.prisma.user.findFirst({
+        where: {
+          id: input.userId,
+          tenantId: input.tenantId
+        },
+        select: {
+          id: true,
+          displayName: true,
+          householdId: true
+        }
+      }),
+      this.prisma.notificationDevice.findFirst({
+        where: {
+          id: input.deviceId,
+          tenantId: input.tenantId,
+          userId: input.userId
+        },
+        select: {
+          id: true,
+          installationId: true,
+          provider: true,
+          platform: true,
+          deviceName: true,
+          notificationsEnabled: true
+        }
+      })
+    ]);
+
+    if (!recipient) {
+      throw new NotFoundException({
+        message: "That tenant user could not be found."
+      });
+    }
+
+    if (!device) {
+      throw new NotFoundException({
+        message: "That notification device could not be found for the target user."
+      });
+    }
+
+    const now = new Date();
+    const queued = await this.prisma.$transaction(async (tx) => {
+      const createdNotification = await tx.notification.create({
+        data: {
+          tenantId: input.tenantId,
+          householdId: recipient.householdId,
+          recipientUserId: recipient.id,
+          type: NotificationType.CHORE_DUE_SOON,
+          title: input.title,
+          message: input.message,
+          entityType: "notification_device_test",
+          entityId: device.id,
+          emailDeliveryStatus: NotificationEmailDeliveryStatus.SKIPPED
+        }
+      });
+
+      const createdDelivery = await tx.notificationPushDelivery.create({
+        data: {
+          tenantId: input.tenantId,
+          notificationId: createdNotification.id,
+          notificationDeviceId: device.id,
+          status: NotificationPushDeliveryStatus.PENDING
+        }
+      });
+
+      const requestedBy = input.requestedBy?.trim() ? input.requestedBy.trim() : "control-plane";
+      const reason = input.reason?.trim();
+      const reasonFragment = reason ? ` Reason: ${reason}.` : "";
+      await this.recordAuditLog(tx, {
+        householdId: recipient.householdId,
+        action: "notification.device_test.queued",
+        entityType: "notification_push_delivery",
+        entityId: device.id,
+        summary: `Queued targeted push test for ${recipient.displayName} on ${device.deviceName ?? device.installationId}. Requested by ${requestedBy}.${reasonFragment}`
+      });
+
+      return {
+        notificationId: createdNotification.id,
+        deliveryId: createdDelivery.id
+      };
+    });
+
+    return {
+      queuedAt: now.toISOString(),
+      notificationId: queued.notificationId,
+      deliveryId: queued.deliveryId,
+      tenantId: input.tenantId,
+      userId: recipient.id,
+      userDisplayName: recipient.displayName,
+      device: {
+        id: device.id,
+        installationId: device.installationId,
+        provider: device.provider.toLowerCase(),
+        platform: device.platform.toLowerCase(),
+        deviceName: device.deviceName,
+        notificationsEnabled: device.notificationsEnabled
+      }
+    };
+  }
+
   async createAdminTestNotification(input: {
     tenantId: string;
     householdId: string;
@@ -802,6 +958,86 @@ export class HouseholdRepository {
       webPushAuth: delivery.notificationDevice.webPushAuth,
       deviceName: delivery.notificationDevice.deviceName
     }));
+  }
+
+  async getPendingPushDeliveryById(deliveryId: string, tenantId: string) {
+    const delivery = await this.prisma.notificationPushDelivery.findFirst({
+      where: {
+        id: deliveryId,
+        tenantId,
+        status: NotificationPushDeliveryStatus.PENDING
+      },
+      include: {
+        notification: true,
+        notificationDevice: true
+      }
+    });
+
+    if (!delivery) {
+      return null;
+    }
+
+    return {
+      id: delivery.id,
+      tenantId: delivery.tenantId,
+      householdId: delivery.notification.householdId,
+      notificationId: delivery.notificationId,
+      notificationDeviceId: delivery.notificationDeviceId,
+      title: delivery.notification.title,
+      message: delivery.notification.message,
+      entityType: delivery.notification.entityType,
+      entityId: delivery.notification.entityId,
+      provider: delivery.notificationDevice.provider,
+      pushToken: delivery.notificationDevice.pushToken,
+      webPushP256dh: delivery.notificationDevice.webPushP256dh,
+      webPushAuth: delivery.notificationDevice.webPushAuth,
+      deviceName: delivery.notificationDevice.deviceName
+    };
+  }
+
+  async getPushDeliveryById(deliveryId: string, tenantId: string) {
+    const delivery = await this.prisma.notificationPushDelivery.findFirst({
+      where: {
+        id: deliveryId,
+        tenantId
+      },
+      include: {
+        notification: {
+          include: {
+            recipient: true
+          }
+        },
+        notificationDevice: true
+      }
+    });
+
+    if (!delivery) {
+      throw new NotFoundException({
+        message: "That push delivery could not be found."
+      });
+    }
+
+    return {
+      id: delivery.id,
+      tenantId: delivery.tenantId,
+      notificationId: delivery.notificationId,
+      status: delivery.status.toLowerCase(),
+      providerMessageId: delivery.providerMessageId,
+      errorMessage: delivery.errorMessage,
+      attemptedAt: delivery.attemptedAtUtc,
+      createdAt: delivery.createdAtUtc,
+      updatedAt: delivery.updatedAtUtc,
+      recipientUserId: delivery.notification.recipientUserId,
+      recipientDisplayName: delivery.notification.recipient.displayName,
+      device: {
+        id: delivery.notificationDevice.id,
+        installationId: delivery.notificationDevice.installationId,
+        provider: delivery.notificationDevice.provider.toLowerCase(),
+        platform: delivery.notificationDevice.platform.toLowerCase(),
+        deviceName: delivery.notificationDevice.deviceName,
+        notificationsEnabled: delivery.notificationDevice.notificationsEnabled
+      }
+    };
   }
 
   async getNotificationRecovery(householdId: string, take = 50) {

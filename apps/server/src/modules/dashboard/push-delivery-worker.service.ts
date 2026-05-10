@@ -59,6 +59,69 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     return this.runInternal(limit, tenantId);
   }
 
+  async runOnceForDelivery(
+    tenantId: string,
+    deliveryId: string
+  ): Promise<{ processed: boolean; sentCount: number; failedCount: number; reason?: string }> {
+    const delivery = await this.repository.getPendingPushDeliveryById(deliveryId, tenantId);
+    if (!delivery) {
+      return {
+        processed: false,
+        sentCount: 0,
+        failedCount: 0,
+        reason: "delivery_not_pending"
+      };
+    }
+
+    const decision = await this.tenantRuntimePolicyService.getActionDecision(
+      delivery.tenantId,
+      "notification_delivery"
+    );
+    if (!decision.allowed) {
+      await this.repository.markPushDeliveryFailed(
+        delivery.id,
+        delivery.tenantId,
+        decision.reason ?? "Push delivery blocked."
+      );
+      return {
+        processed: true,
+        sentCount: 0,
+        failedCount: 1,
+        reason: "tenant_policy_blocked"
+      };
+    }
+
+    const result = await this.pushDeliveryService.deliver({
+      tenantId: delivery.tenantId,
+      provider: delivery.provider,
+      pushToken: delivery.pushToken,
+      webPushP256dh: delivery.webPushP256dh,
+      webPushAuth: delivery.webPushAuth,
+      title: delivery.title,
+      message: delivery.message,
+      entityType: delivery.entityType,
+      entityId: delivery.entityId,
+      notificationId: delivery.notificationId,
+      deviceId: delivery.notificationDeviceId
+    });
+
+    if (result.status === "sent") {
+      await this.repository.markPushDeliverySent(delivery.id, delivery.tenantId, result.providerMessageId);
+      return {
+        processed: true,
+        sentCount: 1,
+        failedCount: 0
+      };
+    }
+
+    await this.repository.markPushDeliveryFailed(delivery.id, delivery.tenantId, result.errorMessage);
+    return {
+      processed: true,
+      sentCount: 0,
+      failedCount: 1
+    };
+  }
+
   private async runLoop(limit: number): Promise<{ sentCount: number; failedCount: number }> {
     const aggregate = {
       sentCount: 0,
@@ -103,6 +166,7 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
       }
 
       const result = await this.pushDeliveryService.deliver({
+        tenantId: delivery.tenantId,
         provider: delivery.provider,
         pushToken: delivery.pushToken,
         webPushP256dh: delivery.webPushP256dh,
