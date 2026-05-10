@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.48.0](https://github.com/kriziw/TaskBandit/compare/v0.47.0...v0.48.0) (2026-05-10)
+
+
+### Features
+
+* add adaptive icon theming and settings log export ([#357](https://github.com/kriziw/TaskBandit/issues/357)) ([a4fcf4d](https://github.com/kriziw/TaskBandit/commit/a4fcf4d192d5f4638cd9665ff22e289fa619aed1))
+
 ## [0.47.0](https://github.com/kriziw/TaskBandit/compare/v0.46.1...v0.47.0) (2026-05-09)
 
 
