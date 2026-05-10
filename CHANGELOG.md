@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.49.0](https://github.com/kriziw/TaskBandit/compare/v0.48.0...v0.49.0) (2026-05-10)
+
+
+### Features
+
+* **push:** add internal targeted device test endpoint and hosted fcm runtime-config consumption ([#359](https://github.com/kriziw/TaskBandit/issues/359)) ([4fb1913](https://github.com/kriziw/TaskBandit/commit/4fb19131f5e09c339a0c86f9d8dfb99e7b88a2d3))
+
 ## [0.48.0](https://github.com/kriziw/TaskBandit/compare/v0.47.0...v0.48.0) (2026-05-10)
 
 
