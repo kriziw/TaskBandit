@@ -729,6 +729,16 @@ function formatUsageLine(
   return `${valueFormatter(used)} / ${valueFormatter(limit)} (${percent}%)`;
 }
 
+function formatRetentionDaysLine(
+  auditRetentionDays: number | null | undefined,
+  exportRetentionDays: number | null | undefined,
+  proofRetentionDays: number | null | undefined
+) {
+  const formatValue = (value: number | null | undefined) =>
+    value === null || value === undefined || !Number.isFinite(value) ? "n/a" : formatNumber(value);
+  return `${formatValue(auditRetentionDays)} / ${formatValue(exportRetentionDays)} / ${formatValue(proofRetentionDays)}`;
+}
+
 function parseReleaseVersionParts(value: string) {
   return value
     .split(/[.-]/)
@@ -7002,22 +7012,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                   <div className="task-row compact">
                     <strong>Usage vs quota</strong>
-                    <p>Members: {formatUsageLine(payload.hostedSubscription.usage?.membersUsed, payload.hostedSubscription.quotas?.membersLimit)}</p>
-                    <p>Storage: {formatUsageLine(payload.hostedSubscription.usage?.storageBytesUsed, payload.hostedSubscription.quotas?.storageBytesLimit, (value) => formatByteSize(value))}</p>
-                    <p>Monthly notifications: {formatUsageLine(payload.hostedSubscription.usage?.monthlyNotificationsUsed, payload.hostedSubscription.quotas?.monthlyNotificationLimit)}</p>
+                    <div className="task-row-meta-grid quota-meta-grid">
+                      <div className="task-row-meta-item">
+                        <span>Members</span>
+                        <strong>{formatUsageLine(payload.hostedSubscription.usage?.membersUsed, payload.hostedSubscription.quotas?.membersLimit)}</strong>
+                      </div>
+                      <div className="task-row-meta-item">
+                        <span>Storage</span>
+                        <strong>{formatUsageLine(payload.hostedSubscription.usage?.storageBytesUsed, payload.hostedSubscription.quotas?.storageBytesLimit, (value) => formatByteSize(value))}</strong>
+                      </div>
+                      <div className="task-row-meta-item">
+                        <span>Monthly notifications</span>
+                        <strong>{formatUsageLine(payload.hostedSubscription.usage?.monthlyNotificationsUsed, payload.hostedSubscription.quotas?.monthlyNotificationLimit)}</strong>
+                      </div>
+                    </div>
                     <p>
-                      Export retention (days):{" "}
-                      {payload.hostedSubscription.quotas?.exportRetentionDays ?? "n/a"}
+                      Retention (audit / export / proof days):{" "}
+                      {formatRetentionDaysLine(
+                        payload.hostedSubscription.quotas?.auditRetentionDays,
+                        payload.hostedSubscription.quotas?.exportRetentionDays,
+                        payload.hostedSubscription.quotas?.proofRetentionDays
+                      )}
                     </p>
-                    <p>
-                      Proof retention (days):{" "}
-                      {payload.hostedSubscription.quotas?.proofRetentionDays ?? "n/a"}
-                    </p>
-                    <p>
-                      Audit retention (days):{" "}
-                      {payload.hostedSubscription.quotas?.auditRetentionDays ?? "n/a"}
-                    </p>
-                    <p>Storage limit: {formatByteSize(payload.hostedSubscription.quotas?.storageBytesLimit)}</p>
                   </div>
                   <div className="task-row compact">
                     <strong>Feature Access</strong>

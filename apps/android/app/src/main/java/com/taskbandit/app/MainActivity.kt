@@ -5247,31 +5247,24 @@ private fun SettingsPlanContent(
     )
     SettingsValueLine(label = stringResource(R.string.mobile_plan_suspension_reason), value = hostedSubscription.suspensionReason ?: stringResource(R.string.mobile_none))
     SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_members_limit),
-        value = hostedSubscription.quotas.membersLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
-    )
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_members_usage), value = memberUsage)
-    SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_storage_limit),
-        value = storageLimit?.let(::formatByteSize) ?: stringResource(R.string.mobile_unlimited)
-    )
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_storage_usage), value = storageUsage)
-    SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_monthly_notifications_limit),
-        value = hostedSubscription.quotas.monthlyNotificationLimit?.toString() ?: stringResource(R.string.mobile_unlimited)
-    )
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_monthly_notifications_usage), value = notificationUsage)
-    SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_export_retention_days),
-        value = hostedSubscription.quotas.exportRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
+        label = stringResource(R.string.mobile_plan_members_quota),
+        value = memberUsage
     )
     SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_proof_retention_days),
-        value = hostedSubscription.quotas.proofRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
+        label = stringResource(R.string.mobile_plan_storage_quota),
+        value = storageUsage
     )
     SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_audit_retention_days),
-        value = hostedSubscription.quotas.auditRetentionDays?.toString() ?: stringResource(R.string.mobile_settings_unknown)
+        label = stringResource(R.string.mobile_plan_monthly_notifications_quota),
+        value = notificationUsage
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_retention_window),
+        value = formatRetentionSummary(
+            hostedSubscription.quotas.auditRetentionDays,
+            hostedSubscription.quotas.exportRetentionDays,
+            hostedSubscription.quotas.proofRetentionDays
+        )
     )
     Text(text = stringResource(R.string.mobile_plan_feature_access), style = MaterialTheme.typography.titleMedium)
     val featureEntries = remember(hostedSubscription.featureAccess) {
@@ -5524,6 +5517,20 @@ private fun formatUsageSummary(
     }
     val percentage = ((used.toDouble() / limit.toDouble()) * 100.0).toInt().coerceIn(0, 100)
     return "${formatter(used)} / ${formatter(limit)} ($percentage%)"
+}
+
+private fun formatRetentionSummary(
+    auditRetentionDays: Int?,
+    exportRetentionDays: Int?,
+    proofRetentionDays: Int?
+): String {
+    fun normalize(value: Int?): String {
+        if (value == null || value <= 0) {
+            return "n/a"
+        }
+        return numberFormatter.format(value)
+    }
+    return "${normalize(auditRetentionDays)} / ${normalize(exportRetentionDays)} / ${normalize(proofRetentionDays)}"
 }
 
 private fun formatDueAtForCard(value: String): String {

@@ -1678,6 +1678,12 @@ h4,
   margin-top: 10px;
 }
 
+.quota-meta-grid {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 6px;
+}
+
 .task-row-meta-item {
   display: grid;
   gap: 4px;

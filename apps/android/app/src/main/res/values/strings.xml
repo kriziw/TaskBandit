@@ -242,6 +242,10 @@
     <string name="mobile_plan_export_retention_days">Export retention (days)</string>
     <string name="mobile_plan_proof_retention_days">Proof retention (days)</string>
     <string name="mobile_plan_audit_retention_days">Audit retention (days)</string>
+    <string name="mobile_plan_members_quota">Members (used / limit)</string>
+    <string name="mobile_plan_storage_quota">Storage (used / limit)</string>
+    <string name="mobile_plan_monthly_notifications_quota">Monthly notifications (used / limit)</string>
+    <string name="mobile_plan_retention_window">Retention days (audit / export / proof)</string>
     <string name="mobile_plan_feature_access">Included features</string>
     <string name="mobile_none">None</string>
     <string name="mobile_unlimited">Unlimited</string>
