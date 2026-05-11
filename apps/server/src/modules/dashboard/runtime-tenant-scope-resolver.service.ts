@@ -48,7 +48,7 @@ export class RuntimeTenantScopeResolverService {
     }
 
     throw new NotFoundException({
-      message: "Could not resolve a runtime tenant id for diagnostics." 
+      message: "Could not resolve a runtime tenant id for diagnostics."
     });
   }
 }
