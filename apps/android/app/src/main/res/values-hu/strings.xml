@@ -207,6 +207,7 @@
     <string name="mobile_settings_unknown">Ismeretlen</string>
     <string name="mobile_settings_plan_features">Csomag es funkciok</string>
     <string name="mobile_plan_package_name">Csomag neve</string>
+    <string name="mobile_plan_status">Csomag allapot</string>
     <string name="mobile_plan_code">Csomag</string>
     <string name="mobile_plan_package">Konstrukcio</string>
     <string name="mobile_plan_entitlement">Jogosultsagi allapot</string>
