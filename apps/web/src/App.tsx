@@ -799,6 +799,16 @@ function formatFeatureLabel(featureId: string) {
     .replace(/\b\w/g, (value: string) => value.toUpperCase());
 }
 
+function formatSubscriptionStatusLabel(status: string | null | undefined) {
+  if (!status?.trim()) {
+    return null;
+  }
+
+  return status
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (value: string) => value.toUpperCase());
+}
+
 type BeforeInstallPromptEvent = Event & {
   readonly platforms: string[];
   prompt: () => Promise<void>;
@@ -6988,12 +6998,70 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.hostedSubscription.hostedMode ? (
-              <article
-                className={`panel page-panel ${
-                  workspaceVariant === "client" ? "page-settings" : "page-admin"
-                }`}
-              >
+            {payload.hostedSubscription.hostedMode && workspaceVariant === "client" && payload.currentUser.role !== "child" ? (
+              <article className="panel page-panel page-settings">
+                <div className="section-heading">
+                  <h2>{t("subscription.summary_title")}</h2>
+                  <span className="section-kicker">
+                    {payload.hostedSubscription.packageDisplayName ?? t("subscription.hosted_plan_fallback")}
+                  </span>
+                </div>
+                <div className="stack-list">
+                  <div className="task-row compact">
+                    <p>
+                      {t("subscription.package_label")}:{" "}
+                      {payload.hostedSubscription.packageDisplayName ??
+                        payload.hostedSubscription.packageCode ??
+                        t("subscription.na")}
+                    </p>
+                    <p>
+                      {t("subscription.status_label")}:{" "}
+                      {formatSubscriptionStatusLabel(
+                        payload.hostedSubscription.lifecycleState ??
+                          payload.hostedSubscription.entitlementState ??
+                          payload.hostedSubscription.billingStatus
+                      ) ?? t("subscription.na")}
+                    </p>
+                  </div>
+                  <div className="task-row compact">
+                    <strong>{t("subscription.usage_quota_title")}</strong>
+                    <div className="task-row-meta-grid quota-meta-grid">
+                      <div className="task-row-meta-item">
+                        <span>{t("subscription.members_label")}</span>
+                        <strong>
+                          {formatUsageLine(
+                            payload.hostedSubscription.usage?.membersUsed,
+                            payload.hostedSubscription.quotas?.membersLimit
+                          )}
+                        </strong>
+                      </div>
+                      <div className="task-row-meta-item">
+                        <span>{t("subscription.storage_label")}</span>
+                        <strong>
+                          {formatUsageLine(
+                            payload.hostedSubscription.usage?.storageBytesUsed,
+                            payload.hostedSubscription.quotas?.storageBytesLimit,
+                            (value) => formatByteSize(value)
+                          )}
+                        </strong>
+                      </div>
+                      <div className="task-row-meta-item">
+                        <span>{t("subscription.monthly_notifications_label")}</span>
+                        <strong>
+                          {formatUsageLine(
+                            payload.hostedSubscription.usage?.monthlyNotificationsUsed,
+                            payload.hostedSubscription.quotas?.monthlyNotificationLimit
+                          )}
+                        </strong>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </article>
+            ) : null}
+
+            {payload.hostedSubscription.hostedMode && workspaceVariant === "admin" ? (
+              <article className="panel page-panel page-admin">
                 <div className="section-heading">
                   <h2>Plan &amp; Features</h2>
                   <span className="section-kicker">{payload.hostedSubscription.packageDisplayName ?? "Hosted plan"}</span>
