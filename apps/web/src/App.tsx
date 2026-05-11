@@ -54,7 +54,9 @@ const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
+const adminThemeStorageKey = "taskbandit-admin-theme";
 type WorkspaceVariant = "admin" | "client";
+type AdminTheme = "light" | "dark";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -140,6 +142,11 @@ type WorkspaceSectionLink = {
   key: string;
   label: string;
   ref: RefObject<HTMLElement | null>;
+};
+type WorkspaceNavGroup = {
+  key: string;
+  label: string;
+  pages: Array<{ key: WorkspacePage; label: string }>;
 };
 type OnboardingStepDefinition = {
   key: OnboardingStep;
@@ -666,10 +673,15 @@ function getWorkspacePageStorageKey(variant: WorkspaceVariant) {
 
 function getDefaultWorkspacePage(variant: WorkspaceVariant): WorkspacePage {
   if (variant === "admin") {
-    return "templates";
+    return "admin";
   }
 
   return "chores";
+}
+
+function readStoredAdminTheme(): AdminTheme {
+  const stored = window.localStorage.getItem(adminThemeStorageKey);
+  return stored === "dark" ? "dark" : "light";
 }
 
 function readStoredWorkspacePage(variant: WorkspaceVariant) {
@@ -799,6 +811,16 @@ function formatFeatureLabel(featureId: string) {
     .replace(/\b\w/g, (value: string) => value.toUpperCase());
 }
 
+function formatSubscriptionStatusLabel(status: string | null | undefined) {
+  if (!status?.trim()) {
+    return null;
+  }
+
+  return status
+    .replace(/[_-]+/g, " ")
+    .replace(/\b\w/g, (value: string) => value.toUpperCase());
+}
+
 type BeforeInstallPromptEvent = Event & {
   readonly platforms: string[];
   prompt: () => Promise<void>;
@@ -894,6 +916,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const mascotLoginAssetPath = "/brand/mascot-login.png";
   const mascotCelebrationAssetPath = "/brand/mascot-celebration.png";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
+  const [adminTheme, setAdminTheme] = useState<AdminTheme>(() => readStoredAdminTheme());
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
     window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant))
@@ -1946,10 +1969,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     if (workspaceVariant === "admin") {
       return [
+        { key: "admin", label: t("nav.admin") },
+        { key: "settings", label: t("nav.settings") },
         { key: "templates", label: t("nav.templates") },
         { key: "household", label: t("nav.household") },
-        { key: "settings", label: t("nav.settings") },
-        { key: "admin", label: t("nav.admin") },
         { key: "logs", label: t("nav.logs") }
       ];
     }
@@ -1976,6 +1999,47 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
     return pages;
   }, [isClientMobileViewport, payload, showTemplateManager, t, workspaceVariant]);
+  const workspaceNavGroups = useMemo<WorkspaceNavGroup[]>(() => {
+    if (workspaceVariant !== "admin" || !payload || payload.currentUser.role !== "admin") {
+      return [
+        {
+          key: "workspace",
+          label: t("nav.workspace"),
+          pages: availablePages
+        }
+      ];
+    }
+
+    const pageLookup = new Map(availablePages.map((page) => [page.key, page]));
+    const resolvePage = (key: WorkspacePage) => pageLookup.get(key);
+    const groups: WorkspaceNavGroup[] = [
+      {
+        key: "operate",
+        label: t("nav.group_operate"),
+        pages: [resolvePage("admin")].filter(Boolean) as Array<{ key: WorkspacePage; label: string }>
+      },
+      {
+        key: "configure",
+        label: t("nav.group_configure"),
+        pages: [resolvePage("templates"), resolvePage("household")].filter(Boolean) as Array<{
+          key: WorkspacePage;
+          label: string;
+        }>
+      },
+      {
+        key: "recover",
+        label: t("nav.group_recover"),
+        pages: [resolvePage("settings")].filter(Boolean) as Array<{ key: WorkspacePage; label: string }>
+      },
+      {
+        key: "observe",
+        label: t("nav.group_observe"),
+        pages: [resolvePage("logs")].filter(Boolean) as Array<{ key: WorkspacePage; label: string }>
+      }
+    ];
+
+    return groups.filter((group) => group.pages.length > 0);
+  }, [availablePages, payload, t, workspaceVariant]);
   const mobileBottomNavPages = useMemo(
     () =>
       availablePages.filter((page) =>
@@ -1983,6 +2047,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       ),
     [availablePages]
   );
+
+  useEffect(() => {
+    if (workspaceVariant !== "admin") {
+      return;
+    }
+
+    window.localStorage.setItem(adminThemeStorageKey, adminTheme);
+  }, [adminTheme, workspaceVariant]);
 
   useEffect(() => {
     if (!availablePages.length) {
@@ -5267,7 +5339,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   return (
     <main
-      className={`app-shell variant-${workspaceVariant} ${payload ? "is-authenticated" : "is-auth-entry"}`}
+      className={`app-shell variant-${workspaceVariant} ${
+        workspaceVariant === "admin" ? `theme-${adminTheme}` : "theme-client"
+      } ${payload ? "is-authenticated" : "is-auth-entry"}`}
       data-variant={workspaceVariant}
     >
       <section className="toolbar">
@@ -5301,6 +5375,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ))}
             </select>
           </label>
+          {workspaceVariant === "admin" ? (
+            <button
+              className="ghost-button"
+              type="button"
+              onClick={() => setAdminTheme((current) => (current === "dark" ? "light" : "dark"))}
+            >
+              {adminTheme === "dark" ? t("theme.switch_to_light") : t("theme.switch_to_dark")}
+            </button>
+          ) : null}
           {payload?.currentUser ? (
             <button className="ghost-button" type="button" onClick={() => handleLogout()}>
               {t("auth.logout")}
@@ -5961,17 +6044,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           {availablePages.length > 0 ? (
             <aside className="workspace-sidebar">
               <div className="panel workspace-sidebar-panel">
-                <p className="workspace-nav-kicker">{t("nav.workspace")}</p>
-                <div className="workspace-nav">
-                  {availablePages.map((page) => (
-                    <button
-                      key={page.key}
-                      className={`workspace-nav-button ${page.key === activePage ? "active" : ""}`}
-                      type="button"
-                      onClick={() => openWorkspacePage(page.key)}
-                    >
-                      {page.label}
-                    </button>
+                <p className="workspace-nav-kicker">
+                  {workspaceVariant === "admin" ? t("nav.control_plane") : t("nav.workspace")}
+                </p>
+                <div className="workspace-nav-group-list">
+                  {workspaceNavGroups.map((group) => (
+                    <section className="workspace-nav-group" key={group.key}>
+                      {workspaceVariant === "admin" ? (
+                        <p className="workspace-nav-group-title">{group.label}</p>
+                      ) : null}
+                      <div className="workspace-nav">
+                        {group.pages.map((page) => (
+                          <button
+                            key={page.key}
+                            className={`workspace-nav-button ${page.key === activePage ? "active" : ""}`}
+                            type="button"
+                            onClick={() => openWorkspacePage(page.key)}
+                          >
+                            {page.label}
+                          </button>
+                        ))}
+                      </div>
+                    </section>
                   ))}
                 </div>
               </div>
@@ -6989,62 +7083,131 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             {payload.hostedSubscription.hostedMode ? (
-              <article
-                className={`panel page-panel ${
-                  workspaceVariant === "client" ? "page-settings" : "page-admin"
-                }`}
-              >
-                <div className="section-heading">
-                  <h2>Plan &amp; Features</h2>
-                  <span className="section-kicker">{payload.hostedSubscription.packageDisplayName ?? "Hosted plan"}</span>
-                </div>
-                <div className="stack-list">
-                  <div className="task-row compact">
-                    <p>Package: {payload.hostedSubscription.packageDisplayName ?? payload.hostedSubscription.packageCode ?? "n/a"}</p>
-                    <p>Entitlement: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
-                    <p>Lifecycle: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
-                    <p>Billing: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
-                    {payload.hostedSubscription.trialEndsAt ? (
-                      <p>Trial ends: {formatDate(payload.hostedSubscription.trialEndsAt)}</p>
-                    ) : null}
-                    <p>Grace ends: {formatDate(payload.hostedSubscription.graceEndsAt ?? null)}</p>
-                    <p>Suspension reason: {payload.hostedSubscription.suspensionReason ?? t("common.none")}</p>
+              workspaceVariant === "admin" ? (
+                <article className="panel page-panel page-admin">
+                  <div className="section-heading">
+                    <h2>{t("subscription.admin_title")}</h2>
+                    <span className="section-kicker">
+                      {payload.hostedSubscription.packageDisplayName ?? "Hosted plan"}
+                    </span>
                   </div>
-                  <div className="task-row compact">
-                    <strong>Usage vs quota</strong>
-                    <div className="task-row-meta-grid quota-meta-grid">
-                      <div className="task-row-meta-item">
-                        <span>Members</span>
-                        <strong>{formatUsageLine(payload.hostedSubscription.usage?.membersUsed, payload.hostedSubscription.quotas?.membersLimit)}</strong>
-                      </div>
-                      <div className="task-row-meta-item">
-                        <span>Storage</span>
-                        <strong>{formatUsageLine(payload.hostedSubscription.usage?.storageBytesUsed, payload.hostedSubscription.quotas?.storageBytesLimit, (value) => formatByteSize(value))}</strong>
-                      </div>
-                      <div className="task-row-meta-item">
-                        <span>Monthly notifications</span>
-                        <strong>{formatUsageLine(payload.hostedSubscription.usage?.monthlyNotificationsUsed, payload.hostedSubscription.quotas?.monthlyNotificationLimit)}</strong>
+                  <div className="stack-list">
+                    <div className="task-row compact">
+                      <p>
+                        Package:{" "}
+                        {payload.hostedSubscription.packageDisplayName ??
+                          payload.hostedSubscription.packageCode ??
+                          "n/a"}
+                      </p>
+                      <p>
+                        Plan status:{" "}
+                        {formatSubscriptionStatusLabel(
+                          payload.hostedSubscription.lifecycleState ??
+                            payload.hostedSubscription.entitlementState ??
+                            payload.hostedSubscription.billingStatus
+                        ) ?? "n/a"}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <strong>Usage vs quota</strong>
+                      <div className="task-row-meta-grid quota-meta-grid">
+                        <div className="task-row-meta-item">
+                          <span>Members</span>
+                          <strong>{formatUsageLine(payload.hostedSubscription.usage?.membersUsed, payload.hostedSubscription.quotas?.membersLimit)}</strong>
+                        </div>
+                        <div className="task-row-meta-item">
+                          <span>Storage</span>
+                          <strong>{formatUsageLine(payload.hostedSubscription.usage?.storageBytesUsed, payload.hostedSubscription.quotas?.storageBytesLimit, (value) => formatByteSize(value))}</strong>
+                        </div>
+                        <div className="task-row-meta-item">
+                          <span>Monthly notifications</span>
+                          <strong>{formatUsageLine(payload.hostedSubscription.usage?.monthlyNotificationsUsed, payload.hostedSubscription.quotas?.monthlyNotificationLimit)}</strong>
+                        </div>
                       </div>
                     </div>
-                    <p>
-                      Retention (audit / export / proof days):{" "}
-                      {formatRetentionDaysLine(
-                        payload.hostedSubscription.quotas?.auditRetentionDays,
-                        payload.hostedSubscription.quotas?.exportRetentionDays,
-                        payload.hostedSubscription.quotas?.proofRetentionDays
-                      )}
-                    </p>
-                  </div>
-                  <div className="task-row compact">
-                    <strong>Feature Access</strong>
-                    {Object.entries(payload.hostedSubscription.featureAccess ?? {}).map(([featureId, enabled]) => (
-                      <p key={featureId}>
-                        {formatFeatureLabel(featureId)}: {enabled ? t("common.enabled") : t("common.disabled")}
+                    <details className="task-row compact subscription-technical-details">
+                      <summary>{t("subscription.technical_details_title")}</summary>
+                      <p>{t("subscription.entitlement_label")}: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
+                      <p>{t("subscription.lifecycle_label")}: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
+                      <p>{t("subscription.billing_label")}: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
+                      {payload.hostedSubscription.trialEndsAt ? (
+                        <p>{t("subscription.trial_ends_label")}: {formatDate(payload.hostedSubscription.trialEndsAt)}</p>
+                      ) : null}
+                      <p>{t("subscription.grace_ends_label")}: {formatDate(payload.hostedSubscription.graceEndsAt ?? null)}</p>
+                      <p>{t("subscription.suspension_reason_label")}: {payload.hostedSubscription.suspensionReason ?? t("common.none")}</p>
+                      <p>
+                        {t("subscription.retention_label")}:{" "}
+                        {formatRetentionDaysLine(
+                          payload.hostedSubscription.quotas?.auditRetentionDays,
+                          payload.hostedSubscription.quotas?.exportRetentionDays,
+                          payload.hostedSubscription.quotas?.proofRetentionDays
+                        )}
                       </p>
-                    ))}
+                      <div className="stack-list">
+                        <strong>{t("subscription.feature_access_title")}</strong>
+                        {Object.entries(payload.hostedSubscription.featureAccess ?? {}).map(([featureId, enabled]) => (
+                          <p key={featureId}>
+                            {formatFeatureLabel(featureId)}: {enabled ? t("common.enabled") : t("common.disabled")}
+                          </p>
+                        ))}
+                      </div>
+                    </details>
                   </div>
-                </div>
-              </article>
+                </article>
+              ) : (
+                <article className="panel page-panel page-settings">
+                  <div className="section-heading">
+                    <h2>Plan &amp; Features</h2>
+                    <span className="section-kicker">{payload.hostedSubscription.packageDisplayName ?? "Hosted plan"}</span>
+                  </div>
+                  <div className="stack-list">
+                    <div className="task-row compact">
+                      <p>Package: {payload.hostedSubscription.packageDisplayName ?? payload.hostedSubscription.packageCode ?? "n/a"}</p>
+                      <p>Entitlement: {payload.hostedSubscription.entitlementState ?? "n/a"}</p>
+                      <p>Lifecycle: {payload.hostedSubscription.lifecycleState ?? "n/a"}</p>
+                      <p>Billing: {payload.hostedSubscription.billingStatus ?? "n/a"}</p>
+                      {payload.hostedSubscription.trialEndsAt ? (
+                        <p>Trial ends: {formatDate(payload.hostedSubscription.trialEndsAt)}</p>
+                      ) : null}
+                      <p>Grace ends: {formatDate(payload.hostedSubscription.graceEndsAt ?? null)}</p>
+                      <p>Suspension reason: {payload.hostedSubscription.suspensionReason ?? t("common.none")}</p>
+                    </div>
+                    <div className="task-row compact">
+                      <strong>Usage vs quota</strong>
+                      <div className="task-row-meta-grid quota-meta-grid">
+                        <div className="task-row-meta-item">
+                          <span>Members</span>
+                          <strong>{formatUsageLine(payload.hostedSubscription.usage?.membersUsed, payload.hostedSubscription.quotas?.membersLimit)}</strong>
+                        </div>
+                        <div className="task-row-meta-item">
+                          <span>Storage</span>
+                          <strong>{formatUsageLine(payload.hostedSubscription.usage?.storageBytesUsed, payload.hostedSubscription.quotas?.storageBytesLimit, (value) => formatByteSize(value))}</strong>
+                        </div>
+                        <div className="task-row-meta-item">
+                          <span>Monthly notifications</span>
+                          <strong>{formatUsageLine(payload.hostedSubscription.usage?.monthlyNotificationsUsed, payload.hostedSubscription.quotas?.monthlyNotificationLimit)}</strong>
+                        </div>
+                      </div>
+                      <p>
+                        Retention (audit / export / proof days):{" "}
+                        {formatRetentionDaysLine(
+                          payload.hostedSubscription.quotas?.auditRetentionDays,
+                          payload.hostedSubscription.quotas?.exportRetentionDays,
+                          payload.hostedSubscription.quotas?.proofRetentionDays
+                        )}
+                      </p>
+                    </div>
+                    <div className="task-row compact">
+                      <strong>Feature Access</strong>
+                      {Object.entries(payload.hostedSubscription.featureAccess ?? {}).map(([featureId, enabled]) => (
+                        <p key={featureId}>
+                          {formatFeatureLabel(featureId)}: {enabled ? t("common.enabled") : t("common.disabled")}
+                        </p>
+                      ))}
+                    </div>
+                  </div>
+                </article>
+              )
             ) : null}
 
             {workspaceVariant === "admin" &&

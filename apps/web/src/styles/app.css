@@ -11,6 +11,7 @@
   --mist-strong: rgba(255, 255, 255, 0.92);
   --line: rgba(36, 48, 67, 0.1);
   --shadow: 0 24px 60px rgba(36, 48, 67, 0.14);
+  --focus-ring: rgba(66, 141, 255, 0.38);
   --workspace-sticky-offset: 96px;
   --safe-area-bottom: env(safe-area-inset-bottom, 0px);
 }
@@ -66,6 +67,37 @@ select {
   max-width: min(1280px, calc(100vw - clamp(24px, 5vw, 120px)));
 }
 
+.app-shell.variant-admin.theme-light {
+  --ink: #1f2a3a;
+  --mist: rgba(255, 255, 255, 0.9);
+  --mist-strong: rgba(255, 255, 255, 0.98);
+  --line: rgba(31, 42, 58, 0.14);
+  --shadow: 0 22px 54px rgba(20, 34, 56, 0.14);
+}
+
+.app-shell.variant-admin.theme-dark {
+  --ink: #e6efff;
+  --mist: rgba(16, 24, 38, 0.88);
+  --mist-strong: rgba(21, 30, 45, 0.96);
+  --line: rgba(218, 231, 255, 0.2);
+  --shadow: 0 26px 70px rgba(6, 10, 18, 0.48);
+  --focus-ring: rgba(122, 179, 255, 0.5);
+}
+
+.app-shell.variant-admin.theme-dark {
+  background:
+    radial-gradient(circle at 9% 8%, rgba(81, 125, 207, 0.28), transparent 30rem),
+    radial-gradient(circle at 88% 11%, rgba(70, 172, 145, 0.22), transparent 28rem),
+    linear-gradient(180deg, #0b1220 0%, #111a2b 100%);
+  border-radius: 28px;
+  box-shadow: 0 32px 88px rgba(7, 11, 18, 0.42);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus-ring);
+  outline-offset: 2px;
+}
+
 .app-shell.variant-client .hero {
   grid-template-columns: minmax(0, 1fr) 180px;
 }
@@ -118,6 +150,25 @@ select {
   gap: 6px;
 }
 
+.workspace-nav-group-list {
+  display: grid;
+  gap: 12px;
+}
+
+.workspace-nav-group {
+  display: grid;
+  gap: 8px;
+}
+
+.workspace-nav-group-title {
+  margin: 0;
+  font-size: 0.74rem;
+  font-weight: 900;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: rgba(36, 48, 67, 0.7);
+}
+
 .workspace-nav-button {
   border: 1px solid var(--line);
   background: rgba(255, 255, 255, 0.75);
@@ -140,6 +191,17 @@ select {
   background: linear-gradient(135deg, rgba(255, 201, 74, 0.3), rgba(115, 217, 179, 0.28));
   border-color: rgba(255, 201, 74, 0.75);
   box-shadow: 0 16px 28px rgba(36, 48, 67, 0.08);
+}
+
+.app-shell.variant-admin .workspace-nav-button {
+  border-radius: 14px;
+  padding: 11px 12px;
+  font-size: 0.9rem;
+}
+
+.app-shell.variant-admin .workspace-nav-button.active {
+  background: linear-gradient(135deg, rgba(53, 133, 244, 0.24), rgba(74, 189, 154, 0.24));
+  border-color: rgba(63, 143, 255, 0.7);
 }
 
 .workspace-main {
@@ -198,6 +260,89 @@ select {
 
 .app-shell.variant-admin .workspace-page-meta {
   gap: 6px;
+}
+
+.app-shell.variant-admin.theme-dark .workspace-nav-group-title {
+  color: rgba(224, 236, 255, 0.75);
+}
+
+.app-shell.variant-admin.theme-dark .toolbar,
+.app-shell.variant-admin.theme-dark .workspace-sidebar-panel,
+.app-shell.variant-admin.theme-dark .workspace-page-header,
+.app-shell.variant-admin.theme-dark .workspace-subnav-panel,
+.app-shell.variant-admin.theme-dark .panel,
+.app-shell.variant-admin.theme-dark .metric-card,
+.app-shell.variant-admin.theme-dark .task-row,
+.app-shell.variant-admin.theme-dark .leader-row,
+.app-shell.variant-admin.theme-dark .log-entry,
+.app-shell.variant-admin.theme-dark .schedule-form-section,
+.app-shell.variant-admin.theme-dark .template-advanced-panel,
+.app-shell.variant-admin.theme-dark .multi-select-menu {
+  background: rgba(20, 31, 46, 0.86);
+  border-color: rgba(230, 239, 255, 0.18);
+  color: var(--ink);
+}
+
+.app-shell.variant-admin.theme-dark .workspace-nav-button,
+.app-shell.variant-admin.theme-dark .workspace-subnav-button,
+.app-shell.variant-admin.theme-dark .mobile-bottom-nav-button {
+  background: rgba(30, 43, 62, 0.86);
+  border-color: rgba(218, 231, 255, 0.24);
+  color: var(--ink);
+}
+
+.app-shell.variant-admin.theme-dark .workspace-nav-button.active,
+.app-shell.variant-admin.theme-dark .workspace-subnav-button:hover {
+  border-color: rgba(109, 170, 255, 0.8);
+  background: linear-gradient(135deg, rgba(78, 145, 240, 0.4), rgba(72, 199, 164, 0.3));
+}
+
+.app-shell.variant-admin.theme-dark .task-row-meta-item,
+.app-shell.variant-admin.theme-dark .notification-delivery-block,
+.app-shell.variant-admin.theme-dark .segmented-toggle,
+.app-shell.variant-admin.theme-dark .inline-message,
+.app-shell.variant-admin.theme-dark .empty-state {
+  background: rgba(33, 46, 68, 0.72);
+  border-color: rgba(219, 233, 255, 0.16);
+  color: var(--ink);
+}
+
+.app-shell.variant-admin.theme-dark .ghost-button,
+.app-shell.variant-admin.theme-dark .secondary-button {
+  background: linear-gradient(180deg, rgba(33, 49, 73, 0.98), rgba(29, 43, 63, 0.98));
+  border: 1px solid rgba(183, 207, 249, 0.3);
+  color: var(--ink);
+}
+
+.app-shell.variant-admin.theme-dark .primary-button {
+  background: linear-gradient(180deg, #8abaff 0%, #5d91e5 100%);
+  border: 1px solid rgba(183, 207, 249, 0.65);
+  color: #0d1830;
+}
+
+.app-shell.variant-admin.theme-dark input,
+.app-shell.variant-admin.theme-dark select,
+.app-shell.variant-admin.theme-dark textarea {
+  background: rgba(25, 37, 56, 0.96);
+  border-color: rgba(224, 236, 255, 0.26);
+  color: var(--ink);
+}
+
+.app-shell.variant-admin.theme-dark .section-kicker,
+.app-shell.variant-admin.theme-dark .status-pill,
+.app-shell.variant-admin.theme-dark .hero-meta span {
+  background: rgba(33, 46, 68, 0.78);
+  border-color: rgba(224, 236, 255, 0.2);
+  color: var(--ink);
+}
+
+.subscription-technical-details summary {
+  cursor: pointer;
+  font-weight: 800;
+}
+
+.subscription-technical-details[open] summary {
+  margin-bottom: 10px;
 }
 
 .workspace-page-meta {
