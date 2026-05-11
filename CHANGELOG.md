@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.49.2](https://github.com/kriziw/TaskBandit/compare/v0.49.1...v0.49.2) (2026-05-11)
+
+
+### Bug Fixes
+
+* **client:** align plan quota summary parity across web and android ([#366](https://github.com/kriziw/TaskBandit/issues/366)) ([634e5c5](https://github.com/kriziw/TaskBandit/commit/634e5c5c4da63f765f484bd88bc69bb438a2bac3))
+* **web:** simplify customer plan quota summary in settings ([#363](https://github.com/kriziw/TaskBandit/issues/363)) ([32a0973](https://github.com/kriziw/TaskBandit/commit/32a0973a0f7e052c9d51fd4160834ca0d99e7b66))
+
 ## [0.49.1](https://github.com/kriziw/TaskBandit/compare/v0.49.0...v0.49.1) (2026-05-11)
 
 
