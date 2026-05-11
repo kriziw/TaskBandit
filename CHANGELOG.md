@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.49.1](https://github.com/kriziw/TaskBandit/compare/v0.49.0...v0.49.1) (2026-05-11)
+
+
+### Bug Fixes
+
+* **ui:** compact hosted quota details across web and android clients ([#361](https://github.com/kriziw/TaskBandit/issues/361)) ([5e2a440](https://github.com/kriziw/TaskBandit/commit/5e2a4408e9a9f3025e1a19e7178e597df6fd9de2))
+
 ## [0.49.0](https://github.com/kriziw/TaskBandit/compare/v0.48.0...v0.49.0) (2026-05-10)
 
 
