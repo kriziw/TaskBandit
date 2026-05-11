@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.49.3](https://github.com/kriziw/TaskBandit/compare/v0.49.2...v0.49.3) (2026-05-11)
+
+
+### Bug Fixes
+
+* **runtime:** normalize hosted push diagnostics tenant scope ([#367](https://github.com/kriziw/TaskBandit/issues/367)) ([1515b1d](https://github.com/kriziw/TaskBandit/commit/1515b1da1e507283100f19a04366ead38fd32812))
+
 ## [0.49.2](https://github.com/kriziw/TaskBandit/compare/v0.49.1...v0.49.2) (2026-05-11)
 
 
