@@ -11,6 +11,7 @@ import { HostedPushDiagnosticsController } from "./hosted-push-diagnostics.contr
 import { HostedPushDiagnosticsService } from "./hosted-push-diagnostics.service";
 import { PushDeliveryWorkerService } from "./push-delivery-worker.service";
 import { ReminderWorkerService } from "./reminder-worker.service";
+import { RuntimeTenantScopeResolverService } from "./runtime-tenant-scope-resolver.service";
 import { TenantDataManifestService } from "./tenant-data-manifest.service";
 
 @Module({
@@ -19,6 +20,7 @@ import { TenantDataManifestService } from "./tenant-data-manifest.service";
     DashboardSyncService,
     DashboardService,
     HostedPushDiagnosticsService,
+    RuntimeTenantScopeResolverService,
     AuthService,
     HouseholdRepository,
     ReminderWorkerService,
