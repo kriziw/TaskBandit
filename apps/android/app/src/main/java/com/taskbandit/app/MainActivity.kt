@@ -3088,7 +3088,7 @@ private fun DashboardScreen(
                             }
                         }
                     }
-                    if (hostedSubscription.hostedMode) {
+                    if (hostedSubscription.hostedMode && isCreatorRole) {
                         item {
                             SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
                                 SettingsPlanContent(hostedSubscription = hostedSubscription)
@@ -3120,7 +3120,7 @@ private fun DashboardScreen(
                             SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
                         }
                     }
-                    if (hostedSubscription.hostedMode) {
+                    if (hostedSubscription.hostedMode && isCreatorRole) {
                         item {
                             SettingsSectionCard(icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
                                 SettingsPlanContent(hostedSubscription = hostedSubscription)
@@ -5215,6 +5215,17 @@ private fun SettingsPlanContent(
     hostedSubscription: MobileHostedSubscriptionOverview
 ) {
     val packageDisplayName = hostedSubscription.packageDisplayName ?: hostedSubscription.packageCode ?: stringResource(R.string.mobile_settings_unknown)
+    val statusSummary = remember(
+        hostedSubscription.lifecycleState,
+        hostedSubscription.entitlementState,
+        hostedSubscription.billingStatus
+    ) {
+        formatSubscriptionStatusSummary(
+            lifecycleState = hostedSubscription.lifecycleState,
+            entitlementState = hostedSubscription.entitlementState,
+            billingStatus = hostedSubscription.billingStatus
+        )
+    }
     val storageLimit = hostedSubscription.quotas.storageBytesLimit
     val storageUsed = hostedSubscription.usage.storageBytesUsed
     val memberUsage = formatUsageSummary(
@@ -5232,20 +5243,10 @@ private fun SettingsPlanContent(
     )
 
     SettingsValueLine(label = stringResource(R.string.mobile_plan_package_name), value = packageDisplayName)
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_entitlement), value = hostedSubscription.entitlementState ?: stringResource(R.string.mobile_settings_unknown))
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_lifecycle), value = hostedSubscription.lifecycleState ?: stringResource(R.string.mobile_settings_unknown))
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_billing), value = hostedSubscription.billingStatus ?: stringResource(R.string.mobile_settings_unknown))
-    if (!hostedSubscription.trialEndsAt.isNullOrBlank()) {
-        SettingsValueLine(
-            label = stringResource(R.string.mobile_plan_trial_ends),
-            value = formatApiTimestamp(hostedSubscription.trialEndsAt)
-        )
-    }
     SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_grace_ends),
-        value = hostedSubscription.graceEndsAt?.let(::formatApiTimestamp) ?: stringResource(R.string.mobile_settings_unknown)
+        label = stringResource(R.string.mobile_plan_status),
+        value = statusSummary ?: stringResource(R.string.mobile_settings_unknown)
     )
-    SettingsValueLine(label = stringResource(R.string.mobile_plan_suspension_reason), value = hostedSubscription.suspensionReason ?: stringResource(R.string.mobile_none))
     SettingsValueLine(
         label = stringResource(R.string.mobile_plan_members_quota),
         value = memberUsage
@@ -5258,36 +5259,17 @@ private fun SettingsPlanContent(
         label = stringResource(R.string.mobile_plan_monthly_notifications_quota),
         value = notificationUsage
     )
-    SettingsValueLine(
-        label = stringResource(R.string.mobile_plan_retention_window),
-        value = formatRetentionSummary(
-            hostedSubscription.quotas.auditRetentionDays,
-            hostedSubscription.quotas.exportRetentionDays,
-            hostedSubscription.quotas.proofRetentionDays
-        )
-    )
-    Text(text = stringResource(R.string.mobile_plan_feature_access), style = MaterialTheme.typography.titleMedium)
-    val featureEntries = remember(hostedSubscription.featureAccess) {
-        listOf(
-            "templates_manage" to hostedSubscription.featureAccess.templatesManage,
-            "chores_manage" to hostedSubscription.featureAccess.choresManage,
-            "reassignment" to hostedSubscription.featureAccess.reassignment,
-            "takeover_direct" to hostedSubscription.featureAccess.takeoverDirect,
-            "takeover_requests" to hostedSubscription.featureAccess.takeoverRequests,
-            "approvals" to hostedSubscription.featureAccess.approvals,
-            "proof_uploads" to hostedSubscription.featureAccess.proofUploads,
-            "follow_up_automation" to hostedSubscription.featureAccess.followUpAutomation,
-            "external_completion" to hostedSubscription.featureAccess.externalCompletion,
-            "deferred_follow_up_control" to hostedSubscription.featureAccess.deferredFollowUpControl
-        )
-    }
-    featureEntries.forEach { (featureId, enabled) ->
-        SettingsValueLine(
-            label = featureId.replace('_', ' ').replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() },
-            value = stringResource(if (enabled) R.string.mobile_enabled else R.string.mobile_disabled)
-        )
-    }
 }
+
+private fun formatSubscriptionStatusSummary(
+    lifecycleState: String?,
+    entitlementState: String?,
+    billingStatus: String?
+): String? = listOf(lifecycleState, entitlementState, billingStatus)
+    .firstOrNull { !it.isNullOrBlank() }
+    ?.replace('_', ' ')
+    ?.trim()
+    ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
 @Composable
 private fun SettingsActionsContent(

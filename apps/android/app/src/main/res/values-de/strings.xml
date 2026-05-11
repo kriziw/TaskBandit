@@ -216,6 +216,7 @@
     <string name="mobile_settings_unknown">Unbekannt</string>
     <string name="mobile_settings_plan_features">Tarif und Funktionen</string>
     <string name="mobile_plan_package_name">Paketname</string>
+    <string name="mobile_plan_status">Tarifstatus</string>
     <string name="mobile_plan_code">Tarif</string>
     <string name="mobile_plan_package">Paket</string>
     <string name="mobile_plan_entitlement">Berechtigungsstatus</string>

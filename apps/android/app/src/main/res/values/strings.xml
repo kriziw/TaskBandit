@@ -224,6 +224,7 @@
     <string name="mobile_settings_unknown">Unknown</string>
     <string name="mobile_settings_plan_features">Plan and features</string>
     <string name="mobile_plan_package_name">Package name</string>
+    <string name="mobile_plan_status">Plan status</string>
     <string name="mobile_plan_code">Plan</string>
     <string name="mobile_plan_package">Package</string>
     <string name="mobile_plan_entitlement">Entitlement status</string>
