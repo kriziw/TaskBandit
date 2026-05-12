@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.49.4](https://github.com/kriziw/TaskBandit/compare/v0.49.3...v0.49.4) (2026-05-12)
+
+
+### Bug Fixes
+
+* **server:** add hosted runtime-config stale-cache fallback and high-signal diagnostics ([#369](https://github.com/kriziw/TaskBandit/issues/369)) ([0503b66](https://github.com/kriziw/TaskBandit/commit/0503b669fca66006a73e38a73b6ef83fe248bc7f))
+
 ## [0.49.3](https://github.com/kriziw/TaskBandit/compare/v0.49.2...v0.49.3) (2026-05-11)
 
 
