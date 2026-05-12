@@ -76,6 +76,7 @@ export type HostedTenantRuntimeConfig = {
 };
 
 type CachedRuntimeConfig = {
+  cachedAt: number;
   expiresAt: number;
   value: HostedTenantRuntimeConfig;
 };
@@ -83,11 +84,13 @@ type CachedRuntimeConfig = {
 type ControlPlaneRuntimeErrorPayload = {
   code?: string;
   details?: {
+    hint?: string;
     reason?: string;
   };
   error?: {
     code?: string;
     details?: {
+      hint?: string;
       reason?: string;
     };
     message?: string;
@@ -99,6 +102,8 @@ type RuntimeConfigFailureContext = {
   reason: string;
   statusCode: number;
   upstreamCode: string | null;
+  upstreamHint: string | null;
+  upstreamMessage: string | null;
 };
 
 @Injectable()
@@ -131,8 +136,9 @@ export class HostedRuntimeConfigService {
       return null;
     }
 
+    const now = Date.now();
     const cached = this.cache.get(tenantId);
-    if (cached && cached.expiresAt > Date.now()) {
+    if (cached && cached.expiresAt > now) {
       return cached.value;
     }
 
@@ -144,26 +150,48 @@ export class HostedRuntimeConfigService {
         {
           reason: "control_plane_config_missing",
           statusCode: 503,
-          upstreamCode: null
+          upstreamCode: null,
+          upstreamHint: null,
+          upstreamMessage: null
         }
       );
     }
 
-    const response = await fetch(`${baseUrl}/internal/runtime/tenants/${encodeURIComponent(tenantId)}/config`, {
-      headers: {
-        accept: "application/json",
-        "x-internal-service-token": token,
-        [runtimeConfigContractVersionHeader]: runtimeConfigContractVersion
-      }
-    });
+    let response: Response;
+    try {
+      response = await fetch(`${baseUrl}/internal/runtime/tenants/${encodeURIComponent(tenantId)}/config`, {
+        headers: {
+          accept: "application/json",
+          "x-internal-service-token": token,
+          [runtimeConfigContractVersionHeader]: runtimeConfigContractVersion
+        }
+      });
+    } catch (error) {
+      const failure = {
+        reason: "control_plane_unavailable",
+        statusCode: 503,
+        upstreamCode: null,
+        upstreamHint: "network_request_failed",
+        upstreamMessage: error instanceof Error ? error.message : String(error ?? "")
+      } satisfies RuntimeConfigFailureContext;
+      this.logRuntimeConfigFailure(tenantId, failure);
+      return this.resolveWithStaleCacheOrThrow({
+        cached,
+        failure,
+        message: "Hosted runtime config could not be loaded from the control plane.",
+        tenantId
+      });
+    }
 
     if (!response.ok) {
       const failure = await this.readControlPlaneFailureContext(response);
       this.logRuntimeConfigFailure(tenantId, failure);
-      throw this.buildServiceUnavailableError(
-        "Hosted runtime config could not be loaded from the control plane.",
-        failure
-      );
+      return this.resolveWithStaleCacheOrThrow({
+        cached,
+        failure,
+        message: "Hosted runtime config could not be loaded from the control plane.",
+        tenantId
+      });
     }
 
     const payload = (await response.json()) as { tenantConfig?: HostedTenantRuntimeConfig };
@@ -171,17 +199,22 @@ export class HostedRuntimeConfigService {
       const failure = {
         reason: "control_plane_payload_incomplete",
         statusCode: 503,
-        upstreamCode: null
-      };
+        upstreamCode: null,
+        upstreamHint: null,
+        upstreamMessage: null
+      } satisfies RuntimeConfigFailureContext;
       this.logRuntimeConfigFailure(tenantId, failure);
-      throw this.buildServiceUnavailableError(
-        "Hosted runtime config response was incomplete.",
-        failure
-      );
+      return this.resolveWithStaleCacheOrThrow({
+        cached,
+        failure,
+        message: "Hosted runtime config response was incomplete.",
+        tenantId
+      });
     }
 
     this.cache.set(tenantId, {
-      expiresAt: Date.now() + this.appConfigService.hostedRuntimeConfigCacheTtlMs,
+      cachedAt: now,
+      expiresAt: now + this.appConfigService.hostedRuntimeConfigCacheTtlMs,
       value: payload.tenantConfig
     });
 
@@ -196,11 +229,19 @@ export class HostedRuntimeConfigService {
     const topLevelReason = this.normalizeString(payload?.details?.reason);
     const nestedReason = this.normalizeString(payload?.error?.details?.reason);
     const upstreamReason = nestedReason ?? topLevelReason ?? null;
+    const nestedMessage = this.normalizeString(payload?.error?.message);
+    const topLevelMessage = this.normalizeString(payload?.message);
+    const upstreamMessage = nestedMessage ?? topLevelMessage ?? null;
+    const nestedHint = this.normalizeString(payload?.error?.details?.hint);
+    const topLevelHint = this.normalizeString(payload?.details?.hint);
+    const upstreamHint = nestedHint ?? topLevelHint ?? null;
 
     return {
       reason: this.normalizeFailureReason(upstreamReason, response.status),
       statusCode: response.status,
-      upstreamCode
+      upstreamCode,
+      upstreamHint,
+      upstreamMessage
     };
   }
 
@@ -245,10 +286,40 @@ export class HostedRuntimeConfigService {
         reason: failure.reason,
         statusCode: failure.statusCode,
         tenantId,
-        upstreamCode: failure.upstreamCode
+        upstreamCode: failure.upstreamCode,
+        upstreamHint: failure.upstreamHint,
+        upstreamMessage: failure.upstreamMessage
       })}`,
       "HostedRuntimeConfigService"
     );
+  }
+
+  private resolveWithStaleCacheOrThrow(input: {
+    cached?: CachedRuntimeConfig;
+    failure: RuntimeConfigFailureContext;
+    message: string;
+    tenantId: string;
+  }) {
+    const cached = input.cached;
+    if (cached) {
+      const staleAgeMs = Date.now() - cached.expiresAt;
+      if (staleAgeMs >= 0 && staleAgeMs <= hostedRuntimeConfigStaleCacheWindowMs) {
+        this.appLogService.warn(
+          `[hosted-runtime-config] using_stale_cache ${JSON.stringify({
+            reason: input.failure.reason,
+            staleAgeMs,
+            tenantId: input.tenantId,
+            upstreamCode: input.failure.upstreamCode,
+            upstreamHint: input.failure.upstreamHint,
+            upstreamStatusCode: input.failure.statusCode
+          })}`,
+          "HostedRuntimeConfigService"
+        );
+        return cached.value;
+      }
+    }
+
+    throw this.buildServiceUnavailableError(input.message, input.failure);
   }
 
   private normalizeString(value: unknown) {
@@ -271,3 +342,4 @@ const allowedControlPlaneReasonCodes = new Set([
 
 const runtimeConfigContractVersion = "1.0.0";
 const runtimeConfigContractVersionHeader = "x-taskbandit-runtime-contract-version";
+const hostedRuntimeConfigStaleCacheWindowMs = 5 * 60_000;
