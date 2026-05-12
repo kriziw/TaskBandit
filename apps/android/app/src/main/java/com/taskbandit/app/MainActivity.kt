@@ -55,6 +55,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
@@ -132,6 +133,7 @@ import com.taskbandit.app.mobile.MobileFeatureAccess
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
 import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
+import com.taskbandit.app.mobile.MobileLeaderboardEntry
 import com.taskbandit.app.mobile.MobileTakeoverRequest
 import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
@@ -186,6 +188,7 @@ private data class AndroidOidcResult(
 
 private enum class MobileDashboardTab {
     CHORES,
+    LEADERBOARD,
     CREATE,
     SETTINGS
 }
@@ -2157,6 +2160,7 @@ private fun DashboardScreen(
         }
     }
     val members = dashboard?.members.orEmpty()
+    val leaderboardEntries = dashboard?.leaderboard.orEmpty()
     val pendingTakeoverRequests = dashboard?.takeoverRequests.orEmpty()
     val supportsTakeoverRequests = dashboard?.compatibility?.takeoverRequestsSupported ?: true
     val canUseTakeoverRequests = supportsTakeoverRequests && canUseTakeoverRequestsFeature
@@ -2650,8 +2654,18 @@ private fun DashboardScreen(
                                 expandedChoreIds = emptySet()
                             }
                         )
-                        MobileCenterTabButton(
-                            modifier = Modifier.weight(1.1f),
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
+                            selected = activeTab == MobileDashboardTab.LEADERBOARD,
+                            label = stringResource(R.string.mobile_leaderboard),
+                            icon = Icons.Rounded.EmojiEvents,
+                            onClick = {
+                                activeTab = MobileDashboardTab.LEADERBOARD
+                                expandedChoreIds = emptySet()
+                            }
+                        )
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.CREATE,
                             label = stringResource(R.string.mobile_tab_create),
                             icon = Icons.Rounded.AddCircle,
@@ -2784,6 +2798,41 @@ private fun DashboardScreen(
                                 pendingReconnectActionLabel = pendingReconnectActionLabel,
                                 queuedSubmissionCount = queuedSubmissionCount
                             )
+                        }
+                    }
+                }
+            }
+
+            if (activeTab == MobileDashboardTab.LEADERBOARD) {
+                item {
+                    SectionIntro(
+                        title = stringResource(R.string.mobile_leaderboard),
+                        body = stringResource(R.string.mobile_leaderboard_hint)
+                    )
+                }
+                if (leaderboardEntries.isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.mobile_leaderboard_empty),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    item {
+                        Card(shape = RoundedCornerShape(24.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                leaderboardEntries.forEachIndexed { index, member ->
+                                    LeaderboardEntryRow(
+                                        rank = index + 1,
+                                        entry = member
+                                    )
+                                }
+                            }
                         }
                     }
                 }
@@ -3168,9 +3217,14 @@ private fun MobileTabButton(
     selected: Boolean,
     label: String,
     icon: ImageVector,
+    enabled: Boolean = true,
     onClick: () -> Unit
 ) {
-    val iconTint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant
+    val iconTint = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        selected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     val chipColor = if (selected) {
         MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
     } else {
@@ -3179,6 +3233,7 @@ private fun MobileTabButton(
     TextButton(
         modifier = modifier,
         onClick = onClick,
+        enabled = enabled,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
     ) {
@@ -3324,6 +3379,50 @@ private fun SectionIntro(title: String, body: String) {
     Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
         Text(text = body, style = MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun LeaderboardEntryRow(
+    rank: Int,
+    entry: MobileLeaderboardEntry
+) {
+    Surface(
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(
+                    text = "$rank. ${entry.displayName}",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold
+                )
+                Text(
+                    text = "${formatLeaderboardRoleLabel(entry.role)} · ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(
+                    text = stringResource(R.string.mobile_points_value, entry.points),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
     }
 }
 
@@ -4451,7 +4550,7 @@ private fun CompletionCelebrationDialog(
                         variant = celebration.variant
                     )
                     Image(
-                        painter = painterResource(R.drawable.ic_taskbandit_mark),
+                        painter = painterResource(R.drawable.ic_taskbandit_mascot_success),
                         contentDescription = stringResource(R.string.brand_mark_description),
                         modifier = Modifier.size(116.dp)
                     )
@@ -5270,6 +5369,12 @@ private fun formatSubscriptionStatusSummary(
     ?.replace('_', ' ')
     ?.trim()
     ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+private fun formatLeaderboardRoleLabel(role: String): String =
+    role
+        .replace('_', ' ')
+        .trim()
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
 @Composable
 private fun SettingsActionsContent(

@@ -384,6 +384,8 @@
     <string name="mobile_syncing_queue">Syncing queued chores...</string>
     <string name="mobile_queue_synced">Synced %1$d queued chore(s).</string>
     <string name="mobile_leaderboard">Leaderboard</string>
+    <string name="mobile_leaderboard_hint">Track household points, streak momentum, and who is leading this week.</string>
+    <string name="mobile_leaderboard_empty">No leaderboard entries yet. Complete chores to start the race.</string>
     <string name="mobile_points_value">%1$d points</string>
     <string name="mobile_streak_value">%1$d streak</string>
     <string name="mobile_approve">Approve</string>
