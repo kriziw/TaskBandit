@@ -309,6 +309,8 @@
     <string name="mobile_syncing_queue">A sorba állított feladatok szinkronizálása folyamatban...</string>
     <string name="mobile_queue_synced">%1$d sorba állított feladat szinkronizálva lett.</string>
     <string name="mobile_leaderboard">Rangsor</string>
+    <string name="mobile_leaderboard_hint">Kövesd a pontokat, a szériákat és azt, ki vezet ezen a héten.</string>
+    <string name="mobile_leaderboard_empty">Még nincs rangsor-bejegyzés. Fejezz be feladatokat, hogy elinduljon a verseny.</string>
     <string name="mobile_points_value">%1$d pont</string>
     <string name="mobile_streak_value">%1$d streak</string>
     <string name="mobile_approve">Jóváhagyás</string>

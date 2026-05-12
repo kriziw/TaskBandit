@@ -318,6 +318,8 @@
     <string name="mobile_syncing_queue">Vorgemerkte Aufgaben werden synchronisiert...</string>
     <string name="mobile_queue_synced">%1$d vorgemerkte Aufgabe(n) wurden synchronisiert.</string>
     <string name="mobile_leaderboard">Bestenliste</string>
+    <string name="mobile_leaderboard_hint">Behalte Punkte, Serien und die Fuehrung in dieser Woche im Blick.</string>
+    <string name="mobile_leaderboard_empty">Noch keine Eintraege in der Bestenliste. Erledige Aufgaben, um das Rennen zu starten.</string>
     <string name="mobile_points_value">%1$d Punkte</string>
     <string name="mobile_streak_value">%1$d Serie</string>
     <string name="mobile_approve">Freigeben</string>

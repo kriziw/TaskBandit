@@ -8,7 +8,7 @@ const APP_SHELL = [
   "./brand/icon-192.png",
   "./brand/icon-512.png",
   "./brand/mascot-login.png",
-  "./brand/mascot-celebration.png",
+  "./brand/mascot-success.png",
   "./pwa/icon-192.png",
   "./pwa/icon-512.png"
 ];

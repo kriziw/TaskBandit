@@ -130,6 +130,7 @@ type ClientMobileDueBucket = "today" | "this_week" | "later";
 type WorkspacePage =
   | "overview"
   | "chores"
+  | "leaderboard"
   | "templates"
   | "household"
   | "notifications"
@@ -152,6 +153,7 @@ type OnboardingStepDefinition = {
 const workspacePageOrder: WorkspacePage[] = [
   "overview",
   "chores",
+  "leaderboard",
   "templates",
   "household",
   "notifications",
@@ -902,7 +904,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const { language, setLanguage, t } = useI18n();
   const brandIconAssetPath = "/brand/logo-dark.png";
   const mascotLoginAssetPath = "/brand/mascot-login.png";
-  const mascotCelebrationAssetPath = "/brand/mascot-celebration.png";
+  const mascotCelebrationAssetPath = "/brand/mascot-success.png";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
@@ -1029,6 +1031,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const mobileChoresRailRef = useRef<HTMLElement | null>(null);
   const mobileBottomNavRef = useRef<HTMLElement | null>(null);
   const myChoresRef = useRef<HTMLElement | null>(null);
+  const leaderboardRef = useRef<HTMLElement | null>(null);
   const householdChoresRef = useRef<HTMLElement | null>(null);
   const choreHistoryRef = useRef<HTMLElement | null>(null);
   const notificationsRef = useRef<HTMLElement | null>(null);
@@ -1967,6 +1970,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (isClientMobileViewport) {
       const pages: Array<{ key: WorkspacePage; label: string }> = [
         { key: "chores", label: t("nav.chores") },
+        { key: "leaderboard", label: t("nav.leaderboard") },
         { key: "settings", label: t("nav.settings") }
       ];
       if (showTemplateManager) {
@@ -1989,7 +1993,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const mobileBottomNavPages = useMemo(
     () =>
       availablePages.filter((page) =>
-        ["chores", "settings"].includes(page.key)
+        ["chores", "leaderboard", "settings"].includes(page.key)
       ),
     [availablePages]
   );
@@ -2025,6 +2029,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const pageDescriptions: Record<WorkspacePage, string> = {
     overview: t("page.overview_description"),
     chores: t("page.chores_description"),
+    leaderboard: t("page.leaderboard_description"),
     templates: t("page.templates_description"),
     household: t("page.household_description"),
     notifications: t("page.notifications_description"),
@@ -4837,6 +4842,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef },
           { key: "chores-history", label: t("panel.chore_history"), ref: choreHistoryRef }
         ];
+      case "leaderboard":
+        return [{ key: "leaderboard-main", label: t("panel.leaderboard"), ref: leaderboardRef }];
       case "templates":
         return [{ key: "templates-list", label: t("panel.chore_templates"), ref: templatesRef }];
       case "household":
@@ -4926,6 +4933,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }, [
     activePage,
     auditLogRef,
+    leaderboardRef,
     memberCreateRef,
     payload?.currentUser.role,
     payload?.compatibility.backupReadiness,
@@ -6329,7 +6337,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ? renderScheduleChorePanel("page-chores")
               : null}
 
-            <article className="panel page-panel page-overview">
+            <article className="panel page-panel page-overview page-leaderboard" ref={leaderboardRef}>
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
@@ -8981,7 +8989,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             className="mobile-bottom-nav-track"
             style={
               {
-                "--mobile-nav-columns": payload?.currentUser.role !== "child" ? 3 : 2
+                "--mobile-nav-columns":
+                  mobileBottomNavPages.length + (payload?.currentUser.role !== "child" ? 1 : 0)
               } as CSSProperties
             }
           >
