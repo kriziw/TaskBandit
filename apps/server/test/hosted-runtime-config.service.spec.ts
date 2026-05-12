@@ -39,6 +39,7 @@ describe("HostedRuntimeConfigService", () => {
   });
 
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -185,5 +186,147 @@ describe("HostedRuntimeConfigService", () => {
       }
     });
     expect(appLogService.warn).toHaveBeenCalledTimes(1);
+  });
+
+  it("uses short stale cache fallback when control plane is temporarily unavailable", async () => {
+    appConfigService.hostedRuntimeConfigCacheTtlMs = 1_000;
+    let now = 1_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          tenantConfig: {
+            compatibilityMode: "soft",
+            configVersion: "2026-05-12T10:00:00.000Z",
+            contractVersion: "1.0.0",
+            entitlementState: "active",
+            featureAccess: {},
+            graceEndsAt: null,
+            hostedOidcConfig: {
+              allowedDomains: [],
+              clientId: null,
+              clientSecretRef: null,
+              enabled: false,
+              issuer: null,
+              scopes: []
+            },
+            lifecycleState: "active",
+            packageCode: "family_plus",
+            packageDisplayName: "Family Plus",
+            packageRevisionId: null,
+            packageRevisionNumber: null,
+            billingStatus: "active",
+            planCode: "family_plus",
+            integrations: [],
+            quotaPolicy: {},
+            quotaPolicyVersion: "2026-05-12T10:00:00.000Z",
+            suspensionReason: null,
+            tenantId: "tenant-a",
+            trialEndsAt: null,
+            updatedAt: "2026-05-12T10:00:00.000Z"
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: {
+            code: "service_unavailable",
+            details: { reason: "control_plane_unavailable" },
+            message: "Control plane runtime config endpoint is unavailable."
+          }
+        })
+      });
+
+    vi.stubGlobal("fetch", fetchMock);
+
+    const freshConfig = await service.getTenantRuntimeConfig("tenant-a");
+    now += 1_500;
+    const staleFallbackConfig = await service.getTenantRuntimeConfig("tenant-a");
+
+    expect(freshConfig?.tenantId).toBe("tenant-a");
+    expect(staleFallbackConfig?.tenantId).toBe("tenant-a");
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(appLogService.warn).toHaveBeenCalledTimes(2);
+    expect(appLogService.warn).toHaveBeenLastCalledWith(
+      expect.stringContaining("using_stale_cache"),
+      "HostedRuntimeConfigService"
+    );
+  });
+
+  it("fails closed when cached runtime config is too stale", async () => {
+    appConfigService.hostedRuntimeConfigCacheTtlMs = 500;
+    let now = 2_000_000;
+    vi.spyOn(Date, "now").mockImplementation(() => now);
+
+    const fetchMock = vi
+      .fn()
+      .mockResolvedValueOnce({
+        ok: true,
+        status: 200,
+        json: async () => ({
+          tenantConfig: {
+            compatibilityMode: "soft",
+            configVersion: "2026-05-12T10:00:00.000Z",
+            contractVersion: "1.0.0",
+            entitlementState: "active",
+            featureAccess: {},
+            graceEndsAt: null,
+            hostedOidcConfig: {
+              allowedDomains: [],
+              clientId: null,
+              clientSecretRef: null,
+              enabled: false,
+              issuer: null,
+              scopes: []
+            },
+            lifecycleState: "active",
+            packageCode: "family_plus",
+            packageDisplayName: "Family Plus",
+            packageRevisionId: null,
+            packageRevisionNumber: null,
+            billingStatus: "active",
+            planCode: "family_plus",
+            integrations: [],
+            quotaPolicy: {},
+            quotaPolicyVersion: "2026-05-12T10:00:00.000Z",
+            suspensionReason: null,
+            tenantId: "tenant-a",
+            trialEndsAt: null,
+            updatedAt: "2026-05-12T10:00:00.000Z"
+          }
+        })
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 503,
+        json: async () => ({
+          error: {
+            code: "service_unavailable",
+            details: { reason: "control_plane_unavailable" },
+            message: "Control plane runtime config endpoint is unavailable."
+          }
+        })
+      });
+    vi.stubGlobal("fetch", fetchMock);
+
+    await service.getTenantRuntimeConfig("tenant-a");
+    now += 5 * 60_000 + 2_000;
+
+    const error = await service.getTenantRuntimeConfig("tenant-a").catch((caught) => caught);
+    expect(error).toBeInstanceOf(ServiceUnavailableException);
+    expect(error.getResponse()).toMatchObject({
+      code: "hosted_runtime_config_unavailable",
+      details: {
+        reason: "control_plane_unavailable",
+        upstreamStatusCode: 503
+      }
+    });
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
