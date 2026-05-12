@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.50.0](https://github.com/kriziw/TaskBandit/compare/v0.49.4...v0.50.0) (2026-05-12)
+
+
+### Features
+
+* **client:** add mobile leaderboard navigation and success mascot celebration ([#371](https://github.com/kriziw/TaskBandit/issues/371)) ([f62c49d](https://github.com/kriziw/TaskBandit/commit/f62c49d0d41a0e06bbc81c6826c88402ab58111c))
+
 ## [0.49.4](https://github.com/kriziw/TaskBandit/compare/v0.49.3...v0.49.4) (2026-05-12)
 
 
