@@ -648,6 +648,42 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun updateChoreDueAt(
+        baseUrl: String,
+        token: String,
+        chore: MobileChore,
+        dueAtIsoUtc: String
+    ): MobileChore {
+        val payload = JSONObject()
+            .put("dueAt", dueAtIsoUtc)
+
+        if (!chore.templateId.isNullOrBlank()) {
+            payload.put("templateId", chore.templateId)
+        }
+
+        if (!chore.assigneeId.isNullOrBlank()) {
+            payload.put("assigneeId", chore.assigneeId)
+        }
+
+        if (!chore.title.isBlank()) {
+            payload.put("title", chore.title)
+        }
+
+        if (!chore.variantId.isNullOrBlank()) {
+            payload.put("variantId", chore.variantId)
+        }
+
+        return parseChore(
+            requestJson(
+                baseUrl = baseUrl,
+                path = "/api/chores/instances/${chore.id}",
+                token = token,
+                method = "PUT",
+                body = payload
+            )
+        )
+    }
+
     fun submitChore(
         baseUrl: String,
         token: String,
@@ -1036,6 +1072,7 @@ class TaskBanditMobileApi {
             checklist = parseChecklist(entry.optJSONArray("checklist")),
             completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
             variantId = entry.optNullableString("variantId"),
+            templateId = entry.optNullableString("templateId"),
             completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone"))
         )
     }

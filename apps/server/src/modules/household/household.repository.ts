@@ -2944,6 +2944,18 @@ export class HouseholdRepository {
         householdId
       },
       select: {
+        templateId: true,
+        title: true,
+        state: true,
+        variantId: true,
+        suppressRecurrence: true,
+        recurrenceTypeOverride: true,
+        recurrenceIntervalDaysOverride: true,
+        recurrenceWeekdaysOverride: true,
+        recurrenceStartStrategyOverride: true,
+        recurrenceEndModeOverride: true,
+        recurrenceRemainingOccurrencesOverride: true,
+        recurrenceEndsAtUtcOverride: true,
         assigneeId: true,
         assignmentLocked: true,
         assignmentReason: true
@@ -2960,15 +2972,20 @@ export class HouseholdRepository {
       }
     });
 
-    const variant = dto.variantId
-      ? template.variants.find((entry) => entry.id === dto.variantId) ?? null
+    const nextVariantId = dto.variantId !== undefined ? dto.variantId : existingInstance.variantId;
+    const variant = nextVariantId
+      ? template.variants.find((entry) => entry.id === nextVariantId) ?? null
       : null;
-    if (dto.variantId && !variant) {
+    if (nextVariantId && !variant) {
       throw new BadRequestException({
         message: "The selected subtype could not be found for this chore type."
       });
     }
     const subtypeLabel = variant?.label ?? null;
+    const nextTitle =
+      dto.title !== undefined
+        ? dto.title.trim() || this.composeChoreTitle(template.title, subtypeLabel)
+        : existingInstance.title;
 
     const assignmentDecision = dto.assigneeId
       ? await this.buildManualAssignmentDecision(this.prisma, dto.assigneeId, householdId)
@@ -2990,6 +3007,30 @@ export class HouseholdRepository {
             reason: existingInstance.assignmentReason
           };
 
+    let recurrenceEndModeOverride = existingInstance.recurrenceEndModeOverride;
+    let recurrenceRemainingOccurrencesOverride = existingInstance.recurrenceRemainingOccurrencesOverride;
+    let recurrenceEndsAtUtcOverride = existingInstance.recurrenceEndsAtUtcOverride;
+    const shouldUpdateRecurrenceEndSettings =
+      dto.recurrenceEndMode !== undefined ||
+      dto.recurrenceOccurrences !== undefined ||
+      dto.recurrenceEndsAt !== undefined;
+    if (shouldUpdateRecurrenceEndSettings) {
+      const effectiveRecurrence = this.getEffectiveInstanceRecurrence(
+        {
+          suppressRecurrence: existingInstance.suppressRecurrence,
+          recurrenceTypeOverride: existingInstance.recurrenceTypeOverride,
+          recurrenceIntervalDaysOverride: existingInstance.recurrenceIntervalDaysOverride,
+          recurrenceWeekdaysOverride: existingInstance.recurrenceWeekdaysOverride,
+          recurrenceStartStrategyOverride: existingInstance.recurrenceStartStrategyOverride
+        },
+        template
+      );
+      const recurrenceEndSettings = this.resolveRecurrenceEndSettings(dto, effectiveRecurrence.type);
+      recurrenceEndModeOverride = recurrenceEndSettings.mode;
+      recurrenceRemainingOccurrencesOverride = recurrenceEndSettings.remainingOccurrences;
+      recurrenceEndsAtUtcOverride = recurrenceEndSettings.endsAtUtc;
+    }
+
     const updatedInstance = await this.prisma.$transaction(async (tx) => {
       const savedInstance = await tx.choreInstance.update({
         where: {
@@ -2999,13 +3040,16 @@ export class HouseholdRepository {
           templateId: template.id,
           subtypeLabel,
           requirePhotoProofOverride: template.requirePhotoProof,
-          title: dto.title?.trim() || this.composeChoreTitle(template.title, subtypeLabel),
-          variantId: dto.variantId ?? null,
+          title: nextTitle,
+          variantId: nextVariantId ?? null,
           assigneeId: assignmentDecision.assigneeId,
-          state: assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN,
+          state: existingInstance.state,
           assignmentLocked: assignmentDecision.locked,
           assignmentReason: assignmentDecision.reason,
-          dueAtUtc: dto.dueAt
+          dueAtUtc: dto.dueAt,
+          recurrenceEndModeOverride,
+          recurrenceRemainingOccurrencesOverride,
+          recurrenceEndsAtUtcOverride
         },
         include: {
           template: {
@@ -5973,6 +6017,13 @@ export class HouseholdRepository {
         reviewedById: null,
         reviewNote: null,
         variantId: (instance as any).variantId ?? null,
+        recurrenceEndMode:
+          ((instance as any).recurrenceEndModeOverride ?? null)?.toLowerCase() ?? null,
+        recurrenceOccurrences:
+          (instance as any).recurrenceEndModeOverride === RecurrenceEndMode.AFTER_OCCURRENCES
+            ? ((instance as any).recurrenceRemainingOccurrencesOverride ?? 0) + 1
+            : null,
+        recurrenceEndsAt: (instance as any).recurrenceEndsAtUtcOverride ?? null,
         checklist: [],
         checklistCompletionIds: [],
         attachments: []
@@ -6021,6 +6072,13 @@ export class HouseholdRepository {
       reviewedById: instance.reviewedById,
       reviewNote: instance.reviewNote,
       variantId: (instance as any).variantId ?? null,
+      recurrenceEndMode:
+        ((instance as any).recurrenceEndModeOverride ?? null)?.toLowerCase() ?? null,
+      recurrenceOccurrences:
+        (instance as any).recurrenceEndModeOverride === RecurrenceEndMode.AFTER_OCCURRENCES
+          ? ((instance as any).recurrenceRemainingOccurrencesOverride ?? 0) + 1
+          : null,
+      recurrenceEndsAt: (instance as any).recurrenceEndsAtUtcOverride ?? null,
       checklist: instance.template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map((item) => ({

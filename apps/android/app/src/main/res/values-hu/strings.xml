@@ -385,4 +385,12 @@
     <string name="mobile_cancel_series_confirm_body">Törlöd a(z) „%1$s” ismétlődő sorozatot és az összes még nyitott jövőbeli feladatát? A sorozathoz tartozó követő feladatok is törlődni fognak.</string>
     <string name="mobile_cancel_series_confirm_action">Teljes sorozat törlése</string>
     <string name="mobile_more_actions">További műveletek</string>
+    <string name="mobile_edit_due_at">Hatarido szerkesztese</string>
+    <string name="mobile_edit_due_at_title">Hatarido szerkesztese</string>
+    <string name="mobile_edit_due_at_body">"%1$s" ujra utemezese.</string>
+    <string name="mobile_save_due_at">Hatarido mentese</string>
+    <string name="mobile_updating_due_at">Hatarido frissitese...</string>
+    <string name="mobile_due_at_updated">Hatarido frissitve.</string>
+    <string name="mobile_due_at_update_failed">A hatarido frissitese nem sikerult.</string>
 </resources>
+

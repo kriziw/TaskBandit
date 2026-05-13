@@ -535,6 +535,9 @@ export type ChoreInstance = {
   reviewedById: string | null;
   reviewNote: string | null;
   variantId: string | null;
+  recurrenceEndMode: RecurrenceEndMode | null;
+  recurrenceOccurrences: number | null;
+  recurrenceEndsAt: string | null;
   checklist: ChoreTemplateChecklistItem[];
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];

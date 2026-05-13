@@ -157,6 +157,7 @@ class TaskBanditDashboardCacheStore(
             .put("checklist", JSONArray().apply { chore.checklist.forEach { put(checklistItemToJson(it)) } })
             .put("completedChecklistIds", JSONArray().apply { chore.completedChecklistIds.forEach(::put) })
             .put("variantId", chore.variantId)
+            .put("templateId", chore.templateId)
             .put("completionMilestone", chore.completionMilestone?.let(::completionMilestoneToJson))
     }
 
@@ -185,6 +186,7 @@ class TaskBanditDashboardCacheStore(
             checklist = parseJsonArray(entry.optJSONArray("checklist"), ::parseChecklistItem),
             completedChecklistIds = parseStringArray(entry.optJSONArray("completedChecklistIds")),
             variantId = entry.optNullableString("variantId"),
+            templateId = entry.optNullableString("templateId"),
             completionMilestone = entry.optJSONObject("completionMilestone")?.let(::parseCompletionMilestone)
         )
     }
