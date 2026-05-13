@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.52.1](https://github.com/kriziw/TaskBandit/compare/v0.52.0...v0.52.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* **android:** add startup grace period before sync reconnect notice ([#379](https://github.com/kriziw/TaskBandit/issues/379)) ([6309b30](https://github.com/kriziw/TaskBandit/commit/6309b3030d0fb9fe35c3a10490230fb72c7cf91b))
+
 ## [0.52.0](https://github.com/kriziw/TaskBandit/compare/v0.51.0...v0.52.0) (2026-05-13)
 
 
