@@ -170,6 +170,7 @@ data class MobileChore(
     val checklist: List<MobileChecklistItem>,
     val completedChecklistIds: List<String>,
     val variantId: String? = null,
+    val templateId: String? = null,
     val completionMilestone: MobileCompletionMilestone? = null
 )
 

@@ -371,6 +371,13 @@
     <string name="mobile_close_cycle_confirm_title">Diese Aufgabe stornieren?</string>
     <string name="mobile_close_cycle_confirm_body">"%1$s" stornieren und kuenftige Wiederholungen stoppen? Dadurch werden alle noch offenen Aufgaben dieser Wiederholung storniert.</string>
     <string name="mobile_close_cycle_confirm_action">Ja, Aufgabe stornieren</string>
+    <string name="mobile_edit_due_at">Faelligkeit bearbeiten</string>
+    <string name="mobile_edit_due_at_title">Faelligkeit bearbeiten</string>
+    <string name="mobile_edit_due_at_body">"%1$s" neu terminieren.</string>
+    <string name="mobile_save_due_at">Faelligkeit speichern</string>
+    <string name="mobile_updating_due_at">Faelligkeit wird aktualisiert...</string>
+    <string name="mobile_due_at_updated">Faelligkeit aktualisiert.</string>
+    <string name="mobile_due_at_update_failed">Faelligkeit konnte nicht aktualisiert werden.</string>
     <string name="mobile_cancel_occurrence">Nur diesen Termin stornieren</string>
     <string name="mobile_cancelling_occurrence">Dieser Termin wird storniert...</string>
     <string name="mobile_occurrence_cancelled">Dieser Termin wurde storniert. Kuenftige Wiederholungen bleiben aktiv.</string>

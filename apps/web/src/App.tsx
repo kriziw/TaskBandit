@@ -1000,9 +1000,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
   );
   const [isClientComposerOpen, setIsClientComposerOpen] = useState(false);
+  const [mobileDueEditorInstanceId, setMobileDueEditorInstanceId] = useState<string | null>(null);
+  const [mobileDueEditorValue, setMobileDueEditorValue] = useState("");
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
+  const mobileDueEditorInstance =
+    payload?.instances.find((instance) => instance.id === mobileDueEditorInstanceId) ?? null;
   const onboardingTourMode = getOnboardingTourMode(workspaceVariant, isClientMobileViewport);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -2821,7 +2825,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <button
                   className="ghost-button"
                   type="button"
-                  onClick={() => startEditingInstance(instance)}
+                  onClick={() =>
+                    workspaceVariant === "client" && isClientMobileViewport
+                      ? openMobileDueEditor(instance)
+                      : startEditingInstance(instance)
+                  }
                 >
                   {t("common.edit")}
                 </button>
@@ -3981,8 +3989,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
 
     const selectedTemplate = payload.templates.find((template) => template.id === instanceForm.templateId);
-    const supportsRecurrenceEnd =
-      !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
+    const supportsRecurrenceEnd = Boolean(
+      selectedTemplate && selectedTemplate.recurrence.type !== "none"
+    );
     if ((selectedTemplate?.variants?.length ?? 0) > 0 && !instanceForm.variantId) {
       setPageError(t("instances.subtype_required"));
       return;
@@ -4774,14 +4783,78 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       assigneeId: instance.assigneeId ?? "",
       title: instance.title,
       dueAt: formatDateTimeLocal(instance.dueAt),
+      variantId: instance.variantId ?? undefined,
       reassignAutomatically: false,
-      recurrenceEndMode: "never",
-      recurrenceOccurrences: 3,
-      recurrenceEndsAt: ""
+      recurrenceEndMode: instance.recurrenceEndMode ?? "never",
+      recurrenceOccurrences: instance.recurrenceOccurrences ?? 3,
+      recurrenceEndsAt: instance.recurrenceEndsAt ? formatDateTimeLocal(instance.recurrenceEndsAt) : ""
     });
     if (workspaceVariant === "client" && isClientMobileViewport) {
       setActivePage("chores");
       setIsClientComposerOpen(true);
+    }
+  }
+
+  function openMobileDueEditor(instance: ChoreInstance) {
+    setMobileDueEditorInstanceId(instance.id);
+    setMobileDueEditorValue(formatDateTimeLocal(instance.dueAt));
+    setPageError(null);
+  }
+
+  function closeMobileDueEditor() {
+    setMobileDueEditorInstanceId(null);
+    setMobileDueEditorValue("");
+  }
+
+  async function handleSaveMobileDueEditor() {
+    if (!token || !mobileDueEditorInstance || !mobileDueEditorValue) {
+      return;
+    }
+
+    const dueAtDate = new Date(mobileDueEditorValue);
+    if (Number.isNaN(dueAtDate.getTime())) {
+      setPageError(t("instances.update_failed"));
+      return;
+    }
+
+    setBusyAction(`update-due:${mobileDueEditorInstance.id}`);
+    try {
+      const updatedInstance = await taskBanditApi.updateInstance(token, language, mobileDueEditorInstance.id, {
+        templateId: mobileDueEditorInstance.templateId,
+        assigneeId: mobileDueEditorInstance.assigneeId ?? undefined,
+        title: mobileDueEditorInstance.title?.trim() || undefined,
+        dueAt: dueAtDate.toISOString(),
+        variantId: mobileDueEditorInstance.variantId ?? undefined,
+        recurrenceEndMode: mobileDueEditorInstance.recurrenceEndMode ?? undefined,
+        recurrenceOccurrences:
+          mobileDueEditorInstance.recurrenceEndMode === "after_occurrences"
+            ? mobileDueEditorInstance.recurrenceOccurrences ?? undefined
+            : undefined,
+        recurrenceEndsAt:
+          mobileDueEditorInstance.recurrenceEndMode === "on_date" &&
+          mobileDueEditorInstance.recurrenceEndsAt
+            ? mobileDueEditorInstance.recurrenceEndsAt
+            : undefined
+      });
+      setPayload((current) =>
+        current
+          ? {
+              ...current,
+              instances: current.instances
+                .map((instance) =>
+                  instance.id === mobileDueEditorInstance.id ? updatedInstance : instance
+                )
+                .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime())
+            }
+          : current
+      );
+      setNotice(t("instances.updated"));
+      setPageError(null);
+      closeMobileDueEditor();
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("instances.update_failed")));
+    } finally {
+      setBusyAction(null);
     }
   }
 
@@ -5054,7 +5127,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       (template) => template.id === instanceForm.templateId
     ) ?? payload.templates.find((template) => template.id === instanceForm.templateId);
     const selectedTemplateRepeats =
-      !editingInstanceId && selectedTemplate && selectedTemplate.recurrence.type !== "none";
+      selectedTemplate && selectedTemplate.recurrence.type !== "none";
 
     return (
       <article
@@ -8978,6 +9051,56 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
       )}
+      {showClientMobileShell && payload?.currentUser.role !== "child" && mobileDueEditorInstance ? (
+        <div className="mobile-composer-backdrop" role="presentation">
+          <div
+            className="mobile-composer-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-due-editor-title"
+          >
+            <article className="panel mobile-composer-panel">
+              <div className="section-heading mobile-composer-heading">
+                <div>
+                  <h2 id="mobile-due-editor-title">{t("instances.due_at")}</h2>
+                  <p className="schedule-panel-subtitle">
+                    {mobileDueEditorInstance.typeTitle || mobileDueEditorInstance.title}
+                  </p>
+                </div>
+              </div>
+              <form
+                className="login-form member-form schedule-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSaveMobileDueEditor();
+                }}
+              >
+                <label>
+                  <span>{t("instances.due_at")}</span>
+                  <input
+                    type="datetime-local"
+                    value={mobileDueEditorValue}
+                    onChange={(event) => setMobileDueEditorValue(event.target.value)}
+                    required
+                  />
+                </label>
+                <div className="button-row schedule-form-actions">
+                  <button
+                    className="primary-button"
+                    type="submit"
+                    disabled={busyAction === `update-due:${mobileDueEditorInstance.id}`}
+                  >
+                    {t("instances.save")}
+                  </button>
+                  <button className="ghost-button" type="button" onClick={closeMobileDueEditor}>
+                    {t("common.cancel")}
+                  </button>
+                </div>
+              </form>
+            </article>
+          </div>
+        </div>
+      ) : null}
       {showClientMobileShell && payload?.currentUser.role !== "child" && isClientComposerOpen ? (
         <div className="mobile-composer-backdrop" role="presentation">
           <div
