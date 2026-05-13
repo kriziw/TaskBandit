@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.53.1](https://github.com/kriziw/TaskBandit/compare/v0.53.0...v0.53.1) (2026-05-13)
+
+
+### Bug Fixes
+
+* **mobile:** use full chore card width for title and meta text ([#387](https://github.com/kriziw/TaskBandit/issues/387)) ([0df3409](https://github.com/kriziw/TaskBandit/commit/0df340940c2f63845d28eb39e255feb252b3db18))
+
 ## [0.53.0](https://github.com/kriziw/TaskBandit/compare/v0.52.2...v0.53.0) (2026-05-13)
 
 
