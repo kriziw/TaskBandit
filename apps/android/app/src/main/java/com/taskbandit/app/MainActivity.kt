@@ -12,6 +12,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.OpenableColumns
+import androidx.annotation.DrawableRes
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
@@ -105,6 +106,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
@@ -116,6 +118,8 @@ import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -2648,7 +2652,7 @@ private fun DashboardScreen(
                             modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.CHORES,
                             label = stringResource(R.string.mobile_tab_chores),
-                            icon = Icons.Rounded.AssignmentTurnedIn,
+                            iconRes = R.drawable.mobile_nav_chores,
                             onClick = {
                                 activeTab = MobileDashboardTab.CHORES
                                 expandedChoreIds = emptySet()
@@ -2658,7 +2662,7 @@ private fun DashboardScreen(
                             modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.LEADERBOARD,
                             label = stringResource(R.string.mobile_leaderboard),
-                            icon = Icons.Rounded.EmojiEvents,
+                            iconRes = R.drawable.mobile_nav_leaderboard,
                             onClick = {
                                 activeTab = MobileDashboardTab.LEADERBOARD
                                 expandedChoreIds = emptySet()
@@ -2668,7 +2672,7 @@ private fun DashboardScreen(
                             modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.CREATE,
                             label = stringResource(R.string.mobile_tab_create),
-                            icon = Icons.Rounded.AddCircle,
+                            iconRes = R.drawable.mobile_nav_create,
                             enabled = isCreatorRole && canManageChores,
                             onClick = {
                                 activeTab = MobileDashboardTab.CREATE
@@ -2679,7 +2683,7 @@ private fun DashboardScreen(
                             modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.SETTINGS,
                             label = stringResource(R.string.mobile_tab_settings),
-                            icon = Icons.Rounded.Tune,
+                            iconRes = R.drawable.mobile_nav_settings,
                             onClick = { activeTab = MobileDashboardTab.SETTINGS }
                         )
                     }
@@ -3216,7 +3220,7 @@ private fun MobileTabButton(
     modifier: Modifier = Modifier,
     selected: Boolean,
     label: String,
-    icon: ImageVector,
+    @DrawableRes iconRes: Int,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -3231,7 +3235,7 @@ private fun MobileTabButton(
         MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
     }
     TextButton(
-        modifier = modifier,
+        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
         onClick = onClick,
         enabled = enabled,
         contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
@@ -3242,11 +3246,12 @@ private fun MobileTabButton(
                 modifier = Modifier.size(34.dp).background(chipColor, CircleShape),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
+                Image(
+                    painter = painterResource(id = iconRes),
                     contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(18.dp)
+                    modifier = Modifier
+                        .size(20.dp)
+                        .alpha(if (enabled) 1f else 0.45f)
                 )
             }
             Text(
@@ -3254,7 +3259,7 @@ private fun MobileTabButton(
                 color = iconTint,
                 style = MaterialTheme.typography.labelSmall,
                 fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                maxLines = 2,
+                maxLines = 1,
                 overflow = TextOverflow.Ellipsis
             )
         }
