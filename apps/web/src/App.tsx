@@ -54,6 +54,7 @@ const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
+const mobileCreateIconPath = "/mobile-icons/create.png";
 type WorkspaceVariant = "admin" | "client";
 
 type DashboardPayload = {
@@ -137,6 +138,12 @@ type WorkspacePage =
   | "settings"
   | "admin"
   | "logs";
+
+const mobileNavIconByPage: Partial<Record<WorkspacePage, string>> = {
+  chores: "/mobile-icons/chores.png",
+  leaderboard: "/mobile-icons/leaderboard.png",
+  settings: "/mobile-icons/settings.png"
+};
 type WorkspaceSectionLink = {
   key: string;
   label: string;
@@ -9000,14 +9007,30 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 className={`mobile-bottom-nav-button ${page.key === activePage ? "active" : ""}`}
                 type="button"
                 onClick={() => openWorkspacePage(page.key)}
+                aria-label={page.label}
+                title={page.label}
               >
-                <span>{page.label}</span>
+                {mobileNavIconByPage[page.key] ? (
+                  <img
+                    className="mobile-bottom-nav-icon"
+                    src={mobileNavIconByPage[page.key]}
+                    alt=""
+                    aria-hidden="true"
+                  />
+                ) : null}
+                <span className="mobile-bottom-nav-label">{page.label}</span>
               </button>
             ))}
             {payload?.currentUser.role !== "child" ? (
-              <button className="mobile-bottom-nav-add" type="button" onClick={handleOpenClientComposer}>
-                <span>+</span>
-                <strong>{t("instances.create")}</strong>
+              <button
+                className="mobile-bottom-nav-add"
+                type="button"
+                onClick={handleOpenClientComposer}
+                aria-label={t("nav.create")}
+                title={t("nav.create")}
+              >
+                <img className="mobile-bottom-nav-icon" src={mobileCreateIconPath} alt="" aria-hidden="true" />
+                <strong>{t("nav.create")}</strong>
               </button>
             ) : null}
           </div>

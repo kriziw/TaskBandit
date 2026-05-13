@@ -2260,10 +2260,35 @@ h4,
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink);
-  padding: 10px 12px;
+  padding: 8px 10px;
   font: inherit;
   font-family: var(--font-brand);
   font-weight: 800;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 64px;
+}
+
+.mobile-bottom-nav-icon {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.mobile-bottom-nav-label {
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.7rem;
+  line-height: 1;
+}
+
+.mobile-bottom-nav-button .mobile-bottom-nav-label {
+  opacity: 0.78;
 }
 
 .mobile-bottom-nav-button.active {
@@ -2271,18 +2296,22 @@ h4,
   border-color: rgba(255, 201, 74, 0.74);
 }
 
+.mobile-bottom-nav-button.active .mobile-bottom-nav-label {
+  opacity: 1;
+}
+
 .mobile-bottom-nav-add {
   background: linear-gradient(135deg, var(--gold), #ffd980);
   box-shadow: 0 14px 28px rgba(255, 201, 74, 0.24);
 }
 
-.mobile-bottom-nav-add span,
 .mobile-bottom-nav-add strong {
   display: block;
-}
-
-.mobile-bottom-nav-add span {
-  font-size: 1.2rem;
+  max-width: 100%;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-size: 0.7rem;
   line-height: 1;
 }
 
@@ -2525,8 +2554,6 @@ h4,
   .app-shell.variant-client .mobile-bottom-nav-button,
   .app-shell.variant-client .mobile-bottom-nav-add {
     min-width: 0;
-    display: grid;
-    place-items: center;
     text-align: center;
     line-height: 1.2;
   }
