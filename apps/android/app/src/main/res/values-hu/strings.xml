@@ -88,7 +88,7 @@
     <string name="mobile_chore_assigned_to_name">%1$s feladata</string>
     <string name="mobile_chore_assigned_elsewhere">Máshoz rendelve</string>
     <string name="mobile_take_over_task">Feladat átvétele</string>
-    <string name="mobile_claim_task">Feladat felvetele</string>
+    <string name="mobile_claim_task">Feladat felvétele</string>
     <string name="mobile_taking_over_task">Átvétel folyamatban...</string>
     <string name="mobile_work_task">Megnyitás</string>
     <string name="mobile_hide_task_tools">Feladateszközök elrejtése</string>
@@ -386,14 +386,14 @@
     <string name="mobile_cancel_series_confirm_body">Törlöd a(z) „%1$s” ismétlődő sorozatot és az összes még nyitott jövőbeli feladatát? A sorozathoz tartozó követő feladatok is törlődni fognak.</string>
     <string name="mobile_cancel_series_confirm_action">Teljes sorozat törlése</string>
     <string name="mobile_more_actions">További műveletek</string>
-    <string name="mobile_edit_due_at">Hatarido szerkesztese</string>
-    <string name="mobile_edit_due_at_title">Hatarido szerkesztese</string>
-    <string name="mobile_edit_due_at_body">"%1$s" ujra utemezese.</string>
-    <string name="mobile_chore_title_label">Cim</string>
-    <string name="mobile_save_due_at">Hatarido mentese</string>
-    <string name="mobile_updating_due_at">Hatarido frissitese...</string>
-    <string name="mobile_due_at_updated">Hatarido frissitve.</string>
-    <string name="mobile_due_at_update_failed">A hatarido frissitese nem sikerult.</string>
+    <string name="mobile_edit_due_at">Határidő szerkesztése</string>
+    <string name="mobile_edit_due_at_title">Határidő szerkesztése</string>
+    <string name="mobile_edit_due_at_body">"%1$s" újraütemezése.</string>
+    <string name="mobile_chore_title_label">Cím</string>
+    <string name="mobile_save_due_at">Határidő mentése</string>
+    <string name="mobile_updating_due_at">Határidő frissítése...</string>
+    <string name="mobile_due_at_updated">Határidő frissítve.</string>
+    <string name="mobile_due_at_update_failed">A határidő frissítése nem sikerült.</string>
 </resources>
 
 
