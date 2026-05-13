@@ -470,7 +470,6 @@ private fun TaskBanditApp(
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val loginFailedMessage = stringResource(R.string.mobile_login_failed)
-    val checklistRequiredMessage = stringResource(R.string.mobile_checklist_required)
     val photoRequiredMessage = stringResource(R.string.mobile_photo_required_missing)
     val featureApprovalsDisabledMessage = stringResource(R.string.mobile_feature_approvals_disabled)
     val featureProofUploadsDisabledMessage = stringResource(R.string.mobile_feature_proof_uploads_disabled)
@@ -1166,11 +1165,6 @@ private fun TaskBanditApp(
 
         val selectedChecklistIds = (submitSelections[choreId] ?: chore.completedChecklistIds.toSet()).toList()
         val proofUriStrings = selectedProofUris[choreId].orEmpty()
-        val missingRequiredItems = chore.checklist.filter { it.required && !selectedChecklistIds.contains(it.id) }
-        if (missingRequiredItems.isNotEmpty()) {
-            validationDialogMessage = checklistRequiredMessage
-            return
-        }
 
         if (chore.requirePhotoProof && proofUriStrings.isEmpty()) {
             validationDialogMessage = photoRequiredMessage
@@ -1294,7 +1288,7 @@ private fun TaskBanditApp(
         }
     }
 
-    fun updateChoreDueAt(choreId: String, dueAtIsoUtc: String) {
+    fun updateChoreDueAt(choreId: String, dueAtIsoUtc: String, title: String, variantId: String?) {
         if (!hasFeatureAccess { it.choresManage }) {
             noticeMessage = featureChoresManageDisabledMessage
             return
@@ -1311,7 +1305,7 @@ private fun TaskBanditApp(
             runCatching {
                 withContext(Dispatchers.IO) {
                     runMutationWithReconnectWindow(updatingDueAtMessage) {
-                        api.updateChoreDueAt(baseUrl, token, chore, dueAtIsoUtc)
+                        api.updateChoreDueAt(baseUrl, token, chore, dueAtIsoUtc, title, variantId)
                     }
                 }
             }.onSuccess { updatedChore ->
@@ -2411,7 +2405,7 @@ private fun DashboardScreen(
     onStartChore: (String) -> Unit,
     onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
-    onEditChoreDueAt: (String, String) -> Unit,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String, String) -> Unit,
     onRespondToTakeoverRequest: (String, Boolean) -> Unit,
@@ -2460,6 +2454,8 @@ private fun DashboardScreen(
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
+    val templateVariantsByTemplateId =
+        remember(templates) { templates.associate { template -> template.id to template.variants } }
     val templateGroups = remember(templates) {
         templates.map { it.groupTitle }.distinct().sorted()
     }
@@ -3048,11 +3044,11 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
-                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
+                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
                             }
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -3091,11 +3087,11 @@ private fun DashboardScreen(
                             )
                         }
                     }
-                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt)
+                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId)
                     historicChoreSection(
                         chores = historicChores,
                         title = choresHistoryLabel,
@@ -3304,132 +3300,143 @@ private fun DashboardScreen(
                                 }
                             }
                         } else {
-                            Card(shape = RoundedCornerShape(24.dp)) {
-                                Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                                    CreateTemplateAndSchedulePanel(
-                                        selectedTemplateGroupTitle = visibleTemplateGroupTitle,
-                                        templateGroupDropdownExpanded = templateGroupDropdownExpanded,
-                                        onTemplateGroupDropdownExpandedChange = { templateGroupDropdownExpanded = it },
-                                        onTemplateGroupSelected = {
-                                            selectedTemplateGroupTitle = it
-                                            selectedTemplateId = templates.firstOrNull { template -> template.groupTitle == it }?.id
-                                            createVariantId = null
-                                            templateGroupDropdownExpanded = false
-                                        },
-                                        templateGroups = templateGroups,
-                                        selectedTemplate = selectedTemplate,
-                                        templateDropdownExpanded = templateDropdownExpanded,
-                                        onTemplateDropdownExpandedChange = { templateDropdownExpanded = it },
-                                        onTemplateSelected = {
-                                            selectedTemplateId = it
-                                            templateDropdownExpanded = false
-                                        },
-                                        templates = visibleTemplates,
-                                        createDueAtMillis = createDueAtMillis,
-                                        onPickDate = { datePickerDialog.show() },
-                                        onPickTime = { timePickerDialog.show() }
-                                    )
-                                    CreateRecurrencePanel(
-                                        createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceIntervalInput = createRecurrenceIntervalInput,
-                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
-                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
-                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
-                                        recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
-                                        onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
-                                        onRecurrenceTypeSelected = {
-                                            createRecurrenceType = it
-                                            createRecurrenceWeekdays =
-                                                when (it) {
-                                                    "template" -> templateRecurrenceWeekdayDefaults(selectedTemplate?.recurrence)
-                                                    "custom_weekly" ->
-                                                        if (createRecurrenceWeekdays.isNotEmpty()) {
-                                                            createRecurrenceWeekdays
-                                                        } else {
-                                                            listOf(weekdayTokenForEpochMillis(createDueAtMillis))
-                                                        }
-                                                    else -> emptyList()
-                                                }
-                                            recurrenceTypeDropdownExpanded = false
-                                        },
-                                        onRecurrenceIntervalChange = { v ->
-                                            if (v.all(Char::isDigit)) {
-                                                createRecurrenceIntervalInput = v
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CreateTemplateAndSchedulePanel(
+                                    selectedTemplateGroupTitle = visibleTemplateGroupTitle,
+                                    templateGroupDropdownExpanded = templateGroupDropdownExpanded,
+                                    onTemplateGroupDropdownExpandedChange = { templateGroupDropdownExpanded = it },
+                                    onTemplateGroupSelected = {
+                                        selectedTemplateGroupTitle = it
+                                        selectedTemplateId = templates.firstOrNull { template -> template.groupTitle == it }?.id
+                                        createVariantId = null
+                                        templateGroupDropdownExpanded = false
+                                    },
+                                    templateGroups = templateGroups,
+                                    selectedTemplate = selectedTemplate,
+                                    templateDropdownExpanded = templateDropdownExpanded,
+                                    onTemplateDropdownExpandedChange = { templateDropdownExpanded = it },
+                                    onTemplateSelected = {
+                                        selectedTemplateId = it
+                                        templateDropdownExpanded = false
+                                    },
+                                    templates = visibleTemplates,
+                                    createDueAtMillis = createDueAtMillis,
+                                    onPickDate = { datePickerDialog.show() },
+                                    onPickTime = { timePickerDialog.show() },
+                                    compact = true
+                                )
+                                CreateRecurrencePanel(
+                                    createRecurrenceType = createRecurrenceType,
+                                    createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                    createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                    createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                    createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
+                                    recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
+                                    onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
+                                    onRecurrenceTypeSelected = {
+                                        createRecurrenceType = it
+                                        createRecurrenceWeekdays =
+                                            when (it) {
+                                                "template" -> templateRecurrenceWeekdayDefaults(selectedTemplate?.recurrence)
+                                                "custom_weekly" ->
+                                                    if (createRecurrenceWeekdays.isNotEmpty()) {
+                                                        createRecurrenceWeekdays
+                                                    } else {
+                                                        listOf(weekdayTokenForEpochMillis(createDueAtMillis))
+                                                    }
+                                                else -> emptyList()
                                             }
-                                        },
-                                        onToggleRecurrenceWeekday = { weekday ->
-                                            createRecurrenceWeekdays =
-                                                if (createRecurrenceWeekdays.contains(weekday)) {
-                                                    createRecurrenceWeekdays - weekday
-                                                } else {
-                                                    createRecurrenceWeekdays + weekday
-                                                }
+                                        recurrenceTypeDropdownExpanded = false
+                                    },
+                                    onRecurrenceIntervalChange = { v ->
+                                        if (v.all(Char::isDigit)) {
+                                            createRecurrenceIntervalInput = v
                                         }
-                                    )
-                                    CreateRecurrenceEndPanel(
-                                        selectedTemplate = selectedTemplate,
-                                        createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceEndMode = createRecurrenceEndMode,
-                                        createRecurrenceOccurrencesInput = createRecurrenceOccurrencesInput,
-                                        createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
-                                        createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
-                                        createRecurrenceEndDateError = createRecurrenceEndDateError,
-                                        onRecurrenceEndModeSelected = { createRecurrenceEndMode = it },
-                                        onRecurrenceOccurrencesChange = { value ->
-                                            if (value.all(Char::isDigit)) {
-                                                createRecurrenceOccurrencesInput = value
+                                    },
+                                    onToggleRecurrenceWeekday = { weekday ->
+                                        createRecurrenceWeekdays =
+                                            if (createRecurrenceWeekdays.contains(weekday)) {
+                                                createRecurrenceWeekdays - weekday
+                                            } else {
+                                                createRecurrenceWeekdays + weekday
                                             }
-                                        },
-                                        onPickEndDate = { recurrenceEndDatePickerDialog.show() },
-                                        onPickEndTime = { recurrenceEndTimePickerDialog.show() }
-                                    )
-                                    CreateAssignmentPanel(
-                                        createAssignmentStrategy = createAssignmentStrategy,
-                                        assignmentStrategyDropdownExpanded = assignmentStrategyDropdownExpanded,
-                                        onAssignmentDropdownExpandedChange = { assignmentStrategyDropdownExpanded = it },
-                                        onAssignmentStrategySelected = { strategy ->
-                                            createAssignmentStrategy = strategy
-                                            assignmentStrategyDropdownExpanded = false
-                                        },
-                                        createAssigneeId = createAssigneeId,
-                                        assigneeDropdownExpanded = assigneeDropdownExpanded,
-                                        onAssigneeDropdownExpandedChange = { assigneeDropdownExpanded = it },
-                                        onAssigneeSelected = {
-                                            createAssigneeId = it
-                                            assigneeDropdownExpanded = false
-                                        },
-                                        members = assignableMembers
-                                    )
-                                    CreateVariantPanel(
-                                        selectedTemplate = selectedTemplate,
-                                        createVariantId = createVariantId,
-                                        variantDropdownExpanded = variantDropdownExpanded,
-                                        onVariantDropdownExpandedChange = { variantDropdownExpanded = it },
-                                        onVariantSelected = {
-                                            createVariantId = it
-                                            variantDropdownExpanded = false
+                                    },
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateRecurrenceEndPanel(
+                                    selectedTemplate = selectedTemplate,
+                                    createRecurrenceType = createRecurrenceType,
+                                    createRecurrenceEndMode = createRecurrenceEndMode,
+                                    createRecurrenceOccurrencesInput = createRecurrenceOccurrencesInput,
+                                    createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
+                                    createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
+                                    createRecurrenceEndDateError = createRecurrenceEndDateError,
+                                    onRecurrenceEndModeSelected = { createRecurrenceEndMode = it },
+                                    onRecurrenceOccurrencesChange = { value ->
+                                        if (value.all(Char::isDigit)) {
+                                            createRecurrenceOccurrencesInput = value
                                         }
-                                    )
-                                    CreateSubmitPanel(
-                                        selectedTemplate = selectedTemplate,
-                                        createDueAtMillis = createDueAtMillis,
-                                        createAssigneeId = createAssigneeId,
-                                        createAssignmentStrategy = createAssignmentStrategy,
-                                        createRecurrenceType = createRecurrenceType,
-                                        createRecurrenceInterval = parsedCreateRecurrenceInterval,
-                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
-                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
-                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
-                                        createRecurrenceEndMode = createRecurrenceEndMode,
-                                        createRecurrenceOccurrences = parsedCreateRecurrenceOccurrences,
-                                        createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
-                                        createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
-                                        createRecurrenceEndDateError = createRecurrenceEndDateError,
-                                        createVariantId = createVariantId,
-                                        activeCreateAction = activeCreateAction,
-                                        onCreateChore = onCreateChore
-                                    )
-                                }
+                                    },
+                                    onPickEndDate = { recurrenceEndDatePickerDialog.show() },
+                                    onPickEndTime = { recurrenceEndTimePickerDialog.show() },
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateAssignmentPanel(
+                                    createAssignmentStrategy = createAssignmentStrategy,
+                                    assignmentStrategyDropdownExpanded = assignmentStrategyDropdownExpanded,
+                                    onAssignmentDropdownExpandedChange = { assignmentStrategyDropdownExpanded = it },
+                                    onAssignmentStrategySelected = { strategy ->
+                                        createAssignmentStrategy = strategy
+                                        assignmentStrategyDropdownExpanded = false
+                                    },
+                                    createAssigneeId = createAssigneeId,
+                                    assigneeDropdownExpanded = assigneeDropdownExpanded,
+                                    onAssigneeDropdownExpandedChange = { assigneeDropdownExpanded = it },
+                                    onAssigneeSelected = {
+                                        createAssigneeId = it
+                                        assigneeDropdownExpanded = false
+                                    },
+                                    members = assignableMembers,
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateVariantPanel(
+                                    selectedTemplate = selectedTemplate,
+                                    createVariantId = createVariantId,
+                                    variantDropdownExpanded = variantDropdownExpanded,
+                                    onVariantDropdownExpandedChange = { variantDropdownExpanded = it },
+                                    onVariantSelected = {
+                                        createVariantId = it
+                                        variantDropdownExpanded = false
+                                    },
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateSubmitPanel(
+                                    selectedTemplate = selectedTemplate,
+                                    createDueAtMillis = createDueAtMillis,
+                                    createAssigneeId = createAssigneeId,
+                                    createAssignmentStrategy = createAssignmentStrategy,
+                                    createRecurrenceType = createRecurrenceType,
+                                    createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                    createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                    createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                    createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
+                                    createRecurrenceEndMode = createRecurrenceEndMode,
+                                    createRecurrenceOccurrences = parsedCreateRecurrenceOccurrences,
+                                    createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
+                                    createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
+                                    createRecurrenceEndDateError = createRecurrenceEndDateError,
+                                    createVariantId = createVariantId,
+                                    activeCreateAction = activeCreateAction,
+                                    onCreateChore = onCreateChore,
+                                    compact = true
+                                )
                             }
                         }
                     }
@@ -3753,7 +3760,7 @@ private fun LeaderboardEntryRow(
 private fun LazyListScope.choreSection(
     chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String) -> Unit
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>
 ) {
     if (chores.isEmpty()) return
     val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
@@ -3765,7 +3772,7 @@ private fun LazyListScope.choreSection(
     item {
         ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
             chores.forEach { chore ->
-                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, activeDueAtAction = activeDueAtAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onEditChoreDueAt = onEditChoreDueAt, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore)
+                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, activeDueAtAction = activeDueAtAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onEditChoreDueAt = onEditChoreDueAt, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore, editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty())
             }
         }
     }
@@ -3816,7 +3823,8 @@ private fun ChoreSectionColumn(
     onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
     activeDueAtAction: String?,
-    onEditChoreDueAt: (String, String) -> Unit,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String) -> Unit,
     onSubmitChore: (String) -> Unit
@@ -3855,6 +3863,7 @@ private fun ChoreSectionColumn(
                 onCancelChoreOccurrence = onCancelChoreOccurrence,
                 onCloseChoreCycle = onCloseChoreCycle,
                 onEditChoreDueAt = onEditChoreDueAt,
+                editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
                 onTakeOverChore = onTakeOverChore,
                 onRequestTakeover = onRequestTakeover,
                 onSubmitChore = onSubmitChore
@@ -4322,7 +4331,7 @@ private fun ChoreCard(
     chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?, activeDueAtAction: String?,
     outgoingTakeoverRequest: MobileTakeoverRequest?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
-    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onEditChoreDueAt: (String, String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onEditChoreDueAt: (String, String, String, String?) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>
 ) {
     val context = LocalContext.current
     val zoneId = remember { ZoneId.systemDefault() }
@@ -4332,6 +4341,9 @@ private fun ChoreCard(
     var showCloseCycleConfirm by remember { mutableStateOf(false) }
     var showManageMenu by remember { mutableStateOf(false) }
     var showDueAtEditor by remember { mutableStateOf(false) }
+    var dueAtEditorTitle by remember(chore.id, chore.title) { mutableStateOf(chore.title) }
+    var dueAtEditorVariantId by remember(chore.id, chore.variantId) { mutableStateOf(chore.variantId ?: "") }
+    var dueAtVariantDropdownExpanded by remember { mutableStateOf(false) }
     var dueAtEditorMillis by remember(chore.id, chore.dueAt) {
         mutableLongStateOf(
             runCatching { Instant.parse(chore.dueAt).toEpochMilli() }.getOrElse { System.currentTimeMillis() }
@@ -4389,6 +4401,51 @@ private fun ChoreCard(
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                     Text(stringResource(R.string.mobile_edit_due_at_body, chore.title))
+                    OutlinedTextField(
+                        value = dueAtEditorTitle,
+                        onValueChange = { dueAtEditorTitle = it },
+                        label = { Text(stringResource(R.string.mobile_chore_title_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    if (editableVariants.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = dueAtVariantDropdownExpanded,
+                            onExpandedChange = { dueAtVariantDropdownExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = editableVariants.firstOrNull { it.id == dueAtEditorVariantId }?.label
+                                    ?: stringResource(R.string.mobile_create_select_variant_prompt),
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dueAtVariantDropdownExpanded)
+                                },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = dueAtVariantDropdownExpanded,
+                                onDismissRequest = { dueAtVariantDropdownExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.mobile_create_no_subtype)) },
+                                    onClick = {
+                                        dueAtEditorVariantId = ""
+                                        dueAtVariantDropdownExpanded = false
+                                    }
+                                )
+                                editableVariants.forEach { variant ->
+                                    DropdownMenuItem(
+                                        text = { Text(variant.label) },
+                                        onClick = {
+                                            dueAtEditorVariantId = variant.id
+                                            dueAtVariantDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
                     Text(
                         text = formatDueAtForCard(Instant.ofEpochMilli(dueAtEditorMillis).toString()),
                         style = MaterialTheme.typography.titleMedium,
@@ -4408,7 +4465,12 @@ private fun ChoreCard(
                 Button(
                     onClick = {
                         showDueAtEditor = false
-                        onEditChoreDueAt(chore.id, Instant.ofEpochMilli(dueAtEditorMillis).toString())
+                        onEditChoreDueAt(
+                            chore.id,
+                            Instant.ofEpochMilli(dueAtEditorMillis).toString(),
+                            dueAtEditorTitle.trim(),
+                            dueAtEditorVariantId.ifBlank { null }
+                        )
                     },
                     enabled = activeDueAtAction == null
                 ) {
@@ -4517,7 +4579,10 @@ private fun ChoreCard(
     val canUploadProofs = featureAccess.proofUploads
     val isPendingApproval = chore.state == "pending_approval"
     val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
-    val canManageTask = canManageChores && (chore.assigneeId == null || chore.assigneeId == currentUserId)
+    val isAssignedToCurrentUser = chore.assigneeId != null && chore.assigneeId == currentUserId
+    val isUnassigned = chore.assigneeId == null
+    val canManageTask = canManageChores && (isUnassigned || isAssignedToCurrentUser)
+    val canSubmitCurrentUser = canManageChores && isAssignedToCurrentUser && isSubmittableState
     val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
     val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
     val section = resolveChoreSection(chore, currentUserId)
@@ -4525,14 +4590,18 @@ private fun ChoreCard(
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val assignmentLabel = describeChoreAssignment(chore, currentUserId)
     val assignmentReasonLabel = describeAssignmentReason(chore.assignmentReason)
-    val requiresTakeOver = canUseDirectTakeover && section == MobileChoreSection.OTHERS && chore.assigneeId != null && chore.assigneeId != currentUserId
+    val canClaimChore =
+        canManageChores &&
+            isSubmittableState &&
+            !isAssignedToCurrentUser &&
+            (isUnassigned || canUseDirectTakeover)
     val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
     val canRequestTakeover = canManageChores &&
         canUseTakeoverRequests &&
         currentUserRole != "child" &&
         chore.assigneeId == currentUserId &&
         !hasPendingOutgoingTakeover
-    val hasSecondaryActions = canCancelOccurrence || canCloseCycle || canRequestTakeover
+    val hasSecondaryActions = canEditDueAt || canCancelOccurrence || canCloseCycle || canRequestTakeover
     val outgoingTakeoverFirstName = outgoingTakeoverRequest?.requested?.displayName?.let(::firstNameFromDisplayName)
     val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
     val accentContainerColor = when (section) {
@@ -4668,6 +4737,8 @@ private fun ChoreCard(
                                     enabled = activeDueAtAction == null,
                                     onClick = {
                                         showManageMenu = false
+                                        dueAtEditorTitle = chore.title
+                                        dueAtEditorVariantId = chore.variantId ?: ""
                                         showDueAtEditor = true
                                     }
                                 )
@@ -4772,23 +4843,35 @@ private fun ChoreCard(
             if (isSubmittableState) {
                 Button(
                     onClick = {
-                        if (requiresTakeOver) {
-                            onTakeOverChore(chore.id)
+                        if (canClaimChore) {
+                            if (isUnassigned) {
+                                onStartChore(chore.id)
+                            } else {
+                                onTakeOverChore(chore.id)
+                            }
                         } else {
                             onExpandedChange()
                         }
                     },
-                    enabled = if (requiresTakeOver) activeStartAction == null else true,
+                    enabled = if (canClaimChore) activeStartAction == null else true,
                     modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
                     Text(
                         stringResource(
-                            if (requiresTakeOver) {
-                                if (activeStartAction == "takeover:${chore.id}") {
-                                    R.string.mobile_taking_over_task
+                            if (canClaimChore) {
+                                if (isUnassigned) {
+                                    if (activeStartAction == "start:${chore.id}") {
+                                        R.string.mobile_starting
+                                    } else {
+                                        R.string.mobile_claim_task
+                                    }
                                 } else {
-                                    R.string.mobile_take_over_task
+                                    if (activeStartAction == "takeover:${chore.id}") {
+                                        R.string.mobile_taking_over_task
+                                    } else {
+                                        R.string.mobile_take_over_task
+                                    }
                                 }
                             } else if (!canManageTask) {
                                 R.string.mobile_view_task
@@ -4802,7 +4885,7 @@ private fun ChoreCard(
                 }
             }
 
-            if (expanded && !requiresTakeOver) {
+            if (expanded && !canClaimChore) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
@@ -4860,34 +4943,8 @@ private fun ChoreCard(
                                 )
                             }
                         }
-                        if (canManageTask && isSubmittableState) {
+                        if (canSubmitCurrentUser) {
                             if (chore.requirePhotoProof) {
-                                Text(
-                                    text = stringResource(R.string.mobile_photo_step_start),
-                                    style = MaterialTheme.typography.labelSmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                    ) {
-                        Button(
-                                        onClick = { onStartChore(chore.id) },
-                                        enabled = activeStartAction == null && chore.state != "in_progress",
-                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
-                                    }
-                                    OutlinedButton(
-                                        onClick = { onPickProofs(chore.id) },
-                                        enabled = canUploadProofs && activeSubmitAction == null,
-                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(stringResource(R.string.mobile_pick_photos))
-                                    }
-                                }
                                 Text(
                                     text = stringResource(R.string.mobile_photo_step_proof),
                                     style = MaterialTheme.typography.labelSmall,
@@ -4898,6 +4955,14 @@ private fun ChoreCard(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp)
                                 ) {
                                     OutlinedButton(
+                                        onClick = { onPickProofs(chore.id) },
+                                        enabled = canUploadProofs && activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_pick_photos))
+                                    }
+                                    OutlinedButton(
                                         onClick = { onTakeProofPhoto(chore.id) },
                                         enabled = canUploadProofs && activeSubmitAction == null,
                                         modifier = Modifier.weight(1f).heightIn(min = 36.dp),
@@ -4905,36 +4970,23 @@ private fun ChoreCard(
                                     ) {
                                         Text(stringResource(R.string.mobile_take_photo))
                                     }
-                                    Button(
-                                        onClick = { onSubmitChore(chore.id) },
-                                        enabled = canUploadProofs && activeSubmitAction == null,
-                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
-                                    }
+                                }
+                                Button(
+                                    onClick = { onSubmitChore(chore.id) },
+                                    enabled = canUploadProofs && activeSubmitAction == null,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
                                 }
                             } else {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                Button(
+                                    onClick = { onSubmitChore(chore.id) },
+                                    enabled = activeSubmitAction == null,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                                 ) {
-                                    Button(
-                                        onClick = { onStartChore(chore.id) },
-                                        enabled = activeStartAction == null && chore.state != "in_progress",
-                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(stringResource(if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else if (chore.state == "in_progress") R.string.mobile_started else R.string.mobile_start))
-                                    }
-                                    Button(
-                                        onClick = { onSubmitChore(chore.id) },
-                                        enabled = activeSubmitAction == null,
-                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
-                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
-                                    ) {
-                                        Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
-                                    }
+                                    Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
                                 }
                             }
                             if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
@@ -5213,18 +5265,57 @@ private fun SettingsValueLine(label: String, value: String) {
 }
 
 @Composable
-private fun CreatePanelCard(modifier: Modifier = Modifier, title: String, content: @Composable () -> Unit) {
-    Card(modifier = modifier, shape = RoundedCornerShape(24.dp)) {
+private fun CreatePanelCard(
+    modifier: Modifier = Modifier,
+    title: String,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    var expanded by rememberSaveable(title, compact) { mutableStateOf(!collapsedByDefault) }
+    val sectionSpacing = if (compact) 10.dp else 16.dp
+    val sectionPadding = if (compact) 12.dp else 18.dp
+    val shape = if (compact) RoundedCornerShape(20.dp) else RoundedCornerShape(24.dp)
+
+    Card(modifier = modifier, shape = shape) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(18.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)
+            modifier = Modifier.fillMaxWidth().padding(sectionPadding),
+            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
         ) {
-            Text(
-                text = title,
-                style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.SemiBold
-            )
-            content()
+            if (compact) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (expanded) "-" else "+",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            if (!compact || expanded) {
+                content()
+            }
         }
     }
 }
@@ -5243,9 +5334,15 @@ private fun CreateTemplateAndSchedulePanel(
     templates: List<com.taskbandit.app.mobile.MobileChoreTemplate>,
     createDueAtMillis: Long,
     onPickDate: () -> Unit,
-    onPickTime: () -> Unit
+    onPickTime: () -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
 ) {
-    CreatePanelCard(title = stringResource(R.string.mobile_create_title)) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_title),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
         Text(text = stringResource(R.string.mobile_create_group), style = MaterialTheme.typography.titleSmall)
         ExposedDropdownMenuBox(
             expanded = templateGroupDropdownExpanded,
@@ -5323,10 +5420,16 @@ private fun CreateRecurrencePanel(
     onRecurrenceDropdownExpandedChange: (Boolean) -> Unit,
     onRecurrenceTypeSelected: (String) -> Unit,
     onRecurrenceIntervalChange: (String) -> Unit,
-    onToggleRecurrenceWeekday: (String) -> Unit
+    onToggleRecurrenceWeekday: (String) -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
 ) {
     val recurrenceLabel = recurrenceTypeLabel(createRecurrenceType)
-    CreatePanelCard(title = stringResource(R.string.mobile_create_repeat)) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_repeat),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
         ExposedDropdownMenuBox(
             expanded = recurrenceTypeDropdownExpanded,
             onExpandedChange = onRecurrenceDropdownExpandedChange
@@ -5405,14 +5508,20 @@ private fun CreateRecurrenceEndPanel(
     onRecurrenceEndModeSelected: (String) -> Unit,
     onRecurrenceOccurrencesChange: (String) -> Unit,
     onPickEndDate: () -> Unit,
-    onPickEndTime: () -> Unit
+    onPickEndTime: () -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
 ) {
     val effectiveRecurrenceType = resolveEffectiveCreateRecurrenceType(selectedTemplate, createRecurrenceType)
     if (effectiveRecurrenceType == "none") {
         return
     }
 
-    CreatePanelCard(title = stringResource(R.string.mobile_create_repeat_duration)) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_repeat_duration),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
         MobileChoiceRow(options = listOf(
             MobileChoiceOption(
                 label = stringResource(R.string.mobile_create_repeat_forever),
@@ -5487,10 +5596,16 @@ private fun CreateAssignmentPanel(
     assigneeDropdownExpanded: Boolean,
     onAssigneeDropdownExpandedChange: (Boolean) -> Unit,
     onAssigneeSelected: (String?) -> Unit,
-    members: List<com.taskbandit.app.mobile.MobileHouseholdMember>
+    members: List<com.taskbandit.app.mobile.MobileHouseholdMember>,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
 ) {
     val strategyLabel = assignmentStrategyLabel(createAssignmentStrategy)
-    CreatePanelCard(title = stringResource(R.string.mobile_create_assignment)) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_assignment),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
         ExposedDropdownMenuBox(
             expanded = assignmentStrategyDropdownExpanded,
             onExpandedChange = onAssignmentDropdownExpandedChange
@@ -5554,14 +5669,20 @@ private fun CreateVariantPanel(
     createVariantId: String?,
     variantDropdownExpanded: Boolean,
     onVariantDropdownExpandedChange: (Boolean) -> Unit,
-    onVariantSelected: (String?) -> Unit
+    onVariantSelected: (String?) -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
 ) {
     selectedTemplate?.takeIf { it.variants.isNotEmpty() }?.let { template ->
         val selectedVariantLabel =
             template.variants.firstOrNull { it.id == createVariantId }?.label
                 ?: stringResource(R.string.mobile_create_select_variant_prompt)
 
-        CreatePanelCard(title = stringResource(R.string.mobile_create_variant)) {
+        CreatePanelCard(
+            title = stringResource(R.string.mobile_create_variant),
+            compact = compact,
+            collapsedByDefault = collapsedByDefault
+        ) {
             ExposedDropdownMenuBox(
                 expanded = variantDropdownExpanded,
                 onExpandedChange = onVariantDropdownExpandedChange
@@ -5611,9 +5732,15 @@ private fun CreateSubmitPanel(
     createRecurrenceEndDateError: String?,
     createVariantId: String?,
     activeCreateAction: String?,
-    onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit
+    onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
 ) {
-    CreatePanelCard(title = stringResource(R.string.mobile_create_action)) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_action),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
         selectedTemplate?.let { template ->
             val effectiveRecurrenceType = resolveEffectiveCreateRecurrenceType(template, createRecurrenceType)
             val needsRecurrenceInterval = createRecurrenceType == "every_x_days"
@@ -6189,5 +6316,6 @@ private fun createProofCaptureFile(context: android.content.Context): File {
     val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
     return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
 }
+
 
 

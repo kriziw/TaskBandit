@@ -1002,11 +1002,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [isClientComposerOpen, setIsClientComposerOpen] = useState(false);
   const [mobileDueEditorInstanceId, setMobileDueEditorInstanceId] = useState<string | null>(null);
   const [mobileDueEditorValue, setMobileDueEditorValue] = useState("");
+  const [mobileDueEditorTitle, setMobileDueEditorTitle] = useState("");
+  const [mobileDueEditorVariantId, setMobileDueEditorVariantId] = useState<string>("");
+  const [mobileCardMenuInstanceId, setMobileCardMenuInstanceId] = useState<string | null>(null);
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
   const mobileDueEditorInstance =
     payload?.instances.find((instance) => instance.id === mobileDueEditorInstanceId) ?? null;
+  const mobileDueEditorTemplateVariants = useMemo(() => {
+    if (!payload || !mobileDueEditorInstance) {
+      return [];
+    }
+
+    const editorTemplate = payload.templates.find(
+      (template) => template.id === mobileDueEditorInstance.templateId
+    );
+    return editorTemplate?.variants ?? [];
+  }, [mobileDueEditorInstance, payload]);
   const onboardingTourMode = getOnboardingTourMode(workspaceVariant, isClientMobileViewport);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -2721,6 +2734,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const canManageChores = hasFeature("chores_manage");
     const canUseExternalCompletion = hasFeature("external_completion");
     const canManageDeferredFollowUps = hasFeature("deferred_follow_up_control");
+    const canEditHouseholdChore =
+      instance.state !== "pending_approval" &&
+      instance.state !== "completed" &&
+      instance.state !== "cancelled" &&
+      canManageChores &&
+      payload?.currentUser.role !== "child";
+    const showMobileActionMenu =
+      workspaceVariant === "client" && isClientMobileViewport && !options?.historic;
+    const isMobileMenuOpen = mobileCardMenuInstanceId === instance.id;
     const choreHeading = (
       <div>
         <p className="inline-message">{instance.groupTitle}</p>
@@ -2733,7 +2755,40 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       <div className="task-row compact" key={instance.id}>
         <div className="task-row-header">
           {choreHeading}
-          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+          <div className="task-row-header-controls">
+            <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+            {showMobileActionMenu && canEditHouseholdChore ? (
+              <div className="mobile-card-menu">
+                <button
+                  className="ghost-button mobile-card-menu-toggle"
+                  type="button"
+                  aria-expanded={isMobileMenuOpen}
+                  aria-haspopup="menu"
+                  aria-label={t("panel.quick_actions")}
+                  onClick={() =>
+                    setMobileCardMenuInstanceId((current) => (current === instance.id ? null : instance.id))
+                  }
+                >
+                  ...
+                </button>
+                {isMobileMenuOpen ? (
+                  <div className="mobile-card-menu-items" role="menu">
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      role="menuitem"
+                      onClick={() => {
+                        setMobileCardMenuInstanceId(null);
+                        openMobileDueEditor(instance);
+                      }}
+                    >
+                      {t("common.edit")}
+                    </button>
+                  </div>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
         </div>
         <div className="task-row-meta-grid">
           <div className="task-row-meta-item">
@@ -2821,7 +2876,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </button>
                 </>
               ) : null}
-              {instance.state !== "pending_approval" && canManageChores ? (
+              {instance.state !== "pending_approval" &&
+              canManageChores &&
+              !(workspaceVariant === "client" && isClientMobileViewport) ? (
                 <button
                   className="ghost-button"
                   type="button"
@@ -2887,6 +2944,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function renderMyChoreCard(instance: ChoreInstance) {
     const canUploadProofs = hasFeature("proof_uploads");
+    const canSubmitAsCurrentUser = payload?.currentUser.id === instance.assigneeId;
     const selectedChecklistIds = getSelectedChecklistIds(instance);
     const selectedFiles = selectedProofFiles[instance.id] ?? [];
     const choreHeading = (
@@ -2979,16 +3037,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             rows={3}
           />
         </label>
-        <div className="button-row task-row-actions">
-          <button
-            className="primary-button"
-            type="button"
-            disabled={busyAction === `submit:${instance.id}`}
-            onClick={() => void handleSubmitChore(instance.id)}
-          >
-            {t("submission.submit")}
-          </button>
-        </div>
+        {canSubmitAsCurrentUser ? (
+          <div className="button-row task-row-actions">
+            <button
+              className="primary-button"
+              type="button"
+              disabled={busyAction === `submit:${instance.id}`}
+              onClick={() => void handleSubmitChore(instance.id)}
+            >
+              {t("submission.submit")}
+            </button>
+          </div>
+        ) : null}
         {payload?.currentUser.role !== "child" && instance.supportsOccurrenceCancellation ? (
           <div className="button-row task-row-actions task-row-actions-secondary">
             <>
@@ -3320,14 +3380,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     const selectedChecklistIds = submitSelections[instanceId] ?? targetInstance.checklistCompletionIds;
     const selectedFiles = selectedProofFiles[instanceId] ?? [];
-    const missingRequiredItems = targetInstance.checklist.filter(
-      (item) => item.required && !selectedChecklistIds.includes(item.id)
-    );
-
-    if (missingRequiredItems.length > 0) {
-      setPageError(t("submission.complete_required"));
-      return;
-    }
 
     if (targetInstance.requirePhotoProof && selectedFiles.length < 1) {
       setPageError(t("submission.photo_required_missing"));
@@ -3396,14 +3448,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     const selectedChecklistIds = submitSelections[instanceId] ?? targetInstance.checklistCompletionIds;
     const selectedFiles = selectedProofFiles[instanceId] ?? [];
-    const missingRequiredItems = targetInstance.checklist.filter(
-      (item) => item.required && !selectedChecklistIds.includes(item.id)
-    );
-
-    if (missingRequiredItems.length > 0) {
-      setPageError(t("submission.complete_required"));
-      return;
-    }
 
     if (targetInstance.requirePhotoProof && selectedFiles.length < 1) {
       setPageError(t("submission.photo_required_missing"));
@@ -4798,12 +4842,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   function openMobileDueEditor(instance: ChoreInstance) {
     setMobileDueEditorInstanceId(instance.id);
     setMobileDueEditorValue(formatDateTimeLocal(instance.dueAt));
+    setMobileDueEditorTitle(instance.title ?? "");
+    setMobileDueEditorVariantId(instance.variantId ?? "");
     setPageError(null);
   }
 
   function closeMobileDueEditor() {
     setMobileDueEditorInstanceId(null);
     setMobileDueEditorValue("");
+    setMobileDueEditorTitle("");
+    setMobileDueEditorVariantId("");
+    setMobileCardMenuInstanceId(null);
   }
 
   async function handleSaveMobileDueEditor() {
@@ -4822,9 +4871,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const updatedInstance = await taskBanditApi.updateInstance(token, language, mobileDueEditorInstance.id, {
         templateId: mobileDueEditorInstance.templateId,
         assigneeId: mobileDueEditorInstance.assigneeId ?? undefined,
-        title: mobileDueEditorInstance.title?.trim() || undefined,
+        title: mobileDueEditorTitle.trim() || undefined,
         dueAt: dueAtDate.toISOString(),
-        variantId: mobileDueEditorInstance.variantId ?? undefined,
+        variantId: mobileDueEditorVariantId || undefined,
         recurrenceEndMode: mobileDueEditorInstance.recurrenceEndMode ?? undefined,
         recurrenceOccurrences:
           mobileDueEditorInstance.recurrenceEndMode === "after_occurrences"
@@ -5128,6 +5177,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     ) ?? payload.templates.find((template) => template.id === instanceForm.templateId);
     const selectedTemplateRepeats =
       selectedTemplate && selectedTemplate.recurrence.type !== "none";
+    const isMobileCompact = Boolean(options?.mobileSheet);
 
     return (
       <article
@@ -5152,7 +5202,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
           </div>
         </div>
-        <form className="login-form member-form schedule-form" onSubmit={handleCreateInstance}>
+        <form
+          className={`login-form member-form schedule-form ${isMobileCompact ? "schedule-form-mobile-compact" : ""}`}
+          onSubmit={handleCreateInstance}
+        >
           {!hasFeature("chores_manage") ? (
             <p className="inline-message">{t("feature.chores_manage_disabled")}</p>
           ) : null}
@@ -5229,43 +5282,90 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </label>
             );
           })()}
-          <label>
-            <span>{t("instances.assignee")}</span>
-            <select
-              value={instanceForm.assigneeId ?? ""}
-              disabled={!hasFeature("reassignment")}
-              onChange={(event) =>
-                setInstanceForm((current) => ({
-                  ...current,
-                  assigneeId: event.target.value,
-                  reassignAutomatically: event.target.value ? false : current.reassignAutomatically
-                }))
-              }
-            >
-              <option value="">{t("instances.unassigned")}</option>
-              {payload.household.members.map((member) => (
-                <option key={member.id} value={member.id}>
-                  {member.displayName}
-                </option>
-              ))}
-            </select>
-          </label>
-          {editingInstanceId ? (
-            <label className="toggle-row">
-              <span>{t("instances.reassign_automatically")}</span>
-              <input
-                type="checkbox"
-                checked={Boolean(instanceForm.reassignAutomatically)}
-                disabled={Boolean(instanceForm.assigneeId)}
-                onChange={(event) =>
-                  setInstanceForm((current) => ({
-                    ...current,
-                    reassignAutomatically: event.target.checked
-                  }))
-                }
-              />
-            </label>
-          ) : null}
+          {isMobileCompact ? (
+            <details className="schedule-collapsible">
+              <summary>{t("instances.assignee")}</summary>
+              <div className="schedule-collapsible-content">
+                <label>
+                  <span>{t("instances.assignee")}</span>
+                  <select
+                    value={instanceForm.assigneeId ?? ""}
+                    disabled={!hasFeature("reassignment")}
+                    onChange={(event) =>
+                      setInstanceForm((current) => ({
+                        ...current,
+                        assigneeId: event.target.value,
+                        reassignAutomatically: event.target.value ? false : current.reassignAutomatically
+                      }))
+                    }
+                  >
+                    <option value="">{t("instances.unassigned")}</option>
+                    {payload.household.members.map((member) => (
+                      <option key={member.id} value={member.id}>
+                        {member.displayName}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                {editingInstanceId ? (
+                  <label className="toggle-row">
+                    <span>{t("instances.reassign_automatically")}</span>
+                    <input
+                      type="checkbox"
+                      checked={Boolean(instanceForm.reassignAutomatically)}
+                      disabled={Boolean(instanceForm.assigneeId)}
+                      onChange={(event) =>
+                        setInstanceForm((current) => ({
+                          ...current,
+                          reassignAutomatically: event.target.checked
+                        }))
+                      }
+                    />
+                  </label>
+                ) : null}
+              </div>
+            </details>
+          ) : (
+            <>
+              <label>
+                <span>{t("instances.assignee")}</span>
+                <select
+                  value={instanceForm.assigneeId ?? ""}
+                  disabled={!hasFeature("reassignment")}
+                  onChange={(event) =>
+                    setInstanceForm((current) => ({
+                      ...current,
+                      assigneeId: event.target.value,
+                      reassignAutomatically: event.target.value ? false : current.reassignAutomatically
+                    }))
+                  }
+                >
+                  <option value="">{t("instances.unassigned")}</option>
+                  {payload.household.members.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.displayName}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              {editingInstanceId ? (
+                <label className="toggle-row">
+                  <span>{t("instances.reassign_automatically")}</span>
+                  <input
+                    type="checkbox"
+                    checked={Boolean(instanceForm.reassignAutomatically)}
+                    disabled={Boolean(instanceForm.assigneeId)}
+                    onChange={(event) =>
+                      setInstanceForm((current) => ({
+                        ...current,
+                        reassignAutomatically: event.target.checked
+                      }))
+                    }
+                  />
+                </label>
+              ) : null}
+            </>
+          )}
           <label>
             <span>{t("instances.title_override")}</span>
             <input
@@ -5288,59 +5388,118 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             />
           </label>
           {selectedTemplateRepeats ? (
-            <div className="schedule-form-section">
-              <label>
-                <span>{t("instances.repeat_duration")}</span>
-                <select
-                  value={instanceForm.recurrenceEndMode ?? "never"}
-                  onChange={(event) =>
-                    setInstanceForm((current) => ({
-                      ...current,
-                      recurrenceEndMode: event.target.value as InstanceFormState["recurrenceEndMode"]
-                    }))
-                  }
-                >
-                  <option value="never">{t("instances.repeat_forever")}</option>
-                  <option value="after_occurrences">{t("instances.repeat_after_occurrences")}</option>
-                  <option value="on_date">{t("instances.repeat_until_date")}</option>
-                </select>
-              </label>
-              {instanceForm.recurrenceEndMode === "after_occurrences" ? (
+            isMobileCompact ? (
+              <details className="schedule-collapsible">
+                <summary>{t("instances.repeat_duration")}</summary>
+                <div className="schedule-form-section schedule-collapsible-content">
+                  <label>
+                    <span>{t("instances.repeat_duration")}</span>
+                    <select
+                      value={instanceForm.recurrenceEndMode ?? "never"}
+                      onChange={(event) =>
+                        setInstanceForm((current) => ({
+                          ...current,
+                          recurrenceEndMode: event.target.value as InstanceFormState["recurrenceEndMode"]
+                        }))
+                      }
+                    >
+                      <option value="never">{t("instances.repeat_forever")}</option>
+                      <option value="after_occurrences">{t("instances.repeat_after_occurrences")}</option>
+                      <option value="on_date">{t("instances.repeat_until_date")}</option>
+                    </select>
+                  </label>
+                  {instanceForm.recurrenceEndMode === "after_occurrences" ? (
+                    <label>
+                      <span>{t("instances.repeat_occurrence_count")}</span>
+                      <input
+                        type="number"
+                        min={1}
+                        value={instanceForm.recurrenceOccurrences ?? ""}
+                        onChange={(event) =>
+                          setInstanceForm((current) => ({
+                            ...current,
+                            recurrenceOccurrences: event.target.value
+                              ? Math.max(1, Math.floor(Number(event.target.value)))
+                              : undefined
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+                  ) : null}
+                  {instanceForm.recurrenceEndMode === "on_date" ? (
+                    <label>
+                      <span>{t("instances.repeat_end_date")}</span>
+                      <input
+                        type="datetime-local"
+                        value={instanceForm.recurrenceEndsAt ?? ""}
+                        onChange={(event) =>
+                          setInstanceForm((current) => ({
+                            ...current,
+                            recurrenceEndsAt: event.target.value
+                          }))
+                        }
+                        required
+                      />
+                    </label>
+                  ) : null}
+                </div>
+              </details>
+            ) : (
+              <div className="schedule-form-section">
                 <label>
-                  <span>{t("instances.repeat_occurrence_count")}</span>
-                  <input
-                    type="number"
-                    min={1}
-                    value={instanceForm.recurrenceOccurrences ?? ""}
+                  <span>{t("instances.repeat_duration")}</span>
+                  <select
+                    value={instanceForm.recurrenceEndMode ?? "never"}
                     onChange={(event) =>
                       setInstanceForm((current) => ({
                         ...current,
-                        recurrenceOccurrences: event.target.value
-                          ? Math.max(1, Math.floor(Number(event.target.value)))
-                          : undefined
+                        recurrenceEndMode: event.target.value as InstanceFormState["recurrenceEndMode"]
                       }))
                     }
-                    required
-                  />
+                  >
+                    <option value="never">{t("instances.repeat_forever")}</option>
+                    <option value="after_occurrences">{t("instances.repeat_after_occurrences")}</option>
+                    <option value="on_date">{t("instances.repeat_until_date")}</option>
+                  </select>
                 </label>
-              ) : null}
-              {instanceForm.recurrenceEndMode === "on_date" ? (
-                <label>
-                  <span>{t("instances.repeat_end_date")}</span>
-                  <input
-                    type="datetime-local"
-                    value={instanceForm.recurrenceEndsAt ?? ""}
-                    onChange={(event) =>
-                      setInstanceForm((current) => ({
-                        ...current,
-                        recurrenceEndsAt: event.target.value
-                      }))
-                    }
-                    required
-                  />
-                </label>
-              ) : null}
-            </div>
+                {instanceForm.recurrenceEndMode === "after_occurrences" ? (
+                  <label>
+                    <span>{t("instances.repeat_occurrence_count")}</span>
+                    <input
+                      type="number"
+                      min={1}
+                      value={instanceForm.recurrenceOccurrences ?? ""}
+                      onChange={(event) =>
+                        setInstanceForm((current) => ({
+                          ...current,
+                          recurrenceOccurrences: event.target.value
+                            ? Math.max(1, Math.floor(Number(event.target.value)))
+                            : undefined
+                        }))
+                      }
+                      required
+                    />
+                  </label>
+                ) : null}
+                {instanceForm.recurrenceEndMode === "on_date" ? (
+                  <label>
+                    <span>{t("instances.repeat_end_date")}</span>
+                    <input
+                      type="datetime-local"
+                      value={instanceForm.recurrenceEndsAt ?? ""}
+                      onChange={(event) =>
+                        setInstanceForm((current) => ({
+                          ...current,
+                          recurrenceEndsAt: event.target.value
+                        }))
+                      }
+                      required
+                    />
+                  </label>
+                ) : null}
+              </div>
+            )
           ) : null}
           <div className="button-row schedule-form-actions">
             <button
@@ -9076,6 +9235,30 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 }}
               >
                 <label>
+                  <span>{t("instances.title_override")}</span>
+                  <input
+                    type="text"
+                    value={mobileDueEditorTitle}
+                    onChange={(event) => setMobileDueEditorTitle(event.target.value)}
+                  />
+                </label>
+                {mobileDueEditorTemplateVariants.length > 0 ? (
+                  <label>
+                    <span>{t("instances.subtype")}</span>
+                    <select
+                      value={mobileDueEditorVariantId}
+                      onChange={(event) => setMobileDueEditorVariantId(event.target.value)}
+                    >
+                      <option value="">{t("instances.select_subtype")}</option>
+                      {mobileDueEditorTemplateVariants.map((variant) => (
+                        <option key={variant.id} value={variant.id}>
+                          {variant.label}
+                        </option>
+                      ))}
+                    </select>
+                  </label>
+                ) : null}
+                <label>
                   <span>{t("instances.due_at")}</span>
                   <input
                     type="datetime-local"
@@ -9331,3 +9514,4 @@ function readErrorMessage(error: unknown, fallbackMessage: string) {
 
   return fallbackMessage;
 }
+
