@@ -652,7 +652,9 @@ class TaskBanditMobileApi {
         baseUrl: String,
         token: String,
         chore: MobileChore,
-        dueAtIsoUtc: String
+        dueAtIsoUtc: String,
+        title: String,
+        variantId: String?
     ): MobileChore {
         val payload = JSONObject()
             .put("dueAt", dueAtIsoUtc)
@@ -665,12 +667,12 @@ class TaskBanditMobileApi {
             payload.put("assigneeId", chore.assigneeId)
         }
 
-        if (!chore.title.isBlank()) {
-            payload.put("title", chore.title)
+        if (title.isNotBlank()) {
+            payload.put("title", title)
         }
 
-        if (!chore.variantId.isNullOrBlank()) {
-            payload.put("variantId", chore.variantId)
+        if (!variantId.isNullOrBlank()) {
+            payload.put("variantId", variantId)
         }
 
         return parseChore(

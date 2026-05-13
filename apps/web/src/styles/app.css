@@ -1667,6 +1667,39 @@ h4,
   margin-bottom: 6px;
 }
 
+.task-row-header-controls {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  position: relative;
+}
+
+.mobile-card-menu {
+  position: relative;
+}
+
+.mobile-card-menu-toggle {
+  min-width: 34px;
+  width: 34px;
+  height: 34px;
+  padding: 0;
+  border-radius: 999px;
+}
+
+.mobile-card-menu-items {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 4px);
+  z-index: 5;
+  display: grid;
+  min-width: 126px;
+  padding: 6px;
+  border-radius: 14px;
+  border: 1px solid rgba(36, 48, 67, 0.14);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 12px 24px rgba(36, 48, 67, 0.16);
+}
+
 .button-row {
   gap: 8px;
   margin-top: 8px;
@@ -2212,10 +2245,47 @@ h4,
   gap: 12px;
 }
 
+.schedule-form-mobile-compact {
+  gap: 8px;
+}
+
 .schedule-form > label,
 .schedule-form-section > label {
   display: grid;
   gap: 4px;
+}
+
+.schedule-collapsible {
+  border: 1px solid rgba(36, 48, 67, 0.08);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.56);
+  padding: 8px 10px;
+}
+
+.schedule-collapsible > summary {
+  cursor: pointer;
+  font-weight: 700;
+  list-style: none;
+}
+
+.schedule-collapsible > summary::-webkit-details-marker {
+  display: none;
+}
+
+.schedule-collapsible-content {
+  margin-top: 8px;
+  display: grid;
+  gap: 8px;
+}
+
+.schedule-form-mobile-compact .schedule-form-section {
+  gap: 8px;
+  padding: 10px;
+  border-radius: 16px;
+}
+
+.schedule-form-mobile-compact .schedule-form-actions {
+  margin-top: 4px;
 }
 
 .schedule-form-section {

@@ -88,6 +88,7 @@
     <string name="mobile_chore_assigned_to_name">Zugewiesen an %1$s</string>
     <string name="mobile_chore_assigned_elsewhere">Anderswo zugewiesen</string>
     <string name="mobile_take_over_task">Aufgabe Ã¼bernehmen</string>
+    <string name="mobile_claim_task">Aufgabe beanspruchen</string>
     <string name="mobile_taking_over_task">Ãœbernahme lÃ¤uft...</string>
     <string name="mobile_work_task">Ã–ffnen</string>
     <string name="mobile_hide_task_tools">Aufgabenwerkzeuge ausblenden</string>
@@ -374,6 +375,7 @@
     <string name="mobile_edit_due_at">Faelligkeit bearbeiten</string>
     <string name="mobile_edit_due_at_title">Faelligkeit bearbeiten</string>
     <string name="mobile_edit_due_at_body">"%1$s" neu terminieren.</string>
+    <string name="mobile_chore_title_label">Titel</string>
     <string name="mobile_save_due_at">Faelligkeit speichern</string>
     <string name="mobile_updating_due_at">Faelligkeit wird aktualisiert...</string>
     <string name="mobile_due_at_updated">Faelligkeit aktualisiert.</string>

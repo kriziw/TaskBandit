@@ -468,18 +468,6 @@ export class ChoresService {
     }
 
     const completedChecklistItemIds = dto.completedChecklistItemIds ?? [];
-    const requiredChecklistItemIds = instance.checklist
-      .filter((item) => item.required)
-      .map((item) => item.id);
-    const hasAllRequiredChecklistItems = requiredChecklistItemIds.every((requiredId) =>
-      completedChecklistItemIds.includes(requiredId)
-    );
-
-    if (!hasAllRequiredChecklistItems) {
-      throw new BadRequestException({
-        message: this.i18nService.translate("chores.required_checklist_missing", language)
-      });
-    }
 
     if (instance.requirePhotoProof && (dto.attachments?.length ?? 0) < 1) {
       throw new BadRequestException({
@@ -535,15 +523,6 @@ export class ChoresService {
     }
 
     const completedChecklistItemIds = dto.completedChecklistItemIds ?? [];
-    const requiredChecklistItemIds = instance.checklist.filter((item) => item.required).map((item) => item.id);
-    const hasAllRequiredChecklistItems = requiredChecklistItemIds.every((requiredId) =>
-      completedChecklistItemIds.includes(requiredId)
-    );
-    if (!hasAllRequiredChecklistItems) {
-      throw new BadRequestException({
-        message: this.i18nService.translate("chores.required_checklist_missing", language)
-      });
-    }
 
     if (instance.requirePhotoProof && (dto.attachments?.length ?? 0) < 1) {
       throw new BadRequestException({
