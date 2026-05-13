@@ -51,6 +51,16 @@
     <string name="mobile_password">Password</string>
     <string name="mobile_login_action">Sign in</string>
     <string name="mobile_login_sso_action">Sign in with SSO</string>
+    <string name="mobile_signup_local_hint">Create an account directly in the app when this server allows local self-signup.</string>
+    <string name="mobile_signup_hybrid_hint">Start sign-up in the app, then continue in the hosted flow for package selection and billing.</string>
+    <string name="mobile_signup_display_name">Name</string>
+    <string name="mobile_signup_email">Email</string>
+    <string name="mobile_signup_password">Password</string>
+    <string name="mobile_signup_local_action">Create account</string>
+    <string name="mobile_signup_hosted_action">Continue to registration</string>
+    <string name="mobile_signup_success">Account created. You are now signed in.</string>
+    <string name="mobile_signup_hosted_continue_notice">Continue registration in your browser to finish package and billing setup.</string>
+    <string name="mobile_signup_hosted_unavailable">Hosted registration is not available for this server right now.</string>
     <string name="mobile_self_hosted_setup_action">Use advanced self-hosted setup</string>
     <string name="mobile_self_hosted_back_to_saas">Back to TaskBandit Cloud</string>
     <string name="mobile_unexpected_server_response">The server returned an unexpected response. Please check the server URL and reverse proxy setup.</string>

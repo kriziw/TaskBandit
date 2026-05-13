@@ -144,6 +144,7 @@ import com.taskbandit.app.mobile.TaskBanditDashboardSyncClient
 import com.taskbandit.app.mobile.TaskBanditMobileApi
 import com.taskbandit.app.mobile.TaskBanditOnboardingDeepLinks
 import com.taskbandit.app.mobile.TaskBanditAppPreferencesStore
+import com.taskbandit.app.mobile.TaskBanditDashboardCacheStore
 import com.taskbandit.app.mobile.TaskBanditOutboxStore
 import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
 import com.taskbandit.app.mobile.TaskBanditSession
@@ -152,6 +153,8 @@ import com.taskbandit.app.mobile.TaskBanditTransportException
 import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
 import com.taskbandit.app.mobile.TaskBanditWidgetStore
 import com.taskbandit.app.mobile.MobileReleaseInfo
+import com.taskbandit.app.mobile.MobileSignupRequest
+import com.taskbandit.app.mobile.MobilePublicEnrollmentSiteConfig
 import com.taskbandit.app.push.TaskBanditFirebasePushManager
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import com.taskbandit.app.widget.TaskBanditWidgetProvider
@@ -398,6 +401,7 @@ class MainActivity : AppCompatActivity() {
         val sessionStore = TaskBanditSessionStore(sharedPreferences)
         val appPreferencesStore = TaskBanditAppPreferencesStore(sharedPreferences)
         val widgetStore = TaskBanditWidgetStore(sharedPreferences)
+        val dashboardCacheStore = TaskBanditDashboardCacheStore(sharedPreferences)
         val initialLanguageTag = appPreferencesStore.readLanguageTag()
         val initialLocaleList = if (initialLanguageTag == "system") {
             LocaleListCompat.getEmptyLocaleList()
@@ -415,6 +419,7 @@ class MainActivity : AppCompatActivity() {
                 sessionStore = sessionStore,
                 appPreferencesStore = appPreferencesStore,
                 widgetStore = widgetStore,
+                dashboardCacheStore = dashboardCacheStore,
                 pendingOidcResult = pendingOidcResult,
                 pendingOnboardingDeepLink = pendingOnboardingDeepLink
             )
@@ -452,6 +457,7 @@ private fun TaskBanditApp(
     sessionStore: TaskBanditSessionStore,
     appPreferencesStore: TaskBanditAppPreferencesStore,
     widgetStore: TaskBanditWidgetStore,
+    dashboardCacheStore: TaskBanditDashboardCacheStore,
     pendingOidcResult: MutableState<AndroidOidcResult?>,
     pendingOnboardingDeepLink: MutableState<MobileOnboardingDeepLink?>
 ) {
@@ -507,13 +513,20 @@ private fun TaskBanditApp(
     var serverUrl by remember { mutableStateOf(session.baseUrl) }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+    var registrationDisplayName by remember { mutableStateOf("") }
+    var registrationEmail by remember { mutableStateOf("") }
+    var registrationPassword by remember { mutableStateOf("") }
     var onboardingDeepLink by remember { mutableStateOf<MobileOnboardingDeepLink?>(null) }
     var onboardingInvite by remember { mutableStateOf<MobileResolvedInvite?>(null) }
     var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
     var authProvidersCheckedBaseUrl by remember { mutableStateOf<String?>(null) }
     var isAuthProvidersLoading by remember { mutableStateOf(false) }
     var authProvidersErrorMessage by remember { mutableStateOf<String?>(null) }
-    var dashboard by remember { mutableStateOf<MobileDashboard?>(null) }
+    var hostedEnrollmentConfig by remember { mutableStateOf<MobilePublicEnrollmentSiteConfig?>(null) }
+    val initialCachedDashboard = remember {
+        if (session.token == null) null else dashboardCacheStore.read(session.baseUrl)?.dashboard
+    }
+    var dashboard by remember { mutableStateOf<MobileDashboard?>(initialCachedDashboard) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
     var serverReleaseInfo by remember { mutableStateOf<MobileReleaseInfo?>(null) }
@@ -697,6 +710,7 @@ private fun TaskBanditApp(
         authProvidersCheckedBaseUrl = null
         authProvidersErrorMessage = null
         isAuthProvidersLoading = false
+        hostedEnrollmentConfig = null
     }
 
     fun hasFreshAuthProviderState(baseUrl: String) = authProvidersCheckedBaseUrl == baseUrl
@@ -712,13 +726,18 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             runCatching {
                 withContext(Dispatchers.IO) {
-                    api.getAuthProviders(targetBaseUrl)
+                    Pair(
+                        api.getAuthProviders(targetBaseUrl),
+                        runCatching { api.getPublicEnrollmentSiteConfig(targetBaseUrl) }.getOrNull()
+                    )
                 }
-            }.onSuccess { providers ->
+            }.onSuccess { (providers, enrollmentConfig) ->
                 authProviders = providers
+                hostedEnrollmentConfig = enrollmentConfig
                 authProvidersCheckedBaseUrl = targetBaseUrl
             }.onFailure { throwable ->
                 authProviders = null
+                hostedEnrollmentConfig = null
                 authProvidersCheckedBaseUrl = targetBaseUrl
                 authProvidersErrorMessage = resolveLoginScreenErrorMessage(throwable)
             }
@@ -729,6 +748,7 @@ private fun TaskBanditApp(
     fun logout() {
         val baseUrl = normalizedServerUrl()
         sessionStore.clearToken(baseUrl)
+        dashboardCacheStore.clear()
         widgetStore.clear()
         TaskBanditWidgetProvider.refreshAllWidgets(context)
         session = TaskBanditSession(baseUrl = baseUrl, token = null)
@@ -746,6 +766,9 @@ private fun TaskBanditApp(
         pendingReconnectActionLabel = null
         validationDialogMessage = null
         completionCelebration = null
+        registrationDisplayName = ""
+        registrationEmail = ""
+        registrationPassword = ""
         clearAuthProviderState()
     }
 
@@ -838,6 +861,7 @@ private fun TaskBanditApp(
                 serverUrl = resolvedBaseUrl
                 sessionStore.saveSession(resolvedBaseUrl, token)
                 session = TaskBanditSession(baseUrl = resolvedBaseUrl, token = token)
+                dashboardCacheStore.save(resolvedBaseUrl, loadedPayload.dashboard)
                 queuedSubmissionCount = 0
                 widgetStore.saveDashboard(loadedPayload.dashboard, 0)
                 TaskBanditWidgetProvider.refreshAllWidgets(context)
@@ -1331,6 +1355,9 @@ private fun TaskBanditApp(
 
     LaunchedEffect(session.token) {
         if (session.token != null) {
+            dashboardCacheStore.read(session.baseUrl)?.dashboard?.let { cachedDashboard ->
+                dashboard = cachedDashboard
+            }
             if (
                 TaskBanditFirebasePushManager.isConfigured() &&
                 Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
@@ -1432,6 +1459,8 @@ private fun TaskBanditApp(
         when {
             !oidcResult.accessToken.isNullOrBlank() -> {
                 val baseUrl = normalizedServerUrl()
+                dashboardCacheStore.clear()
+                dashboard = null
                 serverUrl = baseUrl
                 sessionStore.saveSession(baseUrl, oidcResult.accessToken)
                 session = TaskBanditSession(baseUrl = baseUrl, token = oidcResult.accessToken)
@@ -1489,11 +1518,15 @@ private fun TaskBanditApp(
                 LoginScreen(
                     serverUrl = serverUrl,
                     authProviders = authProviders,
+                    hostedEnrollmentConfig = hostedEnrollmentConfig,
                     authProvidersCheckedBaseUrl = authProvidersCheckedBaseUrl,
                     isAuthProvidersLoading = isAuthProvidersLoading,
                     authProvidersErrorMessage = authProvidersErrorMessage,
                     email = email,
                     password = password,
+                    registrationDisplayName = registrationDisplayName,
+                    registrationEmail = registrationEmail,
+                    registrationPassword = registrationPassword,
                     isBusy = isBusy,
                     errorMessage = errorMessage,
                     onboardingHint = onboardingInvite?.let {
@@ -1510,6 +1543,9 @@ private fun TaskBanditApp(
                     },
                     onEmailChange = { email = it },
                     onPasswordChange = { password = it },
+                    onRegistrationDisplayNameChange = { registrationDisplayName = it },
+                    onRegistrationEmailChange = { registrationEmail = it },
+                    onRegistrationPasswordChange = { registrationPassword = it },
                     onCheckSignInMethods = {
                         refreshAuthProviders()
                     },
@@ -1569,10 +1605,107 @@ private fun TaskBanditApp(
                                 if (activatedInvite != null) {
                                     onboardingInvite = activatedInvite
                                 }
+                                dashboardCacheStore.clear()
+                                dashboard = null
                                 serverUrl = effectiveBaseUrl
                                 sessionStore.saveSession(effectiveBaseUrl, loginResult.accessToken)
                                 session = TaskBanditSession(baseUrl = effectiveBaseUrl, token = loginResult.accessToken)
                                 noticeMessage = null
+                            }.onFailure { throwable ->
+                                errorMessage = resolveLoginScreenErrorMessage(throwable)
+                            }
+                            isBusy = false
+                        }
+                    },
+                    onLocalSignup = {
+                        val baseUrl = normalizedServerUrl()
+                        val signupRequest = MobileSignupRequest(
+                            displayName = registrationDisplayName,
+                            email = registrationEmail,
+                            password = registrationPassword
+                        )
+                        isBusy = true
+                        errorMessage = null
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    api.signup(baseUrl, signupRequest)
+                                }
+                            }.onSuccess { signupResult ->
+                                val canonicalApiBaseUrl = signupResult.tenantContext?.canonicalApiBaseUrl
+                                    ?.trim()
+                                    ?.ifBlank { null }
+                                val effectiveBaseUrl = canonicalApiBaseUrl ?: baseUrl
+                                dashboardCacheStore.clear()
+                                dashboard = null
+                                serverUrl = effectiveBaseUrl
+                                sessionStore.saveSession(effectiveBaseUrl, signupResult.accessToken)
+                                session = TaskBanditSession(
+                                    baseUrl = effectiveBaseUrl,
+                                    token = signupResult.accessToken
+                                )
+                                registrationDisplayName = ""
+                                registrationEmail = ""
+                                registrationPassword = ""
+                                noticeMessage = context.getString(R.string.mobile_signup_success)
+                            }.onFailure { throwable ->
+                                errorMessage = resolveLoginScreenErrorMessage(throwable)
+                            }
+                            isBusy = false
+                        }
+                    },
+                    onHostedSignup = {
+                        val baseUrl = normalizedServerUrl()
+                        val signupRequest = MobileSignupRequest(
+                            displayName = registrationDisplayName,
+                            email = registrationEmail,
+                            password = registrationPassword
+                        )
+                        isBusy = true
+                        errorMessage = null
+                        coroutineScope.launch {
+                            runCatching {
+                                withContext(Dispatchers.IO) {
+                                    val config = hostedEnrollmentConfig ?: api.getPublicEnrollmentSiteConfig(baseUrl)
+                                    val enrollmentStartResult =
+                                        if (config?.publicEnrollmentEnabled == true) {
+                                            runCatching {
+                                                api.startHostedEnrollment(
+                                                    baseUrl = baseUrl,
+                                                    request = signupRequest,
+                                                    languageTag = if (languageTag == "system") Locale.getDefault().toLanguageTag() else languageTag,
+                                                    siteConfig = config
+                                                )
+                                            }.getOrNull()
+                                        } else {
+                                            null
+                                        }
+                                    Triple(
+                                        config,
+                                        enrollmentStartResult,
+                                        api.buildHostedSignupFallbackUrl(
+                                            baseUrl = baseUrl,
+                                            email = signupRequest.email,
+                                            displayName = signupRequest.displayName,
+                                            siteConfig = config
+                                        )
+                                    )
+                                }
+                            }.onSuccess { (config, enrollmentStartResult, fallbackUrl) ->
+                                hostedEnrollmentConfig = config
+                                val handoffUrl = enrollmentStartResult?.handoffUrl ?: fallbackUrl
+                                if (handoffUrl.isNullOrBlank()) {
+                                    errorMessage = context.getString(R.string.mobile_signup_hosted_unavailable)
+                                } else {
+                                    runCatching {
+                                        val hostedSignupIntent = Intent(Intent.ACTION_VIEW, Uri.parse(handoffUrl))
+                                        context.startActivity(hostedSignupIntent)
+                                    }.onSuccess {
+                                        noticeMessage = context.getString(R.string.mobile_signup_hosted_continue_notice)
+                                    }.onFailure { throwable ->
+                                        errorMessage = resolveLoginScreenErrorMessage(throwable)
+                                    }
+                                }
                             }.onFailure { throwable ->
                                 errorMessage = resolveLoginScreenErrorMessage(throwable)
                             }
@@ -1708,20 +1841,29 @@ private fun readAppVersion(context: android.content.Context): String? {
 private fun LoginScreen(
     serverUrl: String,
     authProviders: MobileAuthProviders?,
+    hostedEnrollmentConfig: MobilePublicEnrollmentSiteConfig?,
     authProvidersCheckedBaseUrl: String?,
     isAuthProvidersLoading: Boolean,
     authProvidersErrorMessage: String?,
     email: String,
     password: String,
+    registrationDisplayName: String,
+    registrationEmail: String,
+    registrationPassword: String,
     isBusy: Boolean,
     errorMessage: String?,
     onboardingHint: String?,
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onRegistrationDisplayNameChange: (String) -> Unit,
+    onRegistrationEmailChange: (String) -> Unit,
+    onRegistrationPasswordChange: (String) -> Unit,
     onCheckSignInMethods: () -> Unit,
     onOidcLogin: () -> Unit,
-    onLogin: () -> Unit
+    onLogin: () -> Unit,
+    onLocalSignup: () -> Unit,
+    onHostedSignup: () -> Unit
 ) {
     val emailFocusRequester = remember { FocusRequester() }
     val passwordFocusRequester = remember { FocusRequester() }
@@ -1736,6 +1878,10 @@ private fun LoginScreen(
         else -> authProvidersErrorMessage != null || authProviders == null
     }
     val showOidcLogin = authProviders?.oidc?.enabled == true
+    val showLocalSignupAction = authProviders?.local?.enabled == true && authProviders.local.selfSignupEnabled
+    val showHostedSignupAction = !showSelfHostedSetup && !showLocalSignupAction && (
+        hostedEnrollmentConfig?.publicEnrollmentEnabled == true || normalizedServerUrl == defaultApiBaseUrl
+    )
 
     BoxWithConstraints(
         modifier = Modifier
@@ -1804,9 +1950,19 @@ private fun LoginScreen(
                             onServerUrlChange = onServerUrlChange,
                             onEmailChange = onEmailChange,
                             onPasswordChange = onPasswordChange,
+                            registrationDisplayName = registrationDisplayName,
+                            registrationEmail = registrationEmail,
+                            registrationPassword = registrationPassword,
+                            onRegistrationDisplayNameChange = onRegistrationDisplayNameChange,
+                            onRegistrationEmailChange = onRegistrationEmailChange,
+                            onRegistrationPasswordChange = onRegistrationPasswordChange,
                             onCheckSignInMethods = onCheckSignInMethods,
                             onOidcLogin = onOidcLogin,
                             onLogin = onLogin,
+                            onLocalSignup = onLocalSignup,
+                            onHostedSignup = onHostedSignup,
+                            showLocalSignupAction = showLocalSignupAction,
+                            showHostedSignupAction = showHostedSignupAction,
                             showSelfHostedSetup = showSelfHostedSetup,
                             onToggleSelfHostedSetup = { showSelfHostedSetup = it }
                         )
@@ -1849,9 +2005,19 @@ private fun LoginScreen(
                         onServerUrlChange = onServerUrlChange,
                         onEmailChange = onEmailChange,
                         onPasswordChange = onPasswordChange,
+                        registrationDisplayName = registrationDisplayName,
+                        registrationEmail = registrationEmail,
+                        registrationPassword = registrationPassword,
+                        onRegistrationDisplayNameChange = onRegistrationDisplayNameChange,
+                        onRegistrationEmailChange = onRegistrationEmailChange,
+                        onRegistrationPasswordChange = onRegistrationPasswordChange,
                         onCheckSignInMethods = onCheckSignInMethods,
                         onOidcLogin = onOidcLogin,
                         onLogin = onLogin,
+                        onLocalSignup = onLocalSignup,
+                        onHostedSignup = onHostedSignup,
+                        showLocalSignupAction = showLocalSignupAction,
+                        showHostedSignupAction = showHostedSignupAction,
                         showSelfHostedSetup = showSelfHostedSetup,
                         onToggleSelfHostedSetup = { showSelfHostedSetup = it }
                     )
@@ -1866,6 +2032,9 @@ private fun LoginMethodsForm(
     serverUrl: String,
     email: String,
     password: String,
+    registrationDisplayName: String,
+    registrationEmail: String,
+    registrationPassword: String,
     isBusy: Boolean,
     errorMessage: String?,
     onboardingHint: String?,
@@ -1881,9 +2050,16 @@ private fun LoginMethodsForm(
     onServerUrlChange: (String) -> Unit,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
+    onRegistrationDisplayNameChange: (String) -> Unit,
+    onRegistrationEmailChange: (String) -> Unit,
+    onRegistrationPasswordChange: (String) -> Unit,
     onCheckSignInMethods: () -> Unit,
     onOidcLogin: () -> Unit,
     onLogin: () -> Unit,
+    onLocalSignup: () -> Unit,
+    onHostedSignup: () -> Unit,
+    showLocalSignupAction: Boolean,
+    showHostedSignupAction: Boolean,
     showSelfHostedSetup: Boolean,
     onToggleSelfHostedSetup: (Boolean) -> Unit
 ) {
@@ -1891,6 +2067,10 @@ private fun LoginMethodsForm(
     val oidcAuthEnabled = authProviders?.oidc?.enabled == true
     val hostedCredentialFallback = !showSelfHostedSetup && !localAuthEnabled && !oidcAuthEnabled
     val showLocalLoginControls = showLocalLogin || hostedCredentialFallback
+    val registrationFieldsValid =
+        registrationDisplayName.trim().isNotBlank() &&
+            registrationEmail.trim().isNotBlank() &&
+            registrationPassword.length >= 8
     val noSupportedMethodsMessage =
         if (hostedCredentialFallback) {
             stringResource(R.string.mobile_auth_methods_cloud_login_ready)
@@ -2003,6 +2183,65 @@ private fun LoginMethodsForm(
                 CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
             } else {
                 Text(stringResource(R.string.mobile_login_action))
+            }
+        }
+    }
+    if (showLocalSignupAction || showHostedSignupAction) {
+        Text(
+            text = stringResource(
+                if (showHostedSignupAction) {
+                    R.string.mobile_signup_hybrid_hint
+                } else {
+                    R.string.mobile_signup_local_hint
+                }
+            ),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        OutlinedTextField(
+            value = registrationDisplayName,
+            onValueChange = onRegistrationDisplayNameChange,
+            label = { Text(stringResource(R.string.mobile_signup_display_name)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = registrationEmail,
+            onValueChange = onRegistrationEmailChange,
+            label = { Text(stringResource(R.string.mobile_signup_email)) },
+            singleLine = true,
+            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Email, imeAction = ImeAction.Next),
+            modifier = Modifier.fillMaxWidth()
+        )
+        OutlinedTextField(
+            value = registrationPassword,
+            onValueChange = onRegistrationPasswordChange,
+            label = { Text(stringResource(R.string.mobile_signup_password)) },
+            singleLine = true,
+            visualTransformation = PasswordVisualTransformation(),
+            keyboardOptions = KeyboardOptions(
+                autoCorrectEnabled = false,
+                keyboardType = KeyboardType.Password,
+                imeAction = ImeAction.Done
+            ),
+            modifier = Modifier.fillMaxWidth()
+        )
+        if (showHostedSignupAction) {
+            OutlinedButton(
+                onClick = onHostedSignup,
+                enabled = !isBusy && registrationFieldsValid,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.mobile_signup_hosted_action))
+            }
+        } else if (showLocalSignupAction) {
+            Button(
+                onClick = onLocalSignup,
+                enabled = !isBusy && registrationFieldsValid,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.mobile_signup_local_action))
             }
         }
     }

@@ -30,6 +30,10 @@ private data class TaskBanditErrorDetails(
 class TaskBanditMobileApi {
     private val httpClient = OkHttpClient()
     private val jsonMediaType = "application/json; charset=utf-8".toMediaType()
+    private val hostedEnrollmentStartPaths = listOf(
+        "/api/public/enrollment/start",
+        "/api/public/signup/start"
+    )
 
     fun login(baseUrl: String, email: String, password: String): MobileLoginResult {
         val payload = JSONObject()
@@ -43,19 +47,23 @@ class TaskBanditMobileApi {
             body = payload
         )
 
-        val tenantContextJson = responseJson.optJSONObject("tenantContext")
-        return MobileLoginResult(
-            accessToken = responseJson.getString("accessToken"),
-            tenantContext = tenantContextJson?.let {
-                MobileAuthTenantContext(
-                    tenantId = it.optString("tenantId"),
-                    tenantSlug = it.optNullableString("tenantSlug"),
-                    hostedMode = it.optBoolean("hostedMode"),
-                    canonicalApiBaseUrl = it.optNullableString("canonicalApiBaseUrl"),
-                    canonicalWebBaseUrl = it.optNullableString("canonicalWebBaseUrl")
-                )
-            }
+        return parseLoginResult(responseJson)
+    }
+
+    fun signup(baseUrl: String, request: MobileSignupRequest): MobileLoginResult {
+        val payload = JSONObject()
+            .put("displayName", request.displayName.trim())
+            .put("email", request.email.trim())
+            .put("password", request.password)
+
+        val responseJson = requestJson(
+            baseUrl = baseUrl,
+            path = "/api/auth/signup",
+            method = "POST",
+            body = payload
         )
+
+        return parseLoginResult(responseJson)
     }
 
     fun getAuthProviders(baseUrl: String): MobileAuthProviders {
@@ -76,6 +84,114 @@ class TaskBanditMobileApi {
                 source = oidcJson.optString("source")
             )
         )
+    }
+
+    fun getPublicEnrollmentSiteConfig(baseUrl: String): MobilePublicEnrollmentSiteConfig? {
+        val responseJson = requestOptionalJsonObject(baseUrl, "/api/public/site-config") ?: return null
+        val enrollmentJson = responseJson.optJSONObject("enrollment")
+            ?: responseJson.optJSONObject("publicEnrollment")
+            ?: responseJson
+        val enabled = enrollmentJson.optBoolean("enabled") ||
+            enrollmentJson.optBoolean("publicEnrollmentEnabled") ||
+            enrollmentJson.optBoolean("signupEnabled")
+        val hostedSignupUrl = enrollmentJson.optNullableString("hostedSignupUrl")
+            ?: enrollmentJson.optNullableString("signupUrl")
+            ?: enrollmentJson.optNullableString("registrationUrl")
+        val enrollmentStartPath = enrollmentJson.optNullableString("enrollmentStartPath")
+            ?: enrollmentJson.optNullableString("enrollmentStartEndpoint")
+        val canonicalWebBaseUrl = enrollmentJson.optNullableString("canonicalWebBaseUrl")
+            ?: responseJson.optNullableString("canonicalWebBaseUrl")
+
+        return MobilePublicEnrollmentSiteConfig(
+            publicEnrollmentEnabled = enabled,
+            enrollmentStartPath = enrollmentStartPath,
+            hostedSignupUrl = hostedSignupUrl,
+            canonicalWebBaseUrl = canonicalWebBaseUrl
+        )
+    }
+
+    fun startHostedEnrollment(
+        baseUrl: String,
+        request: MobileSignupRequest,
+        languageTag: String? = null,
+        siteConfig: MobilePublicEnrollmentSiteConfig? = null
+    ): MobileHostedEnrollmentStartResult? {
+        val payload = JSONObject()
+            .put("displayName", request.displayName.trim())
+            .put("email", request.email.trim())
+            .put("password", request.password)
+            .put("source", "android")
+            .put("client", "android-mobile")
+        if (!languageTag.isNullOrBlank()) {
+            payload.put("language", languageTag)
+        }
+
+        val candidatePaths = buildList {
+            siteConfig?.enrollmentStartPath?.trim()?.takeIf { it.startsWith("/") }?.let(::add)
+            addAll(hostedEnrollmentStartPaths)
+        }.distinct()
+
+        for (path in candidatePaths) {
+            val responseJson = try {
+                requestJson(
+                    baseUrl = baseUrl,
+                    path = path,
+                    method = "POST",
+                    body = payload
+                )
+            } catch (exception: TaskBanditApiException) {
+                if (exception.status in setOf(404, 405, 501)) {
+                    continue
+                }
+                throw exception
+            }
+
+            val handoffUrl = responseJson.optNullableString("handoffUrl")
+                ?: responseJson.optNullableString("nextUrl")
+                ?: responseJson.optNullableString("redirectUrl")
+                ?: responseJson.optNullableString("checkoutUrl")
+            if (!handoffUrl.isNullOrBlank()) {
+                return MobileHostedEnrollmentStartResult(
+                    handoffUrl = handoffUrl,
+                    enrollmentId = responseJson.optNullableString("enrollmentId")
+                )
+            }
+        }
+
+        return null
+    }
+
+    fun buildHostedSignupFallbackUrl(
+        baseUrl: String,
+        email: String? = null,
+        displayName: String? = null,
+        siteConfig: MobilePublicEnrollmentSiteConfig? = null
+    ): String? {
+        val configuredUrl = siteConfig?.hostedSignupUrl
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+        val baseWebUrl = siteConfig?.canonicalWebBaseUrl
+            ?.trim()
+            ?.takeIf { it.isNotBlank() }
+            ?: configuredUrl
+            ?: baseUrl.trim().trimEnd('/')
+
+        val normalizedBaseWebUrl = baseWebUrl.trimEnd('/')
+        if (normalizedBaseWebUrl.isBlank()) {
+            return null
+        }
+        val signupBaseUrl = configuredUrl ?: "$normalizedBaseWebUrl/signup"
+
+        val queryParts = buildList {
+            email?.trim()?.takeIf { it.isNotBlank() }?.let {
+                add("email=${URLEncoder.encode(it, StandardCharsets.UTF_8)}")
+            }
+            displayName?.trim()?.takeIf { it.isNotBlank() }?.let {
+                add("name=${URLEncoder.encode(it, StandardCharsets.UTF_8)}")
+            }
+        }
+        val joiner = if (signupBaseUrl.contains('?')) "&" else "?"
+        return if (queryParts.isEmpty()) signupBaseUrl else "$signupBaseUrl$joiner${queryParts.joinToString("&")}"
     }
 
     fun resolveTenantInvite(
@@ -633,6 +749,40 @@ class TaskBanditMobileApi {
                 throw exception
             }
         }
+    }
+
+    private fun requestOptionalJsonObject(
+        baseUrl: String,
+        path: String,
+        token: String? = null,
+        method: String = "GET",
+        body: JSONObject? = null
+    ): JSONObject? {
+        return try {
+            requestJson(baseUrl, path, token, method, body)
+        } catch (exception: TaskBanditApiException) {
+            if (exception.status in setOf(404, 405, 501)) {
+                null
+            } else {
+                throw exception
+            }
+        }
+    }
+
+    private fun parseLoginResult(responseJson: JSONObject): MobileLoginResult {
+        val tenantContextJson = responseJson.optJSONObject("tenantContext")
+        return MobileLoginResult(
+            accessToken = responseJson.getString("accessToken"),
+            tenantContext = tenantContextJson?.let {
+                MobileAuthTenantContext(
+                    tenantId = it.optString("tenantId"),
+                    tenantSlug = it.optNullableString("tenantSlug"),
+                    hostedMode = it.optBoolean("hostedMode"),
+                    canonicalApiBaseUrl = it.optNullableString("canonicalApiBaseUrl"),
+                    canonicalWebBaseUrl = it.optNullableString("canonicalWebBaseUrl")
+                )
+            }
+        )
     }
 
     private fun requestJson(

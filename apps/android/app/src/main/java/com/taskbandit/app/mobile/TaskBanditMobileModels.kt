@@ -23,6 +23,12 @@ data class MobileAuthProviders(
     val oidc: MobileOidcAuthProvider
 )
 
+data class MobileSignupRequest(
+    val displayName: String,
+    val email: String,
+    val password: String
+)
+
 data class MobileAuthTenantContext(
     val tenantId: String,
     val tenantSlug: String?,
@@ -34,6 +40,18 @@ data class MobileAuthTenantContext(
 data class MobileLoginResult(
     val accessToken: String,
     val tenantContext: MobileAuthTenantContext? = null
+)
+
+data class MobilePublicEnrollmentSiteConfig(
+    val publicEnrollmentEnabled: Boolean = false,
+    val enrollmentStartPath: String? = null,
+    val hostedSignupUrl: String? = null,
+    val canonicalWebBaseUrl: String? = null
+)
+
+data class MobileHostedEnrollmentStartResult(
+    val handoffUrl: String,
+    val enrollmentId: String? = null
 )
 
 data class MobileInviteTenantContext(
