@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.52.0](https://github.com/kriziw/TaskBandit/compare/v0.51.0...v0.52.0) (2026-05-13)
+
+
+### Features
+
+* **mobile:** switch mobile bottom navigation to icon-only ([#377](https://github.com/kriziw/TaskBandit/issues/377)) ([5c3e1ce](https://github.com/kriziw/TaskBandit/commit/5c3e1ced282fdddd9cb125d48656d08529aa7a03))
+
 ## [0.51.0](https://github.com/kriziw/TaskBandit/compare/v0.50.0...v0.51.0) (2026-05-13)
 
 
