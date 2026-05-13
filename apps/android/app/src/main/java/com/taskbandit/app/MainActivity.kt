@@ -4043,7 +4043,7 @@ private fun CompactChoreMeta(
                 text = supportingParts.joinToString(" • "),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis
             )
         }
@@ -4659,31 +4659,31 @@ private fun ChoreCard(
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis
                     )
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (chore.isOverdue) {
+                            MaterialTheme.colorScheme.errorContainer
+                        } else {
+                            accentContainerColor.copy(alpha = 0.8f)
+                        }
+                    ) {
+                        Text(
+                            text = statusLabel,
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (chore.isOverdue) {
+                                MaterialTheme.colorScheme.onErrorContainer
+                            } else {
+                                accentContentColor
+                            }
+                        )
+                    }
                     CompactChoreMeta(
                         dueAt = chore.dueAt,
                         assignmentLabel = assignmentLabel,
                         assignmentReasonLabel = assignmentReasonLabel,
                         subtypeLabel = subtypeLabel,
                         requirePhotoProof = chore.requirePhotoProof
-                    )
-                }
-                Surface(
-                    shape = RoundedCornerShape(999.dp),
-                    color = if (chore.isOverdue) {
-                        MaterialTheme.colorScheme.errorContainer
-                    } else {
-                        accentContainerColor.copy(alpha = 0.8f)
-                    }
-                ) {
-                    Text(
-                        text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = if (chore.isOverdue) {
-                            MaterialTheme.colorScheme.onErrorContainer
-                        } else {
-                            accentContentColor
-                        }
                     )
                 }
                 if (hasSecondaryActions) {
@@ -6316,6 +6316,5 @@ private fun createProofCaptureFile(context: android.content.Context): File {
     val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
     return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
 }
-
 
 

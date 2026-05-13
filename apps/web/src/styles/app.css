@@ -1667,11 +1667,17 @@ h4,
   margin-bottom: 6px;
 }
 
+.task-row-header > :first-child {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
 .task-row-header-controls {
   display: inline-flex;
   align-items: center;
   gap: 6px;
   position: relative;
+  flex-shrink: 0;
 }
 
 .mobile-card-menu {
