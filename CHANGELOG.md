@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.51.0](https://github.com/kriziw/TaskBandit/compare/v0.50.0...v0.51.0) (2026-05-13)
+
+
+### Features
+
+* **android:** add cached startup state and hybrid registration handoff ([#375](https://github.com/kriziw/TaskBandit/issues/375)) ([202104f](https://github.com/kriziw/TaskBandit/commit/202104f73c45da0fe52e1a85745a8121a732457c))
+* **mobile:** improve icon-based bottom navigation readability ([#374](https://github.com/kriziw/TaskBandit/issues/374)) ([fcc303e](https://github.com/kriziw/TaskBandit/commit/fcc303eb89fa204eea7742db04806862fb0070be))
+
 ## [0.50.0](https://github.com/kriziw/TaskBandit/compare/v0.49.4...v0.50.0) (2026-05-12)
 
 
