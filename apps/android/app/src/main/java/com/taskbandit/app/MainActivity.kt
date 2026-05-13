@@ -183,6 +183,7 @@ import kotlin.random.Random
 private const val defaultApiBaseUrl = "https://api.taskbandit.app"
 private const val androidOidcCallbackUrl = "taskbandit://auth/callback"
 private const val syncDisconnectNoticeDelayMs = 3500L
+private const val syncStartupNoticeGraceMs = 6000L
 private const val mutationReconnectWindowMs = 5000L
 private const val mutationReconnectRetryDelayMs = 750L
 private val historicChoreStates = setOf("completed", "approved", "rejected", "cancelled")
@@ -551,6 +552,11 @@ private fun TaskBanditApp(
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
     var isDashboardSyncConnected by remember { mutableStateOf(true) }
     var showDashboardSyncNotice by remember { mutableStateOf(false) }
+    var syncNoticeGraceUntilEpochMillis by remember {
+        mutableLongStateOf(
+            if (session.token != null) System.currentTimeMillis() + syncStartupNoticeGraceMs else 0L
+        )
+    }
     var pendingReconnectActionLabel by remember { mutableStateOf<String?>(null) }
     var validationDialogMessage by remember { mutableStateOf<String?>(null) }
     var submitSelections by remember { mutableStateOf<Map<String, Set<String>>>(emptyMap()) }
@@ -648,12 +654,31 @@ private fun TaskBanditApp(
         }
     }
 
-    LaunchedEffect(isDashboardSyncConnected) {
+    LaunchedEffect(session.token) {
+        if (session.token != null) {
+            syncNoticeGraceUntilEpochMillis = System.currentTimeMillis() + syncStartupNoticeGraceMs
+        } else {
+            syncNoticeGraceUntilEpochMillis = 0L
+        }
+        showDashboardSyncNotice = false
+    }
+
+    LaunchedEffect(isDashboardSyncConnected, session.token, syncNoticeGraceUntilEpochMillis) {
+        if (session.token == null) {
+            showDashboardSyncNotice = false
+            return@LaunchedEffect
+        }
+
         if (isDashboardSyncConnected) {
             showDashboardSyncNotice = false
         } else {
+            val now = System.currentTimeMillis()
+            val startupGraceRemainingMs = (syncNoticeGraceUntilEpochMillis - now).coerceAtLeast(0L)
+            if (startupGraceRemainingMs > 0L) {
+                delay(startupGraceRemainingMs)
+            }
             delay(syncDisconnectNoticeDelayMs)
-            if (!isDashboardSyncConnected) {
+            if (session.token != null && !isDashboardSyncConnected) {
                 showDashboardSyncNotice = true
             }
         }
