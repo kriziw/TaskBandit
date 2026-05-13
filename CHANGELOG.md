@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.53.2](https://github.com/kriziw/TaskBandit/compare/v0.53.1...v0.53.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* **android:** show sync notice only for sync failures ([#389](https://github.com/kriziw/TaskBandit/issues/389)) ([df7c81b](https://github.com/kriziw/TaskBandit/commit/df7c81b409665e2595cfef96904960e75e853a6f))
+
 ## [0.53.1](https://github.com/kriziw/TaskBandit/compare/v0.53.0...v0.53.1) (2026-05-13)
 
 
