@@ -167,20 +167,26 @@ class TaskBanditMobileApi {
         displayName: String? = null,
         siteConfig: MobilePublicEnrollmentSiteConfig? = null
     ): String? {
+        // Keep `baseUrl` for call-site compatibility, but do not derive a web URL from it.
+        // If public site-config is unavailable, fail closed instead of guessing.
+        @Suppress("UNUSED_VARIABLE")
+        val ignoredBaseUrl = baseUrl
+
         val configuredUrl = siteConfig?.hostedSignupUrl
             ?.trim()
             ?.takeIf { it.isNotBlank() }
-        val baseWebUrl = siteConfig?.canonicalWebBaseUrl
+        val canonicalWebBaseUrl = siteConfig?.canonicalWebBaseUrl
             ?.trim()
             ?.takeIf { it.isNotBlank() }
-            ?: configuredUrl
-            ?: baseUrl.trim().trimEnd('/')
-
-        val normalizedBaseWebUrl = baseWebUrl.trimEnd('/')
-        if (normalizedBaseWebUrl.isBlank()) {
-            return null
-        }
-        val signupBaseUrl = configuredUrl ?: "$normalizedBaseWebUrl/signup"
+        val signupBaseUrl = when {
+            configuredUrl.isNullOrBlank() -> {
+                canonicalWebBaseUrl?.trimEnd('/')?.let { "$it/signup" }
+            }
+            configuredUrl.startsWith("/") && !canonicalWebBaseUrl.isNullOrBlank() -> {
+                "${canonicalWebBaseUrl.trimEnd('/')}$configuredUrl"
+            }
+            else -> configuredUrl
+        } ?: return null
 
         val queryParts = buildList {
             email?.trim()?.takeIf { it.isNotBlank() }?.let {
