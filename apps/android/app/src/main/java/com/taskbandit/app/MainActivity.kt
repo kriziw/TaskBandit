@@ -3477,29 +3477,19 @@ private fun MobileTabButton(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
         onClick = onClick,
         enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
+        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Box(
-                modifier = Modifier.size(34.dp).background(chipColor, CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = null,
-                    modifier = Modifier
-                        .size(20.dp)
-                        .alpha(if (enabled) 1f else 0.45f)
-                )
-            }
-            Text(
-                text = label,
-                color = iconTint,
-                style = MaterialTheme.typography.labelSmall,
-                fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis
+        Box(
+            modifier = Modifier.size(46.dp).background(chipColor, CircleShape),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(30.dp)
+                    .alpha(if (enabled) 1f else 0.45f)
             )
         }
     }

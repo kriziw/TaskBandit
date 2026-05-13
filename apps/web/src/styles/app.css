@@ -2260,21 +2260,19 @@ h4,
   border-radius: 22px;
   background: rgba(255, 255, 255, 0.88);
   color: var(--ink);
-  padding: 8px 10px;
+  padding: 10px;
   font: inherit;
   font-family: var(--font-brand);
   font-weight: 800;
   display: flex;
-  flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 4px;
   min-height: 64px;
 }
 
 .mobile-bottom-nav-icon {
-  width: 22px;
-  height: 22px;
+  width: 32px;
+  height: 32px;
   object-fit: contain;
 }
 
@@ -2313,6 +2311,11 @@ h4,
   text-overflow: ellipsis;
   font-size: 0.7rem;
   line-height: 1;
+}
+
+.mobile-bottom-nav-label,
+.mobile-bottom-nav-add strong {
+  display: none;
 }
 
 @media (max-width: 1080px) {
