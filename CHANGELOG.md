@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.52.2](https://github.com/kriziw/TaskBandit/compare/v0.52.1...v0.52.2) (2026-05-13)
+
+
+### Bug Fixes
+
+* **android:** enlarge mobile nav icons and strengthen active tab highlight ([#382](https://github.com/kriziw/TaskBandit/issues/382)) ([0906295](https://github.com/kriziw/TaskBandit/commit/09062959c386df1fa5a4ab6a47271953c39c9f37))
+
 ## [0.52.1](https://github.com/kriziw/TaskBandit/compare/v0.52.0...v0.52.1) (2026-05-13)
 
 
