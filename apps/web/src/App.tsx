@@ -9018,7 +9018,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     aria-hidden="true"
                   />
                 ) : null}
-                <span className="mobile-bottom-nav-label">{page.label}</span>
               </button>
             ))}
             {payload?.currentUser.role !== "child" ? (
@@ -9030,7 +9029,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 title={t("nav.create")}
               >
                 <img className="mobile-bottom-nav-icon" src={mobileCreateIconPath} alt="" aria-hidden="true" />
-                <strong>{t("nav.create")}</strong>
               </button>
             ) : null}
           </div>
