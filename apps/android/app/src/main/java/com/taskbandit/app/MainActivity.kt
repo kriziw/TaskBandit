@@ -571,6 +571,8 @@ private fun TaskBanditApp(
     var pendingPhotoCaptureFilePath by remember { mutableStateOf<String?>(null) }
     var pendingSettingsLogExportContent by remember { mutableStateOf<String?>(null) }
     var queuedSubmissionCount by remember { mutableIntStateOf(0) }
+    val hasSyncFailureContext =
+        !pendingReconnectActionLabel.isNullOrBlank() || queuedSubmissionCount > 0
     var completionCelebration by remember { mutableStateOf<MobileCompletionCelebration?>(null) }
     var lastCompletionCelebrationPhraseResource by remember { mutableIntStateOf(0) }
     var notificationsPermissionGranted by remember {
@@ -667,13 +669,18 @@ private fun TaskBanditApp(
         showDashboardSyncNotice = false
     }
 
-    LaunchedEffect(isDashboardSyncConnected, session.token, syncNoticeGraceUntilEpochMillis) {
+    LaunchedEffect(
+        isDashboardSyncConnected,
+        session.token,
+        syncNoticeGraceUntilEpochMillis,
+        hasSyncFailureContext
+    ) {
         if (session.token == null) {
             showDashboardSyncNotice = false
             return@LaunchedEffect
         }
 
-        if (isDashboardSyncConnected) {
+        if (isDashboardSyncConnected || !hasSyncFailureContext) {
             showDashboardSyncNotice = false
         } else {
             val now = System.currentTimeMillis()
@@ -682,7 +689,7 @@ private fun TaskBanditApp(
                 delay(startupGraceRemainingMs)
             }
             delay(syncDisconnectNoticeDelayMs)
-            if (session.token != null && !isDashboardSyncConnected) {
+            if (session.token != null && !isDashboardSyncConnected && hasSyncFailureContext) {
                 showDashboardSyncNotice = true
             }
         }
@@ -2569,6 +2576,8 @@ private fun DashboardScreen(
         } else {
             null
         }
+    val hasSyncFailureContext =
+        !pendingReconnectActionLabel.isNullOrBlank() || queuedSubmissionCount > 0
     val showStatusCard =
         !pendingReconnectActionLabel.isNullOrBlank() ||
             queuedSubmissionCount > 0 ||
@@ -3513,7 +3522,7 @@ private fun DashboardScreen(
             }
                 }
 
-                if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice) {
+                if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice && hasSyncFailureContext) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -6316,5 +6325,3 @@ private fun createProofCaptureFile(context: android.content.Context): File {
     val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
     return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
 }
-
-
