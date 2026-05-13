@@ -41,6 +41,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
@@ -2908,7 +2909,7 @@ private fun DashboardScreen(
                     shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -3494,28 +3495,45 @@ private fun MobileTabButton(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     val chipColor = if (selected) {
-        MaterialTheme.colorScheme.primary.copy(alpha = 0.14f)
+        MaterialTheme.colorScheme.primaryContainer
     } else {
-        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.9f)
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    }
+    val chipBorderColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
     }
     TextButton(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
         onClick = onClick,
         enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 8.dp),
+        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
     ) {
-        Box(
-            modifier = Modifier.size(46.dp).background(chipColor, CircleShape),
-            contentAlignment = Alignment.Center
-        ) {
-            Image(
-                painter = painterResource(id = iconRes),
-                contentDescription = null,
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Box(
                 modifier = Modifier
-                    .size(30.dp)
-                    .alpha(if (enabled) 1f else 0.45f)
-            )
+                    .size(66.dp)
+                    .background(chipColor, CircleShape)
+                    .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(54.dp)
+                        .alpha(if (enabled) 1f else 0.45f)
+                )
+            }
+            if (selected) {
+                Box(
+                    modifier = Modifier
+                        .size(width = 18.dp, height = 4.dp)
+                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+                )
+            }
         }
     }
 }
