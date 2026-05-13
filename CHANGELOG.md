@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.53.0](https://github.com/kriziw/TaskBandit/compare/v0.52.2...v0.53.0) (2026-05-13)
+
+
+### Features
+
+* **chore:** clarify claim-submit actions and improve mobile UX ([#386](https://github.com/kriziw/TaskBandit/issues/386)) ([ccb9273](https://github.com/kriziw/TaskBandit/commit/ccb9273e53900d4501935eac7f3df604844f7cc2))
+* **chore:** enable editing active chores on web and mobile ([#384](https://github.com/kriziw/TaskBandit/issues/384)) ([e0fdd64](https://github.com/kriziw/TaskBandit/commit/e0fdd6488df1c3d423ee2a19c956c49fe769c237))
+
 ## [0.52.2](https://github.com/kriziw/TaskBandit/compare/v0.52.1...v0.52.2) (2026-05-13)
 
 
