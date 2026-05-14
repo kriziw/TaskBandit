@@ -823,4 +823,10 @@
   ,"templates.follow_up_summary": "{count} koveto feladat kivalasztva"
   ,"templates.subtypes_short": "Alt {count}"
   ,"auth.tenant_not_ready_notice": "Ez a hosztolt munkaterÃ¼let ezen az URL-en mÃ©g nem Ã¡ll kÃ©szen a bejelentkezÃ©sre. ElÅbb fejezze be a tenant beÃ¡llÃ­tÃ¡sÃ¡t, vagy hasznÃ¡lja a tenant-specifikus bejelentkezÃ©si hivatkozÃ¡st, ha mÃ¡r ki lett Ã©pÃ­tve."
-}
+  ,"nav.home": "Kezdolap"
+  ,"nav.plan": "Tervezes"
+  ,"nav.ops": "Uzemeltetes"
+  ,"page.home_description": "Azonnali teendok: sajat feladatok, jovahagyasok es olvasatlan frissitesek."
+  ,"page.plan_description": "Tervezd es utemezd a kovetkezo feladatokat sablonokkal, haztartasi nezetekkel es elozmenyekkel."
+  ,"page.ops_description": "Admin uzemeltetesi eszkozok: naplok, diagnosztika es helyreallitas."
+  ,"settings.push_always_on_saas": "SaaS modban a push ertesites mindig aktiv, es kozpontilag a TaskBandit platform kezeli."}
