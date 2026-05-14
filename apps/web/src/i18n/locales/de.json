@@ -820,5 +820,12 @@
   "templates.subtypes_short": "Sub {count}",
   "empty.filtered_chores": "Keine Aufgaben passen zu den aktuellen Filtern.",
   "error.load_dashboard": "TaskBandit konnte das Live-Dashboard nicht laden.",
-  "error.missing_template": "Die Aufgabenvorlage fur diese Instanz wurde nicht gefunden."
+  "error.missing_template": "Die Aufgabenvorlage fur diese Instanz wurde nicht gefunden.",
+  "nav.home": "Start",
+  "nav.plan": "Planen",
+  "nav.ops": "Betrieb",
+  "page.home_description": "Konzentriere dich auf sofortige Aktionen: eigene Aufgaben, Freigaben und ungelesene Updates.",
+  "page.plan_description": "Plane und steuere kommende Aufgaben mit Vorlagen, Haushaltsansichten und Verlauf.",
+  "page.ops_description": "Betriebswerkzeuge fur Admins: Protokolle, Diagnose und Wiederherstellung.",
+  "settings.push_always_on_saas": "Push-Benachrichtigungen sind im SaaS-Modus immer aktiv und werden zentral von der TaskBandit-Plattform verwaltet."
 }

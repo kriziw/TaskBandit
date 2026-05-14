@@ -138,6 +138,7 @@ type WorkspacePage =
   | "settings"
   | "admin"
   | "logs";
+type WorkspaceRoute = "home" | "plan" | "household" | "settings" | "ops";
 
 const mobileNavIconByPage: Partial<Record<WorkspacePage, string>> = {
   chores: "/mobile-icons/chores.png",
@@ -168,6 +169,16 @@ const workspacePageOrder: WorkspacePage[] = [
   "admin",
   "logs"
 ];
+
+const workspaceRouteOrder: WorkspaceRoute[] = ["home", "plan", "household", "settings", "ops"];
+
+const workspacePageByRoute: Record<WorkspaceRoute, WorkspacePage> = {
+  home: "overview",
+  plan: "chores",
+  household: "household",
+  settings: "settings",
+  ops: "admin"
+};
 
 const householdBoardStateOrder: ChoreState[] = [
   "open",
@@ -669,27 +680,64 @@ function isWorkspacePage(value: string | null): value is WorkspacePage {
   return value !== null && workspacePageOrder.includes(value as WorkspacePage);
 }
 
+function isWorkspaceRoute(value: string | null): value is WorkspaceRoute {
+  return value !== null && workspaceRouteOrder.includes(value as WorkspaceRoute);
+}
+
 function getWorkspacePageStorageKey(variant: WorkspaceVariant) {
   return `${workspacePageStorageKey}-${variant}`;
 }
 
 function getDefaultWorkspacePage(variant: WorkspaceVariant): WorkspacePage {
-  if (variant === "admin") {
-    return "templates";
+  return "overview";
+}
+
+function getWorkspaceRouteFromPathname(pathname: string) {
+  const normalizedPath = pathname.replace(/\/+$/, "");
+  const routeMatch = normalizedPath.match(/\/app\/([^/]+)$/i);
+  if (!routeMatch?.[1]) {
+    return null;
   }
 
-  return "chores";
+  const routeValue = routeMatch[1].toLowerCase();
+  return isWorkspaceRoute(routeValue) ? routeValue : null;
+}
+
+function resolveWorkspaceRouteFromPage(page: WorkspacePage): WorkspaceRoute {
+  switch (page) {
+    case "overview":
+    case "leaderboard":
+      return "home";
+    case "chores":
+    case "templates":
+      return "plan";
+    case "household":
+      return "household";
+    case "notifications":
+    case "settings":
+      return "settings";
+    case "admin":
+    case "logs":
+      return "ops";
+    default:
+      return "home";
+  }
+}
+
+function getPathnameForWorkspacePage(page: WorkspacePage) {
+  const route = resolveWorkspaceRouteFromPage(page);
+  return `/app/${route}`;
 }
 
 function readStoredWorkspacePage(variant: WorkspaceVariant) {
-  const hashValue = window.location.hash.replace(/^#/, "").trim();
-  if (isWorkspacePage(hashValue)) {
-    return hashValue;
+  const routeFromPath = getWorkspaceRouteFromPathname(window.location.pathname);
+  if (routeFromPath) {
+    return workspacePageByRoute[routeFromPath];
   }
 
   const stored = window.localStorage.getItem(getWorkspacePageStorageKey(variant));
   if (isWorkspacePage(stored)) {
-    return stored;
+    return workspacePageByRoute[resolveWorkspaceRouteFromPage(stored)];
   }
 
   return getDefaultWorkspacePage(variant);
@@ -1075,6 +1123,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const smtpTestRequiredToEnable = Boolean(
     payload &&
       settingsDraft &&
+      !payload.hostedSubscription.hostedMode &&
       !payload.household.settings.smtpEnabled &&
       settingsDraft.smtpEnabled &&
       smtpDraftFingerprint !== smtpVerifiedFingerprint
@@ -1287,7 +1336,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }
 
       if (event.data?.type === "taskbandit-notification-click" && event.data.payload?.path) {
-        window.location.hash = "notifications";
+        const currentUrl = new URL(window.location.href);
+        currentUrl.pathname = getPathnameForWorkspacePage("overview");
+        window.history.replaceState({}, document.title, currentUrl.toString());
+        setActivePage("overview");
         if (token) {
           void refreshDashboard(token, { silent: true });
         }
@@ -1302,7 +1354,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   useEffect(() => {
     if (payload) {
-      setSettingsDraft(payload.household.settings);
+      setSettingsDraft({
+        ...payload.household.settings,
+        enablePushNotifications: payload.hostedSubscription.hostedMode
+          ? true
+          : payload.household.settings.enablePushNotifications
+      });
       setNotificationPreferencesDraft(payload.notificationPreferences);
       if (
         workspaceVariant === "admin" &&
@@ -1386,35 +1443,36 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const currentUrl = new URL(window.location.href);
 
     if (!payload) {
-      const hashValue = currentUrl.hash.replace(/^#/, "").trim();
-      if (isWorkspacePage(hashValue)) {
-        currentUrl.hash = "";
+      const routeValue = getWorkspaceRouteFromPathname(currentUrl.pathname);
+      if (routeValue) {
+        currentUrl.pathname = "/";
         window.history.replaceState({}, document.title, currentUrl.toString());
       }
       return;
     }
 
     window.localStorage.setItem(getWorkspacePageStorageKey(workspaceVariant), activePage);
-    if (currentUrl.hash !== `#${activePage}`) {
-      currentUrl.hash = activePage;
+    const targetPathname = getPathnameForWorkspacePage(activePage);
+    if (currentUrl.pathname !== targetPathname) {
+      currentUrl.pathname = targetPathname;
       window.history.replaceState({}, document.title, currentUrl.toString());
     }
   }, [activePage, payload, workspaceVariant]);
 
   useEffect(() => {
-    const onHashChange = () => {
+    const onLocationChange = () => {
       if (!payload) {
         return;
       }
 
-      const hashValue = window.location.hash.replace(/^#/, "").trim();
-      if (isWorkspacePage(hashValue)) {
-        setActivePage(hashValue);
+      const routeFromPath = getWorkspaceRouteFromPathname(window.location.pathname);
+      if (routeFromPath) {
+        setActivePage(workspacePageByRoute[routeFromPath]);
       }
     };
 
-    window.addEventListener("hashchange", onHashChange);
-    return () => window.removeEventListener("hashchange", onHashChange);
+    window.addEventListener("popstate", onLocationChange);
+    return () => window.removeEventListener("popstate", onLocationChange);
   }, [payload]);
 
   useEffect(() => {
@@ -1953,8 +2011,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     [payload, t]
   );
 
-  const isAdminVariantAccessDenied = Boolean(
-    payload && workspaceVariant === "admin" && payload.currentUser.role !== "admin"
+  const isAdminVariantAccessDenied = false;
+  const showAdminOps = Boolean(
+    payload &&
+      payload.currentUser.role === "admin" &&
+      !payload.hostedSubscription.hostedMode
   );
 
   const showOnboarding = Boolean(
@@ -1977,20 +2038,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return [];
     }
 
-    if (workspaceVariant === "admin" && payload.currentUser.role !== "admin") {
-      return [];
-    }
-
-    if (workspaceVariant === "admin") {
-      return [
-        { key: "templates", label: t("nav.templates") },
-        { key: "household", label: t("nav.household") },
-        { key: "settings", label: t("nav.settings") },
-        { key: "admin", label: t("nav.admin") },
-        { key: "logs", label: t("nav.logs") }
-      ];
-    }
-
     if (isClientMobileViewport) {
       const pages: Array<{ key: WorkspacePage; label: string }> = [
         { key: "chores", label: t("nav.chores") },
@@ -2004,16 +2051,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
 
     const pages: Array<{ key: WorkspacePage; label: string }> = [
-      { key: "overview", label: t("nav.overview") },
-      { key: "chores", label: t("nav.chores") },
-      { key: "notifications", label: t("nav.notifications") },
+      { key: "overview", label: t("nav.home") },
+      { key: "chores", label: t("nav.plan") },
+      { key: "household", label: t("nav.household") },
       { key: "settings", label: t("nav.settings") }
     ];
-    if (showTemplateManager) {
-      pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
+    if (showAdminOps) {
+      pages.push({ key: "admin", label: t("nav.ops") });
     }
     return pages;
-  }, [isClientMobileViewport, payload, showTemplateManager, t, workspaceVariant]);
+  }, [isClientMobileViewport, payload, showAdminOps, showTemplateManager, t]);
   const mobileBottomNavPages = useMemo(
     () =>
       availablePages.filter((page) =>
@@ -2037,7 +2084,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const activePageLabel = isAdminVariantAccessDenied
     ? t("workspace.admin_only_title")
     : availablePages.find((page) => page.key === activePage)?.label ??
-      (workspaceVariant === "client" ? t("nav.chores") : t("nav.templates"));
+      t("nav.home");
   const availableUpdate = useMemo(() => {
     if (!serverReleaseInfo) {
       return null;
@@ -2051,22 +2098,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
 
   const pageDescriptions: Record<WorkspacePage, string> = {
-    overview: t("page.overview_description"),
-    chores: t("page.chores_description"),
-    leaderboard: t("page.leaderboard_description"),
-    templates: t("page.templates_description"),
+    overview: t("page.home_description"),
+    chores: t("page.plan_description"),
+    leaderboard: t("page.household_description"),
+    templates: t("page.plan_description"),
     household: t("page.household_description"),
-    notifications: t("page.notifications_description"),
-    settings:
-      workspaceVariant === "client"
-        ? t("page.client_settings_description")
-        : t("page.settings_description"),
-    admin: t("page.admin_description"),
-    logs: t("page.logs_description")
+    notifications: t("page.home_description"),
+    settings: t("page.settings_description"),
+    admin: t("page.ops_description"),
+    logs: t("page.ops_description")
   };
   const activePageDescription = isAdminVariantAccessDenied
     ? t("workspace.admin_only_body")
     : pageDescriptions[activePage];
+  const isHostedSaas = Boolean(payload?.hostedSubscription.hostedMode);
   const isClientVariant = workspaceVariant === "client";
   const showClientMobileShell = isClientVariant && Boolean(payload) && isClientMobileViewport;
   const isStandaloneDisplayMode =
@@ -2531,9 +2576,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         await Promise.all([
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
-        currentUser.role === "child"
-          ? Promise.resolve([])
-          : taskBanditApi.getAuditLog(accessToken, language),
+        currentUser.role === "admin"
+          ? taskBanditApi.getAuditLog(accessToken, language)
+          : Promise.resolve([]),
         taskBanditApi.getNotifications(accessToken, language),
         loadOptionalFeature(
           () => taskBanditApi.getNotificationDevices(accessToken, language),
@@ -5051,17 +5096,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ]
             : [])
         ];
-      case "logs":
-        return [
-          { key: "logs-audit", label: t("panel.audit_log"), ref: auditLogRef },
-          { key: "logs-runtime", label: t("panel.runtime_logs"), ref: runtimeLogsRef }
-        ];
       default:
         return [];
     }
   }, [
     activePage,
-    auditLogRef,
     leaderboardRef,
     memberCreateRef,
     payload?.currentUser.role,
@@ -5082,6 +5121,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       if (editingInstanceId) {
         resetInstanceForm();
       }
+    }
+
+    const nextPathname = getPathnameForWorkspacePage(page);
+    if (window.location.pathname !== nextPathname) {
+      const currentUrl = new URL(window.location.href);
+      currentUrl.pathname = nextPathname;
+      window.history.pushState({}, document.title, currentUrl.toString());
     }
 
     setActivePage(page);
@@ -6240,9 +6286,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <div>
                   <p className="workspace-nav-kicker">{payload.household.name}</p>
                   <h2>{activePageLabel}</h2>
-                  {workspaceVariant === "client" ? (
-                    <p className="workspace-page-copy">{activePageDescription}</p>
-                  ) : null}
+                  <p className="workspace-page-copy">{activePageDescription}</p>
                 </div>
                 <div className="workspace-page-meta">
                   <span className="status-pill">{workspaceVariantLabel}</span>
@@ -6314,22 +6358,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <span className="section-kicker">{t("workspace.variant_admin")}</span>
                 </div>
                 <p>{t("workspace.admin_only_body")}</p>
-              </section>
-            ) : pageSectionLinks.length > 1 && !showClientMobileShell ? (
-              <section className="panel workspace-subnav-panel">
-                <span className="section-kicker">{t("nav.jump_to")}</span>
-                <div className="workspace-subnav">
-                  {pageSectionLinks.map((link) => (
-                    <button
-                      key={link.key}
-                      className="workspace-subnav-button"
-                      type="button"
-                      onClick={() => scrollToSection(link.ref)}
-                    >
-                      {link.label}
-                    </button>
-                  ))}
-                </div>
               </section>
             ) : null}
 
@@ -6502,7 +6530,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             {payload.compatibility.takeoverRequests && hasFeature("takeover_requests") && pendingTakeoverRequests.length > 0 ? (
-              <article className="panel page-panel page-chores page-takeover-requests" ref={takeoverRequestsRef}>
+            <article className="panel page-panel page-overview page-takeover-requests" ref={takeoverRequestsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.takeover_approvals")}</h2>
                   <span className="section-kicker">{pendingTakeoverRequests.length}</span>
@@ -6514,7 +6542,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            <article className="panel page-panel page-chores" ref={myChoresRef}>
+            <article className="panel page-panel page-overview" ref={myChoresRef}>
               <div className="section-heading">
                 <h2>{t("panel.my_chores")}</h2>
                 <span className="section-kicker">
@@ -6572,11 +6600,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               )}
             </article>
 
-            {workspaceVariant === "client" && payload.currentUser.role !== "child" && !showClientMobileShell
+            {payload.currentUser.role !== "child" && !showClientMobileShell
               ? renderScheduleChorePanel("page-chores")
               : null}
 
-            <article className="panel page-panel page-overview page-leaderboard" ref={leaderboardRef}>
+            <article className="panel page-panel page-household page-leaderboard" ref={leaderboardRef}>
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
@@ -6601,8 +6629,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </article>
 
             <article
-              className={`panel page-panel ${
-                workspaceVariant === "client" && showClientMobileShell ? "page-settings" : "page-notifications"
+              className={`panel page-panel page-overview ${
+                workspaceVariant === "client" && showClientMobileShell ? "page-settings" : ""
               }`}
               ref={notificationsRef}
             >
@@ -6693,7 +6721,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
             </article>
 
-            <article className="panel page-panel page-overview">
+            <article className="panel page-panel page-household">
               <div className="section-heading">
                 <h2>{t("panel.points_feed")}</h2>
                 <span className="section-kicker">{payload.pointsLedger.length}</span>
@@ -6720,10 +6748,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
             </article>
 
-            {payload.currentUser.role !== "child" ? (
+            {showAdminOps ? (
               <article
-                className={`panel page-panel ${workspaceVariant === "admin" ? "page-logs" : "page-overview"}`}
-                ref={workspaceVariant === "admin" ? auditLogRef : undefined}
+                className="panel page-panel page-admin"
+                ref={auditLogRef}
               >
                 <div className="section-heading">
                   <h2>{t("panel.audit_log")}</h2>
@@ -6755,8 +6783,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.currentUser.role === "admin" ? (
-              <article className="panel page-panel page-logs" ref={runtimeLogsRef}>
+            {showAdminOps ? (
+              <article className="panel page-panel page-admin" ref={runtimeLogsRef}>
                 <div className="section-heading">
                   <h2>{t("panel.runtime_logs")}</h2>
                   <div className="toolbar-group">
@@ -7087,9 +7115,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {notificationPreferencesDraft ? (
               <article
-                className={`panel page-panel ${
-                  workspaceVariant === "client" ? "page-settings" : "page-notifications"
-                }`}
+                className="panel page-panel page-settings"
                 ref={notificationPreferencesRef}
               >
                 <div className="section-heading">
@@ -7173,9 +7199,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {payload.compatibility.notificationDevices ? (
               <article
-                className={`panel page-panel ${
-                  workspaceVariant === "client" ? "page-settings" : "page-notifications"
-                }`}
+                className="panel page-panel page-settings"
                 ref={notificationDevicesRef}
               >
                 <div className="section-heading">
@@ -7245,7 +7269,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.hostedSubscription.hostedMode && workspaceVariant === "client" && payload.currentUser.role !== "child" ? (
+            {payload.hostedSubscription.hostedMode && payload.currentUser.role !== "child" ? (
               <article className="panel page-panel page-settings">
                 <div className="section-heading">
                   <h2>{t("subscription.summary_title")}</h2>
@@ -7307,8 +7331,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {payload.hostedSubscription.hostedMode && workspaceVariant === "admin" ? (
-              <article className="panel page-panel page-admin">
+            {payload.hostedSubscription.hostedMode && payload.currentUser.role === "admin" ? (
+              <article className="panel page-panel page-settings">
                 <div className="section-heading">
                   <h2>Plan &amp; Features</h2>
                   <span className="section-kicker">{payload.hostedSubscription.packageDisplayName ?? "Hosted plan"}</span>
@@ -7362,9 +7386,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {workspaceVariant === "admin" &&
-            payload.currentUser.role === "admin" &&
-            payload.compatibility.notificationHealth ? (
+            {showAdminOps && payload.compatibility.notificationHealth ? (
               <article className="panel page-panel page-admin" ref={notificationHealthRef}>
                 <div className="section-heading">
                   <h2>{t("panel.household_notification_health")}</h2>
@@ -7424,9 +7446,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {workspaceVariant === "admin" &&
-            payload.currentUser.role === "admin" &&
-            payload.compatibility.backupReadiness ? (
+            {showAdminOps && payload.compatibility.backupReadiness ? (
               <article className="panel page-panel page-admin" ref={backupReadinessRef}>
                 <div className="section-heading">
                   <h2>{t("panel.backup_readiness")}</h2>
@@ -7621,9 +7641,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {workspaceVariant === "admin" &&
-            payload.currentUser.role === "admin" &&
-            payload.compatibility.systemStatus ? (
+            {showAdminOps && payload.compatibility.systemStatus ? (
               <article className="panel page-panel page-admin" ref={systemStatusRef}>
                 <div className="section-heading">
                   <h2>{t("panel.system_status")}</h2>
@@ -7849,9 +7867,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {workspaceVariant === "admin" &&
-            payload.currentUser.role === "admin" &&
-            payload.compatibility.notificationRecovery ? (
+            {showAdminOps && payload.compatibility.notificationRecovery ? (
               <article className="panel page-panel page-admin" ref={notificationRecoveryRef}>
                 <div className="section-heading">
                   <h2>{t("panel.notification_recovery")}</h2>
@@ -7962,7 +7978,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            {workspaceVariant === "admin" && payload.currentUser.role === "admin" && settingsDraft ? (
+            {payload.currentUser.role === "admin" && settingsDraft ? (
               <>
                 <article className="panel page-panel page-settings" ref={householdSettingsRef}>
                   <div className="section-heading">
@@ -7970,7 +7986,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <span className="section-kicker">{t("settings.admin_only")}</span>
                   </div>
                   <div className="settings-sections">
-                    <section className="settings-section settings-section-oidc" ref={oidcSettingsRef}>
+                    {!isHostedSaas ? (
+                      <section className="settings-section settings-section-oidc" ref={oidcSettingsRef}>
                       <div className="section-heading section-heading-compact">
                         <h3>{t("settings.section_oidc")}</h3>
                       </div>
@@ -8050,9 +8067,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             .replace("{source}", t(`auth.oidc_source_${settingsDraft.oidcSource}`))}
                         </p>
                       </div>
-                    </section>
+                      </section>
+                    ) : null}
 
-                    <section className="settings-section settings-section-smtp" ref={smtpSettingsRef}>
+                    {!isHostedSaas ? (
+                      <section className="settings-section settings-section-smtp" ref={smtpSettingsRef}>
                       <div className="section-heading section-heading-compact">
                         <h3>{t("settings.section_smtp")}</h3>
                       </div>
@@ -8179,7 +8198,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           SMTP_TEST_REQUIRED: Test the SMTP settings successfully before enabling SMTP.
                         </p>
                       ) : null}
-                    </section>
+                      </section>
+                    ) : null}
 
                     <section className="settings-section settings-section-general" ref={generalSettingsRef}>
                       <div className="section-heading section-heading-compact">
@@ -8215,18 +8235,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             }
                           />
                         </label>
-                        <label className="toggle-row">
-                          <span>{t("settings.push_notifications")}</span>
-                          <input
-                            type="checkbox"
-                            checked={settingsDraft.enablePushNotifications}
-                            onChange={(event) =>
-                              setSettingsDraft((current) =>
-                                current ? { ...current, enablePushNotifications: event.target.checked } : current
-                              )
-                            }
-                          />
-                        </label>
+                        {isHostedSaas ? (
+                          <p className="inline-message">{t("settings.push_always_on_saas")}</p>
+                        ) : (
+                          <label className="toggle-row">
+                            <span>{t("settings.push_notifications")}</span>
+                            <input
+                              type="checkbox"
+                              checked={settingsDraft.enablePushNotifications}
+                              onChange={(event) =>
+                                setSettingsDraft((current) =>
+                                  current ? { ...current, enablePushNotifications: event.target.checked } : current
+                                )
+                              }
+                            />
+                          </label>
+                        )}
                         <label className="toggle-row">
                           <span>{t("settings.overdue_penalties")}</span>
                           <input
@@ -8274,25 +8298,30 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                   formatNumber(Math.abs(settingsDraft.takeoverPointsDelta))
                                 )}
                         </p>
-                        <label className="toggle-row">
-                          <span>{t("settings.local_auth_enabled")}</span>
-                          <input
-                            type="checkbox"
-                            checked={settingsDraft.localAuthEnabled}
-                            onChange={(event) =>
-                              setSettingsDraft((current) =>
-                                current ? { ...current, localAuthEnabled: event.target.checked } : current
-                              )
-                            }
-                          />
-                        </label>
-                        {settingsDraft.localAuthForcedByConfig ? (
-                          <p className="inline-message">{t("settings.local_auth_forced_note")}</p>
+                        {!isHostedSaas ? (
+                          <>
+                            <label className="toggle-row">
+                              <span>{t("settings.local_auth_enabled")}</span>
+                              <input
+                                type="checkbox"
+                                checked={settingsDraft.localAuthEnabled}
+                                onChange={(event) =>
+                                  setSettingsDraft((current) =>
+                                    current ? { ...current, localAuthEnabled: event.target.checked } : current
+                                  )
+                                }
+                              />
+                            </label>
+                            {settingsDraft.localAuthForcedByConfig ? (
+                              <p className="inline-message">{t("settings.local_auth_forced_note")}</p>
+                            ) : null}
+                          </>
                         ) : null}
                       </div>
                     </section>
 
-                    <section className="settings-section settings-section-recovery">
+                    {!isHostedSaas ? (
+                      <section className="settings-section settings-section-recovery">
                       <div className="section-heading section-heading-compact">
                         <h3>{t("settings.section_recovery")}</h3>
                       </div>
@@ -8322,7 +8351,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         </p>
                         <p className="inline-message">{t("settings.recovery_member_password_hint")}</p>
                       </div>
-                    </section>
+                      </section>
+                    ) : null}
                   </div>
                   <div className="button-row">
                     <button
@@ -8559,7 +8589,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             {showTemplateManager ? (
-                <article className="panel panel-wide page-panel page-templates" ref={templatesRef}>
+                <article className="panel panel-wide page-panel page-templates page-chores" ref={templatesRef}>
                   <div className="section-heading">
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
@@ -9194,7 +9224,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </article>
             ) : null}
 
-            <article className="panel page-panel page-overview">
+            <article className="panel page-panel page-settings">
               <div className="section-heading">
                 <h2>{t("panel.assignment_logic")}</h2>
                 <span className="section-kicker">{t("panel.strategy_live")}</span>
