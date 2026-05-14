@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.54.0](https://github.com/kriziw/TaskBandit/compare/v0.53.2...v0.54.0) (2026-05-14)
+
+
+### Features
+
+* **web:** unify desktop routes and SaaS-safe tenant settings ([#397](https://github.com/kriziw/TaskBandit/issues/397)) ([935af64](https://github.com/kriziw/TaskBandit/commit/935af6475e9a0d078fbd7427b800a7567a590531))
+
 ## [0.53.2](https://github.com/kriziw/TaskBandit/compare/v0.53.1...v0.53.2) (2026-05-13)
 
 
