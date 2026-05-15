@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.61.0](https://github.com/kriziw/TaskBandit/compare/v0.60.1...v0.61.0) (2026-05-15)
+
+
+### Features
+
+* **mobile:** tighten card density and fix mobile navigation/actions ([#413](https://github.com/kriziw/TaskBandit/issues/413)) ([c8e72a6](https://github.com/kriziw/TaskBandit/commit/c8e72a64a254e43ac9f3b912a7337e4ce22a528c))
+
 ## [0.60.1](https://github.com/kriziw/TaskBandit/compare/v0.60.0...v0.60.1) (2026-05-15)
 
 
