@@ -54,7 +54,9 @@ const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
+const mobileUiModeStorageKey = "taskbandit-mobile-ui-mode";
 type WorkspaceVariant = "admin" | "client";
+type MobileUiMode = "classic" | "new";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -688,6 +690,19 @@ function getWorkspacePageStorageKey(variant: WorkspaceVariant) {
   return `${workspacePageStorageKey}-${variant}`;
 }
 
+function getMobileUiModeStorageKey(variant: WorkspaceVariant) {
+  return `${mobileUiModeStorageKey}-${variant}`;
+}
+
+function readStoredMobileUiMode(variant: WorkspaceVariant): MobileUiMode {
+  const stored = window.localStorage.getItem(getMobileUiModeStorageKey(variant));
+  return stored === "new" ? "new" : "classic";
+}
+
+function writeStoredMobileUiMode(variant: WorkspaceVariant, mode: MobileUiMode) {
+  window.localStorage.setItem(getMobileUiModeStorageKey(variant), mode);
+}
+
 function getDefaultWorkspacePage(variant: WorkspaceVariant): WorkspacePage {
   return "overview";
 }
@@ -1099,6 +1114,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     () =>
       typeof window !== "undefined" &&
       window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
+  );
+  const [mobileUiMode, setMobileUiMode] = useState<MobileUiMode>(() =>
+    readStoredMobileUiMode(workspaceVariant)
   );
   const [isClientComposerOpen, setIsClientComposerOpen] = useState(false);
   const [mobileDueEditorInstanceId, setMobileDueEditorInstanceId] = useState<string | null>(null);
@@ -2218,6 +2236,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const isHostedSaas = Boolean(payload?.hostedSubscription.hostedMode);
   const isClientVariant = workspaceVariant === "client";
   const showClientMobileShell = isClientVariant && Boolean(payload) && isClientMobileViewport;
+  const showNewClientMobileShell = showClientMobileShell && mobileUiMode === "new";
   const isStandaloneDisplayMode =
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: window-controls-overlay)").matches ||
@@ -2256,6 +2275,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setInstallPromptDismissed(
       window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
     );
+    setMobileUiMode(readStoredMobileUiMode(workspaceVariant));
     setOnboardingTourCompleted(readStoredOnboardingTourCompletion(workspaceVariant));
     setOnboardingDismissed(false);
     setOnboardingManuallyOpened(false);
@@ -3306,6 +3326,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function firstNameFromDisplayName(value: string) {
     return value.trim().split(/\s+/)[0] || value;
+  }
+
+  function initialsFromDisplayName(value: string) {
+    const parts = value
+      .trim()
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2);
+    return parts.map((part) => part[0]?.toUpperCase() ?? "").join("") || "U";
   }
 
   function renderTakeoverRequestCard(request: TakeoverRequestEntry) {
@@ -5360,6 +5389,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setInstallPromptEvent(null);
   }
 
+  function handleMobileUiModeChange(nextMode: MobileUiMode) {
+    writeStoredMobileUiMode(workspaceVariant, nextMode);
+    setMobileUiMode(nextMode);
+  }
+
   async function handleEnableBrowserNotifications() {
     if (!token) {
       return;
@@ -5761,47 +5795,89 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   return (
     <main
-      className={`app-shell variant-${workspaceVariant} ${payload ? "is-authenticated" : "is-auth-entry"}`}
+      className={`app-shell variant-${workspaceVariant} ${payload ? "is-authenticated" : "is-auth-entry"} ${
+        showNewClientMobileShell ? "mobile-ui-new" : ""
+      }`}
       data-variant={workspaceVariant}
     >
-      <section className="toolbar">
-        <div className="toolbar-group">
-          <div className="toolbar-brand" aria-label="TaskBandit">
-            <img className="toolbar-brand-mascot" src={brandIconAssetPath} alt="" aria-hidden="true" />
-            <div>
-              <strong>TaskBandit</strong>
-              <span>{workspaceVariantLabel}</span>
+      {showNewClientMobileShell && payload ? (
+        <section className="toolbar mobile-new-toolbar">
+          <div className="toolbar-group">
+            <button
+              className="ghost-button mobile-new-icon-button"
+              type="button"
+              aria-label={t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
+              onClick={handleOpenOnboarding}
+            >
+              &#9776;
+            </button>
+            <div className="toolbar-brand" aria-label="TaskBandit">
+              <img className="toolbar-brand-mascot" src={brandIconAssetPath} alt="" aria-hidden="true" />
+              <div>
+                <strong>TaskBandit</strong>
+              </div>
             </div>
           </div>
-          {payload?.currentUser ? (
-            <div className="user-badge">
-              <strong>{payload.currentUser.displayName}</strong>
-              <span>
-                {t(`role.${payload.currentUser.role}`)} - {formatNumber(payload.currentUser.points)} {t("user.points")}
-              </span>
-            </div>
-          ) : (
-            <div className="toolbar-pill">{t("auth.local_sign_in")}</div>
-          )}
-        </div>
-        <div className="toolbar-group">
-          <label className="language-picker">
-            <span>{t("locale.label")}</span>
-            <select value={language} onChange={(event) => setLanguage(event.target.value as AppLanguage)}>
-              {languageOptions.map((option) => (
-                <option key={option.code} value={option.code}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
-          </label>
-          {payload?.currentUser ? (
-            <button className="ghost-button" type="button" onClick={() => handleLogout()}>
-              {t("auth.logout")}
+          <div className="toolbar-group mobile-new-toolbar-actions">
+            <button
+              className="ghost-button mobile-new-icon-button"
+              type="button"
+              aria-label={t("panel.notifications")}
+              onClick={() => openWorkspacePage("settings", notificationsRef)}
+            >
+              &#128276;
             </button>
-          ) : null}
-        </div>
-      </section>
+            <button
+              className="ghost-button mobile-new-avatar-button"
+              type="button"
+              aria-label={payload.currentUser.displayName}
+              onClick={() => openWorkspacePage("settings")}
+            >
+              <span>{initialsFromDisplayName(payload.currentUser.displayName)}</span>
+            </button>
+          </div>
+        </section>
+      ) : (
+        <section className="toolbar">
+          <div className="toolbar-group">
+            <div className="toolbar-brand" aria-label="TaskBandit">
+              <img className="toolbar-brand-mascot" src={brandIconAssetPath} alt="" aria-hidden="true" />
+              <div>
+                <strong>TaskBandit</strong>
+                <span>{workspaceVariantLabel}</span>
+              </div>
+            </div>
+            {payload?.currentUser ? (
+              <div className="user-badge">
+                <strong>{payload.currentUser.displayName}</strong>
+                <span>
+                  {t(`role.${payload.currentUser.role}`)} - {formatNumber(payload.currentUser.points)}{" "}
+                  {t("user.points")}
+                </span>
+              </div>
+            ) : (
+              <div className="toolbar-pill">{t("auth.local_sign_in")}</div>
+            )}
+          </div>
+          <div className="toolbar-group">
+            <label className="language-picker">
+              <span>{t("locale.label")}</span>
+              <select value={language} onChange={(event) => setLanguage(event.target.value as AppLanguage)}>
+                {languageOptions.map((option) => (
+                  <option key={option.code} value={option.code}>
+                    {option.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+            {payload?.currentUser ? (
+              <button className="ghost-button" type="button" onClick={() => handleLogout()}>
+                {t("auth.logout")}
+              </button>
+            ) : null}
+          </div>
+        </section>
+      )}
 
       {!payload ? (
         <section className="hero">
@@ -6497,69 +6573,106 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {showClientMobileShell && activePage === "chores" ? (
               <section className="panel mobile-workspace-summary" ref={mobileSummaryRef}>
-                <div className="section-heading section-heading-compact mobile-workspace-summary-heading">
-                  <div>
-                    <p className="workspace-nav-kicker">{payload.household.name}</p>
-                    <h3>{t("panel.my_chores")}</h3>
-                  </div>
-                  <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
-                    {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
-                  </button>
-                </div>
-                <div className="mobile-workspace-stats">
-                  <div className="mobile-workspace-stat">
-                    <span>{t("panel.my_chores")}</span>
-                    <strong>{myActionableChoreCount}</strong>
-                  </div>
-                  <div className="mobile-workspace-stat">
-                    <span>{t("panel.notifications")}</span>
-                    <strong>{unreadNotifications.length}</strong>
-                  </div>
-                  <div className="mobile-workspace-stat">
-                    <span>{t("panel.household_chores")}</span>
-                    <strong>{clientMobileUnassignedChores.length + clientMobileOtherChores.length}</strong>
-                  </div>
-                </div>
-                {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
-                  <article className="mobile-quick-log-card">
-                    <div className="mobile-quick-log-card-copy">
-                      <p className="workspace-nav-kicker">TaskBandit quick log</p>
-                      <h4>Quick log</h4>
-                      <p>Log a completed chore instantly, even if it was never created.</p>
+                {showNewClientMobileShell ? (
+                  <>
+                    {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
+                      <article className="mobile-quick-log-card">
+                        <div className="mobile-quick-log-card-icon" aria-hidden="true">
+                          &#9889;
+                        </div>
+                        <div className="mobile-quick-log-card-copy">
+                          <h4>Quick log</h4>
+                          <p>Log a completed chore instantly, even if it was never created.</p>
+                        </div>
+                        <button
+                          className="primary-button mobile-quick-log-card-cta"
+                          type="button"
+                          onClick={() => {
+                            resetQuickLogComposer();
+                            setIsQuickLogComposerOpen(true);
+                          }}
+                        >
+                          Quick log
+                        </button>
+                      </article>
+                    ) : null}
+                    <section className="mobile-chores-rail mobile-chores-rail-new" ref={mobileChoresRailRef}>
+                      <div className="mobile-chores-rail-title">
+                        <h3>My chores</h3>
+                        <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
+                          View all
+                        </button>
+                      </div>
+                      <div className="mobile-chores-rail-title">
+                        <h3>Up next</h3>
+                      </div>
+                    </section>
+                  </>
+                ) : (
+                  <>
+                    <div className="section-heading section-heading-compact mobile-workspace-summary-heading">
+                      <div>
+                        <p className="workspace-nav-kicker">{payload.household.name}</p>
+                        <h3>{t("panel.my_chores")}</h3>
+                      </div>
+                      <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
+                        {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
+                      </button>
                     </div>
-                    <button
-                      className="primary-button mobile-quick-log-card-cta"
-                      type="button"
-                      onClick={() => {
-                        resetQuickLogComposer();
-                        setIsQuickLogComposerOpen(true);
-                      }}
-                    >
-                      Quick log
-                    </button>
-                  </article>
-                ) : null}
-                <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
-                  {payload.currentUser.role !== "child" ? (
-                    <>
-                      <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
-                        {t("instances.create")}
-                      </button>
-                    </>
-                  ) : null}
-                  {pageSectionLinks
-                    .filter((link) => link.key !== "chores-schedule")
-                    .map((link) => (
-                      <button
-                        key={link.key}
-                        className="ghost-button"
-                        type="button"
-                        onClick={() => scrollToSection(link.ref)}
-                      >
-                        {link.label}
-                      </button>
-                    ))}
-                </section>
+                    <div className="mobile-workspace-stats">
+                      <div className="mobile-workspace-stat">
+                        <span>{t("panel.my_chores")}</span>
+                        <strong>{myActionableChoreCount}</strong>
+                      </div>
+                      <div className="mobile-workspace-stat">
+                        <span>{t("panel.notifications")}</span>
+                        <strong>{unreadNotifications.length}</strong>
+                      </div>
+                      <div className="mobile-workspace-stat">
+                        <span>{t("panel.household_chores")}</span>
+                        <strong>{clientMobileUnassignedChores.length + clientMobileOtherChores.length}</strong>
+                      </div>
+                    </div>
+                    {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
+                      <article className="mobile-quick-log-card">
+                        <div className="mobile-quick-log-card-copy">
+                          <p className="workspace-nav-kicker">TaskBandit quick log</p>
+                          <h4>Quick log</h4>
+                          <p>Log a completed chore instantly, even if it was never created.</p>
+                        </div>
+                        <button
+                          className="primary-button mobile-quick-log-card-cta"
+                          type="button"
+                          onClick={() => {
+                            resetQuickLogComposer();
+                            setIsQuickLogComposerOpen(true);
+                          }}
+                        >
+                          Quick log
+                        </button>
+                      </article>
+                    ) : null}
+                    <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
+                      {payload.currentUser.role !== "child" ? (
+                        <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
+                          {t("instances.create")}
+                        </button>
+                      ) : null}
+                      {pageSectionLinks
+                        .filter((link) => link.key !== "chores-schedule")
+                        .map((link) => (
+                          <button
+                            key={link.key}
+                            className="ghost-button"
+                            type="button"
+                            onClick={() => scrollToSection(link.ref)}
+                          >
+                            {link.label}
+                          </button>
+                        ))}
+                    </section>
+                  </>
+                )}
               </section>
             ) : null}
 
@@ -6754,7 +6867,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            <article className="panel page-panel page-overview" ref={myChoresRef}>
+            <article
+              className={`panel page-panel page-overview ${showClientMobileShell ? "page-chores" : ""}`}
+              ref={myChoresRef}
+            >
               <div className="section-heading">
                 <h2>{t("panel.my_chores")}</h2>
                 <span className="section-kicker">
@@ -7051,7 +7167,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             <article className="panel panel-wide page-panel page-chores" ref={householdChoresRef}>
               <div className="section-heading">
-                <h2>{t("panel.household_chores")}</h2>
+                <h2>{showNewClientMobileShell ? "Up next" : t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
                   <span className="section-kicker">
                     {showClientMobileShell
@@ -7198,7 +7314,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               )}
             </article>
 
-            <article className="panel panel-wide page-panel page-chores" ref={choreHistoryRef}>
+            <article className="panel panel-wide page-panel page-chores mobile-history-panel" ref={choreHistoryRef}>
               <div className="section-heading">
                 <h2>{t("panel.chore_history")}</h2>
                 <div className="toolbar-group">
@@ -7324,6 +7440,32 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </>
               )}
             </article>
+
+            {workspaceVariant === "client" ? (
+              <article className="panel page-panel page-settings mobile-ui-mode-panel">
+                <div className="section-heading">
+                  <h2>Mobile UI mode</h2>
+                  <span className="section-kicker">Device only</span>
+                </div>
+                <p className="inline-message">
+                  This is a temporary rollout toggle and will be removed after validation.
+                </p>
+                <div className="settings-list">
+                  <label>
+                    <span>Mobile UI mode</span>
+                    <select
+                      value={mobileUiMode}
+                      onChange={(event) =>
+                        handleMobileUiModeChange(event.target.value === "new" ? "new" : "classic")
+                      }
+                    >
+                      <option value="classic">Classic</option>
+                      <option value="new">New</option>
+                    </select>
+                  </label>
+                </div>
+              </article>
+            ) : null}
 
             {notificationPreferencesDraft ? (
               <article
@@ -9593,16 +9735,32 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               >
                 <label>
                   <span>What did you complete?</span>
-                  <input
-                    type="text"
-                    value={quickLogQuery}
-                    onChange={(event) => {
-                      setQuickLogQuery(event.target.value);
-                      setQuickLogSelectedInstanceId(null);
-                      setQuickLogSelectedTemplateId(null);
-                    }}
-                    placeholder="Start typing to search chores/templates"
-                  />
+                  <div className="mobile-quick-log-input-wrap">
+                    <input
+                      type="text"
+                      value={quickLogQuery}
+                      onChange={(event) => {
+                        setQuickLogQuery(event.target.value);
+                        setQuickLogSelectedInstanceId(null);
+                        setQuickLogSelectedTemplateId(null);
+                      }}
+                      placeholder="Start typing to search chores/templates"
+                    />
+                    {quickLogQuery ? (
+                      <button
+                        className="ghost-button mobile-quick-log-clear"
+                        type="button"
+                        onClick={() => {
+                          setQuickLogQuery("");
+                          setQuickLogSelectedInstanceId(null);
+                          setQuickLogSelectedTemplateId(null);
+                        }}
+                        aria-label="Clear"
+                      >
+                        x
+                      </button>
+                    ) : null}
+                  </div>
                 </label>
                 <div className="mobile-quick-log-icon-picker" role="group" aria-label="Chore icon">
                   {quickLogIconOptions.map((iconOption) => (
@@ -9711,6 +9869,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
       ) : null}
+      {showNewClientMobileShell && activePage === "chores" && payload?.currentUser.role !== "child" ? (
+        <button className="mobile-fab-add" type="button" aria-label="Add chore" onClick={handleOpenClientComposer}>
+          +
+        </button>
+      ) : null}
       {showClientMobileShell ? (
         <nav className="mobile-bottom-nav" aria-label={t("nav.workspace")} ref={mobileBottomNavRef}>
           <div
@@ -9737,6 +9900,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     alt=""
                     aria-hidden="true"
                   />
+                ) : null}
+                {showNewClientMobileShell ? (
+                  <span className="mobile-bottom-nav-label">{page.label}</span>
                 ) : null}
               </button>
             ))}

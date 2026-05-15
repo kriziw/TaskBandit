@@ -212,6 +212,10 @@
     <string name="mobile_settings_appearance">Appearance</string>
     <string name="mobile_settings_theme">Theme</string>
     <string name="mobile_settings_language">Language</string>
+    <string name="mobile_settings_ui_mode">Mobile UI mode</string>
+    <string name="mobile_ui_mode_classic">Classic</string>
+    <string name="mobile_ui_mode_new">New</string>
+    <string name="mobile_settings_ui_mode_hint">Temporary rollout toggle: switch to New to use the mock-style mobile interface.</string>
     <string name="mobile_theme_system">System</string>
     <string name="mobile_theme_light">Light</string>
     <string name="mobile_theme_dark">Dark</string>
