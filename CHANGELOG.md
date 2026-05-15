@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.61.1](https://github.com/kriziw/TaskBandit/compare/v0.61.0...v0.61.1) (2026-05-15)
+
+
+### Bug Fixes
+
+* **mobile:** compress chores layout and regroup due sections ([#415](https://github.com/kriziw/TaskBandit/issues/415)) ([36e91ae](https://github.com/kriziw/TaskBandit/commit/36e91ae663ca2450114219d763355b7fe2b7a213))
+
 ## [0.61.0](https://github.com/kriziw/TaskBandit/compare/v0.60.1...v0.61.0) (2026-05-15)
 
 
