@@ -696,7 +696,7 @@ function getMobileUiModeStorageKey(variant: WorkspaceVariant) {
 
 function readStoredMobileUiMode(variant: WorkspaceVariant): MobileUiMode {
   const stored = window.localStorage.getItem(getMobileUiModeStorageKey(variant));
-  return stored === "new" ? "new" : "classic";
+  return stored === "classic" ? "classic" : "new";
 }
 
 function writeStoredMobileUiMode(variant: WorkspaceVariant, mode: MobileUiMode) {
@@ -2934,6 +2934,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       </div>
     );
 
+    if (showNewClientMobileShell) {
+      const compactMeta = `${options?.historic ? formatDate(getHistoricChoreDate(instance)) : formatDate(instance.dueAt)} • ${
+        instance.groupTitle || t("common.unassigned")
+      }`;
+      return (
+        <div className="task-row compact mock-mobile-card" key={instance.id}>
+          <div className="mock-mobile-card-icon" aria-hidden="true">
+            {choreIcon}
+          </div>
+          <div className="mock-mobile-card-body">
+            <strong className="task-row-title">{choreTitleText}</strong>
+            <p className="task-row-compact-meta">{compactMeta}</p>
+          </div>
+          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+        </div>
+      );
+    }
+
     return (
       <div className="task-row compact" key={instance.id}>
         <div className="task-row-header">
@@ -3150,6 +3168,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const compactMetaLine = `${formatDate(instance.dueAt)} - ${t("task.points")}: ${
       instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints
     }`;
+
+    if (showNewClientMobileShell) {
+      const compactMeta = `${formatDate(instance.dueAt)} • ${instance.groupTitle || t("common.unassigned")}`;
+      return (
+        <div className="task-row mock-mobile-card" key={instance.id}>
+          <div className="mock-mobile-card-icon" aria-hidden="true">
+            {choreIcon}
+          </div>
+          <div className="mock-mobile-card-body">
+            <strong className="task-row-title">{choreTitleText}</strong>
+            <p className="task-row-compact-meta">{compactMeta}</p>
+          </div>
+          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+        </div>
+      );
+    }
 
     return (
       <div className="task-row" key={instance.id}>
@@ -6937,13 +6971,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
               </div>
-              <div className="stack-list">
+              <div className={`stack-list ${showNewClientMobileShell ? "mock-mobile-leaderboard-list" : ""}`}>
                 {payload.dashboard.leaderboard.map((member, index) => (
-                  <div className="leader-row" key={member.id}>
+                  <div className={`leader-row ${showNewClientMobileShell ? "mock-mobile-leader-row" : ""}`} key={member.id}>
                     <div>
-                      <strong>
-                        {index + 1}. {member.displayName}
-                      </strong>
+                      <strong>{index + 1}. {member.displayName}</strong>
                       <p>
                         {t(`role.${member.role}`)} - {member.currentStreak} {t("user.streak")}
                       </p>

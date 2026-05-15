@@ -37,8 +37,8 @@ class TaskBanditAppPreferencesStore(
     }
 
     fun readMobileUiMode(): MobileUiMode {
-        val storedValue = preferences.getString("mobile_ui_mode", MobileUiMode.CLASSIC.name).orEmpty()
-        return MobileUiMode.entries.firstOrNull { it.name == storedValue } ?: MobileUiMode.CLASSIC
+        val storedValue = preferences.getString("mobile_ui_mode", MobileUiMode.NEW.name).orEmpty()
+        return MobileUiMode.entries.firstOrNull { it.name == storedValue } ?: MobileUiMode.NEW
     }
 
     fun saveMobileUiMode(value: MobileUiMode) {

@@ -235,6 +235,7 @@ private enum class MobileChoreSectionTone {
 }
 
 private val LocalMobileFeatureAccess = compositionLocalOf { MobileFeatureAccess() }
+private val LocalIsNewMobileUi = compositionLocalOf { false }
 
 private fun isTabletWidth(maxWidth: Dp): Boolean = maxWidth >= 840.dp
 
@@ -3320,7 +3321,10 @@ private fun DashboardScreen(
         )
     }
 
-    CompositionLocalProvider(LocalMobileFeatureAccess provides featureAccess) {
+    CompositionLocalProvider(
+        LocalMobileFeatureAccess provides featureAccess,
+        LocalIsNewMobileUi provides isNewMobileUi
+    ) {
         Scaffold(
         topBar = {
             if (isNewMobileUi) {
@@ -4313,9 +4317,15 @@ private fun LeaderboardEntryRow(
     rank: Int,
     entry: MobileLeaderboardEntry
 ) {
+    val isNewMobileUi = LocalIsNewMobileUi.current
     Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        shape = RoundedCornerShape(if (isNewMobileUi) 14.dp else 16.dp),
+        color = if (isNewMobileUi) {
+            MaterialTheme.colorScheme.surface
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        },
+        border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
     ) {
         Row(
             modifier = Modifier
@@ -5190,6 +5200,7 @@ private fun ChoreCard(
     val hasSecondaryActions = canEditDueAt || canCancelOccurrence || canCloseCycle || canRequestTakeover
     val outgoingTakeoverFirstName = outgoingTakeoverRequest?.requested?.displayName?.let(::firstNameFromDisplayName)
     val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
+    val isNewMobileUi = LocalIsNewMobileUi.current
     val accentContainerColor = when (section) {
         MobileChoreSection.MINE -> MaterialTheme.colorScheme.primaryContainer
         MobileChoreSection.UNASSIGNED -> MaterialTheme.colorScheme.tertiaryContainer
@@ -5205,6 +5216,64 @@ private fun ChoreCard(
         MobileChoreSection.UNASSIGNED -> Icons.Rounded.AddCircle
         MobileChoreSection.OTHERS -> Icons.Rounded.NotificationsActive
     }
+
+    if (isNewMobileUi) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(14.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = accentContainerColor.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = choreIcon,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = typeTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${formatDueAtForCard(chore.dueAt)} • ${chore.groupTitle}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = accentContainerColor.copy(alpha = 0.75f)
+                ) {
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = accentContentColor
+                    )
+                }
+            }
+        }
+        return
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp)
@@ -5833,11 +5902,19 @@ private fun MobileChoiceRow(options: List<MobileChoiceOption>) {
 
 @Composable
 private fun SettingsSectionCard(modifier: Modifier = Modifier, icon: ImageVector, title: String, content: @Composable () -> Unit) {
-    Card(modifier = modifier, shape = RoundedCornerShape(24.dp)) {
+    val isNewMobileUi = LocalIsNewMobileUi.current
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(if (isNewMobileUi) 16.dp else 24.dp),
+        border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
+    ) {
         Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = icon, contentDescription = null)
-                Text(text = title, style = MaterialTheme.typography.titleMedium)
+                Text(
+                    text = title,
+                    style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium
+                )
             }
             content()
         }

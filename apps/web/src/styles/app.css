@@ -2938,6 +2938,57 @@ h4,
     padding: 0;
   }
 
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="leaderboard"] .page-leaderboard,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="chores"] .page-chores {
+    border-radius: 16px;
+    background: #fff;
+    border: 1px solid var(--mobile-border);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.02);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="leaderboard"] .section-heading h2,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .section-heading h2 {
+    font-size: 1.8rem;
+    line-height: 1.1;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-leaderboard-list {
+    gap: 10px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-leader-row {
+    padding: 12px 14px;
+    border-radius: 14px;
+    background: #f9fbf8;
+    border: 1px solid rgba(35, 58, 30, 0.1);
+    align-items: center;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-leader-row strong {
+    font-size: 1.02rem;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .settings-list,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .settings-section,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .settings-sections {
+    gap: 10px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .toggle-row,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] label {
+    padding: 10px 12px;
+    border-radius: 12px;
+    background: #f7f9f6;
+    border: 1px solid rgba(35, 58, 30, 0.1);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .button-row .ghost-button,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .button-row .secondary-button,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .button-row .primary-button {
+    border-radius: 12px;
+  }
+
   .app-shell.variant-client.mobile-ui-new .mobile-workspace-stats {
     display: none;
   }
@@ -2996,7 +3047,7 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .mobile-chores-rail-title h3 {
     margin: 0;
-    font-size: 2rem;
+    font-size: 2.05rem;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-chores-rail-title .ghost-button {
@@ -3010,7 +3061,7 @@ h4,
   }
 
   .app-shell.variant-client.mobile-ui-new .page-chores .my-chore-section {
-    padding: 0;
+    padding: 0 0 6px;
     border: 0;
     border-radius: 0;
     background: transparent;
@@ -3035,6 +3086,41 @@ h4,
     border: 1px solid var(--mobile-border);
   }
 
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card {
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 12px;
+    align-items: center;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card-icon {
+    width: 48px;
+    height: 48px;
+    display: grid;
+    place-items: center;
+    border-radius: 12px;
+    background: #e7ecef;
+    font-size: 1.35rem;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card-body {
+    min-width: 0;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-title {
+    display: block;
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 700;
+    line-height: 1.22;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-compact-meta {
+    display: block;
+    margin: 3px 0 0;
+    color: var(--mobile-text-muted);
+    font-size: 0.92rem;
+  }
+
   .app-shell.variant-client.mobile-ui-new .task-row-header {
     display: contents;
   }
@@ -3057,6 +3143,10 @@ h4,
     margin-right: 12px;
     border-radius: 12px;
     background: #e6ecef;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .page-chores .section-heading-compact {
+    display: none;
   }
 
   .app-shell.variant-client.mobile-ui-new .task-row-title {
