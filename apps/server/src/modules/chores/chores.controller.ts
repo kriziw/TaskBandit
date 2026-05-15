@@ -32,6 +32,7 @@ import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
 import { SnoozeDeferredChoreDto } from "./dto/snooze-deferred-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
+import { QuickLogChoreDto } from "./dto/quick-log-chore.dto";
 import { memoryStorage } from "multer";
 
 const proofUploadMaxBytes = 10 * 1024 * 1024;
@@ -109,6 +110,16 @@ export class ChoresController {
     @Headers("accept-language") acceptLanguage?: string
   ) {
     return this.choresService.createInstance(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
+  }
+
+  @Post("quick-log")
+  @Roles("admin", "parent")
+  quickLog(
+    @Body() dto: QuickLogChoreDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.quickLog(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Put("instances/:id")

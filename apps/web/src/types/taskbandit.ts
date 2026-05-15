@@ -44,6 +44,7 @@ export type AuthenticatedUser = {
     follow_up_automation: boolean;
     external_completion: boolean;
     deferred_follow_up_control: boolean;
+    quick_log: boolean;
   };
 };
 
@@ -230,6 +231,7 @@ export type HouseholdSettings = {
   selfSignupEnabled: boolean;
   onboardingCompleted: boolean;
   membersCanSeeFullHouseholdChoreDetails: boolean;
+  quickLogPointsDefault: number | null;
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;
   takeoverPointsDelta: number;
@@ -499,7 +501,7 @@ export type CompletionMilestone = {
 
 export type ChoreInstance = {
   id: string;
-  templateId: string;
+  templateId: string | null;
   cycleId: string | null;
   occurrenceRootId: string;
   title: string;
@@ -542,6 +544,15 @@ export type ChoreInstance = {
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
   completionMilestone?: CompletionMilestone | null;
+};
+
+export type QuickLogInput = {
+  instanceId?: string;
+  templateId?: string;
+  title?: string;
+  note?: string;
+  createTemplateFromEntry?: boolean;
+  pointsOverride?: number;
 };
 
 export type UploadedProof = {

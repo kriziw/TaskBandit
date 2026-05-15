@@ -249,6 +249,15 @@ private data class MobileChoiceOption(
     val onClick: () -> Unit
 )
 
+private data class MobileQuickLogCandidate(
+    val kind: String,
+    val id: String,
+    val title: String,
+    val subtitle: String? = null
+)
+
+private val quickLogIconOptions = listOf("✅", "🧹", "🧺", "🗑️", "🍽️", "🛁", "🧸", "🛒", "📦", "✨")
+
 private enum class MobileCompletionCelebrationVariant {
     STANDARD,
     RARE,
@@ -476,6 +485,7 @@ private fun TaskBanditApp(
     val featureTakeoverDirectDisabledMessage = stringResource(R.string.mobile_feature_takeover_direct_disabled)
     val featureTakeoverRequestsDisabledMessage = stringResource(R.string.mobile_feature_takeover_requests_disabled)
     val featureChoresManageDisabledMessage = stringResource(R.string.mobile_feature_chores_manage_disabled)
+    val featureQuickLogDisabledMessage = stringResource(R.string.mobile_feature_quick_log_disabled)
     val submissionSentMessage = stringResource(R.string.mobile_submission_sent)
     val submittingMessage = stringResource(R.string.mobile_submitting)
     val approvingMessage = stringResource(R.string.mobile_approving)
@@ -487,6 +497,7 @@ private fun TaskBanditApp(
     val takeoverRequestApprovingMessage = stringResource(R.string.mobile_takeover_request_approving)
     val takeoverRequestDecliningMessage = stringResource(R.string.mobile_takeover_request_declining)
     val creatingChoreMessage = stringResource(R.string.mobile_create_creating)
+    val quickLoggingMessage = stringResource(R.string.mobile_quick_log_saving)
     val updatingDueAtMessage = stringResource(R.string.mobile_updating_due_at)
     val cancellingOccurrenceMessage = stringResource(R.string.mobile_cancelling_occurrence)
     val cancellingSeriesMessage = stringResource(R.string.mobile_cancelling_series)
@@ -498,6 +509,8 @@ private fun TaskBanditApp(
     val takeoverApprovedMessage = stringResource(R.string.mobile_takeover_request_approved_notice)
     val takeoverDeclinedMessage = stringResource(R.string.mobile_takeover_request_declined_notice)
     val createChoreFailedMessage = stringResource(R.string.mobile_create_chore_failed)
+    val quickLogSuccessMessage = stringResource(R.string.mobile_quick_log_success)
+    val quickLogFailedMessage = stringResource(R.string.mobile_quick_log_failed)
     val dueAtUpdatedMessage = stringResource(R.string.mobile_due_at_updated)
     val occurrenceCancelledMessage = stringResource(R.string.mobile_occurrence_cancelled)
     val seriesCancelledMessage = stringResource(R.string.mobile_series_cancelled)
@@ -551,6 +564,7 @@ private fun TaskBanditApp(
     var activeCloseCycleAction by remember { mutableStateOf<String?>(null) }
     var activeTakeoverRequestAction by remember { mutableStateOf<String?>(null) }
     var activeCreateAction by remember { mutableStateOf<String?>(null) }
+    var activeQuickLogAction by remember { mutableStateOf<String?>(null) }
     var activeDueAtAction by remember { mutableStateOf<String?>(null) }
     var createSuccessCounter by remember { mutableIntStateOf(0) }
     var activeDeviceAction by remember { mutableStateOf<String?>(null) }
@@ -1295,6 +1309,83 @@ private fun TaskBanditApp(
         }
     }
 
+    fun quickLog(
+        instanceId: String?,
+        templateId: String?,
+        title: String?,
+        note: String?,
+        createTemplateFromEntry: Boolean,
+        pointsOverride: Int?
+    ) {
+        val role = dashboard?.user?.role
+        if (role != "admin" && role != "parent") {
+            noticeMessage = featureQuickLogDisabledMessage
+            return
+        }
+        if (!hasFeatureAccess { it.quickLog }) {
+            noticeMessage = featureQuickLogDisabledMessage
+            return
+        }
+
+        val normalizedTitle = title?.trim().orEmpty()
+        if (instanceId.isNullOrBlank() && templateId.isNullOrBlank() && normalizedTitle.isBlank()) {
+            validationDialogMessage = context.getString(R.string.mobile_quick_log_require_input)
+            return
+        }
+
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeQuickLogAction = "quick-log"
+        errorMessage = null
+        noticeMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    runMutationWithReconnectWindow(quickLoggingMessage) {
+                        api.quickLog(
+                            baseUrl = baseUrl,
+                            token = token,
+                            instanceId = instanceId,
+                            templateId = templateId,
+                            title = normalizedTitle.ifBlank { null },
+                            note = note,
+                            createTemplateFromEntry = createTemplateFromEntry,
+                            pointsOverride = pointsOverride
+                        )
+                    }
+                }
+            }.onSuccess { loggedChore ->
+                dashboard = dashboard?.copy(
+                    chores = buildList {
+                        val existing = dashboard?.chores.orEmpty()
+                        var replaced = false
+                        existing.forEach { chore ->
+                            if (chore.id == loggedChore.id) {
+                                add(loggedChore)
+                                replaced = true
+                            } else {
+                                add(chore)
+                            }
+                        }
+                        if (!replaced) {
+                            add(0, loggedChore)
+                        }
+                    }
+                )
+                noticeMessage = quickLogSuccessMessage
+                requestDashboardRefresh()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message ?: quickLogFailedMessage
+                }
+            }
+            activeQuickLogAction = null
+        }
+    }
+
     fun updateChoreDueAt(choreId: String, dueAtIsoUtc: String, title: String, variantId: String?) {
         if (!hasFeatureAccess { it.choresManage }) {
             noticeMessage = featureChoresManageDisabledMessage
@@ -1810,6 +1901,7 @@ private fun TaskBanditApp(
                     activeDueAtAction = activeDueAtAction,
                     activeTakeoverRequestAction = activeTakeoverRequestAction,
                     activeCreateAction = activeCreateAction,
+                    activeQuickLogAction = activeQuickLogAction,
                     createSuccessCounter = createSuccessCounter,
                     activeDeviceAction = activeDeviceAction,
                     errorMessage = errorMessage,
@@ -1840,6 +1932,7 @@ private fun TaskBanditApp(
                     onRespondToTakeoverRequest = ::respondToTakeoverRequest,
                     onSubmitChore = ::submitChore,
                     onCreateChore = ::createChore,
+                    onQuickLog = ::quickLog,
                     onRemoveNotificationDevice = ::removeNotificationDevice,
                     onThemeModeChange = ::updateThemeMode,
                     onLanguageTagChange = ::updateLanguageTag,
@@ -2388,6 +2481,7 @@ private fun DashboardScreen(
     activeDueAtAction: String?,
     activeTakeoverRequestAction: String?,
     activeCreateAction: String?,
+    activeQuickLogAction: String?,
     createSuccessCounter: Int,
     activeDeviceAction: String?,
     errorMessage: String?,
@@ -2418,6 +2512,7 @@ private fun DashboardScreen(
     onRespondToTakeoverRequest: (String, Boolean) -> Unit,
     onSubmitChore: (String) -> Unit,
     onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit,
+    onQuickLog: (String?, String?, String?, String?, Boolean, Int?) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
@@ -2430,6 +2525,7 @@ private fun DashboardScreen(
     val canManageChores = templateCreateCapabilities.canOpenCreateTab
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
+    val canUseQuickLog = isCreatorRole && featureAccess.quickLog
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
@@ -2459,6 +2555,15 @@ private fun DashboardScreen(
     var submitConfirmationChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
+    var quickLogQuery by rememberSaveable { mutableStateOf("") }
+    var quickLogNote by rememberSaveable { mutableStateOf("") }
+    var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickLogSelectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickLogIcon by rememberSaveable { mutableStateOf("✅") }
+    var quickLogCreateTemplate by rememberSaveable { mutableStateOf(false) }
+    var quickLogUsePointsOverride by rememberSaveable { mutableStateOf(false) }
+    var quickLogPointsOverrideInput by rememberSaveable { mutableStateOf("") }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
     val templateVariantsByTemplateId =
@@ -2534,6 +2639,47 @@ private fun DashboardScreen(
     }
     val unassignedChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.UNASSIGNED } }
     val otherChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.OTHERS } }
+    val quickLogCandidates = remember(sortedChores, templates) {
+        buildList {
+            sortedChores.forEach { chore ->
+                add(
+                    MobileQuickLogCandidate(
+                        kind = "instance",
+                        id = chore.id,
+                        title = chore.title,
+                        subtitle = chore.groupTitle
+                    )
+                )
+            }
+            templates.forEach { template ->
+                add(
+                    MobileQuickLogCandidate(
+                        kind = "template",
+                        id = template.id,
+                        title = template.title,
+                        subtitle = template.groupTitle
+                    )
+                )
+            }
+        }
+    }
+    val filteredQuickLogCandidates = remember(quickLogCandidates, quickLogQuery) {
+        val normalized = quickLogQuery.trim().lowercase(Locale.getDefault())
+        if (normalized.isBlank()) {
+            quickLogCandidates.take(8)
+        } else {
+            quickLogCandidates.filter { candidate ->
+                candidate.title.lowercase(Locale.getDefault()).contains(normalized) ||
+                    (candidate.subtitle?.lowercase(Locale.getDefault())?.contains(normalized) == true)
+            }.take(8)
+        }
+    }
+    val selectedQuickLogCandidate = remember(quickLogCandidates, quickLogSelectedKind, quickLogSelectedId) {
+        quickLogCandidates.firstOrNull { candidate ->
+            candidate.kind == quickLogSelectedKind && candidate.id == quickLogSelectedId
+        }
+    }
+    val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
     val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)
     val choresDueThisWeekLabel = stringResource(R.string.mobile_chores_due_this_week)
     val choresDueLaterLabel = stringResource(R.string.mobile_chores_due_later)
@@ -2744,6 +2890,221 @@ private fun DashboardScreen(
                     resetCreateForm()
                 }) {
                     Text(stringResource(R.string.mobile_create_success_create_another))
+                }
+            }
+        )
+    }
+
+    fun resetQuickLogForm() {
+        showQuickLogDialog = false
+        quickLogQuery = ""
+        quickLogNote = ""
+        quickLogSelectedKind = null
+        quickLogSelectedId = null
+        quickLogIcon = "✅"
+        quickLogCreateTemplate = false
+        quickLogUsePointsOverride = false
+        quickLogPointsOverrideInput = ""
+    }
+
+    if (showQuickLogDialog && canUseQuickLog) {
+        val parsedOverridePoints = quickLogPointsOverrideInput.trim().toIntOrNull()
+        val quickLogCanSubmit =
+            activeQuickLogAction == null &&
+                (
+                    !quickLogSelectedId.isNullOrBlank() ||
+                        quickLogQuery.trim().isNotBlank()
+                    ) &&
+                (!quickLogUsePointsOverride || (parsedOverridePoints != null && parsedOverridePoints >= 0))
+        AlertDialog(
+            onDismissRequest = ::resetQuickLogForm,
+            title = { Text(stringResource(R.string.mobile_quick_log_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    OutlinedTextField(
+                        value = quickLogQuery,
+                        onValueChange = {
+                            quickLogQuery = it
+                            quickLogSelectedKind = null
+                            quickLogSelectedId = null
+                        },
+                        label = { Text(stringResource(R.string.mobile_quick_log_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Text(
+                            text = stringResource(R.string.mobile_quick_log_icon_label),
+                            style = MaterialTheme.typography.labelMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        quickLogIconOptions.chunked(5).forEach { rowIcons ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                            ) {
+                                rowIcons.forEach { iconOption ->
+                                    OutlinedButton(
+                                        onClick = { quickLogIcon = iconOption },
+                                        modifier = Modifier.weight(1f),
+                                        border = BorderStroke(
+                                            if (quickLogIcon == iconOption) 2.dp else 1.dp,
+                                            if (quickLogIcon == iconOption) {
+                                                MaterialTheme.colorScheme.primary
+                                            } else {
+                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                                            }
+                                        ),
+                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
+                                    ) {
+                                        Text(iconOption)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (filteredQuickLogCandidates.isNotEmpty()) {
+                        Surface(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(14.dp),
+                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                        ) {
+                            Column(
+                                modifier = Modifier.fillMaxWidth().padding(8.dp),
+                                verticalArrangement = Arrangement.spacedBy(4.dp)
+                            ) {
+                                filteredQuickLogCandidates.forEach { candidate ->
+                                    TextButton(
+                                        onClick = {
+                                            quickLogSelectedKind = candidate.kind
+                                            quickLogSelectedId = candidate.id
+                                            quickLogQuery = candidate.title
+                                            quickLogIcon = resolveQuickLogIcon(candidate.title, candidate.subtitle)
+                                            if (candidate.kind != "template") {
+                                                quickLogCreateTemplate = false
+                                            }
+                                        },
+                                        modifier = Modifier.fillMaxWidth(),
+                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                                    ) {
+                                        Column(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalArrangement = Arrangement.spacedBy(1.dp)
+                                        ) {
+                                            Text(
+                                                text = candidate.title,
+                                                style = MaterialTheme.typography.bodyMedium,
+                                                maxLines = 1,
+                                                overflow = TextOverflow.Ellipsis
+                                            )
+                                            Text(
+                                                text = stringResource(
+                                                    if (candidate.kind == "instance") R.string.mobile_quick_log_match_open else R.string.mobile_quick_log_match_template,
+                                                    candidate.subtitle ?: ""
+                                                ),
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if (selectedQuickLogCandidate?.kind == "template" || quickLogSelectedId == null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Checkbox(
+                                checked = quickLogCreateTemplate,
+                                onCheckedChange = { quickLogCreateTemplate = it }
+                            )
+                            Text(
+                                text = stringResource(R.string.mobile_quick_log_create_template),
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = quickLogNote,
+                        onValueChange = { quickLogNote = it },
+                        label = { Text(stringResource(R.string.mobile_quick_log_note_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 2
+                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Checkbox(
+                            checked = quickLogUsePointsOverride,
+                            onCheckedChange = { quickLogUsePointsOverride = it }
+                        )
+                        Text(
+                            text = stringResource(R.string.mobile_quick_log_override_points),
+                            style = MaterialTheme.typography.bodySmall
+                        )
+                    }
+                    if (quickLogUsePointsOverride) {
+                        OutlinedTextField(
+                            value = quickLogPointsOverrideInput,
+                            onValueChange = { value ->
+                                if (value.all(Char::isDigit)) {
+                                    quickLogPointsOverrideInput = value
+                                }
+                            },
+                            label = { Text(stringResource(R.string.mobile_quick_log_points_label, quickLogDefaultPoints)) },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            modifier = Modifier.fillMaxWidth(),
+                            singleLine = true
+                        )
+                    } else {
+                        Text(
+                            text = stringResource(R.string.mobile_quick_log_default_points_hint, quickLogDefaultPoints),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val selectedKind = quickLogSelectedKind
+                        val selectedId = quickLogSelectedId
+                        val typedTitle = quickLogQuery.trim()
+                        val fallbackTitle = selectedQuickLogCandidate?.title?.trim().orEmpty()
+                        val titleSource = typedTitle.ifBlank { fallbackTitle }
+                        val decoratedTitle = applyQuickLogIcon(titleSource, quickLogIcon)
+                        val pointsOverride =
+                            if (quickLogUsePointsOverride) quickLogPointsOverrideInput.trim().toIntOrNull() else null
+                        onQuickLog(
+                            selectedId.takeIf { selectedKind == "instance" },
+                            selectedId.takeIf { selectedKind == "template" },
+                            decoratedTitle.takeIf { selectedKind != "instance" && it.isNotBlank() },
+                            quickLogNote.trim().ifBlank { null },
+                            quickLogCreateTemplate && selectedKind != "instance",
+                            pointsOverride
+                        )
+                        resetQuickLogForm()
+                    },
+                    enabled = quickLogCanSubmit
+                ) {
+                    Text(
+                        stringResource(
+                            if (activeQuickLogAction == "quick-log") {
+                                R.string.mobile_quick_log_saving
+                            } else {
+                                R.string.mobile_quick_log_submit
+                            }
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = ::resetQuickLogForm) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
                 }
             }
         )
@@ -2987,17 +3348,6 @@ private fun DashboardScreen(
                         )
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.CREATE,
-                            label = stringResource(R.string.mobile_tab_create),
-                            iconRes = R.drawable.mobile_nav_create,
-                            enabled = isCreatorRole && canManageChores,
-                            onClick = {
-                                activeTab = MobileDashboardTab.CREATE
-                                expandedChoreIds = emptySet()
-                            }
-                        )
-                        MobileTabButton(
-                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.SETTINGS,
                             label = stringResource(R.string.mobile_tab_settings),
                             iconRes = R.drawable.mobile_nav_settings,
@@ -3031,6 +3381,83 @@ private fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
             if (activeTab == MobileDashboardTab.CHORES) {
+                if (canUseQuickLog) {
+                    item {
+                        Card(
+                            shape = RoundedCornerShape(18.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
+                        ) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                Surface(
+                                    shape = CircleShape,
+                                    color = MaterialTheme.colorScheme.primaryContainer
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.AddCircle,
+                                        contentDescription = null,
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        modifier = Modifier.padding(8.dp).size(16.dp)
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                                ) {
+                                    Text(
+                                        text = "TaskBandit quick log",
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_quick_log_card_title),
+                                        style = MaterialTheme.typography.titleSmall,
+                                        fontWeight = FontWeight.SemiBold
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_quick_log_card_body),
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Column(
+                                    horizontalAlignment = Alignment.End,
+                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                ) {
+                                    Button(
+                                        onClick = { showQuickLogDialog = true },
+                                        enabled = activeQuickLogAction == null,
+                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(
+                                            stringResource(
+                                                if (activeQuickLogAction == "quick-log") {
+                                                    R.string.mobile_quick_log_saving
+                                                } else {
+                                                    R.string.mobile_quick_log_open
+                                                }
+                                            )
+                                        )
+                                    }
+                                    if (isCreatorRole && canManageChores) {
+                                        OutlinedButton(
+                                            onClick = { activeTab = MobileDashboardTab.CREATE },
+                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                        ) {
+                                            Text(stringResource(R.string.mobile_tab_create))
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -4037,38 +4464,26 @@ private fun CompactChoreMeta(
     dueLabelResId: Int = R.string.mobile_due_at,
     modifier: Modifier = Modifier
 ) {
-    val supportingParts = buildList {
-        subtypeLabel?.takeIf { it.isNotBlank() }?.let(::add)
-        assignmentLabel?.takeIf { it.isNotBlank() }?.let(::add)
-        assignmentReasonLabel?.takeIf { it.isNotBlank() }?.let(::add)
-        if (requirePhotoProof) add(stringResource(R.string.mobile_photo_required_hint))
+    val contextToken = when {
+        !subtypeLabel.isNullOrBlank() -> subtypeLabel
+        !assignmentReasonLabel.isNullOrBlank() -> assignmentReasonLabel
+        !assignmentLabel.isNullOrBlank() -> assignmentLabel
+        requirePhotoProof -> stringResource(R.string.mobile_photo_required_hint)
+        else -> null
     }
-    Column(
-        modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(1.dp)
-    ) {
-        if (supportingParts.isNotEmpty()) {
-            Text(
-                text = supportingParts.joinToString(" • "),
-                style = MaterialTheme.typography.bodySmall,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis
-            )
-        }
-        Text(
-            text = stringResource(
-                dueLabelResId,
-                if (includeWeekdayInDueDate) formatDueAtForCard(dueAt) else formatDueAtForHistoricCard(dueAt)
-            ),
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-            overflow = TextOverflow.Ellipsis
-        )
-    }
+    val dueText = stringResource(
+        dueLabelResId,
+        if (includeWeekdayInDueDate) formatDueAtForCard(dueAt) else formatDueAtForHistoricCard(dueAt)
+    )
+    Text(
+        text = if (contextToken.isNullOrBlank()) dueText else "$dueText | $contextToken",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+    )
 }
-
 @Composable
 private fun TakeoverRequestsPanel(
     requests: List<MobileTakeoverRequest>,
@@ -4215,7 +4630,9 @@ private fun HistoricChoreCard(
 ) {
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
-    val typeTitle = chore.typeTitle.ifBlank { chore.title }
+    val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
+    val choreIcon = resolveQuickLogIcon(baseTypeTitle, chore.groupTitle)
+    val typeTitle = stripLeadingQuickLogIcon(baseTypeTitle)
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val historicDate = if (chore.state == "cancelled") {
         chore.cancelledAt ?: chore.completedAt ?: chore.dueAt
@@ -4232,12 +4649,12 @@ private fun HistoricChoreCard(
         shape = RoundedCornerShape(18.dp)
     ) {
         Column(
-            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
-            verticalArrangement = Arrangement.spacedBy(6.dp)
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
         ) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
                 verticalAlignment = Alignment.Top
             ) {
                 Surface(
@@ -4261,7 +4678,7 @@ private fun HistoricChoreCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = typeTitle,
+                        text = "$choreIcon $typeTitle",
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
@@ -4595,9 +5012,10 @@ private fun ChoreCard(
     val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
     val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
     val section = resolveChoreSection(chore, currentUserId)
-    val typeTitle = chore.typeTitle.ifBlank { chore.title }
+    val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
+    val choreIcon = resolveQuickLogIcon(baseTypeTitle, chore.groupTitle)
+    val typeTitle = stripLeadingQuickLogIcon(baseTypeTitle)
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
-    val assignmentLabel = describeChoreAssignment(chore, currentUserId)
     val assignmentReasonLabel = describeAssignmentReason(chore.assignmentReason)
     val canClaimChore =
         canManageChores &&
@@ -4656,40 +5074,42 @@ private fun ChoreCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    Text(
-                        text = chore.groupTitle,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                    Text(
-                        text = typeTitle,
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(999.dp),
-                        color = if (chore.isOverdue) {
-                            MaterialTheme.colorScheme.errorContainer
-                        } else {
-                            accentContainerColor.copy(alpha = 0.8f)
-                        }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.Top
                     ) {
                         Text(
-                            text = statusLabel,
-                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = if (chore.isOverdue) {
-                                MaterialTheme.colorScheme.onErrorContainer
-                            } else {
-                                accentContentColor
-                            }
+                            text = "$choreIcon $typeTitle",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
                         )
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (chore.isOverdue) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                accentContainerColor.copy(alpha = 0.8f)
+                            }
+                        ) {
+                            Text(
+                                text = statusLabel,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (chore.isOverdue) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    accentContentColor
+                                }
+                            )
+                        }
                     }
                     CompactChoreMeta(
                         dueAt = chore.dueAt,
-                        assignmentLabel = assignmentLabel,
+                        assignmentLabel = chore.groupTitle,
                         assignmentReasonLabel = assignmentReasonLabel,
                         subtypeLabel = subtypeLabel,
                         requirePhotoProof = chore.requirePhotoProof
@@ -6205,6 +6625,42 @@ private fun formatRetentionSummary(
     return "${normalize(auditRetentionDays)} / ${normalize(exportRetentionDays)} / ${normalize(proofRetentionDays)}"
 }
 
+private fun detectLeadingQuickLogIcon(text: String): String? {
+    val token = text.trim().split(Regex("\\s+")).firstOrNull().orEmpty()
+    return token.takeIf { quickLogIconOptions.contains(it) }
+}
+
+private fun stripLeadingQuickLogIcon(text: String): String {
+    val trimmed = text.trim()
+    val token = detectLeadingQuickLogIcon(trimmed) ?: return trimmed
+    return trimmed.removePrefix(token).trimStart()
+}
+
+private fun applyQuickLogIcon(text: String, icon: String): String {
+    val stripped = stripLeadingQuickLogIcon(text)
+    if (stripped.isBlank()) {
+        return ""
+    }
+    return "$icon $stripped"
+}
+
+private fun resolveQuickLogIcon(title: String, context: String? = null): String {
+    detectLeadingQuickLogIcon(title)?.let { return it }
+
+    val searchable = listOfNotNull(title, context)
+        .joinToString(" ")
+        .lowercase(Locale.getDefault())
+    return when {
+        Regex("(dish|kitchen|plate|cook|meal|fridge|oven)").containsMatchIn(searchable) -> "🍽️"
+        Regex("(laundry|wash|clothes|linen|fold)").containsMatchIn(searchable) -> "🧺"
+        Regex("(trash|garbage|recycl|waste|bin)").containsMatchIn(searchable) -> "🗑️"
+        Regex("(clean|vacuum|mop|dust|bathroom|toilet)").containsMatchIn(searchable) -> "🧹"
+        Regex("(toy|kid|child|play|nursery)").containsMatchIn(searchable) -> "🧸"
+        Regex("(shop|grocery|buy|market)").containsMatchIn(searchable) -> "🛒"
+        else -> "✅"
+    }
+}
+
 private fun formatDueAtForCard(value: String): String {
     return runCatching {
         DateTimeFormatter.ofPattern("EEEE d MMM HH:mm", Locale.getDefault())
@@ -6325,3 +6781,4 @@ private fun createProofCaptureFile(context: android.content.Context): File {
     val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
     return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
 }
+

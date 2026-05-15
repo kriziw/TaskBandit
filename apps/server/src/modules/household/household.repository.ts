@@ -154,6 +154,7 @@ export class HouseholdRepository {
               selfSignupEnabled,
               onboardingCompleted: false,
               membersCanSeeFullHouseholdChoreDetails: true,
+              quickLogPointsDefault: null,
               enablePushNotifications: true,
               enableOverduePenalties: true,
               localAuthEnabled: true,
@@ -379,6 +380,10 @@ export class HouseholdRepository {
         membersCanSeeFullHouseholdChoreDetails:
           dto.membersCanSeeFullHouseholdChoreDetails ??
           household.settings?.membersCanSeeFullHouseholdChoreDetails,
+        quickLogPointsDefault:
+          Object.prototype.hasOwnProperty.call(dto, "quickLogPointsDefault")
+            ? dto.quickLogPointsDefault ?? null
+            : household.settings?.quickLogPointsDefault ?? null,
         enablePushNotifications:
           dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
         enableOverduePenalties:
@@ -1789,7 +1794,7 @@ export class HouseholdRepository {
 
     for (const instance of overdueInstances) {
       const beneficiaryUserId = instance.assigneeId;
-      const basePenaltyPoints = this.getBasePoints(instance.template.difficulty);
+      const basePenaltyPoints = this.getBasePoints(instance.template?.difficulty ?? Difficulty.EASY);
       const penaltyPoints = Math.ceil(basePenaltyPoints * 0.3);
 
       await this.prisma.$transaction(async (tx) => {
@@ -4670,6 +4675,7 @@ export class HouseholdRepository {
             selfSignupEnabled: false,
             onboardingCompleted: false,
             membersCanSeeFullHouseholdChoreDetails: true,
+            quickLogPointsDefault: null,
             enablePushNotifications: true,
             enableOverduePenalties: true,
             localAuthEnabled: true,
@@ -4982,7 +4988,7 @@ export class HouseholdRepository {
 
       loadByUserId.set(assignment.assigneeId, {
         choreCount: currentLoad.choreCount + 1,
-        basePoints: currentLoad.basePoints + assignment.template.basePoints
+        basePoints: currentLoad.basePoints + (assignment.template?.basePoints ?? 0)
       });
     }
 
@@ -5155,6 +5161,9 @@ export class HouseholdRepository {
         dueAtUtc: {
           gt: freezeCutoff
         },
+        templateId: {
+          not: null
+        },
         ...(excludedIds.length > 0
           ? {
               id: {
@@ -5175,6 +5184,10 @@ export class HouseholdRepository {
     });
 
     for (const candidate of candidates) {
+      if (!candidate.template) {
+        continue;
+      }
+
       const assignmentDecision = await this.resolveAssignmentDecision(
         this.prisma,
         householdId,
@@ -5244,6 +5257,10 @@ export class HouseholdRepository {
       };
     }>
   ) {
+    if (!instance.templateId) {
+      return;
+    }
+
     const dependencies = await this.prisma.choreTemplateDependency.findMany({
       where: {
         templateId: instance.templateId
@@ -5282,7 +5299,7 @@ export class HouseholdRepository {
     const followUpTemplateLookup = new Map(followUpTemplates.map((template) => [template.id, template]));
     const carriedSubtypeLabel = (instance as any).subtypeLabel ?? null;
     const carriedRequirePhotoProof =
-      (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
+      (instance as any).requirePhotoProofOverride ?? instance.template?.requirePhotoProof ?? false;
     const cycleId = (instance as any).cycleId ?? instance.id;
     const occurrenceRootId = this.getOccurrenceRootId(instance);
 
@@ -5392,6 +5409,10 @@ export class HouseholdRepository {
       return null;
     }
 
+    if (!instance.templateId) {
+      return null;
+    }
+
     const template = await this.prisma.choreTemplate.findFirst({
       where: {
         id: instance.templateId,
@@ -5459,7 +5480,7 @@ export class HouseholdRepository {
       : null;
     const subtypeLabel = (instance as any).subtypeLabel ?? variant?.label ?? null;
     const requirePhotoProof =
-      (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof;
+      (instance as any).requirePhotoProofOverride ?? instance.template?.requirePhotoProof ?? false;
     const instanceTitle = this.composeChoreTitle(template.title, subtypeLabel);
     const cycleId = (instance as any).cycleId ?? instance.id;
     const nextRemainingOccurrences =
@@ -5542,13 +5563,24 @@ export class HouseholdRepository {
       recurrenceWeekdaysOverride?: string[];
       recurrenceStartStrategyOverride?: RecurrenceStartStrategy | null;
     },
-    template: {
+    template:
+      | {
       recurrenceType: RecurrenceType;
       recurrenceIntervalDays: number | null;
       recurrenceWeekdays: string[];
       recurrenceStartStrategy: RecurrenceStartStrategy;
     }
+      | null
   ) {
+    if (!template) {
+      return {
+        type: RecurrenceType.NONE,
+        intervalDays: null as number | null,
+        weekdays: [] as string[],
+        startStrategy: RecurrenceStartStrategy.DUE_AT
+      };
+    }
+
     const type =
       instance.suppressRecurrence === true
         ? RecurrenceType.NONE
@@ -5735,6 +5767,7 @@ export class HouseholdRepository {
         onboardingCompleted: household.settings?.onboardingCompleted ?? false,
         membersCanSeeFullHouseholdChoreDetails:
           household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
+        quickLogPointsDefault: household.settings?.quickLogPointsDefault ?? null,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
         takeoverPointsDelta: household.settings?.takeoverPointsDelta ?? 0,
@@ -5959,7 +5992,10 @@ export class HouseholdRepository {
     language: SupportedLanguage = fallbackLanguage
   ) {
     const localizedGroupTitle = this.resolveTemplateGroupTitle(instance.template, language);
-    const localizedTypeTitle = this.resolveTemplateTitle(instance.template, language);
+    const fallbackTypeTitle = instance.title?.trim() || "Quick log entry";
+    const localizedTypeTitle = instance.template
+      ? this.resolveTemplateTitle(instance.template, language)
+      : fallbackTypeTitle;
     const effectiveRecurrence = this.getEffectiveInstanceRecurrence(instance as any, instance.template);
     const occurrenceRootId = this.getOccurrenceRootId(instance as any);
     const supportsOccurrenceCancellation =
@@ -5969,7 +6005,7 @@ export class HouseholdRepository {
     const localizedSubtypeLabel =
       this.resolveVariantLabel(
         (instance as { variant?: Prisma.ChoreTemplateVariantGetPayload<object> | null }).variant ?? null,
-        this.normalizeSupportedLanguage(instance.template.defaultLocale),
+        this.normalizeSupportedLanguage(instance.template?.defaultLocale ?? fallbackLanguage),
         language
       ) ?? (instance as any).subtypeLabel ?? null;
     const localizedTitle = this.composeChoreTitle(localizedTypeTitle, localizedSubtypeLabel);
@@ -5993,7 +6029,8 @@ export class HouseholdRepository {
         dueAt: instance.dueAtUtc,
         difficulty: "easy" as const,
         basePoints: 0,
-        requirePhotoProof: (instance as any).requirePhotoProofOverride ?? false,
+        requirePhotoProof:
+          (instance as any).requirePhotoProofOverride ?? instance.template?.requirePhotoProof ?? false,
         awardedPoints: 0,
         completedChecklistItems: 0,
         isOverdue:
@@ -6046,9 +6083,12 @@ export class HouseholdRepository {
       assigneeDisplayName: options?.assigneeDisplayName ?? null,
       assignmentReason: this.mapAssignmentReason((instance as any).assignmentReason ?? null),
       dueAt: instance.dueAtUtc,
-      difficulty: instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard",
-      basePoints: instance.template.basePoints,
-      requirePhotoProof: (instance as any).requirePhotoProofOverride ?? instance.template.requirePhotoProof,
+      difficulty: instance.template
+        ? (instance.template.difficulty.toLowerCase() as "easy" | "medium" | "hard")
+        : ("easy" as const),
+      basePoints: instance.template?.basePoints ?? 0,
+      requirePhotoProof:
+        (instance as any).requirePhotoProofOverride ?? instance.template?.requirePhotoProof ?? false,
       awardedPoints: instance.awardedPoints,
       completedChecklistItems: instance.completedChecklistItems,
       isOverdue:
@@ -6079,7 +6119,7 @@ export class HouseholdRepository {
           ? ((instance as any).recurrenceRemainingOccurrencesOverride ?? 0) + 1
           : null,
       recurrenceEndsAt: (instance as any).recurrenceEndsAtUtcOverride ?? null,
-      checklist: instance.template.checklistItems
+      checklist: (instance.template?.checklistItems ?? [])
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map((item) => ({
           id: item.id,
@@ -6197,17 +6237,198 @@ export class HouseholdRepository {
   }
 
   private resolveTemplateGroupTitle(
-    template: { groupTitle: string; groupTitleTranslations?: Prisma.JsonValue | null },
+    template: { groupTitle: string; groupTitleTranslations?: Prisma.JsonValue | null } | null | undefined,
     language: SupportedLanguage
   ) {
+    if (!template) {
+      return "Quick log";
+    }
     const translations = this.parseLocalizedTextMap(template.groupTitleTranslations);
     return translations[language]?.trim() || template.groupTitle;
   }
 
+  async createQuickLogEntry(input: {
+    householdId: string;
+    actorUserId: string;
+    title: string;
+    note?: string | null;
+    points: number;
+    templateId?: string | null;
+    instanceId?: string | null;
+    createTemplateFromEntry?: boolean;
+    language?: SupportedLanguage;
+  }) {
+    const language = input.language ?? fallbackLanguage;
+    const normalizedTitle = input.title.trim();
+    const safeTitle = normalizedTitle || "Quick log entry";
+    const now = new Date();
+
+    const instance = await this.prisma.$transaction(async (tx) => {
+      if (input.instanceId) {
+        const target = await tx.choreInstance.findFirst({
+          where: {
+            id: input.instanceId,
+            householdId: input.householdId
+          },
+          include: {
+            template: {
+              include: {
+                checklistItems: true
+              }
+            },
+            variant: true,
+            checklistCompletions: true,
+            attachments: true
+          }
+        });
+
+        if (!target) {
+          throw new NotFoundException("Chore instance not found.");
+        }
+
+        if (target.state === ChoreState.COMPLETED || target.state === ChoreState.CANCELLED) {
+          throw new ConflictException("This chore is already completed or cancelled.");
+        }
+
+        const completedTarget = await tx.choreInstance.update({
+          where: {
+            id: target.id
+          },
+          data: {
+            state: ChoreState.COMPLETED,
+            submissionNote: input.note?.trim() || target.submissionNote,
+            submittedAtUtc: target.submittedAtUtc ?? now,
+            submittedById: target.submittedById ?? input.actorUserId,
+            completedAtUtc: now,
+            completedById: input.actorUserId,
+            awardedPoints: Math.max(0, Math.floor(input.points)),
+            completedByExternal: false,
+            externalCompleterName: null,
+            externalCompletionNote: null
+          },
+          include: {
+            template: {
+              include: {
+                checklistItems: true
+              }
+            },
+            variant: true,
+            checklistCompletions: true,
+            attachments: true
+          }
+        });
+
+        await this.recordAuditLog(tx, {
+          householdId: input.householdId,
+          actorUserId: input.actorUserId,
+          action: "instance.quick_logged",
+          entityType: "chore_instance",
+          entityId: completedTarget.id,
+          summary: `Quick logged completion for "${completedTarget.title}".`
+        });
+
+        return completedTarget;
+      }
+
+      let resolvedTemplateId = input.templateId?.trim() || null;
+      let resolvedRequirePhotoProof = false;
+
+      if (resolvedTemplateId) {
+        const template = await tx.choreTemplate.findFirst({
+          where: {
+            id: resolvedTemplateId,
+            householdId: input.householdId
+          },
+          select: {
+            id: true,
+            requirePhotoProof: true
+          }
+        });
+        if (!template) {
+          throw new NotFoundException("Chore template not found.");
+        }
+        resolvedRequirePhotoProof = template.requirePhotoProof;
+      } else if (input.createTemplateFromEntry) {
+        const createdTemplate = await tx.choreTemplate.create({
+          data: {
+            id: randomUUID(),
+            householdId: input.householdId,
+            defaultLocale: language,
+            groupTitle: "Quick log",
+            title: safeTitle,
+            description: "",
+            difficulty: Difficulty.EASY,
+            basePoints: 0,
+            assignmentStrategy: AssignmentStrategyType.ROUND_ROBIN,
+            recurrenceType: RecurrenceType.NONE,
+            recurrenceStartStrategy: RecurrenceStartStrategy.DUE_AT,
+            requirePhotoProof: false
+          }
+        });
+        resolvedTemplateId = createdTemplate.id;
+      }
+
+      const createdInstance = await tx.choreInstance.create({
+        data: {
+          id: randomUUID(),
+          householdId: input.householdId,
+          templateId: resolvedTemplateId,
+          cycleId: null,
+          occurrenceRootId: null,
+          title: safeTitle,
+          state: ChoreState.COMPLETED,
+          assigneeId: input.actorUserId,
+          dueAtUtc: now,
+          suppressRecurrence: true,
+          assignmentLocked: true,
+          assignmentReason: AssignmentReasonType.MANUAL,
+          requirePhotoProofOverride: resolvedRequirePhotoProof,
+          awardedPoints: Math.max(0, Math.floor(input.points)),
+          completedChecklistItems: 0,
+          attachmentCount: 0,
+          submittedAtUtc: now,
+          submittedById: input.actorUserId,
+          submissionNote: input.note?.trim() || null,
+          completedAtUtc: now,
+          completedById: input.actorUserId,
+          completedByExternal: false,
+          externalCompleterName: null,
+          externalCompletionNote: null
+        },
+        include: {
+          template: {
+            include: {
+              checklistItems: true
+            }
+          },
+          variant: true,
+          checklistCompletions: true,
+          attachments: true
+        }
+      });
+
+      await this.recordAuditLog(tx, {
+        householdId: input.householdId,
+        actorUserId: input.actorUserId,
+        action: "instance.quick_logged",
+        entityType: "chore_instance",
+        entityId: createdInstance.id,
+        summary: `Quick logged "${createdInstance.title}".`
+      });
+
+      return createdInstance;
+    });
+
+    return this.mapInstance(instance, undefined, language);
+  }
+
   private resolveTemplateTitle(
-    template: { title: string; titleTranslations?: Prisma.JsonValue | null },
+    template: { title: string; titleTranslations?: Prisma.JsonValue | null } | null | undefined,
     language: SupportedLanguage
   ) {
+    if (!template) {
+      return "Quick log entry";
+    }
     const translations = this.parseLocalizedTextMap(template.titleTranslations);
     return translations[language]?.trim() || template.title;
   }
@@ -6411,7 +6632,7 @@ export class HouseholdRepository {
     const localizedSubtypeLabel =
       this.resolveVariantLabel(
         request.choreInstance.variant,
-        this.normalizeSupportedLanguage(request.choreInstance.template.defaultLocale),
+        this.normalizeSupportedLanguage(request.choreInstance.template?.defaultLocale ?? fallbackLanguage),
         language
       ) ?? request.choreInstance.subtypeLabel ?? null;
 

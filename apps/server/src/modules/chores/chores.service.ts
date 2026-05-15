@@ -17,6 +17,7 @@ import { ReviewChoreDto } from "./dto/review-chore.dto";
 import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
 import { SnoozeDeferredChoreDto } from "./dto/snooze-deferred-chore.dto";
 import { SubmitChoreDto } from "./dto/submit-chore.dto";
+import { QuickLogChoreDto } from "./dto/quick-log-chore.dto";
 import { ProofStorageService } from "./proof-storage.service";
 
 @Injectable()
@@ -94,6 +95,48 @@ export class ChoresService {
     }
     const instance = await this.repository.createInstance(dto, user.householdId, user.id, language);
     this.publishSyncEvent(user, "instance.created", "instance", instance.id);
+    return instance;
+  }
+
+  async quickLog(dto: QuickLogChoreDto, user: AuthenticatedUser, language: SupportedLanguage) {
+    await this.requireFeature(user, "quick_log");
+
+    if (!dto.instanceId && !dto.templateId && !dto.title?.trim()) {
+      throw new BadRequestException({
+        message: "Quick log needs an existing chore/template selection or free-text title."
+      });
+    }
+
+    if (dto.createTemplateFromEntry && !dto.title?.trim()) {
+      throw new BadRequestException({
+        message: "A title is required when creating a template from a quick log entry."
+      });
+    }
+
+    const household = await this.repository.getHousehold(user.householdId);
+    const fallbackPoints = 0;
+    const resolvedPoints = Math.max(
+      0,
+      Math.floor(
+        dto.pointsOverride ??
+          household.settings.quickLogPointsDefault ??
+          fallbackPoints
+      )
+    );
+
+    const instance = await this.repository.createQuickLogEntry({
+      householdId: user.householdId,
+      actorUserId: user.id,
+      title: dto.title?.trim() || "Quick log entry",
+      note: dto.note,
+      points: resolvedPoints,
+      templateId: dto.templateId,
+      instanceId: dto.instanceId,
+      createTemplateFromEntry: dto.createTemplateFromEntry,
+      language
+    });
+
+    this.publishSyncEvent(user, "instance.quick_logged", "instance", instance.id);
     return instance;
   }
 
