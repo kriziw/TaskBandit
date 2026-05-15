@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.60.0](https://github.com/kriziw/TaskBandit/compare/v0.59.0...v0.60.0) (2026-05-15)
+
+
+### Features
+
+* **mobile:** add profile avatar presets and upload ([#409](https://github.com/kriziw/TaskBandit/issues/409)) ([875d399](https://github.com/kriziw/TaskBandit/commit/875d3996e989b5d084d7066fa7ad08bbe46c18a0))
+
 ## [0.59.0](https://github.com/kriziw/TaskBandit/compare/v0.58.0...v0.59.0) (2026-05-15)
 
 
