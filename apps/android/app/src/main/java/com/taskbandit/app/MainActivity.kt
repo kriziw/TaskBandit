@@ -189,7 +189,6 @@ import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
-import java.time.temporal.WeekFields
 import java.io.File
 import java.util.Locale
 import java.util.UUID
@@ -2682,6 +2681,7 @@ private fun DashboardScreen(
     var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
     var quickLogQuery by rememberSaveable { mutableStateOf("") }
     var quickLogNote by rememberSaveable { mutableStateOf("") }
     var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
@@ -2791,7 +2791,6 @@ private fun DashboardScreen(
         dashboard?.chores.orEmpty()
             .filter { it.state in historicChoreStates }
             .sortedByDescending { parseInstantForSort(it.dueAt) }
-            .take(2)
     }
     val myChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.MINE } }
     val myChoresDueToday = remember(myChores, languageTag) {
@@ -2803,9 +2802,17 @@ private fun DashboardScreen(
     val myChoresDueLater = remember(myChores, languageTag) {
         myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.LATER }
     }
+    val choresDueToday = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
+    }
+    val choresDueThisWeek = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.THIS_WEEK }
+    }
+    val choresDueLater = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.LATER }
+    }
     val unassignedChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.UNASSIGNED } }
     val otherChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.OTHERS } }
-    val upNextChores = remember(unassignedChores, otherChores) { unassignedChores + otherChores }
     val quickLogCandidates = remember(sortedChores, templates) {
         buildList {
             sortedChores.forEach { chore ->
@@ -2853,9 +2860,9 @@ private fun DashboardScreen(
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
     val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
-    val myChoresLabel = stringResource(R.string.mobile_my_chores)
-    val upNextLabel = stringResource(R.string.mobile_up_next)
-    val viewAllLabel = stringResource(R.string.mobile_view_all)
+    val completedChoresLabel = stringResource(R.string.mobile_completed_chores)
+    val showCompletedLabel = stringResource(R.string.mobile_show_completed_chores)
+    val hideCompletedLabel = stringResource(R.string.mobile_hide_completed_chores)
     val noChoresLabel = stringResource(R.string.mobile_no_chores)
     val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
     val recurrenceIntervalInvalidMessage = stringResource(R.string.mobile_create_interval_days_invalid)
@@ -3910,7 +3917,7 @@ private fun DashboardScreen(
                         .fillMaxSize()
                         .padding(horizontal = if (isTablet) 28.dp else if (isNewMobileUi) 6.dp else 20.dp, vertical = 16.dp)
                         .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 10.dp else 16.dp)
                 ) {
             if (activeTab == MobileDashboardTab.CHORES) {
                 if (canUseQuickLog) {
@@ -4023,8 +4030,8 @@ private fun DashboardScreen(
                         }
                     }
                     mockMobileChoreSection(
-                        chores = myChores,
-                        title = myChoresLabel,
+                        chores = choresDueToday,
+                        title = choresDueTodayLabel,
                         currentUserId = currentUserId,
                         currentUserRole = currentUserRole,
                         supportsTakeoverRequests = canUseTakeoverRequests,
@@ -4052,13 +4059,11 @@ private fun DashboardScreen(
                         activeDueAtAction = activeDueAtAction,
                         onEditChoreDueAt = onEditChoreDueAt,
                         templateVariantsByTemplateId = templateVariantsByTemplateId,
-                        showViewAll = true,
-                        viewAllLabel = viewAllLabel,
                         emptyMessage = noChoresLabel
                     )
                     mockMobileChoreSection(
-                        chores = upNextChores,
-                        title = upNextLabel,
+                        chores = choresDueThisWeek,
+                        title = choresDueThisWeekLabel,
                         currentUserId = currentUserId,
                         currentUserRole = currentUserRole,
                         supportsTakeoverRequests = canUseTakeoverRequests,
@@ -4088,6 +4093,56 @@ private fun DashboardScreen(
                         templateVariantsByTemplateId = templateVariantsByTemplateId,
                         emptyMessage = noChoresLabel
                     )
+                    mockMobileChoreSection(
+                        chores = choresDueLater,
+                        title = choresDueLaterLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        emptyMessage = noChoresLabel
+                    )
+                    item {
+                        MockMobileCompletedSectionHeader(
+                            title = completedChoresLabel,
+                            expanded = showCompletedChoresSection,
+                            expandedCount = minOf(15, historicChores.size),
+                            onToggleExpanded = { showCompletedChoresSection = !showCompletedChoresSection },
+                            showLabel = showCompletedLabel,
+                            hideLabel = hideCompletedLabel
+                        )
+                    }
+                    if (showCompletedChoresSection) {
+                        mockMobileHistoricChoreSection(
+                            chores = historicChores.take(15),
+                            expandedChoreIds = expandedHistoricChoreIds,
+                            onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                            emptyMessage = noChoresLabel
+                        )
+                    }
                     if (showStatusCard) {
                         item {
                             DashboardStatusCard(
@@ -4980,7 +5035,7 @@ private fun LazyListScope.mockMobileChoreSection(
         }
         return
     }
-    items(chores.take(6), key = { it.id }) { chore ->
+    items(chores, key = { it.id }) { chore ->
         ChoreCard(
             chore = chore,
             currentUserId = currentUserId,
@@ -5036,6 +5091,78 @@ private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAll
                 )
             }
         }
+    }
+}
+
+@Composable
+private fun MockMobileCompletedSectionHeader(
+    title: String,
+    expanded: Boolean,
+    expandedCount: Int,
+    onToggleExpanded: () -> Unit,
+    showLabel: String,
+    hideLabel: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(
+                    text = expandedCount.toString(),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            TextButton(onClick = onToggleExpanded) {
+                Text(
+                    text = if (expanded) hideLabel else showLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.mockMobileHistoricChoreSection(
+    chores: List<MobileChore>,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit,
+    emptyMessage: String? = null
+) {
+    if (chores.isEmpty()) {
+        if (!emptyMessage.isNullOrBlank()) {
+            item {
+                Text(
+                    text = emptyMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+
+    items(chores, key = { it.id }) { chore ->
+        HistoricChoreCard(
+            chore = chore,
+            expanded = expandedChoreIds.contains(chore.id),
+            onExpandedChange = { onExpandedChange(chore.id) }
+        )
     }
 }
 private fun LazyListScope.historicChoreSection(
@@ -5947,8 +6074,21 @@ private fun ChoreCard(
                 .fillMaxWidth()
                 .clickable { onExpandedChange() },
             shape = RoundedCornerShape(15.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+            colors = CardDefaults.cardColors(
+                containerColor = if (isAssignedToCurrentUser) {
+                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                } else {
+                    MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                }
+            ),
+            border = BorderStroke(
+                1.dp,
+                if (isAssignedToCurrentUser) {
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+                }
+            )
         ) {
             Row(
                 modifier = Modifier
@@ -7427,7 +7567,7 @@ private enum class MobileMyChoreDueBucket {
 private fun resolveMyChoreDueBucket(
     chore: MobileChore,
     zoneId: ZoneId = ZoneId.systemDefault(),
-    locale: Locale = Locale.getDefault()
+    @Suppress("UNUSED_PARAMETER") locale: Locale = Locale.getDefault()
 ): MobileMyChoreDueBucket {
     val today = LocalDate.now(zoneId)
     val dueDate = runCatching { Instant.parse(chore.dueAt).atZone(zoneId).toLocalDate() }.getOrDefault(today)
@@ -7435,12 +7575,9 @@ private fun resolveMyChoreDueBucket(
     if (!dueDate.isAfter(today)) {
         return MobileMyChoreDueBucket.TODAY
     }
+    val endOfRollingWeek = today.plusDays(7)
 
-    val weekFields = WeekFields.of(locale)
-    val startOfWeek = today.with(weekFields.dayOfWeek(), 1)
-    val endOfWeek = startOfWeek.plusDays(6)
-
-    return if (!dueDate.isAfter(endOfWeek)) {
+    return if (!dueDate.isAfter(endOfRollingWeek)) {
         MobileMyChoreDueBucket.THIS_WEEK
     } else {
         MobileMyChoreDueBucket.LATER
