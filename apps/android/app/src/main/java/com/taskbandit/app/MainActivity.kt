@@ -4797,6 +4797,7 @@ private fun HistoricChoreCard(
     expanded: Boolean,
     onExpandedChange: () -> Unit
 ) {
+    val isNewMobileUi = LocalIsNewMobileUi.current
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
@@ -4813,6 +4814,57 @@ private fun HistoricChoreCard(
     } else {
         R.string.mobile_completed_at
     }
+    if (isNewMobileUi) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(10.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
+                ) {
+                    Text(
+                        text = choreIcon,
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 9.dp),
+                        style = MaterialTheme.typography.titleMedium
+                    )
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = typeTitle,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${stringResource(historicDateLabelResId, formatDueAtForHistoricCard(historicDate))} • ${chore.groupTitle}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        return
+    }
+
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp)
@@ -5220,22 +5272,22 @@ private fun ChoreCard(
     if (isNewMobileUi) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(14.dp),
+            shape = RoundedCornerShape(12.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = accentContainerColor.copy(alpha = 0.5f)
                 ) {
                     Text(
                         text = choreIcon,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 9.dp),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -5245,13 +5297,13 @@ private fun ChoreCard(
                 ) {
                     Text(
                         text = typeTitle,
-                        style = MaterialTheme.typography.titleSmall,
+                        style = MaterialTheme.typography.bodyLarge,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${formatDueAtForCard(chore.dueAt)} • ${chore.groupTitle}",
+                        text = "${formatDueAtForCard(chore.dueAt)} • ${chore.groupTitle.ifBlank { "Home" }}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -5259,7 +5311,7 @@ private fun ChoreCard(
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(999.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = accentContainerColor.copy(alpha = 0.75f)
                 ) {
                     Text(
