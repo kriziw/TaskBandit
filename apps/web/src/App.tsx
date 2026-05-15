@@ -1106,7 +1106,6 @@ const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
   const brandIconAssetPath = "/brand/logo-dark.png";
-  const brandMarkAssetPath = "/brand/icon-dark.png";
   const mascotLoginAssetPath = "/brand/mascot-login.png";
   const mascotCelebrationAssetPath = "/brand/mascot-success.png";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
@@ -6004,10 +6003,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         <section className="toolbar mobile-new-toolbar">
           <div className="toolbar-group">
             <div className="toolbar-brand" aria-label="TaskBandit">
-              <img className="toolbar-brand-mascot" src={brandMarkAssetPath} alt="" aria-hidden="true" />
-              <div>
-                <strong>TaskBandit</strong>
-              </div>
+              <img className="mobile-new-toolbar-logo" src={brandIconAssetPath} alt="TaskBandit" />
             </div>
           </div>
           <div className="toolbar-group mobile-new-toolbar-actions">
