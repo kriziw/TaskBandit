@@ -231,6 +231,37 @@ select {
   margin-top: 14px;
 }
 
+.mobile-quick-log-card {
+  margin-top: 12px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 22px;
+  border: 1px solid rgba(36, 48, 67, 0.1);
+  background:
+    radial-gradient(circle at top right, rgba(115, 201, 244, 0.34), transparent 62%),
+    linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(250, 255, 250, 0.9));
+  box-shadow: 0 14px 28px rgba(36, 48, 67, 0.1);
+}
+
+.mobile-quick-log-card-copy h4 {
+  margin: 0;
+  font-size: 1.06rem;
+  font-family: var(--font-brand);
+}
+
+.mobile-quick-log-card-copy p {
+  margin: 4px 0 0;
+}
+
+.mobile-quick-log-card-copy .workspace-nav-kicker {
+  margin-bottom: 6px;
+}
+
+.mobile-quick-log-card-cta {
+  width: 100%;
+}
+
 .toolbar,
 .toolbar-group,
 .hero-meta,
@@ -1673,6 +1704,23 @@ h4,
   min-width: 0;
 }
 
+.task-row-title {
+  display: block;
+  line-height: 1.28;
+}
+
+.task-row-title-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.35em;
+}
+
+.task-row-group-title,
+.task-row-subtype-label {
+  margin: 0;
+}
+
 .task-row-header-controls {
   display: inline-flex;
   align-items: center;
@@ -1753,6 +1801,10 @@ h4,
 
 .task-row-actions-secondary {
   margin-top: 0;
+}
+
+.task-row-compact-meta {
+  display: none;
 }
 
 .notification-delivery-grid {
@@ -2326,6 +2378,60 @@ h4,
   align-items: flex-start;
 }
 
+.mobile-quick-log-heading {
+  padding: 2px 2px 0;
+}
+
+.mobile-quick-log-form {
+  gap: 12px;
+}
+
+.mobile-quick-log-icon-picker {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 6px;
+}
+
+.mobile-quick-log-icon-chip {
+  min-height: 38px;
+  padding: 0;
+  font-size: 1.05rem;
+  border-radius: 12px;
+}
+
+.mobile-quick-log-icon-chip.active {
+  border-color: rgba(115, 201, 244, 0.7);
+  background: linear-gradient(160deg, rgba(115, 201, 244, 0.26), rgba(255, 255, 255, 0.94));
+}
+
+.mobile-quick-log-suggestions {
+  display: grid;
+  gap: 6px;
+  padding: 8px;
+  border-radius: 18px;
+  background: rgba(36, 48, 67, 0.05);
+  border: 1px solid rgba(36, 48, 67, 0.08);
+}
+
+.mobile-quick-log-suggestion {
+  justify-content: flex-start;
+  align-items: flex-start;
+  text-align: left;
+  display: grid;
+  gap: 3px;
+  border-radius: 14px;
+  padding: 8px 10px;
+}
+
+.mobile-quick-log-suggestion.active {
+  border-color: rgba(115, 201, 244, 0.62);
+  background: linear-gradient(160deg, rgba(115, 201, 244, 0.22), rgba(255, 255, 255, 0.92));
+}
+
+.mobile-quick-log-helper {
+  margin-top: -4px;
+}
+
 .mobile-bottom-nav-track {
   display: grid;
   gap: 8px;
@@ -2575,7 +2681,43 @@ h4,
 
   .app-shell.variant-client .task-row,
   .app-shell.variant-client .leader-row {
-    padding: 12px;
+    padding: 10px 11px;
+  }
+
+  .app-shell.variant-client .task-row-compact-meta {
+    display: block;
+    margin: 1px 0 0;
+    font-size: 0.78rem;
+    color: rgba(36, 48, 67, 0.74);
+  }
+
+  .app-shell.variant-client .task-row-header {
+    margin-bottom: 2px;
+    gap: 8px;
+  }
+
+  .app-shell.variant-client .task-row-group-title,
+  .app-shell.variant-client .task-row-subtype-label {
+    display: none;
+  }
+
+  .app-shell.variant-client .task-row .status-pill {
+    padding: 4px 7px;
+    font-size: 0.72rem;
+  }
+
+  .app-shell.variant-client .task-row-meta-grid {
+    display: none;
+  }
+
+  .app-shell.variant-client .task-row .checklist,
+  .app-shell.variant-client .task-row .inline-field,
+  .app-shell.variant-client .task-row .task-row-actions-secondary {
+    display: none;
+  }
+
+  .app-shell.variant-client .task-row-actions > :not(:first-child) {
+    display: none;
   }
 
   .app-shell.variant-client .task-row-header,

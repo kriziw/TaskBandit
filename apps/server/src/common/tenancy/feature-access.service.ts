@@ -11,7 +11,8 @@ export const packageFeatureIds = [
   "proof_uploads",
   "follow_up_automation",
   "external_completion",
-  "deferred_follow_up_control"
+  "deferred_follow_up_control",
+  "quick_log"
 ] as const;
 
 export type PackageFeatureId = (typeof packageFeatureIds)[number];

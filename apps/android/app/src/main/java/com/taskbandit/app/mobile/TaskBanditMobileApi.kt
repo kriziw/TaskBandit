@@ -405,13 +405,21 @@ class TaskBanditMobileApi {
             emptyList()
         }
 
-        val members = if (user.role == "admin" || user.role == "parent") {
-            runCatching {
-                requestJson(baseUrl, "/api/settings/household", token = token)
-            }.getOrNull()?.optJSONArray("members")?.let(::parseMembers).orEmpty()
+        val householdSettingsJson = if (user.role == "admin" || user.role == "parent") {
+            runCatching { requestJson(baseUrl, "/api/settings/household", token = token) }.getOrNull()
         } else {
-            emptyList()
+            null
         }
+        val members = householdSettingsJson?.optJSONArray("members")?.let(::parseMembers).orEmpty()
+        val quickLogPointsDefault = householdSettingsJson
+            ?.optJSONObject("settings")
+            ?.let { settings ->
+                if (settings.has("quickLogPointsDefault") && !settings.isNull("quickLogPointsDefault")) {
+                    settings.optInt("quickLogPointsDefault")
+                } else {
+                    null
+                }
+            }
 
         return MobileDashboard(
             user = user,
@@ -424,8 +432,50 @@ class TaskBanditMobileApi {
             notifications = notifications,
             members = members,
             templates = templates,
+            quickLogPointsDefault = quickLogPointsDefault,
             compatibility = MobileDashboardCompatibility(
                 takeoverRequestsSupported = takeoverRequestsSupported
+            )
+        )
+    }
+
+    fun quickLog(
+        baseUrl: String,
+        token: String,
+        instanceId: String? = null,
+        templateId: String? = null,
+        title: String? = null,
+        note: String? = null,
+        createTemplateFromEntry: Boolean = false,
+        pointsOverride: Int? = null
+    ): MobileChore {
+        val payload = JSONObject()
+        if (!instanceId.isNullOrBlank()) {
+            payload.put("instanceId", instanceId)
+        }
+        if (!templateId.isNullOrBlank()) {
+            payload.put("templateId", templateId)
+        }
+        if (!title.isNullOrBlank()) {
+            payload.put("title", title.trim())
+        }
+        if (!note.isNullOrBlank()) {
+            payload.put("note", note.trim())
+        }
+        if (createTemplateFromEntry) {
+            payload.put("createTemplateFromEntry", true)
+        }
+        if (pointsOverride != null) {
+            payload.put("pointsOverride", pointsOverride)
+        }
+
+        return parseChore(
+            requestJson(
+                baseUrl = baseUrl,
+                path = "/api/chores/quick-log",
+                token = token,
+                method = "POST",
+                body = payload
             )
         )
     }
@@ -1184,7 +1234,8 @@ class TaskBanditMobileApi {
             proofUploads = entry.optBoolean("proof_uploads", true),
             followUpAutomation = entry.optBoolean("follow_up_automation", true),
             externalCompletion = entry.optBoolean("external_completion", true),
-            deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true)
+            deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true),
+            quickLog = entry.optBoolean("quick_log", true)
         )
     }
 

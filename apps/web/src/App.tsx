@@ -54,7 +54,6 @@ const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
-const mobileCreateIconPath = "/mobile-icons/create.png";
 type WorkspaceVariant = "admin" | "client";
 
 type DashboardPayload = {
@@ -214,7 +213,8 @@ const fullFeatureAccess: AuthenticatedUser["featureAccess"] = {
   proof_uploads: true,
   follow_up_automation: true,
   external_completion: true,
-  deferred_follow_up_control: true
+  deferred_follow_up_control: true,
+  quick_log: true
 };
 
 const historicChoreStates: ChoreState[] = ["completed", "cancelled"];
@@ -947,6 +947,59 @@ function sortByLabel<T>(items: T[], getLabel: (item: T) => string) {
   return [...items].sort((left, right) => getLabel(left).localeCompare(getLabel(right)));
 }
 
+const quickLogIconOptions = ["✅", "🧹", "🧺", "🗑️", "🍽️", "🛁", "🧸", "🛒", "📦", "✨"] as const;
+
+function detectLeadingQuickLogIcon(value: string) {
+  const token = value.trim().split(/\s+/)[0] ?? "";
+  return quickLogIconOptions.includes(token as (typeof quickLogIconOptions)[number]) ? token : null;
+}
+
+function stripLeadingQuickLogIcon(value: string) {
+  const trimmed = value.trim();
+  const token = detectLeadingQuickLogIcon(trimmed);
+  if (!token) {
+    return trimmed;
+  }
+
+  return trimmed.slice(token.length).trimStart();
+}
+
+function applyQuickLogIconToTitle(value: string, icon: string) {
+  const stripped = stripLeadingQuickLogIcon(value);
+  if (!stripped) {
+    return "";
+  }
+  return `${icon} ${stripped}`;
+}
+
+function resolveChoreIconFromText(title: string, context = "", subtypeLabel = "") {
+  const explicitIcon = detectLeadingQuickLogIcon(title);
+  if (explicitIcon) {
+    return explicitIcon;
+  }
+
+  const searchable = [title, context, subtypeLabel]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  if (/(dish|kitchen|plate|cook|meal|fridge|oven)/.test(searchable)) return "🍽️";
+  if (/(laundry|wash|clothes|linen|fold)/.test(searchable)) return "🧺";
+  if (/(trash|garbage|recycl|waste|bin)/.test(searchable)) return "🗑️";
+  if (/(clean|vacuum|mop|dust|bathroom|toilet)/.test(searchable)) return "🧹";
+  if (/(toy|kid|child|play|nursery)/.test(searchable)) return "🧸";
+  if (/(shop|grocery|buy|market)/.test(searchable)) return "🛒";
+  return "✅";
+}
+
+function resolveChoreIcon(instance: ChoreInstance) {
+  const explicitIcon = detectLeadingQuickLogIcon(instance.title) ?? detectLeadingQuickLogIcon(instance.typeTitle);
+  if (explicitIcon) {
+    return explicitIcon;
+  }
+  return resolveChoreIconFromText(instance.typeTitle || instance.title, instance.groupTitle, instance.subtypeLabel ?? "");
+}
+
 const currentWebReleaseInfo: ReleaseInfo = {
   releaseVersion: import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION ?? "0.0.0-dev",
   buildNumber: import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER ?? "local",
@@ -1053,6 +1106,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [mobileDueEditorTitle, setMobileDueEditorTitle] = useState("");
   const [mobileDueEditorVariantId, setMobileDueEditorVariantId] = useState<string>("");
   const [mobileCardMenuInstanceId, setMobileCardMenuInstanceId] = useState<string | null>(null);
+  const [isQuickLogComposerOpen, setIsQuickLogComposerOpen] = useState(false);
+  const [quickLogQuery, setQuickLogQuery] = useState("");
+  const [quickLogNote, setQuickLogNote] = useState("");
+  const [quickLogSelectedInstanceId, setQuickLogSelectedInstanceId] = useState<string | null>(null);
+  const [quickLogSelectedTemplateId, setQuickLogSelectedTemplateId] = useState<string | null>(null);
+  const [quickLogCreateTemplateFromEntry, setQuickLogCreateTemplateFromEntry] = useState(false);
+  const [quickLogUsePointsOverride, setQuickLogUsePointsOverride] = useState(false);
+  const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
+  const [quickLogIcon, setQuickLogIcon] = useState<string>("✅");
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
@@ -1068,6 +1130,48 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     );
     return editorTemplate?.variants ?? [];
   }, [mobileDueEditorInstance, payload]);
+  const quickLogMatches = useMemo(() => {
+    if (!payload || !quickLogQuery.trim()) {
+      return [];
+    }
+
+    const query = quickLogQuery.trim().toLowerCase();
+    const activeStates = new Set(["open", "assigned", "in_progress", "needs_fixes", "overdue", "deferred"]);
+    const instanceMatches = payload.instances
+      .filter((instance) => activeStates.has(instance.state))
+      .filter((instance) =>
+        [instance.title, instance.typeTitle, instance.groupTitle, instance.subtypeLabel]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query)
+      )
+      .slice(0, 6)
+      .map((instance) => ({
+        kind: "instance" as const,
+        id: instance.id,
+        label: instance.typeTitle || instance.title,
+        detail: `${instance.groupTitle} - ${formatDate(instance.dueAt)}`
+      }));
+
+    const templateMatches = payload.templates
+      .filter((template) =>
+        [template.title, template.groupTitle, template.description]
+          .filter(Boolean)
+          .join(" ")
+          .toLowerCase()
+          .includes(query)
+      )
+      .slice(0, 6)
+      .map((template) => ({
+        kind: "template" as const,
+        id: template.id,
+        label: template.title,
+        detail: template.groupTitle
+      }));
+
+    return [...instanceMatches, ...templateMatches].slice(0, 8);
+  }, [formatDate, payload, quickLogQuery]);
   const onboardingTourMode = getOnboardingTourMode(workspaceVariant, isClientMobileViewport);
   const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
   const [onboardingDismissed, setOnboardingDismissed] = useState(false);
@@ -2788,11 +2892,25 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const showMobileActionMenu =
       workspaceVariant === "client" && isClientMobileViewport && !options?.historic;
     const isMobileMenuOpen = mobileCardMenuInstanceId === instance.id;
+    const compactMetaLine = `${options?.historic ? formatDate(getHistoricChoreDate(instance)) : formatDate(instance.dueAt)} - ${
+      instance.assigneeId
+        ? memberLookup.get(instance.assigneeId)?.displayName ?? t("common.unknown")
+        : t("common.unassigned")
+    }`;
+    const choreIcon = resolveChoreIcon(instance);
+    const choreTitleText = stripLeadingQuickLogIcon(instance.typeTitle || instance.title);
     const choreHeading = (
       <div>
-        <p className="inline-message">{instance.groupTitle}</p>
-        <strong>{instance.typeTitle || instance.title}</strong>
-        {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
+        <p className="inline-message task-row-group-title">{instance.groupTitle}</p>
+        <strong className="task-row-title">
+          <span className="task-row-title-icon" aria-hidden="true">
+            {choreIcon}
+          </span>{" "}
+          {choreTitleText}
+        </strong>
+        {instance.subtypeLabel ? (
+          <p className="inline-message task-row-subtype-label">{instance.subtypeLabel}</p>
+        ) : null}
       </div>
     );
 
@@ -2835,6 +2953,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
           </div>
         </div>
+        <p className="task-row-compact-meta">{compactMetaLine}</p>
         <div className="task-row-meta-grid">
           <div className="task-row-meta-item">
             <span>{t("task.assignee")}</span>
@@ -2992,13 +3111,25 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const canSubmitAsCurrentUser = payload?.currentUser.id === instance.assigneeId;
     const selectedChecklistIds = getSelectedChecklistIds(instance);
     const selectedFiles = selectedProofFiles[instance.id] ?? [];
+    const choreIcon = resolveChoreIcon(instance);
+    const choreTitleText = stripLeadingQuickLogIcon(instance.typeTitle || instance.title);
     const choreHeading = (
       <div>
-        <p className="inline-message">{instance.groupTitle}</p>
-        <strong>{instance.typeTitle || instance.title}</strong>
-        {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
+        <p className="inline-message task-row-group-title">{instance.groupTitle}</p>
+        <strong className="task-row-title">
+          <span className="task-row-title-icon" aria-hidden="true">
+            {choreIcon}
+          </span>{" "}
+          {choreTitleText}
+        </strong>
+        {instance.subtypeLabel ? (
+          <p className="inline-message task-row-subtype-label">{instance.subtypeLabel}</p>
+        ) : null}
       </div>
     );
+    const compactMetaLine = `${formatDate(instance.dueAt)} - ${t("task.points")}: ${
+      instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints
+    }`;
 
     return (
       <div className="task-row" key={instance.id}>
@@ -3006,6 +3137,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           {choreHeading}
           <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
         </div>
+        <p className="task-row-compact-meta">{compactMetaLine}</p>
         <div className="task-row-meta-grid">
           <div className="task-row-meta-item">
             <span>{t("task.due")}</span>
@@ -3578,6 +3710,61 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t("instances.snooze_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  function resetQuickLogComposer() {
+    setQuickLogQuery("");
+    setQuickLogNote("");
+    setQuickLogSelectedInstanceId(null);
+    setQuickLogSelectedTemplateId(null);
+    setQuickLogCreateTemplateFromEntry(false);
+    setQuickLogUsePointsOverride(false);
+    setQuickLogPointsOverride("");
+    setQuickLogIcon("✅");
+  }
+
+  async function handleSubmitQuickLog() {
+    if (!token || !payload) {
+      return;
+    }
+
+    const normalizedQuery = quickLogQuery.trim();
+    if (!quickLogSelectedInstanceId && !quickLogSelectedTemplateId && !normalizedQuery) {
+      setPageError("Quick log needs a chore selection or free-text title.");
+      return;
+    }
+
+    const parsedPointsOverride = Number.parseInt(quickLogPointsOverride, 10);
+    const pointsOverride =
+      quickLogUsePointsOverride && Number.isFinite(parsedPointsOverride)
+        ? Math.max(0, parsedPointsOverride)
+        : undefined;
+
+    setBusyAction("quick-log");
+    try {
+      const decoratedTitle = quickLogSelectedInstanceId
+        ? undefined
+        : applyQuickLogIconToTitle(normalizedQuery, quickLogIcon) || undefined;
+      await taskBanditApi.quickLog(token, language, {
+        instanceId: quickLogSelectedInstanceId ?? undefined,
+        templateId: quickLogSelectedTemplateId ?? undefined,
+        title: decoratedTitle,
+        note: quickLogNote.trim() || undefined,
+        createTemplateFromEntry:
+          !quickLogSelectedInstanceId &&
+          !quickLogSelectedTemplateId &&
+          Boolean(quickLogCreateTemplateFromEntry),
+        pointsOverride
+      });
+      setIsQuickLogComposerOpen(false);
+      resetQuickLogComposer();
+      setNotice("Quick log saved.");
+      await refreshDashboard(token, { silent: true });
+    } catch (error) {
+      setPageError(readErrorMessage(error, "Quick log failed."));
     } finally {
       setBusyAction(null);
     }
@@ -4868,7 +5055,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   function startEditingInstance(instance: ChoreInstance) {
     setEditingInstanceId(instance.id);
     setInstanceForm({
-      templateId: instance.templateId,
+      templateId: instance.templateId ?? "",
       assigneeId: instance.assigneeId ?? "",
       title: instance.title,
       dueAt: formatDateTimeLocal(instance.dueAt),
@@ -4902,6 +5089,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   async function handleSaveMobileDueEditor() {
     if (!token || !mobileDueEditorInstance || !mobileDueEditorValue) {
+      return;
+    }
+    if (!mobileDueEditorInstance.templateId) {
+      setPageError(t("instances.update_failed"));
       return;
     }
 
@@ -6329,11 +6520,32 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <strong>{clientMobileUnassignedChores.length + clientMobileOtherChores.length}</strong>
                   </div>
                 </div>
+                {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
+                  <article className="mobile-quick-log-card">
+                    <div className="mobile-quick-log-card-copy">
+                      <p className="workspace-nav-kicker">TaskBandit quick log</p>
+                      <h4>Quick log</h4>
+                      <p>Log a completed chore instantly, even if it was never created.</p>
+                    </div>
+                    <button
+                      className="primary-button mobile-quick-log-card-cta"
+                      type="button"
+                      onClick={() => {
+                        resetQuickLogComposer();
+                        setIsQuickLogComposerOpen(true);
+                      }}
+                    >
+                      Quick log
+                    </button>
+                  </article>
+                ) : null}
                 <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
                   {payload.currentUser.role !== "child" ? (
-                    <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
-                      {t("instances.create")}
-                    </button>
+                    <>
+                      <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
+                        {t("instances.create")}
+                      </button>
+                    </>
                   ) : null}
                   {pageSectionLinks
                     .filter((link) => link.key !== "chores-schedule")
@@ -8298,6 +8510,32 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                   formatNumber(Math.abs(settingsDraft.takeoverPointsDelta))
                                 )}
                         </p>
+                        <label>
+                          <span>Quick log default points (blank = inherit)</span>
+                          <input
+                            type="number"
+                            min={0}
+                            max={1000}
+                            step={1}
+                            value={settingsDraft.quickLogPointsDefault ?? ""}
+                            onChange={(event) =>
+                              setSettingsDraft((current) => {
+                                if (!current) {
+                                  return current;
+                                }
+                                const nextValue = event.target.value.trim();
+                                return {
+                                  ...current,
+                                  quickLogPointsDefault:
+                                    nextValue === "" ? null : Math.max(0, Number.parseInt(nextValue, 10) || 0)
+                                };
+                              })
+                            }
+                          />
+                        </label>
+                        <p className="inline-message">
+                          This value is used by quick log by default. Users can still override points per entry.
+                        </p>
                         {!isHostedSaas ? (
                           <>
                             <label className="toggle-row">
@@ -9326,14 +9564,160 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
       ) : null}
+      {showClientMobileShell &&
+      payload?.currentUser.role !== "child" &&
+      hasFeature("quick_log") &&
+      isQuickLogComposerOpen ? (
+        <div className="mobile-composer-backdrop" role="presentation">
+          <div
+            className="mobile-composer-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-quick-log-title"
+          >
+            <article className="panel mobile-composer-panel">
+              <div className="section-heading mobile-composer-heading mobile-quick-log-heading">
+                <div>
+                  <h2 id="mobile-quick-log-title">Quick log</h2>
+                  <p className="schedule-panel-subtitle">
+                    Log a completed chore quickly, even if it was not planned.
+                  </p>
+                </div>
+              </div>
+              <form
+                className="login-form member-form schedule-form mobile-quick-log-form"
+                onSubmit={(event) => {
+                  event.preventDefault();
+                  void handleSubmitQuickLog();
+                }}
+              >
+                <label>
+                  <span>What did you complete?</span>
+                  <input
+                    type="text"
+                    value={quickLogQuery}
+                    onChange={(event) => {
+                      setQuickLogQuery(event.target.value);
+                      setQuickLogSelectedInstanceId(null);
+                      setQuickLogSelectedTemplateId(null);
+                    }}
+                    placeholder="Start typing to search chores/templates"
+                  />
+                </label>
+                <div className="mobile-quick-log-icon-picker" role="group" aria-label="Chore icon">
+                  {quickLogIconOptions.map((iconOption) => (
+                    <button
+                      key={iconOption}
+                      className={`ghost-button mobile-quick-log-icon-chip ${quickLogIcon === iconOption ? "active" : ""}`}
+                      type="button"
+                      onClick={() => setQuickLogIcon(iconOption)}
+                    >
+                      {iconOption}
+                    </button>
+                  ))}
+                </div>
+                {quickLogMatches.length > 0 ? (
+                  <div className="stack-list mobile-quick-log-suggestions">
+                    {quickLogMatches.map((match) => {
+                      const active =
+                        (match.kind === "instance" && quickLogSelectedInstanceId === match.id) ||
+                        (match.kind === "template" && quickLogSelectedTemplateId === match.id);
+                      return (
+                        <button
+                          key={`${match.kind}:${match.id}`}
+                          className={`ghost-button mobile-quick-log-suggestion ${active ? "active" : ""}`}
+                          type="button"
+                          onClick={() => {
+                            setQuickLogQuery(match.label);
+                            setQuickLogSelectedInstanceId(match.kind === "instance" ? match.id : null);
+                            setQuickLogSelectedTemplateId(match.kind === "template" ? match.id : null);
+                            setQuickLogIcon(resolveChoreIconFromText(match.label, match.detail));
+                            if (match.kind === "instance") {
+                              setQuickLogCreateTemplateFromEntry(false);
+                            }
+                          }}
+                        >
+                          <span>{match.label}</span>
+                          <span className="inline-message">
+                            {match.kind === "instance" ? "Open chore" : "Template"} | {match.detail}
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : null}
+                {!quickLogSelectedInstanceId && !quickLogSelectedTemplateId ? (
+                  <label className="toggle-row">
+                    <span>Create template from this quick log</span>
+                    <input
+                      type="checkbox"
+                      checked={quickLogCreateTemplateFromEntry}
+                      onChange={(event) => setQuickLogCreateTemplateFromEntry(event.target.checked)}
+                    />
+                  </label>
+                ) : null}
+                <label>
+                  <span>Note</span>
+                  <textarea
+                    rows={3}
+                    value={quickLogNote}
+                    onChange={(event) => setQuickLogNote(event.target.value)}
+                  />
+                </label>
+                <label className="toggle-row">
+                  <span>Override points for this entry</span>
+                  <input
+                    type="checkbox"
+                    checked={quickLogUsePointsOverride}
+                    onChange={(event) => setQuickLogUsePointsOverride(event.target.checked)}
+                  />
+                </label>
+                {quickLogUsePointsOverride ? (
+                  <label>
+                    <span>
+                      Points override (default{" "}
+                      {payload?.household.settings.quickLogPointsDefault ?? 0})
+                    </span>
+                    <input
+                      type="number"
+                      min={0}
+                      max={1000}
+                      value={quickLogPointsOverride}
+                      onChange={(event) => setQuickLogPointsOverride(event.target.value)}
+                    />
+                  </label>
+                ) : (
+                  <p className="inline-message mobile-quick-log-helper">
+                    Household default points: {payload?.household.settings.quickLogPointsDefault ?? 0}
+                  </p>
+                )}
+                <div className="button-row schedule-form-actions">
+                  <button className="primary-button" type="submit" disabled={busyAction === "quick-log"}>
+                    {busyAction === "quick-log" ? "Saving..." : "Log now"}
+                  </button>
+                  <button
+                    className="ghost-button"
+                    type="button"
+                    onClick={() => {
+                      setIsQuickLogComposerOpen(false);
+                      resetQuickLogComposer();
+                    }}
+                  >
+                    {t("common.cancel")}
+                  </button>
+                </div>
+              </form>
+            </article>
+          </div>
+        </div>
+      ) : null}
       {showClientMobileShell ? (
         <nav className="mobile-bottom-nav" aria-label={t("nav.workspace")} ref={mobileBottomNavRef}>
           <div
             className="mobile-bottom-nav-track"
             style={
               {
-                "--mobile-nav-columns":
-                  mobileBottomNavPages.length + (payload?.currentUser.role !== "child" ? 1 : 0)
+                "--mobile-nav-columns": mobileBottomNavPages.length
               } as CSSProperties
             }
           >
@@ -9356,17 +9740,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 ) : null}
               </button>
             ))}
-            {payload?.currentUser.role !== "child" ? (
-              <button
-                className="mobile-bottom-nav-add"
-                type="button"
-                onClick={handleOpenClientComposer}
-                aria-label={t("nav.create")}
-                title={t("nav.create")}
-              >
-                <img className="mobile-bottom-nav-icon" src={mobileCreateIconPath} alt="" aria-hidden="true" />
-              </button>
-            ) : null}
           </div>
         </nav>
       ) : null}

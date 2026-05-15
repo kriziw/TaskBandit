@@ -88,7 +88,8 @@ data class MobileFeatureAccess(
     val proofUploads: Boolean = true,
     val followUpAutomation: Boolean = true,
     val externalCompletion: Boolean = true,
-    val deferredFollowUpControl: Boolean = true
+    val deferredFollowUpControl: Boolean = true,
+    val quickLog: Boolean = true
 )
 
 data class MobileHostedQuotas(
@@ -292,5 +293,6 @@ data class MobileDashboard(
     val notifications: List<MobileNotification>,
     val members: List<MobileHouseholdMember>,
     val templates: List<MobileChoreTemplate>,
+    val quickLogPointsDefault: Int? = null,
     val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility()
 )

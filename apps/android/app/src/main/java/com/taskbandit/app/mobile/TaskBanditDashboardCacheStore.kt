@@ -73,6 +73,7 @@ class TaskBanditDashboardCacheStore(
             .put("notifications", JSONArray().apply { dashboard.notifications.forEach { put(notificationToJson(it)) } })
             .put("members", JSONArray().apply { dashboard.members.forEach { put(memberToJson(it)) } })
             .put("templates", JSONArray().apply { dashboard.templates.forEach { put(templateToJson(it)) } })
+            .put("quickLogPointsDefault", dashboard.quickLogPointsDefault)
             .put("compatibility", compatibilityToJson(dashboard.compatibility))
     }
 
@@ -89,6 +90,11 @@ class TaskBanditDashboardCacheStore(
             notifications = parseJsonArray(entry.optJSONArray("notifications"), ::parseNotification),
             members = parseJsonArray(entry.optJSONArray("members"), ::parseMember),
             templates = parseJsonArray(entry.optJSONArray("templates"), ::parseTemplate),
+            quickLogPointsDefault = if (entry.has("quickLogPointsDefault") && !entry.isNull("quickLogPointsDefault")) {
+                entry.optInt("quickLogPointsDefault")
+            } else {
+                null
+            },
             compatibility = entry.optJSONObject("compatibility")?.let(::parseCompatibility)
                 ?: MobileDashboardCompatibility()
         )
@@ -384,6 +390,7 @@ class TaskBanditDashboardCacheStore(
             .put("followUpAutomation", entry.followUpAutomation)
             .put("externalCompletion", entry.externalCompletion)
             .put("deferredFollowUpControl", entry.deferredFollowUpControl)
+            .put("quickLog", entry.quickLog)
     }
 
     private fun parseFeatureAccess(entry: JSONObject): MobileFeatureAccess {
@@ -397,7 +404,8 @@ class TaskBanditDashboardCacheStore(
             proofUploads = entry.optBoolean("proofUploads", true),
             followUpAutomation = entry.optBoolean("followUpAutomation", true),
             externalCompletion = entry.optBoolean("externalCompletion", true),
-            deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", true)
+            deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", true),
+            quickLog = entry.optBoolean("quickLog", true)
         )
     }
 

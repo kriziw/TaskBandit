@@ -29,6 +29,7 @@ import type {
   RuntimeLogEntry,
   SignupInput,
   ReleaseInfo,
+  QuickLogInput,
   TakeoverRequestEntry,
   UpdateHouseholdMemberInput,
   UploadedProof,
@@ -511,6 +512,14 @@ export const taskBanditApi = {
   },
   createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
     return request<ChoreInstance>("/api/chores/instances", {
+      method: "POST",
+      token,
+      language,
+      body: input
+    });
+  },
+  quickLog(token: string, language: AppLanguage, input: QuickLogInput) {
+    return request<ChoreInstance>("/api/chores/quick-log", {
       method: "POST",
       token,
       language,
