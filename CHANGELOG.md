@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.56.0](https://github.com/kriziw/TaskBandit/compare/v0.55.0...v0.56.0) (2026-05-15)
+
+
+### Features
+
+* **mobile:** replace mobile UI with mock-style experience and settings toggle ([#401](https://github.com/kriziw/TaskBandit/issues/401)) ([8a3d5a9](https://github.com/kriziw/TaskBandit/commit/8a3d5a955208ab0e05c5e6fb07fd0f4bed3138ab))
+
 ## [0.55.0](https://github.com/kriziw/TaskBandit/compare/v0.54.0...v0.55.0) (2026-05-15)
 
 
