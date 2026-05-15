@@ -59,6 +59,7 @@ import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Smartphone
@@ -142,6 +143,7 @@ import com.taskbandit.app.mobile.MobileLeaderboardEntry
 import com.taskbandit.app.mobile.MobileTakeoverRequest
 import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
+import com.taskbandit.app.mobile.MobileUiMode
 import com.taskbandit.app.mobile.MobileUploadedProof
 import com.taskbandit.app.mobile.MobileOnboardingDeepLink
 import com.taskbandit.app.mobile.MobileResolvedInvite
@@ -522,6 +524,7 @@ private fun TaskBanditApp(
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
+    var mobileUiMode by remember { mutableStateOf(appPreferencesStore.readMobileUiMode()) }
     val currentReleaseInfo = remember {
         MobileReleaseInfo(
             releaseVersion = BuildConfig.TASKBANDIT_RELEASE_VERSION,
@@ -1518,6 +1521,11 @@ private fun TaskBanditApp(
         languageTag = nextLanguageTag
     }
 
+    fun updateMobileUiMode(nextMode: MobileUiMode) {
+        appPreferencesStore.saveMobileUiMode(nextMode)
+        mobileUiMode = nextMode
+    }
+
     LaunchedEffect(session.token) {
         if (session.token != null) {
             dashboardCacheStore.read(session.baseUrl)?.dashboard?.let { cachedDashboard ->
@@ -1890,6 +1898,7 @@ private fun TaskBanditApp(
                     installationId = installationId,
                     languageTag = languageTag,
                     themeMode = themeMode,
+                    mobileUiMode = mobileUiMode,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
                     showDashboardSyncNotice = showDashboardSyncNotice,
@@ -1936,6 +1945,7 @@ private fun TaskBanditApp(
                     onRemoveNotificationDevice = ::removeNotificationDevice,
                     onThemeModeChange = ::updateThemeMode,
                     onLanguageTagChange = ::updateLanguageTag,
+                    onMobileUiModeChange = ::updateMobileUiMode,
                     onRequestNotificationPermission = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -2470,6 +2480,7 @@ private fun DashboardScreen(
     installationId: String,
     languageTag: String,
     themeMode: MobileThemeMode,
+    mobileUiMode: MobileUiMode,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
     showDashboardSyncNotice: Boolean,
@@ -2516,6 +2527,7 @@ private fun DashboardScreen(
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
+    onMobileUiModeChange: (MobileUiMode) -> Unit,
     onRequestNotificationPermission: () -> Unit
 ) {
     val context = LocalContext.current
@@ -2526,6 +2538,7 @@ private fun DashboardScreen(
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val canUseQuickLog = isCreatorRole && featureAccess.quickLog
+    val isNewMobileUi = mobileUiMode == MobileUiMode.NEW
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
@@ -3309,20 +3322,79 @@ private fun DashboardScreen(
 
     CompositionLocalProvider(LocalMobileFeatureAccess provides featureAccess) {
         Scaffold(
-        bottomBar = {
-            BoxWithConstraints(
-                modifier = Modifier.fillMaxWidth(),
-                contentAlignment = Alignment.Center
-            ) {
-                val isTablet = isTabletWidth(maxWidth)
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .then(if (isTablet) Modifier.widthIn(max = 760.dp) else Modifier),
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+        topBar = {
+            if (isNewMobileUi) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.background
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                                IconButton(onClick = { activeTab = MobileDashboardTab.CHORES }) {
+                                    Icon(imageVector = Icons.Rounded.Menu, contentDescription = null)
+                                }
+                            }
+                            Text(
+                                text = "TaskBandit",
+                                style = MaterialTheme.typography.titleLarge,
+                                fontWeight = FontWeight.SemiBold
+                            )
+                        }
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                                IconButton(onClick = { activeTab = MobileDashboardTab.SETTINGS }) {
+                                    Icon(imageVector = Icons.Rounded.NotificationsActive, contentDescription = null)
+                                }
+                            }
+                            Surface(
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.primaryContainer
+                            ) {
+                                Text(
+                                    text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
+                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                                    style = MaterialTheme.typography.labelLarge,
+                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        floatingActionButton = {
+            if (isNewMobileUi && activeTab == MobileDashboardTab.CHORES && canManageChores) {
+                Button(
+                    onClick = { activeTab = MobileDashboardTab.CREATE },
+                    shape = CircleShape,
+                    contentPadding = PaddingValues(0.dp),
+                    modifier = Modifier.size(64.dp)
+                ) {
+                    Text(text = "+", style = MaterialTheme.typography.headlineLarge)
+                }
+            }
+        },
+        bottomBar = {
+            if (isNewMobileUi) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -3331,6 +3403,7 @@ private fun DashboardScreen(
                             selected = activeTab == MobileDashboardTab.CHORES,
                             label = stringResource(R.string.mobile_tab_chores),
                             iconRes = R.drawable.mobile_nav_chores,
+                            showLabel = isNewMobileUi,
                             onClick = {
                                 activeTab = MobileDashboardTab.CHORES
                                 expandedChoreIds = emptySet()
@@ -3341,6 +3414,7 @@ private fun DashboardScreen(
                             selected = activeTab == MobileDashboardTab.LEADERBOARD,
                             label = stringResource(R.string.mobile_leaderboard),
                             iconRes = R.drawable.mobile_nav_leaderboard,
+                            showLabel = isNewMobileUi,
                             onClick = {
                                 activeTab = MobileDashboardTab.LEADERBOARD
                                 expandedChoreIds = emptySet()
@@ -3351,8 +3425,59 @@ private fun DashboardScreen(
                             selected = activeTab == MobileDashboardTab.SETTINGS,
                             label = stringResource(R.string.mobile_tab_settings),
                             iconRes = R.drawable.mobile_nav_settings,
+                            showLabel = isNewMobileUi,
                             onClick = { activeTab = MobileDashboardTab.SETTINGS }
                         )
+                    }
+                }
+            } else {
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val isTablet = isTabletWidth(maxWidth)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (isTablet) Modifier.widthIn(max = 760.dp) else Modifier),
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.CHORES,
+                                label = stringResource(R.string.mobile_tab_chores),
+                                iconRes = R.drawable.mobile_nav_chores,
+                                showLabel = isNewMobileUi,
+                                onClick = {
+                                    activeTab = MobileDashboardTab.CHORES
+                                    expandedChoreIds = emptySet()
+                                }
+                            )
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.LEADERBOARD,
+                                label = stringResource(R.string.mobile_leaderboard),
+                                iconRes = R.drawable.mobile_nav_leaderboard,
+                                showLabel = isNewMobileUi,
+                                onClick = {
+                                    activeTab = MobileDashboardTab.LEADERBOARD
+                                    expandedChoreIds = emptySet()
+                                }
+                            )
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.SETTINGS,
+                                label = stringResource(R.string.mobile_tab_settings),
+                                iconRes = R.drawable.mobile_nav_settings,
+                                showLabel = isNewMobileUi,
+                                onClick = { activeTab = MobileDashboardTab.SETTINGS }
+                            )
+                        }
                     }
                 }
             }
@@ -3364,7 +3489,7 @@ private fun DashboardScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            MaterialTheme.colorScheme.primaryContainer,
+                            if (isNewMobileUi) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primaryContainer,
                             MaterialTheme.colorScheme.background
                         )
                     )
@@ -3384,26 +3509,41 @@ private fun DashboardScreen(
                 if (canUseQuickLog) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(18.dp),
+                            shape = RoundedCornerShape(if (isNewMobileUi) 20.dp else 18.dp),
                             colors = CardDefaults.cardColors(
-                                containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+                                containerColor = if (isNewMobileUi) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                } else {
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+                                }
                             ),
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.22f))
+                            border = BorderStroke(
+                                1.dp,
+                                if (isNewMobileUi) {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                } else {
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
+                                }
+                            )
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (isNewMobileUi) 14.dp else 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primaryContainer
+                                    shape = RoundedCornerShape(if (isNewMobileUi) 14.dp else 999.dp),
+                                    color = if (isNewMobileUi) {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    } else {
+                                        MaterialTheme.colorScheme.primaryContainer
+                                    }
                                 ) {
                                     Icon(
                                         imageVector = Icons.Rounded.AddCircle,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(8.dp).size(16.dp)
+                                        modifier = Modifier.padding(if (isNewMobileUi) 10.dp else 8.dp).size(if (isNewMobileUi) 18.dp else 16.dp)
                                     )
                                 }
                                 Column(
@@ -3411,13 +3551,8 @@ private fun DashboardScreen(
                                     verticalArrangement = Arrangement.spacedBy(2.dp)
                                 ) {
                                     Text(
-                                        text = "TaskBandit quick log",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                    Text(
                                         text = stringResource(R.string.mobile_quick_log_card_title),
-                                        style = MaterialTheme.typography.titleSmall,
+                                        style = if (isNewMobileUi) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
@@ -3445,7 +3580,7 @@ private fun DashboardScreen(
                                             )
                                         )
                                     }
-                                    if (isCreatorRole && canManageChores) {
+                                    if (!isNewMobileUi && isCreatorRole && canManageChores) {
                                         OutlinedButton(
                                             onClick = { activeTab = MobileDashboardTab.CREATE },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
@@ -3889,7 +4024,14 @@ private fun DashboardScreen(
                             verticalAlignment = Alignment.Top
                         ) {
                             SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
-                                SettingsAppearanceContent(themeMode = themeMode, onThemeModeChange = onThemeModeChange, languageTag = languageTag, onLanguageTagChange = onLanguageTagChange)
+                                SettingsAppearanceContent(
+                                    themeMode = themeMode,
+                                    onThemeModeChange = onThemeModeChange,
+                                    languageTag = languageTag,
+                                    onLanguageTagChange = onLanguageTagChange,
+                                    mobileUiMode = mobileUiMode,
+                                    onMobileUiModeChange = onMobileUiModeChange
+                                )
                             }
                             SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
                                 SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
@@ -3920,7 +4062,14 @@ private fun DashboardScreen(
                 } else {
                     item {
                         SettingsSectionCard(icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
-                            SettingsAppearanceContent(themeMode = themeMode, onThemeModeChange = onThemeModeChange, languageTag = languageTag, onLanguageTagChange = onLanguageTagChange)
+                            SettingsAppearanceContent(
+                                themeMode = themeMode,
+                                onThemeModeChange = onThemeModeChange,
+                                languageTag = languageTag,
+                                onLanguageTagChange = onLanguageTagChange,
+                                mobileUiMode = mobileUiMode,
+                                onMobileUiModeChange = onMobileUiModeChange
+                            )
                         }
                     }
                     item {
@@ -3976,6 +4125,7 @@ private fun MobileTabButton(
     selected: Boolean,
     label: String,
     @DrawableRes iconRes: Int,
+    showLabel: Boolean = false,
     enabled: Boolean = true,
     onClick: () -> Unit
 ) {
@@ -4015,6 +4165,15 @@ private fun MobileTabButton(
                     modifier = Modifier
                         .size(54.dp)
                         .alpha(if (enabled) 1f else 0.45f)
+                )
+            }
+            if (showLabel) {
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
                 )
             }
             if (selected) {
@@ -6230,7 +6389,9 @@ private fun SettingsAppearanceContent(
     themeMode: MobileThemeMode,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     languageTag: String,
-    onLanguageTagChange: (String) -> Unit
+    onLanguageTagChange: (String) -> Unit,
+    mobileUiMode: MobileUiMode,
+    onMobileUiModeChange: (MobileUiMode) -> Unit
 ) {
     Text(text = stringResource(R.string.mobile_settings_theme), style = MaterialTheme.typography.titleMedium)
     MobileChoiceRow(options = listOf(
@@ -6245,6 +6406,24 @@ private fun SettingsAppearanceContent(
         MobileChoiceOption(label = stringResource(R.string.mobile_language_de), selected = languageTag == "de", onClick = { onLanguageTagChange("de") }),
         MobileChoiceOption(label = stringResource(R.string.mobile_language_hu), selected = languageTag == "hu", onClick = { onLanguageTagChange("hu") })
     ))
+    Text(text = stringResource(R.string.mobile_settings_ui_mode), style = MaterialTheme.typography.titleMedium)
+    MobileChoiceRow(options = listOf(
+        MobileChoiceOption(
+            label = stringResource(R.string.mobile_ui_mode_classic),
+            selected = mobileUiMode == MobileUiMode.CLASSIC,
+            onClick = { onMobileUiModeChange(MobileUiMode.CLASSIC) }
+        ),
+        MobileChoiceOption(
+            label = stringResource(R.string.mobile_ui_mode_new),
+            selected = mobileUiMode == MobileUiMode.NEW,
+            onClick = { onMobileUiModeChange(MobileUiMode.NEW) }
+        )
+    ))
+    Text(
+        text = stringResource(R.string.mobile_settings_ui_mode_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
 }
 
 @Composable
@@ -6470,6 +6649,14 @@ private fun firstNameFromDisplayName(displayName: String?): String? =
         ?.takeIf { it.isNotEmpty() }
         ?.split(Regex("\\s+"))
         ?.firstOrNull()
+
+private fun initialsFromDisplayName(displayName: String): String {
+    val tokens = displayName.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(2)
+    if (tokens.isEmpty()) {
+        return "U"
+    }
+    return tokens.joinToString("") { token -> token.first().uppercaseChar().toString() }
+}
 
 private fun normalizeSubtypeLabel(value: String?): String? =
     value

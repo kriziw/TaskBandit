@@ -8,6 +8,11 @@ enum class MobileThemeMode {
     DARK
 }
 
+enum class MobileUiMode {
+    CLASSIC,
+    NEW
+}
+
 class TaskBanditAppPreferencesStore(
     private val preferences: SharedPreferences
 ) {
@@ -28,6 +33,17 @@ class TaskBanditAppPreferencesStore(
     fun saveLanguageTag(value: String) {
         preferences.edit()
             .putString("language_tag", value.ifBlank { "system" })
+            .apply()
+    }
+
+    fun readMobileUiMode(): MobileUiMode {
+        val storedValue = preferences.getString("mobile_ui_mode", MobileUiMode.CLASSIC.name).orEmpty()
+        return MobileUiMode.entries.firstOrNull { it.name == storedValue } ?: MobileUiMode.CLASSIC
+    }
+
+    fun saveMobileUiMode(value: MobileUiMode) {
+        preferences.edit()
+            .putString("mobile_ui_mode", value.name)
             .apply()
     }
 }
