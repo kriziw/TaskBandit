@@ -17,6 +17,7 @@ import android.os.Bundle
 import android.provider.OpenableColumns
 import androidx.annotation.DrawableRes
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
@@ -29,6 +30,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
@@ -105,6 +107,7 @@ import androidx.compose.runtime.compositionLocalOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -2336,6 +2339,8 @@ private fun LoginMethodsForm(
         registrationDisplayName.trim().isNotBlank() &&
             registrationEmail.trim().isNotBlank() &&
             registrationPassword.length >= 8
+    val registrationAvailable = showLocalSignupAction || showHostedSignupAction
+    var authFormMode by rememberSaveable { mutableStateOf("login") }
     val noSupportedMethodsMessage =
         if (hostedCredentialFallback) {
             stringResource(R.string.mobile_auth_methods_cloud_login_ready)
@@ -2406,7 +2411,7 @@ private fun LoginMethodsForm(
             style = MaterialTheme.typography.bodySmall
         )
     }
-    if (showLocalLoginControls) {
+    if (showLocalLoginControls && authFormMode == "login") {
         OutlinedTextField(
             value = email,
             onValueChange = onEmailChange,
@@ -2450,8 +2455,17 @@ private fun LoginMethodsForm(
                 Text(stringResource(R.string.mobile_login_action))
             }
         }
+        if (registrationAvailable) {
+            TextButton(
+                onClick = { authFormMode = "register" },
+                enabled = !isBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Text(stringResource(R.string.mobile_signup_local_action))
+            }
+        }
     }
-    if (showLocalSignupAction || showHostedSignupAction) {
+    if (registrationAvailable && authFormMode == "register") {
         Text(
             text = stringResource(
                 if (showHostedSignupAction) {
@@ -2509,8 +2523,15 @@ private fun LoginMethodsForm(
                 Text(stringResource(R.string.mobile_signup_local_action))
             }
         }
+        TextButton(
+            onClick = { authFormMode = "login" },
+            enabled = !isBusy,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(R.string.mobile_login_action))
+        }
     }
-    if (showOidcLogin) {
+    if (showOidcLogin && authFormMode == "login") {
         OutlinedButton(
             onClick = onOidcLogin,
             enabled = !isBusy,
@@ -2631,6 +2652,7 @@ private fun DashboardScreen(
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
+    val tabHistory = remember { mutableStateListOf<MobileDashboardTab>() }
     var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
     var selectedTemplateGroupTitle by rememberSaveable { mutableStateOf<String?>(null) }
     var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
@@ -2659,6 +2681,7 @@ private fun DashboardScreen(
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
+    var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
     var quickLogQuery by rememberSaveable { mutableStateOf("") }
     var quickLogNote by rememberSaveable { mutableStateOf("") }
     var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
@@ -2677,6 +2700,37 @@ private fun DashboardScreen(
         loadImageBitmapFromUri(context, selectedAvatarUploadUri)
     }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
+    fun openTab(tab: MobileDashboardTab) {
+        if (activeTab != tab) {
+            tabHistory.add(activeTab)
+            activeTab = tab
+        }
+    }
+    fun backWithinDashboard(): Boolean {
+        if (showProfileDialog) {
+            showProfileDialog = false
+            return true
+        }
+        if (showQuickLogDialog) {
+            showQuickLogDialog = false
+            return true
+        }
+        if (activeNewUiChoreDialogId != null) {
+            activeNewUiChoreDialogId = null
+            return true
+        }
+        if (activeTab != MobileDashboardTab.CHORES) {
+            val previousTab = tabHistory.lastOrNull()
+            if (previousTab != null) {
+                tabHistory.removeAt(tabHistory.lastIndex)
+                activeTab = previousTab
+            } else {
+                activeTab = MobileDashboardTab.CHORES
+            }
+            return true
+        }
+        return false
+    }
     val templates = dashboard?.templates.orEmpty()
     val templateVariantsByTemplateId =
         remember(templates) { templates.associate { template -> template.id to template.variants } }
@@ -3363,11 +3417,8 @@ private fun DashboardScreen(
                             Text(stringResource(R.string.mobile_request_takeover_cancel))
                         }
                         Spacer(modifier = Modifier.size(8.dp))
-                        Button(onClick = {
-                            showProfileDialog = false
-                            activeTab = MobileDashboardTab.SETTINGS
-                        }) {
-                            Text(stringResource(R.string.mobile_tab_settings))
+                        Button(onClick = { showProfileDialog = false }) {
+                            Text("Save")
                         }
                     }
                 }
@@ -3571,6 +3622,89 @@ private fun DashboardScreen(
         )
     }
 
+    val activeNewUiChoreDialog = remember(sortedChores, activeNewUiChoreDialogId) {
+        sortedChores.firstOrNull { it.id == activeNewUiChoreDialogId }
+    }
+    if (isNewMobileUi && activeNewUiChoreDialog != null) {
+        Dialog(
+            onDismissRequest = { activeNewUiChoreDialogId = null },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
+                tonalElevation = 8.dp
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(14.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Chore actions",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    CompositionLocalProvider(LocalIsNewMobileUi provides false) {
+                        ChoreCard(
+                            chore = activeNewUiChoreDialog,
+                            currentUserId = currentUserId,
+                            currentUserRole = currentUserRole,
+                            supportsTakeoverRequests = canUseTakeoverRequests,
+                            expanded = true,
+                            activeReviewAction = activeReviewAction,
+                            activeStartAction = activeStartAction,
+                            activeSubmitAction = activeSubmitAction,
+                            activeCloseCycleAction = activeCloseCycleAction,
+                            activeTakeoverRequestAction = activeTakeoverRequestAction,
+                            activeDueAtAction = activeDueAtAction,
+                            outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[activeNewUiChoreDialog.id],
+                            selectedChecklistIds = submitSelections[activeNewUiChoreDialog.id]
+                                ?: activeNewUiChoreDialog.completedChecklistIds.toSet(),
+                            selectedProofCount = selectedProofUris[activeNewUiChoreDialog.id]?.size ?: 0,
+                            onExpandedChange = {},
+                            onApprove = onApprove,
+                            onReject = onReject,
+                            onToggleChecklistItem = onToggleChecklistItem,
+                            onPickProofs = onPickProofs,
+                            onTakeProofPhoto = onTakeProofPhoto,
+                            onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                            onCancelChoreOccurrence = onCancelChoreOccurrence,
+                            onCloseChoreCycle = onCloseChoreCycle,
+                            onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                            onRequestTakeover = { choreId ->
+                                requestTakeoverChoreId = choreId
+                                requestTakeoverMemberId = null
+                            },
+                            onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                            onEditChoreDueAt = onEditChoreDueAt,
+                            editableVariants = activeNewUiChoreDialog.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty()
+                        )
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End
+                    ) {
+                        TextButton(onClick = { activeNewUiChoreDialogId = null }) {
+                            Text(stringResource(R.string.mobile_request_takeover_cancel))
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    BackHandler(
+        enabled = showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
+    ) {
+        backWithinDashboard()
+    }
+
     CompositionLocalProvider(
         LocalMobileFeatureAccess provides featureAccess,
         LocalIsNewMobileUi provides isNewMobileUi
@@ -3598,8 +3732,8 @@ private fun DashboardScreen(
                                 painter = painterResource(R.drawable.taskbandit_logo),
                                 contentDescription = stringResource(R.string.brand_mark_description),
                                 modifier = Modifier
-                                    .widthIn(max = 170.dp)
-                                    .heightIn(max = 44.dp)
+                                    .widthIn(max = 186.dp)
+                                    .heightIn(max = 48.dp)
                             )
                         }
                         Surface(
@@ -3646,7 +3780,7 @@ private fun DashboardScreen(
         floatingActionButton = {
             if (isNewMobileUi && activeTab == MobileDashboardTab.CHORES && canManageChores) {
                 Button(
-                    onClick = { activeTab = MobileDashboardTab.CREATE },
+                    onClick = { openTab(MobileDashboardTab.CREATE) },
                     shape = CircleShape,
                     contentPadding = PaddingValues(0.dp),
                     modifier = Modifier.size(60.dp)
@@ -3678,7 +3812,7 @@ private fun DashboardScreen(
                             iconRes = R.drawable.mobile_nav_chores,
                             showLabel = isNewMobileUi,
                             onClick = {
-                                activeTab = MobileDashboardTab.CHORES
+                                openTab(MobileDashboardTab.CHORES)
                                 expandedChoreIds = emptySet()
                             }
                         )
@@ -3689,7 +3823,7 @@ private fun DashboardScreen(
                             iconRes = R.drawable.mobile_nav_leaderboard,
                             showLabel = isNewMobileUi,
                             onClick = {
-                                activeTab = MobileDashboardTab.LEADERBOARD
+                                openTab(MobileDashboardTab.LEADERBOARD)
                                 expandedChoreIds = emptySet()
                             }
                         )
@@ -3699,7 +3833,7 @@ private fun DashboardScreen(
                             label = stringResource(R.string.mobile_tab_settings),
                             iconRes = R.drawable.mobile_nav_settings,
                             showLabel = isNewMobileUi,
-                            onClick = { activeTab = MobileDashboardTab.SETTINGS }
+                            onClick = { openTab(MobileDashboardTab.SETTINGS) }
                         )
                     }
                 }
@@ -3727,7 +3861,7 @@ private fun DashboardScreen(
                                 iconRes = R.drawable.mobile_nav_chores,
                                 showLabel = isNewMobileUi,
                                 onClick = {
-                                    activeTab = MobileDashboardTab.CHORES
+                                    openTab(MobileDashboardTab.CHORES)
                                     expandedChoreIds = emptySet()
                                 }
                             )
@@ -3738,7 +3872,7 @@ private fun DashboardScreen(
                                 iconRes = R.drawable.mobile_nav_leaderboard,
                                 showLabel = isNewMobileUi,
                                 onClick = {
-                                    activeTab = MobileDashboardTab.LEADERBOARD
+                                    openTab(MobileDashboardTab.LEADERBOARD)
                                     expandedChoreIds = emptySet()
                                 }
                             )
@@ -3748,7 +3882,7 @@ private fun DashboardScreen(
                                 label = stringResource(R.string.mobile_tab_settings),
                                 iconRes = R.drawable.mobile_nav_settings,
                                 showLabel = isNewMobileUi,
-                                onClick = { activeTab = MobileDashboardTab.SETTINGS }
+                                onClick = { openTab(MobileDashboardTab.SETTINGS) }
                             )
                         }
                     }
@@ -3800,12 +3934,12 @@ private fun DashboardScreen(
                             )
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 84.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 14.dp else 14.dp, vertical = if (isNewMobileUi) 12.dp else 12.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 72.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 10.dp else 14.dp, vertical = if (isNewMobileUi) 8.dp else 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
                             ) {
                                 Surface(
-                                    modifier = if (isNewMobileUi) Modifier.size(44.dp) else Modifier,
+                                    modifier = if (isNewMobileUi) Modifier.size(38.dp) else Modifier,
                                     shape = RoundedCornerShape(if (isNewMobileUi) 12.dp else 999.dp),
                                     color = if (isNewMobileUi) {
                                         MaterialTheme.colorScheme.primaryContainer
@@ -3817,7 +3951,7 @@ private fun DashboardScreen(
                                         imageVector = Icons.Rounded.AddCircle,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(if (isNewMobileUi) 10.dp else 8.dp).size(if (isNewMobileUi) 24.dp else 16.dp)
+                                        modifier = Modifier.padding(if (isNewMobileUi) 8.dp else 8.dp).size(if (isNewMobileUi) 22.dp else 16.dp)
                                     )
                                 }
                                 Column(
@@ -3837,28 +3971,33 @@ private fun DashboardScreen(
                                         )
                                     }
                                 }
-                                Column(
-                                    horizontalAlignment = Alignment.End,
-                                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
+                                    OutlinedButton(
+                                        onClick = { showQuickLogDialog = true },
+                                        enabled = activeQuickLogAction == null,
+                                        contentPadding = PaddingValues(horizontal = if (isNewMobileUi) 8.dp else 12.dp, vertical = if (isNewMobileUi) 3.dp else 6.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_quick_log_open))
+                                    }
                                     Button(
                                         onClick = { showQuickLogDialog = true },
                                         enabled = activeQuickLogAction == null,
-                                        contentPadding = PaddingValues(horizontal = if (isNewMobileUi) 10.dp else 12.dp, vertical = if (isNewMobileUi) 4.dp else 6.dp)
+                                        contentPadding = PaddingValues(0.dp),
+                                        shape = CircleShape,
+                                        modifier = Modifier.size(36.dp)
                                     ) {
-                                        Text(
-                                            stringResource(
-                                                if (activeQuickLogAction == "quick-log") {
-                                                    R.string.mobile_quick_log_saving
-                                                } else {
-                                                    R.string.mobile_quick_log_open
-                                                }
-                                            )
+                                        Icon(
+                                            imageVector = Icons.Rounded.Add,
+                                            contentDescription = stringResource(R.string.mobile_quick_log_open),
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                     if (!isNewMobileUi && isCreatorRole && canManageChores) {
                                         OutlinedButton(
-                                            onClick = { activeTab = MobileDashboardTab.CREATE },
+                                            onClick = { openTab(MobileDashboardTab.CREATE) },
                                             contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                                         ) {
                                             Text(stringResource(R.string.mobile_tab_create))
@@ -3890,7 +4029,7 @@ private fun DashboardScreen(
                         currentUserRole = currentUserRole,
                         supportsTakeoverRequests = canUseTakeoverRequests,
                         expandedChoreIds = expandedChoreIds,
-                        onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId },
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
                         activeReviewAction = activeReviewAction,
                         activeStartAction = activeStartAction,
                         activeSubmitAction = activeSubmitAction,
@@ -3924,7 +4063,7 @@ private fun DashboardScreen(
                         currentUserRole = currentUserRole,
                         supportsTakeoverRequests = canUseTakeoverRequests,
                         expandedChoreIds = expandedChoreIds,
-                        onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId },
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
                         activeReviewAction = activeReviewAction,
                         activeStartAction = activeStartAction,
                         activeSubmitAction = activeSubmitAction,
@@ -4419,8 +4558,17 @@ private fun DashboardScreen(
                                 SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
                             }
                             SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
-                                SettingsActionsContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs, onLogout = onLogout)
+                                SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
                             }
+                        }
+                    }
+                    item {
+                        SettingsSectionCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = Icons.Rounded.DarkMode,
+                            title = stringResource(R.string.mobile_logout)
+                        ) {
+                            SettingsLogoutContent(onLogout = onLogout)
                         }
                     }
                 } else {
@@ -4455,7 +4603,12 @@ private fun DashboardScreen(
                     }
                     item {
                         SettingsSectionCard(icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
-                            SettingsActionsContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs, onLogout = onLogout)
+                            SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
+                        }
+                    }
+                    item {
+                        SettingsSectionCard(icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_logout)) {
+                            SettingsLogoutContent(onLogout = onLogout)
                         }
                     }
                 }
@@ -4553,7 +4706,7 @@ private fun MobileTabButton(
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Box(
                 modifier = Modifier
-                    .size(46.dp)
+                    .size(48.dp)
                     .background(chipColor, CircleShape)
                     .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
                 contentAlignment = Alignment.Center
@@ -4562,7 +4715,7 @@ private fun MobileTabButton(
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(30.dp)
+                        .size(32.dp)
                         .alpha(if (enabled) 1f else 0.45f)
                 )
             }
@@ -5305,7 +5458,7 @@ private fun HistoricChoreCard(
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
     val choreIcon = resolveQuickLogIcon(baseTypeTitle, chore.groupTitle)
-    val typeTitle = stripLeadingQuickLogIcon(baseTypeTitle)
+    val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val historicDate = if (chore.state == "cancelled") {
         chore.cancelledAt ?: chore.completedAt ?: chore.dueAt
@@ -5738,7 +5891,8 @@ private fun ChoreCard(
     val section = resolveChoreSection(chore, currentUserId)
     val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
     val choreIcon = resolveQuickLogIcon(baseTypeTitle, chore.groupTitle)
-    val typeTitle = stripLeadingQuickLogIcon(baseTypeTitle)
+    val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle, chore.subtypeLabel)
+    val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val assignmentReasonLabel = describeAssignmentReason(chore.assignmentReason)
     val canClaimChore =
@@ -5789,7 +5943,9 @@ private fun ChoreCard(
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
         Card(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onExpandedChange() },
             shape = RoundedCornerShape(15.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
@@ -5797,21 +5953,30 @@ private fun ChoreCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 92.dp)
-                    .padding(horizontal = 8.dp, vertical = 10.dp),
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    .heightIn(min = 78.dp)
+                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    modifier = Modifier.size(46.dp),
-                    shape = RoundedCornerShape(11.dp),
+                    modifier = Modifier.size(42.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = accentContainerColor.copy(alpha = 0.58f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
-                        Text(
-                            text = choreIcon,
-                            style = MaterialTheme.typography.titleLarge
-                        )
+                        if (choreIconDrawable != null) {
+                            Image(
+                                painter = painterResource(choreIconDrawable),
+                                contentDescription = null,
+                                contentScale = ContentScale.Fit,
+                                modifier = Modifier.size(38.dp)
+                            )
+                        } else {
+                            Text(
+                                text = if (quickLogIconOptions.contains(choreIcon)) choreIcon else quickLogIconCheck,
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                        }
                     }
                 }
                 Column(
@@ -5835,12 +6000,12 @@ private fun ChoreCard(
                     )
                 }
                 Surface(
-                    modifier = Modifier.widthIn(min = 64.dp, max = 88.dp).heightIn(min = 30.dp),
+                    modifier = Modifier.widthIn(min = 58.dp, max = 84.dp).heightIn(min = 28.dp),
                     shape = RoundedCornerShape(10.dp),
                     color = mockStatusContainer
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
@@ -7221,17 +7386,30 @@ private fun formatLeaderboardRoleLabel(role: String): String =
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
 
 @Composable
-private fun SettingsActionsContent(
+private fun SettingsSessionContent(
     isBusy: Boolean,
     onRefresh: () -> Unit,
     onDownloadSettingsLogs: () -> Unit,
-    onLogout: () -> Unit
 ) {
-    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-        Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_refresh)) }
-        OutlinedButton(onClick = onDownloadSettingsLogs) { Text(stringResource(R.string.mobile_settings_download_logs)) }
-        OutlinedButton(onClick = onLogout) { Text(stringResource(R.string.mobile_logout)) }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(
+            onClick = onRefresh,
+            enabled = !isBusy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(stringResource(R.string.mobile_refresh)) }
+        OutlinedButton(
+            onClick = onDownloadSettingsLogs,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(stringResource(R.string.mobile_settings_download_logs)) }
     }
+}
+
+@Composable
+private fun SettingsLogoutContent(onLogout: () -> Unit) {
+    OutlinedButton(
+        onClick = onLogout,
+        modifier = Modifier.fillMaxWidth()
+    ) { Text(stringResource(R.string.mobile_logout)) }
 }
 
 private fun resolveChoreSection(chore: MobileChore, currentUserId: String?): MobileChoreSection = when {
@@ -7503,6 +7681,56 @@ private fun detectLeadingQuickLogIcon(text: String): String? {
         return quickLogIconCheck
     }
     return null
+}
+
+private fun detectLeadingChoreIconToken(text: String): String? {
+    val match = Regex("^\\[\\[icon:([a-z0-9_]+)\\]\\]", RegexOption.IGNORE_CASE).find(text.trim()) ?: return null
+    return match.groupValues.getOrNull(1)?.lowercase(Locale.getDefault())
+}
+
+private fun stripLeadingChoreIconToken(text: String): String {
+    return text.trim().replace(Regex("^\\[\\[icon:[a-z0-9_]+\\]\\]\\s*", RegexOption.IGNORE_CASE), "")
+}
+
+private fun resolveChoreIconDrawableFromToken(iconId: String?): Int? = when (iconId) {
+    "take_out_trash" -> R.drawable.chore_icon_take_out_trash
+    "recycle_sorting" -> R.drawable.chore_icon_recycle_sorting
+    "feed_pets" -> R.drawable.chore_icon_feed_pets
+    "wash_dishes_sink" -> R.drawable.chore_icon_wash_dishes_sink
+    "make_bed" -> R.drawable.chore_icon_make_bed
+    "change_bed_sheets" -> R.drawable.chore_icon_change_bed_sheets
+    "do_laundry" -> R.drawable.chore_icon_do_laundry
+    "vacuum_floor" -> R.drawable.chore_icon_vacuum_floor
+    "water_plants" -> R.drawable.chore_icon_water_plants
+    "clean_toilet" -> R.drawable.chore_icon_clean_toilet
+    "clean_mirror_sink" -> R.drawable.chore_icon_clean_mirror_sink
+    "wipe_counter" -> R.drawable.chore_icon_wipe_counter
+    "dishwasher" -> R.drawable.chore_icon_dishwasher
+    "grocery_shopping" -> R.drawable.chore_icon_grocery_shopping
+    "sort_mail" -> R.drawable.chore_icon_sort_mail
+    else -> null
+}
+
+private fun resolveChoreIconDrawable(title: String, context: String? = null, subtype: String? = null): Int? {
+    val explicitToken = detectLeadingChoreIconToken(title)
+    resolveChoreIconDrawableFromToken(explicitToken)?.let { return it }
+
+    val searchable = listOfNotNull(stripLeadingChoreIconToken(stripLeadingQuickLogIcon(title)), context, subtype)
+        .joinToString(" ")
+        .lowercase(Locale.getDefault())
+    return when {
+        Regex("(trash|garbage|bin|waste)").containsMatchIn(searchable) -> R.drawable.chore_icon_take_out_trash
+        Regex("(recycl)").containsMatchIn(searchable) -> R.drawable.chore_icon_recycle_sorting
+        Regex("(pet|cat|dog|litter)").containsMatchIn(searchable) -> R.drawable.chore_icon_feed_pets
+        Regex("(dish|kitchen|plate|sink)").containsMatchIn(searchable) -> R.drawable.chore_icon_wash_dishes_sink
+        Regex("(bed|sheet|blanket)").containsMatchIn(searchable) -> R.drawable.chore_icon_make_bed
+        Regex("(laundry|clothes|linen|towel|wash)").containsMatchIn(searchable) -> R.drawable.chore_icon_do_laundry
+        Regex("(vacuum)").containsMatchIn(searchable) -> R.drawable.chore_icon_vacuum_floor
+        Regex("(plant|garden|water)").containsMatchIn(searchable) -> R.drawable.chore_icon_water_plants
+        Regex("(bathroom|toilet)").containsMatchIn(searchable) -> R.drawable.chore_icon_clean_toilet
+        Regex("(grocery|shop|market)").containsMatchIn(searchable) -> R.drawable.chore_icon_grocery_shopping
+        else -> null
+    }
 }
 
 private fun stripLeadingQuickLogIcon(text: String): String {
