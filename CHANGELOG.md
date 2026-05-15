@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.55.0](https://github.com/kriziw/TaskBandit/compare/v0.54.0...v0.55.0) (2026-05-15)
+
+
+### Features
+
+* **mobile:** compact chore cards and add quick-log flow ([#399](https://github.com/kriziw/TaskBandit/issues/399)) ([7dbd2e2](https://github.com/kriziw/TaskBandit/commit/7dbd2e201de219f603e2f1cf6461e5d2127f4d8c))
+
 ## [0.54.0](https://github.com/kriziw/TaskBandit/compare/v0.53.2...v0.54.0) (2026-05-14)
 
 
