@@ -2703,11 +2703,11 @@ h4,
   }
 
   .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="chores"] .dashboard-grid {
-    gap: 26px;
+    gap: 10px;
   }
 
   .app-shell.variant-client.mobile-ui-new .page-chores .section-heading {
-    margin: 0 0 16px;
+    margin: 0 0 10px;
     align-items: center;
   }
 
@@ -2733,7 +2733,7 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .my-chore-groups,
   .app-shell.variant-client.mobile-ui-new .stack-list {
-    gap: 8px;
+    gap: 10px;
   }
 
   .app-shell.variant-client.mobile-ui-new .page-chores .section-heading-compact {
@@ -2844,6 +2844,11 @@ h4,
   .app-shell.variant-client.mobile-ui-new .mock-status-todo {
     background: var(--mobile-neutral-bg);
     color: var(--mobile-neutral-text);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card-mine {
+    border-color: var(--mobile-accent-strong);
+    background: var(--mobile-accent-soft);
   }
 
   .app-shell.variant-client.mobile-ui-new .task-row-header,

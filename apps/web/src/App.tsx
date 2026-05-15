@@ -1287,6 +1287,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [quickLogUsePointsOverride, setQuickLogUsePointsOverride] = useState(false);
   const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
   const [quickLogIcon, setQuickLogIcon] = useState<string>(quickLogIcons.check);
+  const [showMobileCompletedChores, setShowMobileCompletedChores] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
     () => readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset
@@ -2266,6 +2267,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       clientMobileMyChores.filter((instance) => resolveClientMobileDueBucket(instance, language) === "later"),
     [clientMobileMyChores, language]
   );
+  const clientMobileDueTodayChores = useMemo(
+    () =>
+      clientMobileSortedChores.filter(
+        (instance) => resolveClientMobileDueBucket(instance, language) === "today"
+      ),
+    [clientMobileSortedChores, language]
+  );
+  const clientMobileDueThisWeekChores = useMemo(
+    () =>
+      clientMobileSortedChores.filter(
+        (instance) => resolveClientMobileDueBucket(instance, language) === "this_week"
+      ),
+    [clientMobileSortedChores, language]
+  );
+  const clientMobileDueLaterChores = useMemo(
+    () =>
+      clientMobileSortedChores.filter(
+        (instance) => resolveClientMobileDueBucket(instance, language) === "later"
+      ),
+    [clientMobileSortedChores, language]
+  );
   const clientMobileUnassignedChores = useMemo(
     () =>
       clientMobileSortedChores.filter(
@@ -3112,9 +3134,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         instance.groupTitle || "Home"
       }`;
       const mockStatus = getMobileCardStatus(instance);
+      const isMine = Boolean(payload?.currentUser.id && instance.assigneeId === payload.currentUser.id);
       return (
         <button
-          className="task-row compact mock-mobile-card mock-mobile-card-button"
+          className={`task-row compact mock-mobile-card mock-mobile-card-button ${isMine ? "mock-mobile-card-mine" : ""}`}
           key={instance.id}
           type="button"
           onClick={() => setMobileChoreDialogInstanceId(instance.id)}
@@ -3355,7 +3378,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const mockStatus = getMobileCardStatus(instance);
       return (
         <button
-          className="task-row mock-mobile-card mock-mobile-card-button"
+          className="task-row mock-mobile-card mock-mobile-card-button mock-mobile-card-mine"
           key={instance.id}
           type="button"
           onClick={() => setMobileChoreDialogInstanceId(instance.id)}
@@ -3554,6 +3577,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     ) : (
       <div className="stack-list mock-mobile-card-list">{items.map((instance) => renderCard(instance))}</div>
     );
+  }
+
+  function renderClientMobileDueBucketCard(instance: ChoreInstance) {
+    const isMine = Boolean(payload?.currentUser.id && instance.assigneeId === payload.currentUser.id);
+    return isMine ? renderMyChoreCard(instance) : renderHouseholdChoreCard(instance);
   }
 
   function firstNameFromDisplayName(value: string) {
@@ -7147,11 +7175,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ref={myChoresRef}
             >
               <div className="section-heading">
-                <h2>{t("panel.my_chores")}</h2>
+                <h2>{showNewClientMobileShell ? "Due today" : t("panel.my_chores")}</h2>
                 {showNewClientMobileShell ? (
-                  <button className="ghost-button mock-mobile-view-all" type="button" onClick={handleOpenOnboarding}>
-                    View all
-                  </button>
+                  <span className="section-kicker">{clientMobileDueTodayChores.length}</span>
                 ) : (
                   <span className="section-kicker">
                     {showClientMobileShell ? clientMobileMyChores.length : myChores.length}
@@ -7160,7 +7186,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
               {showClientMobileShell ? (
                 showNewClientMobileShell ? (
-                  renderMockMobileChoreList(clientMobileMyChores.slice(0, 6), renderMyChoreCard, t("submission.empty"))
+                  renderMockMobileChoreList(
+                    clientMobileDueTodayChores.slice(0, 12),
+                    renderClientMobileDueBucketCard,
+                    t("submission.empty")
+                  )
                 ) : clientMobileMyChores.length === 0 ? (
                   <p className="empty-state">{t("submission.empty")}</p>
                 ) : (
@@ -7448,7 +7478,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             <article className="panel panel-wide page-panel page-chores" ref={householdChoresRef}>
               <div className="section-heading">
-                <h2>{showNewClientMobileShell ? "Up next" : t("panel.household_chores")}</h2>
+                <h2>{showNewClientMobileShell ? "Due this week" : t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
                   {!showNewClientMobileShell ? (
                     <span className="section-kicker">
@@ -7472,8 +7502,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               {showClientMobileShell ? (
                 showNewClientMobileShell ? (
                   renderMockMobileChoreList(
-                    [...clientMobileUnassignedChores, ...clientMobileOtherChores].slice(0, 6),
-                    renderHouseholdChoreCard,
+                    clientMobileDueThisWeekChores.slice(0, 12),
+                    renderClientMobileDueBucketCard,
                     t("empty.filtered_chores")
                   )
                 ) : clientMobileUnassignedChores.length === 0 && clientMobileOtherChores.length === 0 ? (
@@ -7603,13 +7633,40 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               )}
             </article>
 
+            {showNewClientMobileShell ? (
+              <article className="panel panel-wide page-panel page-chores mobile-due-later-panel">
+                <div className="section-heading">
+                  <h2>Due later</h2>
+                  <span className="section-kicker">{clientMobileDueLaterChores.length}</span>
+                </div>
+                {renderMockMobileChoreList(
+                  clientMobileDueLaterChores.slice(0, 12),
+                  renderClientMobileDueBucketCard,
+                  t("empty.filtered_chores")
+                )}
+              </article>
+            ) : null}
+
             <article className="panel panel-wide page-panel page-chores mobile-history-panel" ref={choreHistoryRef}>
               <div className="section-heading">
-                <h2>{t("panel.chore_history")}</h2>
+                <h2>{showNewClientMobileShell ? "Completed chores" : t("panel.chore_history")}</h2>
                 <div className="toolbar-group">
                   <span className="section-kicker">
-                    {showClientMobileShell ? Math.min(historicChores.length, 2) : historicChores.length}
+                    {showNewClientMobileShell
+                      ? Math.min(historicChores.length, 15)
+                      : showClientMobileShell
+                        ? Math.min(historicChores.length, 2)
+                        : historicChores.length}
                   </span>
+                  {showNewClientMobileShell ? (
+                    <button
+                      className="ghost-button mock-mobile-view-all"
+                      type="button"
+                      onClick={() => setShowMobileCompletedChores((current) => !current)}
+                    >
+                      {showMobileCompletedChores ? "Hide" : "Show"}
+                    </button>
+                  ) : null}
                   {!showClientMobileShell ? (
                     <span className="inline-message">
                       {t("history.page_indicator")
@@ -7620,7 +7677,19 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
               </div>
               {showClientMobileShell ? (
-                historicChores.length === 0 ? (
+                showNewClientMobileShell ? (
+                  !showMobileCompletedChores ? (
+                    <p className="empty-state">Open to load the latest completed chores.</p>
+                  ) : historicChores.length === 0 ? (
+                    <p className="empty-state">{t("history.empty")}</p>
+                  ) : (
+                    <div className="stack-list">
+                      {historicChores.slice(0, 15).map((instance) =>
+                        renderHouseholdChoreCard(instance, { historic: true })
+                      )}
+                    </div>
+                  )
+                ) : historicChores.length === 0 ? (
                   <p className="empty-state">{t("history.empty")}</p>
                 ) : (
                   <div className="stack-list">
@@ -10448,7 +10517,7 @@ function compareClientMobileChoreOrder(
 
 function resolveClientMobileDueBucket(
   instance: ChoreInstance,
-  language: AppLanguage
+  _language: AppLanguage
 ): ClientMobileDueBucket {
   const dueAt = new Date(instance.dueAt);
   if (Number.isNaN(dueAt.getTime())) {
@@ -10463,19 +10532,10 @@ function resolveClientMobileDueBucket(
     return "today";
   }
 
-  const locale = new Intl.Locale(language) as Intl.Locale & {
-    weekInfo?: { firstDay?: number };
-  };
-  const firstDay = locale.weekInfo?.firstDay ?? 1;
-  const normalizedFirstDay = firstDay % 7;
-  const startOfWeek = new Date(todayStart);
-  const distanceToWeekStart = (todayStart.getDay() - normalizedFirstDay + 7) % 7;
-  startOfWeek.setDate(todayStart.getDate() - distanceToWeekStart);
+  const sevenDaysOut = new Date(todayStart);
+  sevenDaysOut.setDate(todayStart.getDate() + 7);
 
-  const endOfWeek = new Date(startOfWeek);
-  endOfWeek.setDate(startOfWeek.getDate() + 6);
-
-  return dueDate.getTime() <= endOfWeek.getTime() ? "this_week" : "later";
+  return dueDate.getTime() <= sevenDaysOut.getTime() ? "this_week" : "later";
 }
 
 function getHistoricChoreDateLabelKey(instance: ChoreInstance) {
