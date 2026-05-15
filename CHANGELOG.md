@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.60.1](https://github.com/kriziw/TaskBandit/compare/v0.60.0...v0.60.1) (2026-05-15)
+
+
+### Bug Fixes
+
+* **mobile:** tighten chore card density and align header branding ([#411](https://github.com/kriziw/TaskBandit/issues/411)) ([56d8bee](https://github.com/kriziw/TaskBandit/commit/56d8bee34926da86c66275646d9b7d8d33fbdfc0))
+
 ## [0.60.0](https://github.com/kriziw/TaskBandit/compare/v0.59.0...v0.60.0) (2026-05-15)
 
 
