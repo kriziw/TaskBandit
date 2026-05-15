@@ -854,7 +854,7 @@ function createReleaseKey(release: ReleaseInfo) {
 }
 
 function formatReleaseLabel(release: ReleaseInfo) {
-  return `v${release.releaseVersion} · build ${release.buildNumber}`;
+  return `v${release.releaseVersion} Â· build ${release.buildNumber}`;
 }
 
 function formatReleaseDetails(release: ReleaseInfo) {
@@ -1004,7 +1004,7 @@ function resolveChoreIconFromText(title: string, context = "", subtypeLabel = ""
   if (/(clean|vacuum|mop|dust|bathroom|toilet)/.test(searchable)) return "🧹";
   if (/(toy|kid|child|play|nursery)/.test(searchable)) return "🧸";
   if (/(shop|grocery|buy|market)/.test(searchable)) return "🛒";
-  return "✅";
+  return "âœ…";
 }
 
 function resolveChoreIcon(instance: ChoreInstance) {
@@ -1132,7 +1132,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [quickLogCreateTemplateFromEntry, setQuickLogCreateTemplateFromEntry] = useState(false);
   const [quickLogUsePointsOverride, setQuickLogUsePointsOverride] = useState(false);
   const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
-  const [quickLogIcon, setQuickLogIcon] = useState<string>("✅");
+  const [quickLogIcon, setQuickLogIcon] = useState<string>("âœ…");
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
@@ -2935,9 +2935,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     );
 
     if (showNewClientMobileShell) {
-      const compactMeta = `${options?.historic ? formatDate(getHistoricChoreDate(instance)) : formatDate(instance.dueAt)} • ${
-        instance.groupTitle || t("common.unassigned")
+      const compactMeta = `${options?.historic ? formatMobileDueLabel(getHistoricChoreDate(instance)) : formatMobileDueLabel(instance.dueAt)} • ${
+        instance.groupTitle || "Home"
       }`;
+      const mockStatus = getMobileCardStatus(instance);
       return (
         <div className="task-row compact mock-mobile-card" key={instance.id}>
           <div className="mock-mobile-card-icon" aria-hidden="true">
@@ -2947,7 +2948,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <strong className="task-row-title">{choreTitleText}</strong>
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
-          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+          <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
         </div>
       );
     }
@@ -3170,7 +3171,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }`;
 
     if (showNewClientMobileShell) {
-      const compactMeta = `${formatDate(instance.dueAt)} • ${instance.groupTitle || t("common.unassigned")}`;
+      const compactMeta = `${formatMobileDueLabel(instance.dueAt)} • ${instance.groupTitle || "Home"}`;
+      const mockStatus = getMobileCardStatus(instance);
       return (
         <div className="task-row mock-mobile-card" key={instance.id}>
           <div className="mock-mobile-card-icon" aria-hidden="true">
@@ -3180,7 +3182,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <strong className="task-row-title">{choreTitleText}</strong>
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
-          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+          <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
         </div>
       );
     }
@@ -3786,7 +3788,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setQuickLogCreateTemplateFromEntry(false);
     setQuickLogUsePointsOverride(false);
     setQuickLogPointsOverride("");
-    setQuickLogIcon("✅");
+    setQuickLogIcon("âœ…");
   }
 
   async function handleSubmitQuickLog() {
@@ -5217,6 +5219,46 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }).format(new Date(value));
   }
 
+  function formatMobileDueLabel(value: string | null) {
+    if (!value) {
+      return "Due later";
+    }
+
+    const dueDate = new Date(value);
+    const today = new Date();
+    const tomorrow = new Date(today);
+    tomorrow.setDate(today.getDate() + 1);
+    const isSameCalendarDay = (left: Date, right: Date) =>
+      left.getFullYear() === right.getFullYear() &&
+      left.getMonth() === right.getMonth() &&
+      left.getDate() === right.getDate();
+
+    if (isSameCalendarDay(dueDate, today)) {
+      return "Due today";
+    }
+
+    if (isSameCalendarDay(dueDate, tomorrow)) {
+      return "Due tomorrow";
+    }
+
+    return `Due ${new Intl.DateTimeFormat(language, { month: "short", day: "numeric" }).format(dueDate)}`;
+  }
+
+  function getMobileCardStatus(instance: ChoreInstance) {
+    if (instance.state === "completed") {
+      return { label: "Done", className: "mock-status-done" };
+    }
+
+    const dueTime = instance.dueAt ? new Date(instance.dueAt).getTime() : Number.NaN;
+    const dueSoon = Number.isFinite(dueTime) && dueTime <= Date.now() + 36 * 60 * 60 * 1000;
+
+    if (instance.state === "overdue" || dueSoon) {
+      return { label: "Due soon", className: "mock-status-due-soon" };
+    }
+
+    return { label: "To do", className: "mock-status-todo" };
+  }
+
   function formatCalendarDate(value: string) {
     return new Intl.DateTimeFormat(language, {
       weekday: "short",
@@ -6630,17 +6672,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         </button>
                       </article>
                     ) : null}
-                    <section className="mobile-chores-rail mobile-chores-rail-new" ref={mobileChoresRailRef}>
-                      <div className="mobile-chores-rail-title">
-                        <h3>My chores</h3>
-                        <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
-                          View all
-                        </button>
-                      </div>
-                      <div className="mobile-chores-rail-title">
-                        <h3>Up next</h3>
-                      </div>
-                    </section>
                   </>
                 ) : (
                   <>
@@ -6831,7 +6862,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             <strong>{instance.typeTitle || instance.title}</strong>
                             {instance.subtypeLabel ? <p className="inline-message">{instance.subtypeLabel}</p> : null}
                           </div>
-                          <span className={`status-pill state-${instance.state}`}>{t(`state.${instance.state}`)}</span>
+                          <span className="status-pill state-pending_approval">{t("state.pending_approval")}</span>
                         </div>
                         <p>
                           {t("task.assignee")}:{" "}
@@ -6907,9 +6938,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             >
               <div className="section-heading">
                 <h2>{t("panel.my_chores")}</h2>
-                <span className="section-kicker">
-                  {showClientMobileShell ? clientMobileMyChores.length : myChores.length}
-                </span>
+                {showNewClientMobileShell ? (
+                  <button className="ghost-button mock-mobile-view-all" type="button" onClick={handleOpenOnboarding}>
+                    View all
+                  </button>
+                ) : (
+                  <span className="section-kicker">
+                    {showClientMobileShell ? clientMobileMyChores.length : myChores.length}
+                  </span>
+                )}
               </div>
               {showClientMobileShell ? (
                 clientMobileMyChores.length === 0 ? (
@@ -7201,11 +7238,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <div className="section-heading">
                 <h2>{showNewClientMobileShell ? "Up next" : t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
-                  <span className="section-kicker">
-                    {showClientMobileShell
-                      ? clientMobileUnassignedChores.length + clientMobileOtherChores.length
-                      : visibleHouseholdChores.length}
-                  </span>
+                  {!showNewClientMobileShell ? (
+                    <span className="section-kicker">
+                      {showClientMobileShell
+                        ? clientMobileUnassignedChores.length + clientMobileOtherChores.length
+                        : visibleHouseholdChores.length}
+                    </span>
+                  ) : null}
                   {payload.currentUser.role === "admin" ? (
                     <button
                       className="ghost-button"
@@ -9776,7 +9815,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         setQuickLogSelectedInstanceId(null);
                         setQuickLogSelectedTemplateId(null);
                       }}
-                      placeholder="Start typing to search chores/templates"
+                      placeholder="Take out recycling"
                     />
                     {quickLogQuery ? (
                       <button
@@ -9847,9 +9886,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </label>
                 ) : null}
                 <label>
-                  <span>Note</span>
+                  <span>Optional note</span>
                   <textarea
-                    rows={3}
+                    rows={2}
+                    placeholder="Add a note (optional)"
                     value={quickLogNote}
                     onChange={(event) => setQuickLogNote(event.target.value)}
                   />

@@ -26,6 +26,7 @@ import androidx.compose.foundation.Image
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -130,6 +131,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.taskbandit.app.mobile.MobileDashboard
 import com.taskbandit.app.mobile.MobileDashboardSyncSignal
 import com.taskbandit.app.mobile.MobileChore
@@ -2930,11 +2933,60 @@ private fun DashboardScreen(
                         quickLogQuery.trim().isNotBlank()
                     ) &&
                 (!quickLogUsePointsOverride || (parsedOverridePoints != null && parsedOverridePoints >= 0))
-        AlertDialog(
+        val previewInstanceCandidate =
+            selectedQuickLogCandidate?.takeIf { it.kind == "instance" }
+                ?: filteredQuickLogCandidates.firstOrNull { it.kind == "instance" }
+        val previewTemplateCandidate =
+            selectedQuickLogCandidate?.takeIf { it.kind == "template" }
+                ?: filteredQuickLogCandidates.firstOrNull { it.kind == "template" }
+        val submitQuickLog = {
+            val selectedKind = quickLogSelectedKind
+            val selectedId = quickLogSelectedId
+            val typedTitle = quickLogQuery.trim()
+            val fallbackTitle = selectedQuickLogCandidate?.title?.trim().orEmpty()
+            val titleSource = typedTitle.ifBlank { fallbackTitle }
+            val decoratedTitle = applyQuickLogIcon(titleSource, quickLogIcon)
+            val pointsOverride =
+                if (quickLogUsePointsOverride) quickLogPointsOverrideInput.trim().toIntOrNull() else null
+            onQuickLog(
+                selectedId.takeIf { selectedKind == "instance" },
+                selectedId.takeIf { selectedKind == "template" },
+                decoratedTitle.takeIf { selectedKind != "instance" && it.isNotBlank() },
+                quickLogNote.trim().ifBlank { null },
+                quickLogCreateTemplate && selectedKind != "instance",
+                pointsOverride
+            )
+            resetQuickLogForm()
+        }
+
+        Dialog(
             onDismissRequest = ::resetQuickLogForm,
-            title = { Text(stringResource(R.string.mobile_quick_log_title)) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.78f)
+                    .widthIn(max = 560.dp)
+                    .heightIn(max = 820.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                shadowElevation = 20.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(26.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_quick_log_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
                     OutlinedTextField(
                         value = quickLogQuery,
                         onValueChange = {
@@ -2943,100 +2995,69 @@ private fun DashboardScreen(
                             quickLogSelectedId = null
                         },
                         label = { Text(stringResource(R.string.mobile_quick_log_label)) },
+                        trailingIcon = {
+                            if (quickLogQuery.isNotBlank()) {
+                                TextButton(onClick = {
+                                    quickLogQuery = ""
+                                    quickLogSelectedKind = null
+                                    quickLogSelectedId = null
+                                }) {
+                                    Text("X")
+                                }
+                            }
+                        },
                         modifier = Modifier.fillMaxWidth(),
                         singleLine = true
                     )
-                    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                        Text(
-                            text = stringResource(R.string.mobile_quick_log_icon_label),
-                            style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                        quickLogIconOptions.chunked(5).forEach { rowIcons ->
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        quickLogIconOptions.forEach { iconOption ->
+                            OutlinedButton(
+                                onClick = { quickLogIcon = iconOption },
+                                modifier = Modifier.size(52.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    if (quickLogIcon == iconOption) 2.dp else 1.dp,
+                                    if (quickLogIcon == iconOption) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                                ),
+                                contentPadding = PaddingValues(0.dp)
                             ) {
-                                rowIcons.forEach { iconOption ->
-                                    OutlinedButton(
-                                        onClick = { quickLogIcon = iconOption },
-                                        modifier = Modifier.weight(1f),
-                                        border = BorderStroke(
-                                            if (quickLogIcon == iconOption) 2.dp else 1.dp,
-                                            if (quickLogIcon == iconOption) {
-                                                MaterialTheme.colorScheme.primary
-                                            } else {
-                                                MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
-                                            }
-                                        ),
-                                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 0.dp)
-                                    ) {
-                                        Text(iconOption)
-                                    }
-                                }
+                                Text(iconOption, style = MaterialTheme.typography.titleMedium)
                             }
                         }
                     }
-                    if (filteredQuickLogCandidates.isNotEmpty()) {
-                        Surface(
-                            modifier = Modifier.fillMaxWidth(),
-                            shape = RoundedCornerShape(14.dp),
-                            color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-                        ) {
-                            Column(
-                                modifier = Modifier.fillMaxWidth().padding(8.dp),
-                                verticalArrangement = Arrangement.spacedBy(4.dp)
-                            ) {
-                                filteredQuickLogCandidates.forEach { candidate ->
-                                    TextButton(
-                                        onClick = {
-                                            quickLogSelectedKind = candidate.kind
-                                            quickLogSelectedId = candidate.id
-                                            quickLogQuery = candidate.title
-                                            quickLogIcon = resolveQuickLogIcon(candidate.title, candidate.subtitle)
-                                            if (candidate.kind != "template") {
-                                                quickLogCreateTemplate = false
-                                            }
-                                        },
-                                        modifier = Modifier.fillMaxWidth(),
-                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
-                                    ) {
-                                        Column(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalArrangement = Arrangement.spacedBy(1.dp)
-                                        ) {
-                                            Text(
-                                                text = candidate.title,
-                                                style = MaterialTheme.typography.bodyMedium,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis
-                                            )
-                                            Text(
-                                                text = stringResource(
-                                                    if (candidate.kind == "instance") R.string.mobile_quick_log_match_open else R.string.mobile_quick_log_match_template,
-                                                    candidate.subtitle ?: ""
-                                                ),
-                                                style = MaterialTheme.typography.labelSmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        previewInstanceCandidate?.let { candidate ->
+                            QuickLogMatchChip(
+                                icon = quickLogIcon,
+                                label = stringResource(R.string.mobile_quick_log_match_open, candidate.subtitle ?: ""),
+                                title = candidate.title,
+                                selected = quickLogSelectedKind == candidate.kind && quickLogSelectedId == candidate.id,
+                                onClick = {
+                                    quickLogSelectedKind = candidate.kind
+                                    quickLogSelectedId = candidate.id
+                                    quickLogQuery = candidate.title
+                                    quickLogIcon = resolveQuickLogIcon(candidate.title, candidate.subtitle)
+                                    quickLogCreateTemplate = false
                                 }
-                            }
-                        }
-                    }
-                    if (selectedQuickLogCandidate?.kind == "template" || quickLogSelectedId == null) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            Checkbox(
-                                checked = quickLogCreateTemplate,
-                                onCheckedChange = { quickLogCreateTemplate = it }
                             )
-                            Text(
-                                text = stringResource(R.string.mobile_quick_log_create_template),
-                                style = MaterialTheme.typography.bodySmall
+                        }
+                        previewTemplateCandidate?.let { candidate ->
+                            QuickLogMatchChip(
+                                icon = quickLogIcon,
+                                label = stringResource(R.string.mobile_quick_log_match_template, candidate.subtitle ?: ""),
+                                title = candidate.title,
+                                selected = quickLogSelectedKind == candidate.kind && quickLogSelectedId == candidate.id,
+                                onClick = {
+                                    quickLogSelectedKind = candidate.kind
+                                    quickLogSelectedId = candidate.id
+                                    quickLogQuery = candidate.title
+                                    quickLogIcon = resolveQuickLogIcon(candidate.title, candidate.subtitle)
+                                }
                             )
                         }
                     }
@@ -3045,11 +3066,29 @@ private fun DashboardScreen(
                         onValueChange = { quickLogNote = it },
                         label = { Text(stringResource(R.string.mobile_quick_log_note_label)) },
                         modifier = Modifier.fillMaxWidth(),
-                        minLines = 2
+                        minLines = 1,
+                        maxLines = 2
                     )
+                    if (selectedQuickLogCandidate?.kind == "template" || quickLogSelectedId == null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Checkbox(
+                                checked = quickLogCreateTemplate,
+                                onCheckedChange = { quickLogCreateTemplate = it }
+                            )
+                            Text(
+                                text = stringResource(R.string.mobile_quick_log_create_template),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
                     Row(
+                        modifier = Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
                     ) {
                         Checkbox(
                             checked = quickLogUsePointsOverride,
@@ -3057,73 +3096,58 @@ private fun DashboardScreen(
                         )
                         Text(
                             text = stringResource(R.string.mobile_quick_log_override_points),
-                            style = MaterialTheme.typography.bodySmall
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
                         )
-                    }
-                    if (quickLogUsePointsOverride) {
                         OutlinedTextField(
-                            value = quickLogPointsOverrideInput,
+                            value = quickLogPointsOverrideInput.ifBlank { quickLogDefaultPoints.toString() },
                             onValueChange = { value ->
                                 if (value.all(Char::isDigit)) {
                                     quickLogPointsOverrideInput = value
                                 }
                             },
-                            label = { Text(stringResource(R.string.mobile_quick_log_points_label, quickLogDefaultPoints)) },
+                            enabled = quickLogUsePointsOverride,
                             keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier.widthIn(min = 86.dp, max = 96.dp),
                             singleLine = true
                         )
-                    } else {
-                        Text(
-                            text = stringResource(R.string.mobile_quick_log_default_points_hint, quickLogDefaultPoints),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.mobile_quick_log_default_points_hint, quickLogDefaultPoints),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = ::resetQuickLogForm) {
+                            Text(stringResource(R.string.mobile_request_takeover_cancel))
+                        }
+                        Spacer(modifier = Modifier.size(12.dp))
+                        Button(
+                            onClick = { submitQuickLog() },
+                            enabled = quickLogCanSubmit,
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 14.dp)
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (activeQuickLogAction == "quick-log") {
+                                        R.string.mobile_quick_log_saving
+                                    } else {
+                                        R.string.mobile_quick_log_submit
+                                    }
+                                )
+                            )
+                        }
                     }
                 }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
-                        val selectedKind = quickLogSelectedKind
-                        val selectedId = quickLogSelectedId
-                        val typedTitle = quickLogQuery.trim()
-                        val fallbackTitle = selectedQuickLogCandidate?.title?.trim().orEmpty()
-                        val titleSource = typedTitle.ifBlank { fallbackTitle }
-                        val decoratedTitle = applyQuickLogIcon(titleSource, quickLogIcon)
-                        val pointsOverride =
-                            if (quickLogUsePointsOverride) quickLogPointsOverrideInput.trim().toIntOrNull() else null
-                        onQuickLog(
-                            selectedId.takeIf { selectedKind == "instance" },
-                            selectedId.takeIf { selectedKind == "template" },
-                            decoratedTitle.takeIf { selectedKind != "instance" && it.isNotBlank() },
-                            quickLogNote.trim().ifBlank { null },
-                            quickLogCreateTemplate && selectedKind != "instance",
-                            pointsOverride
-                        )
-                        resetQuickLogForm()
-                    },
-                    enabled = quickLogCanSubmit
-                ) {
-                    Text(
-                        stringResource(
-                            if (activeQuickLogAction == "quick-log") {
-                                R.string.mobile_quick_log_saving
-                            } else {
-                                R.string.mobile_quick_log_submit
-                            }
-                        )
-                    )
-                }
-            },
-            dismissButton = {
-                OutlinedButton(onClick = ::resetQuickLogForm) {
-                    Text(stringResource(R.string.mobile_request_takeover_cancel))
-                }
             }
-        )
+        }
     }
-
     if (!validationDialogMessage.isNullOrBlank()) {
         AlertDialog(
             onDismissRequest = onDismissValidationDialog,
@@ -3333,45 +3357,83 @@ private fun DashboardScreen(
                     color = MaterialTheme.colorScheme.background
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 10.dp),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 14.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                            Surface(
+                                modifier = Modifier.size(60.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+                            ) {
                                 IconButton(onClick = { activeTab = MobileDashboardTab.CHORES }) {
-                                    Icon(imageVector = Icons.Rounded.Menu, contentDescription = null)
+                                    Icon(
+                                        imageVector = Icons.Rounded.Menu,
+                                        contentDescription = stringResource(R.string.mobile_tab_chores),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
-                            Text(
-                                text = "TaskBandit",
-                                style = MaterialTheme.typography.titleLarge,
-                                fontWeight = FontWeight.SemiBold
-                            )
+                            Row(
+                                modifier = Modifier.weight(1f),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Image(
+                                    painter = painterResource(R.drawable.ic_taskbandit_mark),
+                                    contentDescription = stringResource(R.string.brand_mark_description),
+                                    modifier = Modifier.size(52.dp)
+                                )
+                                Text(
+                                    text = "TaskBandit",
+                                    style = MaterialTheme.typography.titleLarge,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onBackground,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis
+                                )
+                            }
                         }
                         Row(
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(shape = CircleShape, color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)) {
+                            Surface(
+                                modifier = Modifier.size(60.dp),
+                                shape = CircleShape,
+                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+                            ) {
                                 IconButton(onClick = { activeTab = MobileDashboardTab.SETTINGS }) {
-                                    Icon(imageVector = Icons.Rounded.NotificationsActive, contentDescription = null)
+                                    Icon(
+                                        imageVector = Icons.Rounded.NotificationsActive,
+                                        contentDescription = stringResource(R.string.mobile_notifications),
+                                        tint = MaterialTheme.colorScheme.onSurface
+                                    )
                                 }
                             }
                             Surface(
+                                modifier = Modifier.size(60.dp),
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer
+                                color = MaterialTheme.colorScheme.primaryContainer,
+                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
                             ) {
-                                Text(
-                                    text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                                    style = MaterialTheme.typography.labelLarge,
-                                    color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                    fontWeight = FontWeight.SemiBold
-                                )
+                                Box(contentAlignment = Alignment.Center) {
+                                    Text(
+                                        text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
+                                        style = MaterialTheme.typography.titleMedium,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
+                                }
                             }
                         }
                     }
@@ -3384,7 +3446,7 @@ private fun DashboardScreen(
                     onClick = { activeTab = MobileDashboardTab.CREATE },
                     shape = CircleShape,
                     contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(64.dp)
+                    modifier = Modifier.size(76.dp)
                 ) {
                     Text(text = "+", style = MaterialTheme.typography.headlineLarge)
                 }
@@ -3394,11 +3456,11 @@ private fun DashboardScreen(
             if (isNewMobileUi) {
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp),
+                    shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
                     color = MaterialTheme.colorScheme.surface
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp).padding(horizontal = 24.dp, vertical = 12.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -3513,10 +3575,10 @@ private fun DashboardScreen(
                 if (canUseQuickLog) {
                     item {
                         Card(
-                            shape = RoundedCornerShape(if (isNewMobileUi) 20.dp else 18.dp),
+                            shape = RoundedCornerShape(if (isNewMobileUi) 18.dp else 18.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                                 } else {
                                     MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
                                 }
@@ -3524,19 +3586,20 @@ private fun DashboardScreen(
                             border = BorderStroke(
                                 1.dp,
                                 if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
                                 } else {
                                     MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
                                 }
                             )
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = if (isNewMobileUi) 14.dp else 12.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 146.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 24.dp else 14.dp, vertical = if (isNewMobileUi) 24.dp else 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Surface(
-                                    shape = RoundedCornerShape(if (isNewMobileUi) 14.dp else 999.dp),
+                                    modifier = if (isNewMobileUi) Modifier.size(90.dp) else Modifier,
+                                    shape = RoundedCornerShape(if (isNewMobileUi) 22.dp else 999.dp),
                                     color = if (isNewMobileUi) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
@@ -3547,7 +3610,7 @@ private fun DashboardScreen(
                                         imageVector = Icons.Rounded.AddCircle,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(if (isNewMobileUi) 10.dp else 8.dp).size(if (isNewMobileUi) 18.dp else 16.dp)
+                                        modifier = Modifier.padding(if (isNewMobileUi) 20.dp else 8.dp).size(if (isNewMobileUi) 44.dp else 16.dp)
                                     )
                                 }
                                 Column(
@@ -3556,7 +3619,7 @@ private fun DashboardScreen(
                                 ) {
                                     Text(
                                         text = stringResource(R.string.mobile_quick_log_card_title),
-                                        style = if (isNewMobileUi) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+                                        style = if (isNewMobileUi) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
@@ -4124,6 +4187,41 @@ private fun DashboardScreen(
 }
 }
 @Composable
+private fun QuickLogMatchChip(
+    icon: String,
+    label: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f) else MaterialTheme.colorScheme.surface
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Text(icon, style = MaterialTheme.typography.titleSmall)
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+@Composable
 private fun MobileTabButton(
     modifier: Modifier = Modifier,
     selected: Boolean,
@@ -4341,7 +4439,7 @@ private fun LeaderboardEntryRow(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${formatLeaderboardRoleLabel(entry.role)} · ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
+                    text = "${formatLeaderboardRoleLabel(entry.role)} Â· ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -4384,7 +4482,7 @@ private fun LazyListScope.choreSection(
 }
 private fun LazyListScope.historicChoreSection(
     chores: List<MobileChore>,
-    title: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
     expandedChoreIds: Set<String>,
     onExpandedChange: (String) -> Unit
 ) {
@@ -4405,7 +4503,7 @@ private fun LazyListScope.historicChoreSection(
 @Composable
 private fun ChoreSectionColumn(
     chores: List<MobileChore>,
-    title: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
     currentUserId: String?,
     currentUserRole: String?,
     supportsTakeoverRequests: Boolean,
@@ -4480,7 +4578,7 @@ private fun ChoreSectionColumn(
 @Composable
 private fun HistoricChoreSectionColumn(
     chores: List<MobileChore>,
-    title: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
     expandedChoreIds: Set<String>,
     onExpandedChange: (String) -> Unit
 ) {
@@ -4498,7 +4596,7 @@ private fun HistoricChoreSectionColumn(
 
 @Composable
 private fun ChoreSectionPanel(
-    title: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
     count: Int,
     tone: MobileChoreSectionTone,
     content: @Composable ColumnScope.() -> Unit
@@ -4822,7 +4920,7 @@ private fun HistoricChoreCard(
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp).padding(horizontal = 24.dp, vertical = 12.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -4845,7 +4943,7 @@ private fun HistoricChoreCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${stringResource(historicDateLabelResId, formatDueAtForHistoricCard(historicDate))} • ${chore.groupTitle}",
+                        text = "${stringResource(historicDateLabelResId, formatDueAtForHistoricCard(historicDate))} â€¢ ${chore.groupTitle}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -4941,7 +5039,7 @@ private fun HistoricChoreCard(
                 Surface(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(16.dp),
-                    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.35f)
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                 ) {
                     Column(
                         modifier = Modifier.fillMaxWidth().padding(10.dp),
@@ -5270,62 +5368,90 @@ private fun ChoreCard(
     }
 
     if (isNewMobileUi) {
+        val mockStatusLabel = when {
+            chore.state == "completed" -> "Done"
+            chore.isOverdue || isDueSoonForMockCard(chore.dueAt) -> "Due soon"
+            else -> "To do"
+        }
+        val mockStatusContainer = when (mockStatusLabel) {
+            "Done" -> MaterialTheme.colorScheme.primaryContainer
+            "Due soon" -> MaterialTheme.colorScheme.tertiaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        }
+        val mockStatusContent = when (mockStatusLabel) {
+            "Done" -> MaterialTheme.colorScheme.onPrimaryContainer
+            "Due soon" -> MaterialTheme.colorScheme.onTertiaryContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            shape = RoundedCornerShape(15.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 118.dp)
+                    .padding(horizontal = 20.dp, vertical = 18.dp),
+                horizontalArrangement = Arrangement.spacedBy(18.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = accentContainerColor.copy(alpha = 0.5f)
+                    modifier = Modifier.size(70.dp),
+                    shape = RoundedCornerShape(15.dp),
+                    color = accentContainerColor.copy(alpha = 0.58f)
                 ) {
-                    Text(
-                        text = choreIcon,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 9.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                    Box(contentAlignment = Alignment.Center) {
+                        Text(
+                            text = choreIcon,
+                            style = MaterialTheme.typography.headlineSmall
+                        )
+                    }
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         text = typeTitle,
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${formatDueAtForCard(chore.dueAt)} • ${chore.groupTitle.ifBlank { "Home" }}",
-                        style = MaterialTheme.typography.bodySmall,
+                        text = "${formatDueAtForMockCard(chore.dueAt)} • ${chore.groupTitle.ifBlank { "Home" }}",
+                        style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = accentContainerColor.copy(alpha = 0.75f)
+                    modifier = Modifier.widthIn(min = 86.dp, max = 112.dp).heightIn(min = 44.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = mockStatusContainer
                 ) {
-                    Text(
-                        text = statusLabel,
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-                        style = MaterialTheme.typography.labelSmall,
-                        color = accentContentColor
-                    )
+                    Box(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = mockStatusLabel,
+                            style = MaterialTheme.typography.labelLarge,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = mockStatusContent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
             }
         }
         return
     }
-
     Card(
         modifier = Modifier.fillMaxWidth(),
         shape = RoundedCornerShape(18.dp)
@@ -5984,7 +6110,7 @@ private fun SettingsValueLine(label: String, value: String) {
 @Composable
 private fun CreatePanelCard(
     modifier: Modifier = Modifier,
-    title: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
     compact: Boolean = false,
     collapsedByDefault: Boolean = false,
     content: @Composable () -> Unit
@@ -6973,10 +7099,28 @@ private fun resolveQuickLogIcon(title: String, context: String? = null): String 
         Regex("(clean|vacuum|mop|dust|bathroom|toilet)").containsMatchIn(searchable) -> "🧹"
         Regex("(toy|kid|child|play|nursery)").containsMatchIn(searchable) -> "🧸"
         Regex("(shop|grocery|buy|market)").containsMatchIn(searchable) -> "🛒"
-        else -> "✅"
+        else -> "âœ…"
     }
 }
 
+private fun formatDueAtForMockCard(value: String): String {
+    return runCatching {
+        val zoneId = ZoneId.systemDefault()
+        val dueDate = Instant.parse(value).atZone(zoneId).toLocalDate()
+        val today = LocalDate.now(zoneId)
+        when (dueDate) {
+            today -> "Due today"
+            today.plusDays(1) -> "Due tomorrow"
+            else -> "Due ${DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()).format(dueDate)}"
+        }
+    }.getOrDefault(formatDueAtForCard(value))
+}
+
+private fun isDueSoonForMockCard(value: String): Boolean {
+    return runCatching {
+        Instant.parse(value) <= Instant.now().plus(36, ChronoUnit.HOURS)
+    }.getOrDefault(false)
+}
 private fun formatDueAtForCard(value: String): String {
     return runCatching {
         DateTimeFormatter.ofPattern("EEEE d MMM HH:mm", Locale.getDefault())
