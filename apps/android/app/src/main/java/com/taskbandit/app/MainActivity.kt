@@ -6,8 +6,11 @@ import android.Manifest
 import android.app.DatePickerDialog
 import android.app.TimePickerDialog
 import android.content.ContentResolver
+import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
 import android.net.Uri
 import android.os.Build
 import android.os.Bundle
@@ -111,9 +114,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.lifecycle.Lifecycle
@@ -262,7 +267,57 @@ private data class MobileQuickLogCandidate(
     val subtitle: String? = null
 )
 
-private val quickLogIconOptions = listOf("✅", "🧹", "🧺", "🗑️", "🍽️", "🛁", "🧸", "🛒", "📦", "✨")
+private val quickLogIconCheck = "\u2705"
+private val quickLogIconBroom = String(Character.toChars(0x1F9F9))
+private val quickLogIconBasket = String(Character.toChars(0x1F9FA))
+private val quickLogIconTrash = String(Character.toChars(0x1F5D1))
+private val quickLogIconPlate = String(Character.toChars(0x1F37D))
+private val quickLogIconBath = String(Character.toChars(0x1F6C1))
+private val quickLogIconTeddy = String(Character.toChars(0x1F9F8))
+private val quickLogIconCart = String(Character.toChars(0x1F6D2))
+private val quickLogIconBox = String(Character.toChars(0x1F4E6))
+private val quickLogIconSparkle = "\u2728"
+private val quickLogLegacyMojibakePrefix = Regex("^[\\u00C3\\u00E2\\u00F0]")
+private val quickLogIconOptions = listOf(
+    quickLogIconCheck,
+    quickLogIconBroom,
+    quickLogIconBasket,
+    quickLogIconTrash,
+    quickLogIconPlate,
+    quickLogIconBath,
+    quickLogIconTeddy,
+    quickLogIconCart,
+    quickLogIconBox,
+    quickLogIconSparkle
+)
+
+private data class MobileAvatarPreset(
+    val key: String,
+    @DrawableRes val drawableRes: Int
+)
+
+private val mobileAvatarPresets = listOf(
+    MobileAvatarPreset("preset:mascot_avatar_01", R.drawable.mascot_avatar_01),
+    MobileAvatarPreset("preset:mascot_avatar_02", R.drawable.mascot_avatar_02),
+    MobileAvatarPreset("preset:mascot_avatar_03", R.drawable.mascot_avatar_03),
+    MobileAvatarPreset("preset:mascot_avatar_04", R.drawable.mascot_avatar_04),
+    MobileAvatarPreset("preset:mascot_avatar_05", R.drawable.mascot_avatar_05),
+    MobileAvatarPreset("preset:mascot_avatar_06", R.drawable.mascot_avatar_06),
+    MobileAvatarPreset("preset:mascot_avatar_07", R.drawable.mascot_avatar_07),
+    MobileAvatarPreset("preset:mascot_avatar_08", R.drawable.mascot_avatar_08),
+    MobileAvatarPreset("preset:mascot_avatar_09", R.drawable.mascot_avatar_09),
+    MobileAvatarPreset("preset:mascot_avatar_10", R.drawable.mascot_avatar_10),
+    MobileAvatarPreset("preset:mascot_avatar_11", R.drawable.mascot_avatar_11),
+    MobileAvatarPreset("preset:mascot_avatar_12", R.drawable.mascot_avatar_12),
+    MobileAvatarPreset("preset:mascot_avatar_13", R.drawable.mascot_avatar_13),
+    MobileAvatarPreset("preset:mascot_avatar_14", R.drawable.mascot_avatar_14),
+    MobileAvatarPreset("preset:mascot_avatar_15", R.drawable.mascot_avatar_15),
+    MobileAvatarPreset("preset:mascot_avatar_16", R.drawable.mascot_avatar_16),
+    MobileAvatarPreset("preset:mascot_avatar_17", R.drawable.mascot_avatar_17),
+    MobileAvatarPreset("preset:mascot_avatar_18", R.drawable.mascot_avatar_18),
+    MobileAvatarPreset("preset:mascot_avatar_19", R.drawable.mascot_avatar_19),
+    MobileAvatarPreset("preset:mascot_avatar_20", R.drawable.mascot_avatar_20)
+)
 
 private enum class MobileCompletionCelebrationVariant {
     STANDARD,
@@ -529,6 +584,7 @@ private fun TaskBanditApp(
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
     var mobileUiMode by remember { mutableStateOf(appPreferencesStore.readMobileUiMode()) }
+    var mobileAvatarKey by remember { mutableStateOf(appPreferencesStore.readMobileAvatarKey()) }
     val currentReleaseInfo = remember {
         MobileReleaseInfo(
             releaseVersion = BuildConfig.TASKBANDIT_RELEASE_VERSION,
@@ -609,6 +665,23 @@ private fun TaskBanditApp(
         contract = ActivityResultContracts.RequestPermission()
     ) { granted ->
         notificationsPermissionGranted = granted
+    }
+
+    val avatarImagePicker = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri ->
+        if (uri == null) {
+            return@rememberLauncherForActivityResult
+        }
+        runCatching {
+            context.contentResolver.takePersistableUriPermission(
+                uri,
+                Intent.FLAG_GRANT_READ_URI_PERMISSION
+            )
+        }
+        val nextAvatarKey = "upload:${uri}"
+        mobileAvatarKey = nextAvatarKey
+        appPreferencesStore.saveMobileAvatarKey(nextAvatarKey)
     }
 
     LaunchedEffect(languageTag) {
@@ -1903,6 +1976,7 @@ private fun TaskBanditApp(
                     languageTag = languageTag,
                     themeMode = themeMode,
                     mobileUiMode = mobileUiMode,
+                    mobileAvatarKey = mobileAvatarKey,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
                     showDashboardSyncNotice = showDashboardSyncNotice,
@@ -1950,6 +2024,13 @@ private fun TaskBanditApp(
                     onThemeModeChange = ::updateThemeMode,
                     onLanguageTagChange = ::updateLanguageTag,
                     onMobileUiModeChange = ::updateMobileUiMode,
+                    onAvatarPresetSelect = { avatarKey ->
+                        mobileAvatarKey = avatarKey
+                        appPreferencesStore.saveMobileAvatarKey(avatarKey)
+                    },
+                    onAvatarUpload = {
+                        avatarImagePicker.launch(arrayOf("image/*"))
+                    },
                     onRequestNotificationPermission = {
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
@@ -2485,6 +2566,7 @@ private fun DashboardScreen(
     languageTag: String,
     themeMode: MobileThemeMode,
     mobileUiMode: MobileUiMode,
+    mobileAvatarKey: String,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
     showDashboardSyncNotice: Boolean,
@@ -2532,6 +2614,8 @@ private fun DashboardScreen(
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
     onMobileUiModeChange: (MobileUiMode) -> Unit,
+    onAvatarPresetSelect: (String) -> Unit,
+    onAvatarUpload: () -> Unit,
     onRequestNotificationPermission: () -> Unit
 ) {
     val context = LocalContext.current
@@ -2573,14 +2657,24 @@ private fun DashboardScreen(
     var requestTakeoverChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
+    var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var quickLogQuery by rememberSaveable { mutableStateOf("") }
     var quickLogNote by rememberSaveable { mutableStateOf("") }
     var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
     var quickLogSelectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    var quickLogIcon by rememberSaveable { mutableStateOf("✅") }
+    var quickLogIcon by rememberSaveable { mutableStateOf(quickLogIconCheck) }
     var quickLogCreateTemplate by rememberSaveable { mutableStateOf(false) }
     var quickLogUsePointsOverride by rememberSaveable { mutableStateOf(false) }
     var quickLogPointsOverrideInput by rememberSaveable { mutableStateOf("") }
+    val selectedAvatarPreset = remember(mobileAvatarKey) {
+        mobileAvatarPresets.firstOrNull { it.key == mobileAvatarKey }
+    }
+    val selectedAvatarUploadUri = remember(mobileAvatarKey) {
+        mobileAvatarKey.removePrefix("upload:").takeIf { mobileAvatarKey.startsWith("upload:") }
+    }
+    val selectedAvatarUploadImageBitmap = remember(selectedAvatarUploadUri) {
+        loadImageBitmapFromUri(context, selectedAvatarUploadUri)
+    }
     val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
     val templates = dashboard?.templates.orEmpty()
     val templateVariantsByTemplateId =
@@ -2923,7 +3017,7 @@ private fun DashboardScreen(
         quickLogNote = ""
         quickLogSelectedKind = null
         quickLogSelectedId = null
-        quickLogIcon = "✅"
+        quickLogIcon = quickLogIconCheck
         quickLogCreateTemplate = false
         quickLogUsePointsOverride = false
         quickLogPointsOverrideInput = ""
@@ -3153,6 +3247,132 @@ private fun DashboardScreen(
             }
         }
     }
+
+    if (showProfileDialog && dashboard != null) {
+        Dialog(
+            onDismissRequest = { showProfileDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.82f)
+                    .widthIn(max = 480.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Profile",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .size(92.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        when {
+                            selectedAvatarUploadImageBitmap != null -> {
+                                Image(
+                                    bitmap = selectedAvatarUploadImageBitmap,
+                                    contentDescription = dashboard.user.displayName,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            selectedAvatarPreset != null -> {
+                                Image(
+                                    painter = painterResource(selectedAvatarPreset.drawableRes),
+                                    contentDescription = dashboard.user.displayName,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            else -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = initialsFromDisplayName(dashboard.user.displayName),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    SettingsValueLine(label = "Name", value = dashboard.user.displayName)
+                    SettingsValueLine(label = "Role", value = formatLeaderboardRoleLabel(dashboard.user.role))
+                    SettingsValueLine(label = "Points", value = dashboard.user.points.toString())
+                    SettingsValueLine(label = "Streak", value = dashboard.user.currentStreak.toString())
+                    Text(
+                        text = "Choose avatar",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        mobileAvatarPresets.forEach { preset ->
+                            val selected = preset.key == selectedAvatarPreset?.key
+                            OutlinedButton(
+                                onClick = { onAvatarPresetSelect(preset.key) },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(0.dp),
+                                border = BorderStroke(
+                                    if (selected) 2.dp else 1.dp,
+                                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
+                                ),
+                                modifier = Modifier.size(58.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(preset.drawableRes),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = onAvatarUpload, modifier = Modifier.fillMaxWidth()) {
+                        Text("Upload photo")
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showProfileDialog = false }) {
+                            Text(stringResource(R.string.mobile_request_takeover_cancel))
+                        }
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Button(onClick = {
+                            showProfileDialog = false
+                            activeTab = MobileDashboardTab.SETTINGS
+                        }) {
+                            Text(stringResource(R.string.mobile_tab_settings))
+                        }
+                    }
+                }
+            }
+        }
+    }
     if (!validationDialogMessage.isNullOrBlank()) {
         AlertDialog(
             onDismissRequest = onDismissValidationDialog,
@@ -3364,80 +3584,63 @@ private fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 14.dp),
+                            .padding(horizontal = 20.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(
                             modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Surface(
-                                modifier = Modifier.size(60.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-                            ) {
-                                IconButton(onClick = { activeTab = MobileDashboardTab.CHORES }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.Menu,
-                                        contentDescription = stringResource(R.string.mobile_tab_chores),
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                            Row(
-                                modifier = Modifier.weight(1f),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Image(
-                                    painter = painterResource(R.drawable.ic_taskbandit_mark),
-                                    contentDescription = stringResource(R.string.brand_mark_description),
-                                    modifier = Modifier.size(52.dp)
-                                )
-                                Text(
-                                    text = "TaskBandit",
-                                    style = MaterialTheme.typography.titleLarge,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onBackground,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis
-                                )
-                            }
+                            Image(
+                                painter = painterResource(R.drawable.ic_taskbandit_mark),
+                                contentDescription = stringResource(R.string.brand_mark_description),
+                                modifier = Modifier.size(42.dp)
+                            )
+                            Text(
+                                text = "TaskBandit",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.SemiBold,
+                                color = MaterialTheme.colorScheme.onBackground,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis
+                            )
                         }
-                        Row(
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                            verticalAlignment = Alignment.CenterVertically
+                        Surface(
+                            modifier = Modifier.size(46.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
                         ) {
-                            Surface(
-                                modifier = Modifier.size(60.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.58f),
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
-                            ) {
-                                IconButton(onClick = { activeTab = MobileDashboardTab.SETTINGS }) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.NotificationsActive,
-                                        contentDescription = stringResource(R.string.mobile_notifications),
-                                        tint = MaterialTheme.colorScheme.onSurface
-                                    )
-                                }
-                            }
-                            Surface(
-                                modifier = Modifier.size(60.dp),
-                                shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer,
-                                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
-                                        style = MaterialTheme.typography.titleMedium,
-                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        fontWeight = FontWeight.ExtraBold
-                                    )
+                            IconButton(onClick = { showProfileDialog = true }) {
+                                when {
+                                    selectedAvatarUploadImageBitmap != null -> {
+                                        Image(
+                                            bitmap = selectedAvatarUploadImageBitmap,
+                                            contentDescription = dashboard?.user?.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    selectedAvatarPreset != null -> {
+                                        Image(
+                                            painter = painterResource(selectedAvatarPreset.drawableRes),
+                                            contentDescription = dashboard?.user?.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    else -> {
+                                        Text(
+                                            text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
                                 }
                             }
                         }
@@ -3465,7 +3668,7 @@ private fun DashboardScreen(
                     color = MaterialTheme.colorScheme.surface
                 ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp).padding(horizontal = 24.dp, vertical = 12.dp),
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = 14.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -3598,13 +3801,13 @@ private fun DashboardScreen(
                             )
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 136.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 22.dp else 14.dp, vertical = if (isNewMobileUi) 22.dp else 12.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 84.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 14.dp else 14.dp, vertical = if (isNewMobileUi) 12.dp else 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
                                 Surface(
-                                    modifier = if (isNewMobileUi) Modifier.size(90.dp) else Modifier,
-                                    shape = RoundedCornerShape(if (isNewMobileUi) 22.dp else 999.dp),
+                                    modifier = if (isNewMobileUi) Modifier.size(44.dp) else Modifier,
+                                    shape = RoundedCornerShape(if (isNewMobileUi) 12.dp else 999.dp),
                                     color = if (isNewMobileUi) {
                                         MaterialTheme.colorScheme.primaryContainer
                                     } else {
@@ -3615,7 +3818,7 @@ private fun DashboardScreen(
                                         imageVector = Icons.Rounded.AddCircle,
                                         contentDescription = null,
                                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(if (isNewMobileUi) 20.dp else 8.dp).size(if (isNewMobileUi) 44.dp else 16.dp)
+                                        modifier = Modifier.padding(if (isNewMobileUi) 10.dp else 8.dp).size(if (isNewMobileUi) 24.dp else 16.dp)
                                     )
                                 }
                                 Column(
@@ -3624,14 +3827,16 @@ private fun DashboardScreen(
                                 ) {
                                     Text(
                                         text = stringResource(R.string.mobile_quick_log_card_title),
-                                        style = if (isNewMobileUi) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
+                                        style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold
                                     )
-                                    Text(
-                                        text = stringResource(R.string.mobile_quick_log_card_body),
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                    if (!isNewMobileUi) {
+                                        Text(
+                                            text = stringResource(R.string.mobile_quick_log_card_body),
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
                                 }
                                 Column(
                                     horizontalAlignment = Alignment.End,
@@ -3640,7 +3845,7 @@ private fun DashboardScreen(
                                     Button(
                                         onClick = { showQuickLogDialog = true },
                                         enabled = activeQuickLogAction == null,
-                                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                                        contentPadding = PaddingValues(horizontal = if (isNewMobileUi) 10.dp else 12.dp, vertical = if (isNewMobileUi) 4.dp else 6.dp)
                                     ) {
                                         Text(
                                             stringResource(
@@ -4176,7 +4381,7 @@ private fun DashboardScreen(
 
             if (activeTab == MobileDashboardTab.SETTINGS) {
                 item { SectionIntro(title = stringResource(R.string.mobile_settings_title), body = stringResource(R.string.mobile_settings_hint)) }
-                if (isTablet) {
+                if (isTablet && !isNewMobileUi) {
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -4343,13 +4548,13 @@ private fun MobileTabButton(
         modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
         onClick = onClick,
         enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 2.dp, vertical = 4.dp),
+        contentPadding = PaddingValues(horizontal = 1.dp, vertical = 2.dp),
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Box(
                 modifier = Modifier
-                    .size(66.dp)
+                    .size(46.dp)
                     .background(chipColor, CircleShape)
                     .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
                 contentAlignment = Alignment.Center
@@ -4358,14 +4563,14 @@ private fun MobileTabButton(
                     painter = painterResource(id = iconRes),
                     contentDescription = null,
                     modifier = Modifier
-                        .size(54.dp)
+                        .size(30.dp)
                         .alpha(if (enabled) 1f else 0.45f)
                 )
             }
             if (showLabel) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall,
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 0.88f),
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -4374,7 +4579,7 @@ private fun MobileTabButton(
             if (selected) {
                 Box(
                     modifier = Modifier
-                        .size(width = 18.dp, height = 4.dp)
+                        .size(width = 14.dp, height = 3.dp)
                         .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
                 )
             }
@@ -4666,7 +4871,7 @@ private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAll
     ) {
         Text(
             text = title,
-            style = MaterialTheme.typography.titleLarge,
+            style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
             color = MaterialTheme.colorScheme.onBackground
         )
@@ -5606,7 +5811,7 @@ private fun ChoreCard(
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = choreIcon,
-                            style = MaterialTheme.typography.titleLarge
+                            style = MaterialTheme.typography.titleMedium
                         )
                     }
                 }
@@ -7114,6 +7319,28 @@ private fun initialsFromDisplayName(displayName: String): String {
     return tokens.joinToString("") { token -> token.first().uppercaseChar().toString() }
 }
 
+private fun loadImageBitmapFromUri(
+    context: Context,
+    uriString: String?
+): androidx.compose.ui.graphics.ImageBitmap? {
+    if (uriString.isNullOrBlank()) {
+        return null
+    }
+    val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null
+    return runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                decoder.isMutableRequired = false
+            }.asImageBitmap()
+        } else {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)?.asImageBitmap()
+            }
+        }
+    }.getOrNull()
+}
+
 private fun normalizeSubtypeLabel(value: String?): String? =
     value
         ?.trim()
@@ -7270,7 +7497,13 @@ private fun formatRetentionSummary(
 
 private fun detectLeadingQuickLogIcon(text: String): String? {
     val token = text.trim().split(Regex("\\s+")).firstOrNull().orEmpty()
-    return token.takeIf { quickLogIconOptions.contains(it) }
+    if (quickLogIconOptions.contains(token)) {
+        return token
+    }
+    if (quickLogLegacyMojibakePrefix.containsMatchIn(token)) {
+        return quickLogIconCheck
+    }
+    return null
 }
 
 private fun stripLeadingQuickLogIcon(text: String): String {
@@ -7294,13 +7527,13 @@ private fun resolveQuickLogIcon(title: String, context: String? = null): String 
         .joinToString(" ")
         .lowercase(Locale.getDefault())
     return when {
-        Regex("(dish|kitchen|plate|cook|meal|fridge|oven)").containsMatchIn(searchable) -> "🍽️"
-        Regex("(laundry|wash|clothes|linen|fold)").containsMatchIn(searchable) -> "🧺"
-        Regex("(trash|garbage|recycl|waste|bin)").containsMatchIn(searchable) -> "🗑️"
-        Regex("(clean|vacuum|mop|dust|bathroom|toilet)").containsMatchIn(searchable) -> "🧹"
-        Regex("(toy|kid|child|play|nursery)").containsMatchIn(searchable) -> "🧸"
-        Regex("(shop|grocery|buy|market)").containsMatchIn(searchable) -> "🛒"
-        else -> "âœ…"
+        Regex("(dish|kitchen|plate|cook|meal|fridge|oven)").containsMatchIn(searchable) -> quickLogIconPlate
+        Regex("(laundry|wash|clothes|linen|fold)").containsMatchIn(searchable) -> quickLogIconBasket
+        Regex("(trash|garbage|recycl|waste|bin)").containsMatchIn(searchable) -> quickLogIconTrash
+        Regex("(clean|vacuum|mop|dust|bathroom|toilet)").containsMatchIn(searchable) -> quickLogIconBroom
+        Regex("(toy|kid|child|play|nursery)").containsMatchIn(searchable) -> quickLogIconTeddy
+        Regex("(shop|grocery|buy|market)").containsMatchIn(searchable) -> quickLogIconCart
+        else -> quickLogIconCheck
     }
 }
 
@@ -7442,4 +7675,3 @@ private fun createProofCaptureFile(context: android.content.Context): File {
     val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
     return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
 }
-

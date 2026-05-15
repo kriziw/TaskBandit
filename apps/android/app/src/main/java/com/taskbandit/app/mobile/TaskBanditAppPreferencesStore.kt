@@ -16,6 +16,10 @@ enum class MobileUiMode {
 class TaskBanditAppPreferencesStore(
     private val preferences: SharedPreferences
 ) {
+    companion object {
+        const val DEFAULT_MOBILE_AVATAR_KEY = "preset:mascot_avatar_01"
+    }
+
     fun readThemeMode(): MobileThemeMode {
         val storedValue = preferences.getString("theme_mode", MobileThemeMode.SYSTEM.name).orEmpty()
         return MobileThemeMode.entries.firstOrNull { it.name == storedValue } ?: MobileThemeMode.SYSTEM
@@ -44,6 +48,17 @@ class TaskBanditAppPreferencesStore(
     fun saveMobileUiMode(value: MobileUiMode) {
         preferences.edit()
             .putString("mobile_ui_mode", value.name)
+            .apply()
+    }
+
+    fun readMobileAvatarKey(): String =
+        preferences.getString("mobile_avatar_key", DEFAULT_MOBILE_AVATAR_KEY)
+            .orEmpty()
+            .ifBlank { DEFAULT_MOBILE_AVATAR_KEY }
+
+    fun saveMobileAvatarKey(value: String) {
+        preferences.edit()
+            .putString("mobile_avatar_key", value.ifBlank { DEFAULT_MOBILE_AVATAR_KEY })
             .apply()
     }
 }

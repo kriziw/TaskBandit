@@ -55,6 +55,7 @@ const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
 const mobileUiModeStorageKey = "taskbandit-mobile-ui-mode";
+const mobileAvatarStorageKey = "taskbandit-mobile-avatar";
 type WorkspaceVariant = "admin" | "client";
 type MobileUiMode = "classic" | "new";
 
@@ -380,6 +381,35 @@ function getRandomNumber(max: number) {
   return Math.floor(Math.random() * max);
 }
 
+async function convertImageFileToAvatarDataUrl(file: File) {
+  const sourceUrl = URL.createObjectURL(file);
+  try {
+    const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+      const element = new Image();
+      element.onload = () => resolve(element);
+      element.onerror = () => reject(new Error("Unable to load image."));
+      element.src = sourceUrl;
+    });
+
+    const targetSize = 256;
+    const canvas = document.createElement("canvas");
+    canvas.width = targetSize;
+    canvas.height = targetSize;
+    const context2d = canvas.getContext("2d");
+    if (!context2d) {
+      throw new Error("Unable to prepare avatar image.");
+    }
+
+    const minSide = Math.min(image.naturalWidth, image.naturalHeight);
+    const sx = Math.max(0, (image.naturalWidth - minSide) / 2);
+    const sy = Math.max(0, (image.naturalHeight - minSide) / 2);
+    context2d.drawImage(image, sx, sy, minSide, minSide, 0, 0, targetSize, targetSize);
+    return canvas.toDataURL("image/jpeg", 0.86);
+  } finally {
+    URL.revokeObjectURL(sourceUrl);
+  }
+}
+
 function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): TemplateFormState {
   return {
     defaultLocale,
@@ -694,6 +724,10 @@ function getMobileUiModeStorageKey(variant: WorkspaceVariant) {
   return `${mobileUiModeStorageKey}-${variant}`;
 }
 
+function getMobileAvatarStorageKey(variant: WorkspaceVariant) {
+  return `${mobileAvatarStorageKey}-${variant}`;
+}
+
 function readStoredMobileUiMode(variant: WorkspaceVariant): MobileUiMode {
   const stored = window.localStorage.getItem(getMobileUiModeStorageKey(variant));
   return stored === "classic" ? "classic" : "new";
@@ -701,6 +735,14 @@ function readStoredMobileUiMode(variant: WorkspaceVariant): MobileUiMode {
 
 function writeStoredMobileUiMode(variant: WorkspaceVariant, mode: MobileUiMode) {
   window.localStorage.setItem(getMobileUiModeStorageKey(variant), mode);
+}
+
+function readStoredMobileAvatar(variant: WorkspaceVariant) {
+  return window.localStorage.getItem(getMobileAvatarStorageKey(variant));
+}
+
+function writeStoredMobileAvatar(variant: WorkspaceVariant, avatarValue: string) {
+  window.localStorage.setItem(getMobileAvatarStorageKey(variant), avatarValue);
 }
 
 function getDefaultWorkspacePage(variant: WorkspaceVariant): WorkspacePage {
@@ -962,11 +1004,49 @@ function sortByLabel<T>(items: T[], getLabel: (item: T) => string) {
   return [...items].sort((left, right) => getLabel(left).localeCompare(getLabel(right)));
 }
 
-const quickLogIconOptions = ["✅", "🧹", "🧺", "🗑️", "🍽️", "🛁", "🧸", "🛒", "📦", "✨"] as const;
+const quickLogIcons = {
+  check: "\u2705",
+  broom: "\u{1F9F9}",
+  basket: "\u{1F9FA}",
+  trash: "\u{1F5D1}\uFE0F",
+  plate: "\u{1F37D}\uFE0F",
+  bath: "\u{1F6C1}",
+  teddy: "\u{1F9F8}",
+  cart: "\u{1F6D2}",
+  box: "\u{1F4E6}",
+  sparkle: "\u2728"
+} as const;
+
+const mobileAvatarPresetAssets = Array.from({ length: 20 }, (_, index) => {
+  const suffix = `${index + 1}`.padStart(2, "0");
+  return `/brand/avatars/mascot_avatar_${suffix}.png`;
+});
+const defaultMobileAvatarAsset = mobileAvatarPresetAssets[0];
+
+const legacyQuickLogMojibakePrefix = /^[\u00C3\u00E2\u00F0]/;
+
+const quickLogIconOptions = [
+  quickLogIcons.check,
+  quickLogIcons.broom,
+  quickLogIcons.basket,
+  quickLogIcons.trash,
+  quickLogIcons.plate,
+  quickLogIcons.bath,
+  quickLogIcons.teddy,
+  quickLogIcons.cart,
+  quickLogIcons.box,
+  quickLogIcons.sparkle
+] as const;
 
 function detectLeadingQuickLogIcon(value: string) {
   const token = value.trim().split(/\s+/)[0] ?? "";
-  return quickLogIconOptions.includes(token as (typeof quickLogIconOptions)[number]) ? token : null;
+  if (quickLogIconOptions.includes(token as (typeof quickLogIconOptions)[number])) {
+    return token;
+  }
+  if (legacyQuickLogMojibakePrefix.test(token)) {
+    return quickLogIcons.check;
+  }
+  return null;
 }
 
 function stripLeadingQuickLogIcon(value: string) {
@@ -998,13 +1078,13 @@ function resolveChoreIconFromText(title: string, context = "", subtypeLabel = ""
     .join(" ")
     .toLowerCase();
 
-  if (/(dish|kitchen|plate|cook|meal|fridge|oven)/.test(searchable)) return "🍽️";
-  if (/(laundry|wash|clothes|linen|fold)/.test(searchable)) return "🧺";
-  if (/(trash|garbage|recycl|waste|bin)/.test(searchable)) return "🗑️";
-  if (/(clean|vacuum|mop|dust|bathroom|toilet)/.test(searchable)) return "🧹";
-  if (/(toy|kid|child|play|nursery)/.test(searchable)) return "🧸";
-  if (/(shop|grocery|buy|market)/.test(searchable)) return "🛒";
-  return "âœ…";
+  if (/(dish|kitchen|plate|cook|meal|fridge|oven)/.test(searchable)) return quickLogIcons.plate;
+  if (/(laundry|wash|clothes|linen|fold)/.test(searchable)) return quickLogIcons.basket;
+  if (/(trash|garbage|recycl|waste|bin)/.test(searchable)) return quickLogIcons.trash;
+  if (/(clean|vacuum|mop|dust|bathroom|toilet)/.test(searchable)) return quickLogIcons.broom;
+  if (/(toy|kid|child|play|nursery)/.test(searchable)) return quickLogIcons.teddy;
+  if (/(shop|grocery|buy|market)/.test(searchable)) return quickLogIcons.cart;
+  return quickLogIcons.check;
 }
 
 function resolveChoreIcon(instance: ChoreInstance) {
@@ -1026,6 +1106,7 @@ const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
   const brandIconAssetPath = "/brand/logo-dark.png";
+  const brandMarkAssetPath = "/brand/icon-dark.png";
   const mascotLoginAssetPath = "/brand/mascot-login.png";
   const mascotCelebrationAssetPath = "/brand/mascot-success.png";
   const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
@@ -1132,7 +1213,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [quickLogCreateTemplateFromEntry, setQuickLogCreateTemplateFromEntry] = useState(false);
   const [quickLogUsePointsOverride, setQuickLogUsePointsOverride] = useState(false);
   const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
-  const [quickLogIcon, setQuickLogIcon] = useState<string>("âœ…");
+  const [quickLogIcon, setQuickLogIcon] = useState<string>(quickLogIcons.check);
+  const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
+  const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
+    () => readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset
+  );
   const [activePage, setActivePage] = useState<WorkspacePage>(() =>
     readStoredWorkspacePage(workspaceVariant)
   );
@@ -1240,6 +1325,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const generalSettingsRef = useRef<HTMLElement | null>(null);
   const oidcSettingsRef = useRef<HTMLElement | null>(null);
   const smtpSettingsRef = useRef<HTMLElement | null>(null);
+  const mobileAvatarUploadInputRef = useRef<HTMLInputElement | null>(null);
   const smtpDraftSettings = settingsDraft ? getSmtpTestSettings(settingsDraft) : null;
   const smtpDraftFingerprint = smtpDraftSettings ? getSmtpSettingsFingerprint(smtpDraftSettings) : null;
   const smtpTestRequiredToEnable = Boolean(
@@ -2276,6 +2362,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
     );
     setMobileUiMode(readStoredMobileUiMode(workspaceVariant));
+    setMobileProfileAvatar(readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset);
     setOnboardingTourCompleted(readStoredOnboardingTourCompletion(workspaceVariant));
     setOnboardingDismissed(false);
     setOnboardingManuallyOpened(false);
@@ -3800,7 +3887,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setQuickLogCreateTemplateFromEntry(false);
     setQuickLogUsePointsOverride(false);
     setQuickLogPointsOverride("");
-    setQuickLogIcon("âœ…");
+    setQuickLogIcon(quickLogIcons.check);
   }
 
   async function handleSubmitQuickLog() {
@@ -5430,6 +5517,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         resetInstanceForm();
       }
     }
+    setIsMobileProfileOpen(false);
 
     const nextPathname = getPathnameForWorkspacePage(page);
     if (window.location.pathname !== nextPathname) {
@@ -5480,6 +5568,30 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   function handleMobileUiModeChange(nextMode: MobileUiMode) {
     writeStoredMobileUiMode(workspaceVariant, nextMode);
     setMobileUiMode(nextMode);
+  }
+
+  function handleSelectMobileAvatar(avatarAssetPath: string) {
+    setMobileProfileAvatar(avatarAssetPath);
+    writeStoredMobileAvatar(workspaceVariant, avatarAssetPath);
+  }
+
+  async function handleMobileAvatarUpload(event: FormEvent<HTMLInputElement>) {
+    const input = event.currentTarget;
+    const selectedFile = input.files?.[0];
+    if (!selectedFile) {
+      return;
+    }
+
+    try {
+      const dataUrl = await convertImageFileToAvatarDataUrl(selectedFile);
+      setMobileProfileAvatar(dataUrl);
+      writeStoredMobileAvatar(workspaceVariant, dataUrl);
+      setNotice("Profile picture updated.");
+    } catch (error) {
+      setPageError(readErrorMessage(error, "Could not use that image."));
+    } finally {
+      input.value = "";
+    }
   }
 
   async function handleEnableBrowserNotifications() {
@@ -5891,16 +6003,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       {showNewClientMobileShell && payload ? (
         <section className="toolbar mobile-new-toolbar">
           <div className="toolbar-group">
-            <button
-              className="ghost-button mobile-new-icon-button"
-              type="button"
-              aria-label={t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
-              onClick={handleOpenOnboarding}
-            >
-              &#9776;
-            </button>
             <div className="toolbar-brand" aria-label="TaskBandit">
-              <img className="toolbar-brand-mascot" src={brandIconAssetPath} alt="" aria-hidden="true" />
+              <img className="toolbar-brand-mascot" src={brandMarkAssetPath} alt="" aria-hidden="true" />
               <div>
                 <strong>TaskBandit</strong>
               </div>
@@ -5908,20 +6012,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
           <div className="toolbar-group mobile-new-toolbar-actions">
             <button
-              className="ghost-button mobile-new-icon-button"
-              type="button"
-              aria-label={t("panel.notifications")}
-              onClick={() => openWorkspacePage("settings", notificationsRef)}
-            >
-              &#128276;
-            </button>
-            <button
               className="ghost-button mobile-new-avatar-button"
               type="button"
               aria-label={payload.currentUser.displayName}
-              onClick={() => openWorkspacePage("settings")}
+              onClick={() => setIsMobileProfileOpen(true)}
             >
-              <span>{initialsFromDisplayName(payload.currentUser.displayName)}</span>
+              {mobileProfileAvatar ? (
+                <img src={mobileProfileAvatar} alt="" aria-hidden="true" />
+              ) : (
+                <span>{initialsFromDisplayName(payload.currentUser.displayName)}</span>
+              )}
             </button>
           </div>
         </section>
@@ -6670,7 +6770,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         </div>
                         <div className="mobile-quick-log-card-copy">
                           <h4>Quick log</h4>
-                          <p>Log a completed chore instantly, even if it was never created.</p>
                         </div>
                         <button
                           className="primary-button mobile-quick-log-card-cta"
@@ -9961,6 +10060,103 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
         </div>
       ) : null}
+      {showNewClientMobileShell && payload && isMobileProfileOpen ? (
+        <div className="mobile-composer-backdrop" role="presentation">
+          <div
+            className="mobile-composer-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-profile-title"
+          >
+            <article className="panel mobile-composer-panel mobile-profile-panel">
+              <div className="section-heading mobile-composer-heading mobile-profile-heading">
+                <div>
+                  <h2 id="mobile-profile-title">Profile</h2>
+                </div>
+              </div>
+              <div className="mobile-profile-avatar-preview" aria-hidden="true">
+                {mobileProfileAvatar ? (
+                  <img src={mobileProfileAvatar} alt="" />
+                ) : (
+                  <span>{initialsFromDisplayName(payload.currentUser.displayName)}</span>
+                )}
+              </div>
+              <div className="mobile-profile-grid">
+                <div className="mobile-profile-row">
+                  <span>Name</span>
+                  <strong>{payload.currentUser.displayName}</strong>
+                </div>
+                <div className="mobile-profile-row">
+                  <span>Role</span>
+                  <strong>{t(`role.${payload.currentUser.role}`)}</strong>
+                </div>
+                <div className="mobile-profile-row">
+                  <span>Points</span>
+                  <strong>{formatNumber(payload.currentUser.points)}</strong>
+                </div>
+                <div className="mobile-profile-row">
+                  <span>Streak</span>
+                  <strong>{formatNumber(payload.currentUser.currentStreak)}</strong>
+                </div>
+                {payload.currentUser.email ? (
+                  <div className="mobile-profile-row">
+                    <span>Email</span>
+                    <strong>{payload.currentUser.email}</strong>
+                  </div>
+                ) : null}
+              </div>
+              <div className="mobile-profile-avatar-controls">
+                <p>Choose avatar</p>
+                <div className="mobile-profile-avatar-preset-row" role="list" aria-label="Avatar presets">
+                  {mobileAvatarPresetAssets.map((avatarAssetPath) => (
+                    <button
+                      key={avatarAssetPath}
+                      className={`mobile-profile-avatar-preset ${
+                        mobileProfileAvatar === avatarAssetPath ? "active" : ""
+                      }`}
+                      type="button"
+                      onClick={() => handleSelectMobileAvatar(avatarAssetPath)}
+                      aria-label="Select profile mascot"
+                      role="listitem"
+                    >
+                      <img src={avatarAssetPath} alt="" aria-hidden="true" />
+                    </button>
+                  ))}
+                </div>
+                <input
+                  ref={mobileAvatarUploadInputRef}
+                  className="mobile-profile-avatar-upload-input"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleMobileAvatarUpload}
+                />
+                <button
+                  className="secondary-button mobile-profile-avatar-upload-button"
+                  type="button"
+                  onClick={() => mobileAvatarUploadInputRef.current?.click()}
+                >
+                  Upload image
+                </button>
+              </div>
+              <div className="button-row schedule-form-actions mobile-profile-actions">
+                <button
+                  className="primary-button"
+                  type="button"
+                  onClick={() => {
+                    setIsMobileProfileOpen(false);
+                    openWorkspacePage("settings");
+                  }}
+                >
+                  Settings
+                </button>
+                <button className="ghost-button" type="button" onClick={() => setIsMobileProfileOpen(false)}>
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </article>
+          </div>
+        </div>
+      ) : null}
       {showNewClientMobileShell && activePage === "chores" && payload?.currentUser.role !== "child" ? (
         <button className="mobile-fab-add" type="button" aria-label="Add chore" onClick={handleOpenClientComposer}>
           +
@@ -10175,4 +10371,3 @@ function readErrorMessage(error: unknown, fallbackMessage: string) {
 
   return fallbackMessage;
 }
-
