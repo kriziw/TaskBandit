@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+﻿import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
@@ -1038,6 +1038,28 @@ const quickLogIconOptions = [
   quickLogIcons.sparkle
 ] as const;
 
+const choreIconPresets = [
+  { id: "take_out_trash", label: "Trash", assetPath: "/chore-icons/take_out_trash.png" },
+  { id: "recycle_sorting", label: "Recycling", assetPath: "/chore-icons/recycle_sorting.png" },
+  { id: "feed_pets", label: "Pets", assetPath: "/chore-icons/feed_pets.png" },
+  { id: "wash_dishes_sink", label: "Dishes", assetPath: "/chore-icons/wash_dishes_sink.png" },
+  { id: "make_bed", label: "Make bed", assetPath: "/chore-icons/make_bed.png" },
+  { id: "change_bed_sheets", label: "Change sheets", assetPath: "/chore-icons/change_bed_sheets.png" },
+  { id: "do_laundry", label: "Laundry", assetPath: "/chore-icons/do_laundry.png" },
+  { id: "vacuum_floor", label: "Vacuum", assetPath: "/chore-icons/vacuum_floor.png" },
+  { id: "water_plants", label: "Water plants", assetPath: "/chore-icons/water_plants.png" },
+  { id: "clean_toilet", label: "Bathroom", assetPath: "/chore-icons/clean_toilet.png" },
+  { id: "clean_mirror_sink", label: "Sink/Mirror", assetPath: "/chore-icons/clean_mirror_sink.png" },
+  { id: "wipe_counter", label: "Counter", assetPath: "/chore-icons/wipe_counter.png" },
+  { id: "dishwasher", label: "Dishwasher", assetPath: "/chore-icons/dishwasher.png" },
+  { id: "grocery_shopping", label: "Groceries", assetPath: "/chore-icons/grocery_shopping.png" },
+  { id: "sort_mail", label: "Mail", assetPath: "/chore-icons/sort_mail.png" }
+] as const;
+type ChoreIconId = (typeof choreIconPresets)[number]["id"];
+const choreIconById = new Map<ChoreIconId, (typeof choreIconPresets)[number]>(
+  choreIconPresets.map((preset) => [preset.id, preset])
+);
+
 function detectLeadingQuickLogIcon(value: string) {
   const token = value.trim().split(/\s+/)[0] ?? "";
   if (quickLogIconOptions.includes(token as (typeof quickLogIconOptions)[number])) {
@@ -1067,6 +1089,52 @@ function applyQuickLogIconToTitle(value: string, icon: string) {
   return `${icon} ${stripped}`;
 }
 
+function detectLeadingChoreIconToken(value: string) {
+  const match = value.trim().match(/^\[\[icon:([a-z0-9_]+)\]\]/i);
+  const iconId = (match?.[1] ?? "").toLowerCase() as ChoreIconId;
+  return choreIconById.has(iconId) ? iconId : null;
+}
+
+function stripLeadingChoreIconToken(value: string) {
+  return value.trim().replace(/^\[\[icon:[a-z0-9_]+\]\]\s*/i, "");
+}
+
+function applyChoreIconToken(value: string, iconId: ChoreIconId | "") {
+  const stripped = stripLeadingChoreIconToken(value);
+  if (!stripped) {
+    return "";
+  }
+  if (!iconId) {
+    return stripped;
+  }
+  return `[[icon:${iconId}]] ${stripped}`;
+}
+
+function resolveChoreIconIdFromText(title: string, context = "", subtypeLabel = ""): ChoreIconId | null {
+  const explicit = detectLeadingChoreIconToken(title);
+  if (explicit) {
+    return explicit;
+  }
+  const searchable = `${stripLeadingChoreIconToken(stripLeadingQuickLogIcon(title))} ${context} ${subtypeLabel}`
+    .toLowerCase();
+  if (/(trash|garbage|bin|waste)/.test(searchable)) return "take_out_trash";
+  if (/(recycl)/.test(searchable)) return "recycle_sorting";
+  if (/(pet|cat|dog|litter)/.test(searchable)) return "feed_pets";
+  if (/(dish|kitchen|plate|sink)/.test(searchable)) return "wash_dishes_sink";
+  if (/(bed|sheet|blanket)/.test(searchable)) return "make_bed";
+  if (/(laundry|clothes|linen|towel|wash)/.test(searchable)) return "do_laundry";
+  if (/(vacuum)/.test(searchable)) return "vacuum_floor";
+  if (/(plant|garden|water)/.test(searchable)) return "water_plants";
+  if (/(bathroom|toilet)/.test(searchable)) return "clean_toilet";
+  if (/(grocery|shop|market)/.test(searchable)) return "grocery_shopping";
+  return null;
+}
+
+function resolveChoreIconAssetFromText(title: string, context = "", subtypeLabel = "") {
+  const iconId = resolveChoreIconIdFromText(title, context, subtypeLabel);
+  return iconId ? choreIconById.get(iconId)?.assetPath ?? null : null;
+}
+
 function resolveChoreIconFromText(title: string, context = "", subtypeLabel = "") {
   const explicitIcon = detectLeadingQuickLogIcon(title);
   if (explicitIcon) {
@@ -1093,6 +1161,10 @@ function resolveChoreIcon(instance: ChoreInstance) {
     return explicitIcon;
   }
   return resolveChoreIconFromText(instance.typeTitle || instance.title, instance.groupTitle, instance.subtypeLabel ?? "");
+}
+
+function resolveChoreIconAsset(instance: ChoreInstance) {
+  return resolveChoreIconAssetFromText(instance.typeTitle || instance.title, instance.groupTitle, instance.subtypeLabel ?? "");
 }
 
 const currentWebReleaseInfo: ReleaseInfo = {
@@ -1202,8 +1274,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [mobileDueEditorInstanceId, setMobileDueEditorInstanceId] = useState<string | null>(null);
   const [mobileDueEditorValue, setMobileDueEditorValue] = useState("");
   const [mobileDueEditorTitle, setMobileDueEditorTitle] = useState("");
+  const [mobileDueEditorIconId, setMobileDueEditorIconId] = useState<ChoreIconId | "">("");
   const [mobileDueEditorVariantId, setMobileDueEditorVariantId] = useState<string>("");
   const [mobileCardMenuInstanceId, setMobileCardMenuInstanceId] = useState<string | null>(null);
+  const [mobileChoreDialogInstanceId, setMobileChoreDialogInstanceId] = useState<string | null>(null);
   const [isQuickLogComposerOpen, setIsQuickLogComposerOpen] = useState(false);
   const [quickLogQuery, setQuickLogQuery] = useState("");
   const [quickLogNote, setQuickLogNote] = useState("");
@@ -1222,6 +1296,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
   const mobileDueEditorInstance =
     payload?.instances.find((instance) => instance.id === mobileDueEditorInstanceId) ?? null;
+  const mobileChoreDialogInstance =
+    payload?.instances.find((instance) => instance.id === mobileChoreDialogInstanceId) ?? null;
+  const mobileChoreDialogIsMine = Boolean(
+    payload?.currentUser.id &&
+      mobileChoreDialogInstance?.assigneeId &&
+      payload.currentUser.id === mobileChoreDialogInstance.assigneeId
+  );
   const mobileDueEditorTemplateVariants = useMemo(() => {
     if (!payload || !mobileDueEditorInstance) {
       return [];
@@ -2985,7 +3066,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   }
 
-  function renderHouseholdChoreCard(instance: ChoreInstance, options?: { historic?: boolean }) {
+  function renderHouseholdChoreCard(
+    instance: ChoreInstance,
+    options?: { historic?: boolean; forceLegacy?: boolean }
+  ) {
     const canManageChores = hasFeature("chores_manage");
     const canUseExternalCompletion = hasFeature("external_completion");
     const canManageDeferredFollowUps = hasFeature("deferred_follow_up_control");
@@ -3004,7 +3088,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         : t("common.unassigned")
     }`;
     const choreIcon = resolveChoreIcon(instance);
-    const choreTitleText = stripLeadingQuickLogIcon(instance.typeTitle || instance.title);
+    const choreIconAsset = resolveChoreIconAsset(instance);
+    const choreTitleText = stripLeadingChoreIconToken(
+      stripLeadingQuickLogIcon(instance.typeTitle || instance.title)
+    );
     const choreHeading = (
       <div>
         <p className="inline-message task-row-group-title">{instance.groupTitle}</p>
@@ -3020,25 +3107,29 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       </div>
     );
 
-    if (showNewClientMobileShell) {
-      const compactMeta = `${options?.historic ? formatMobileDueLabel(getHistoricChoreDate(instance)) : formatMobileDueLabel(instance.dueAt)} • ${
+    if (showNewClientMobileShell && !options?.forceLegacy) {
+      const compactMeta = `${options?.historic ? formatMobileDueLabel(getHistoricChoreDate(instance)) : formatMobileDueLabel(instance.dueAt)} - ${
         instance.groupTitle || "Home"
       }`;
       const mockStatus = getMobileCardStatus(instance);
       return (
-        <div className="task-row compact mock-mobile-card" key={instance.id}>
+        <button
+          className="task-row compact mock-mobile-card mock-mobile-card-button"
+          key={instance.id}
+          type="button"
+          onClick={() => setMobileChoreDialogInstanceId(instance.id)}
+        >
           <div className="mock-mobile-card-icon" aria-hidden="true">
-            {choreIcon}
+            {choreIconAsset ? <img src={choreIconAsset} alt="" aria-hidden="true" /> : choreIcon}
           </div>
           <div className="mock-mobile-card-body">
             <strong className="task-row-title">{choreTitleText}</strong>
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
           <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
-        </div>
+        </button>
       );
     }
-
     return (
       <div className="task-row compact" key={instance.id}>
         <div className="task-row-header">
@@ -3231,13 +3322,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     );
   }
 
-  function renderMyChoreCard(instance: ChoreInstance) {
+  function renderMyChoreCard(instance: ChoreInstance, options?: { forceLegacy?: boolean }) {
     const canUploadProofs = hasFeature("proof_uploads");
     const canSubmitAsCurrentUser = payload?.currentUser.id === instance.assigneeId;
     const selectedChecklistIds = getSelectedChecklistIds(instance);
     const selectedFiles = selectedProofFiles[instance.id] ?? [];
     const choreIcon = resolveChoreIcon(instance);
-    const choreTitleText = stripLeadingQuickLogIcon(instance.typeTitle || instance.title);
+    const choreIconAsset = resolveChoreIconAsset(instance);
+    const choreTitleText = stripLeadingChoreIconToken(
+      stripLeadingQuickLogIcon(instance.typeTitle || instance.title)
+    );
     const choreHeading = (
       <div>
         <p className="inline-message task-row-group-title">{instance.groupTitle}</p>
@@ -3256,23 +3350,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       instance.awardedPoints > 0 ? instance.awardedPoints : instance.basePoints
     }`;
 
-    if (showNewClientMobileShell) {
-      const compactMeta = `${formatMobileDueLabel(instance.dueAt)} • ${instance.groupTitle || "Home"}`;
+    if (showNewClientMobileShell && !options?.forceLegacy) {
+      const compactMeta = `${formatMobileDueLabel(instance.dueAt)} - ${instance.groupTitle || "Home"}`;
       const mockStatus = getMobileCardStatus(instance);
       return (
-        <div className="task-row mock-mobile-card" key={instance.id}>
+        <button
+          className="task-row mock-mobile-card mock-mobile-card-button"
+          key={instance.id}
+          type="button"
+          onClick={() => setMobileChoreDialogInstanceId(instance.id)}
+        >
           <div className="mock-mobile-card-icon" aria-hidden="true">
-            {choreIcon}
+            {choreIconAsset ? <img src={choreIconAsset} alt="" aria-hidden="true" /> : choreIcon}
           </div>
           <div className="mock-mobile-card-body">
             <strong className="task-row-title">{choreTitleText}</strong>
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
           <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
-        </div>
+        </button>
       );
     }
-
     return (
       <div className="task-row" key={instance.id}>
         <div className="task-row-header">
@@ -5237,7 +5335,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   function openMobileDueEditor(instance: ChoreInstance) {
     setMobileDueEditorInstanceId(instance.id);
     setMobileDueEditorValue(formatDateTimeLocal(instance.dueAt));
-    setMobileDueEditorTitle(instance.title ?? "");
+    setMobileDueEditorTitle(stripLeadingChoreIconToken(instance.title ?? ""));
+    setMobileDueEditorIconId(resolveChoreIconIdFromText(instance.title ?? "", instance.groupTitle, instance.subtypeLabel ?? "") ?? "");
     setMobileDueEditorVariantId(instance.variantId ?? "");
     setPageError(null);
   }
@@ -5246,6 +5345,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setMobileDueEditorInstanceId(null);
     setMobileDueEditorValue("");
     setMobileDueEditorTitle("");
+    setMobileDueEditorIconId("");
     setMobileDueEditorVariantId("");
     setMobileCardMenuInstanceId(null);
   }
@@ -5270,7 +5370,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const updatedInstance = await taskBanditApi.updateInstance(token, language, mobileDueEditorInstance.id, {
         templateId: mobileDueEditorInstance.templateId,
         assigneeId: mobileDueEditorInstance.assigneeId ?? undefined,
-        title: mobileDueEditorTitle.trim() || undefined,
+        title: applyChoreIconToken(mobileDueEditorTitle, mobileDueEditorIconId) || undefined,
         dueAt: dueAtDate.toISOString(),
         variantId: mobileDueEditorVariantId || undefined,
         recurrenceEndMode: mobileDueEditorInstance.recurrenceEndMode ?? undefined,
@@ -6768,14 +6868,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           <h4>Quick log</h4>
                         </div>
                         <button
-                          className="primary-button mobile-quick-log-card-cta"
+                          className="primary-button mobile-quick-log-card-cta mobile-quick-log-plus-button"
                           type="button"
                           onClick={() => {
                             resetQuickLogComposer();
                             setIsQuickLogComposerOpen(true);
                           }}
                         >
-                          Quick log
+                          <span>Quick log</span>
+                          <span className="mobile-quick-log-plus-sign" aria-hidden="true">
+                            +
+                          </span>
                         </button>
                       </article>
                     ) : null}
@@ -9838,6 +9941,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     onChange={(event) => setMobileDueEditorTitle(event.target.value)}
                   />
                 </label>
+                <label>
+                  <span>Icon</span>
+                  <select
+                    value={mobileDueEditorIconId}
+                    onChange={(event) => setMobileDueEditorIconId((event.target.value as ChoreIconId) || "")}
+                  >
+                    <option value="">Auto</option>
+                    {choreIconPresets.map((iconPreset) => (
+                      <option key={iconPreset.id} value={iconPreset.id}>
+                        {iconPreset.label}
+                      </option>
+                    ))}
+                  </select>
+                </label>
                 {mobileDueEditorTemplateVariants.length > 0 ? (
                   <label>
                     <span>{t("instances.subtype")}</span>
@@ -9889,6 +10006,37 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             aria-labelledby="mobile-chore-composer-title"
           >
             {renderScheduleChorePanel("page-chores", { mobileSheet: true })}
+          </div>
+        </div>
+      ) : null}
+      {showNewClientMobileShell && mobileChoreDialogInstance ? (
+        <div className="mobile-composer-backdrop" role="presentation">
+          <div
+            className="mobile-composer-sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="mobile-chore-actions-title"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <article className="panel mobile-composer-panel">
+              <div className="section-heading mobile-composer-heading">
+                <div>
+                  <h2 id="mobile-chore-actions-title">Chore actions</h2>
+                </div>
+              </div>
+              {mobileChoreDialogIsMine
+                ? renderMyChoreCard(mobileChoreDialogInstance, { forceLegacy: true })
+                : renderHouseholdChoreCard(mobileChoreDialogInstance, { forceLegacy: true })}
+              <div className="button-row schedule-form-actions">
+                <button
+                  className="ghost-button"
+                  type="button"
+                  onClick={() => setMobileChoreDialogInstanceId(null)}
+                >
+                  {t("common.cancel")}
+                </button>
+              </div>
+            </article>
           </div>
         </div>
       ) : null}
@@ -10138,12 +10286,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <button
                   className="primary-button"
                   type="button"
-                  onClick={() => {
-                    setIsMobileProfileOpen(false);
-                    openWorkspacePage("settings");
-                  }}
+                  onClick={() => setIsMobileProfileOpen(false)}
                 >
-                  Settings
+                  Save
                 </button>
                 <button className="ghost-button" type="button" onClick={() => setIsMobileProfileOpen(false)}>
                   {t("common.cancel")}
