@@ -113,6 +113,9 @@
     <string name="mobile_view_all">View all</string>
     <string name="mobile_no_chores">No active chores right now.</string>
     <string name="mobile_chores_history">Recent history</string>
+    <string name="mobile_completed_chores">Completed chores</string>
+    <string name="mobile_show_completed_chores">Show</string>
+    <string name="mobile_hide_completed_chores">Hide</string>
     <string name="mobile_chore_open_history">Open</string>
     <string name="mobile_chore_close_history">Close</string>
     <string name="mobile_quick_log_card_title">Quick log</string>
