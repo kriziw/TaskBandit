@@ -2656,6 +2656,7 @@ private fun DashboardScreen(
     }
     val unassignedChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.UNASSIGNED } }
     val otherChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.OTHERS } }
+    val upNextChores = remember(unassignedChores, otherChores) { unassignedChores + otherChores }
     val quickLogCandidates = remember(sortedChores, templates) {
         buildList {
             sortedChores.forEach { chore ->
@@ -2703,6 +2704,10 @@ private fun DashboardScreen(
     val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
     val choresOthersLabel = stringResource(R.string.mobile_chores_others)
     val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
+    val myChoresLabel = stringResource(R.string.mobile_my_chores)
+    val upNextLabel = stringResource(R.string.mobile_up_next)
+    val viewAllLabel = stringResource(R.string.mobile_view_all)
+    val noChoresLabel = stringResource(R.string.mobile_no_chores)
     val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
     val recurrenceIntervalInvalidMessage = stringResource(R.string.mobile_create_interval_days_invalid)
     val recurrenceWeekdaysInvalidMessage = stringResource(R.string.mobile_create_weekdays_required)
@@ -3593,7 +3598,7 @@ private fun DashboardScreen(
                             )
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 146.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 24.dp else 14.dp, vertical = if (isNewMobileUi) 24.dp else 12.dp),
+                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 136.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 22.dp else 14.dp, vertical = if (isNewMobileUi) 22.dp else 12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(10.dp)
                             ) {
@@ -3619,7 +3624,7 @@ private fun DashboardScreen(
                                 ) {
                                     Text(
                                         text = stringResource(R.string.mobile_quick_log_card_title),
-                                        style = if (isNewMobileUi) MaterialTheme.typography.titleLarge else MaterialTheme.typography.titleSmall,
+                                        style = if (isNewMobileUi) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleSmall,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                     Text(
@@ -3661,9 +3666,97 @@ private fun DashboardScreen(
                     }
                 }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
-                    item { Text(text = stringResource(R.string.mobile_no_chores), style = MaterialTheme.typography.bodyMedium) }
+                    item { Text(text = noChoresLabel, style = MaterialTheme.typography.bodyMedium) }
                 }
-                if (isTablet) {
+                if (isNewMobileUi && !isTablet) {
+                    if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
+                        item {
+                            TakeoverRequestsPanel(
+                                requests = incomingTakeoverRequests,
+                                activeTakeoverRequestAction = activeTakeoverRequestAction,
+                                onApproveRequest = { requestId -> onRespondToTakeoverRequest(requestId, true) },
+                                onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
+                            )
+                        }
+                    }
+                    mockMobileChoreSection(
+                        chores = myChores,
+                        title = myChoresLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        showViewAll = true,
+                        viewAllLabel = viewAllLabel,
+                        emptyMessage = noChoresLabel
+                    )
+                    mockMobileChoreSection(
+                        chores = upNextChores,
+                        title = upNextLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        emptyMessage = noChoresLabel
+                    )
+                    if (showStatusCard) {
+                        item {
+                            DashboardStatusCard(
+                                isSyncingQueue = isSyncingQueue,
+                                errorMessage = errorMessage,
+                                noticeMessage = noticeMessage,
+                                pendingReconnectActionLabel = pendingReconnectActionLabel,
+                                queuedSubmissionCount = queuedSubmissionCount
+                            )
+                        }
+                    }
+                } else if (isTablet) {
                     item {
                         Row(
                             modifier = Modifier.fillMaxWidth(),
@@ -4439,7 +4532,7 @@ private fun LeaderboardEntryRow(
                     fontWeight = FontWeight.Bold
                 )
                 Text(
-                    text = "${formatLeaderboardRoleLabel(entry.role)} Â· ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
+                    text = "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -4476,6 +4569,114 @@ private fun LazyListScope.choreSection(
         ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
             chores.forEach { chore ->
                 ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, activeDueAtAction = activeDueAtAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onEditChoreDueAt = onEditChoreDueAt, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore, editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty())
+            }
+        }
+    }
+}
+
+private fun LazyListScope.mockMobileChoreSection(
+    chores: List<MobileChore>,
+    title: String,
+    currentUserId: String?,
+    currentUserRole: String?,
+    supportsTakeoverRequests: Boolean,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit,
+    activeReviewAction: String?,
+    activeStartAction: String?,
+    activeSubmitAction: String?,
+    activeCloseCycleAction: String?,
+    activeTakeoverRequestAction: String?,
+    outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>,
+    submitSelections: Map<String, Set<String>>,
+    selectedProofUris: Map<String, List<String>>,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit,
+    onPickProofs: (String) -> Unit,
+    onTakeProofPhoto: (String) -> Unit,
+    onStartChore: (String) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
+    onCloseChoreCycle: (String) -> Unit,
+    onTakeOverChore: (String) -> Unit,
+    onRequestTakeover: (String) -> Unit,
+    onSubmitChore: (String) -> Unit,
+    activeDueAtAction: String?,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>,
+    showViewAll: Boolean = false,
+    viewAllLabel: String = "",
+    emptyMessage: String? = null
+) {
+    item {
+        MockMobileSectionHeader(title = title, showViewAll = showViewAll, viewAllLabel = viewAllLabel)
+    }
+    if (chores.isEmpty()) {
+        if (!emptyMessage.isNullOrBlank()) {
+            item {
+                Text(
+                    text = emptyMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+    items(chores.take(6), key = { it.id }) { chore ->
+        ChoreCard(
+            chore = chore,
+            currentUserId = currentUserId,
+            currentUserRole = currentUserRole,
+            supportsTakeoverRequests = supportsTakeoverRequests,
+            expanded = expandedChoreIds.contains(chore.id),
+            activeReviewAction = activeReviewAction,
+            activeStartAction = activeStartAction,
+            activeSubmitAction = activeSubmitAction,
+            activeCloseCycleAction = activeCloseCycleAction,
+            activeTakeoverRequestAction = activeTakeoverRequestAction,
+            activeDueAtAction = activeDueAtAction,
+            outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id],
+            selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(),
+            selectedProofCount = selectedProofUris[chore.id]?.size ?: 0,
+            onExpandedChange = { onExpandedChange(chore.id) },
+            onApprove = onApprove,
+            onReject = onReject,
+            onToggleChecklistItem = onToggleChecklistItem,
+            onPickProofs = onPickProofs,
+            onTakeProofPhoto = onTakeProofPhoto,
+            onStartChore = onStartChore,
+            onCancelChoreOccurrence = onCancelChoreOccurrence,
+            onCloseChoreCycle = onCloseChoreCycle,
+            onEditChoreDueAt = onEditChoreDueAt,
+            onTakeOverChore = onTakeOverChore,
+            onRequestTakeover = onRequestTakeover,
+            onSubmitChore = onSubmitChore,
+            editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty()
+        )
+    }
+}
+
+@Composable
+private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAllLabel: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        if (showViewAll) {
+            TextButton(onClick = { }) {
+                Text(
+                    text = viewAllLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
             }
         }
     }
@@ -4943,7 +5144,7 @@ private fun HistoricChoreCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${stringResource(historicDateLabelResId, formatDueAtForHistoricCard(historicDate))} â€¢ ${chore.groupTitle}",
+                        text = "${stringResource(historicDateLabelResId, formatDueAtForHistoricCard(historicDate))} - ${chore.groupTitle}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -5392,20 +5593,20 @@ private fun ChoreCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 118.dp)
-                    .padding(horizontal = 20.dp, vertical = 18.dp),
-                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                    .heightIn(min = 108.dp)
+                    .padding(horizontal = 18.dp, vertical = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    modifier = Modifier.size(70.dp),
+                    modifier = Modifier.size(66.dp),
                     shape = RoundedCornerShape(15.dp),
                     color = accentContainerColor.copy(alpha = 0.58f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = choreIcon,
-                            style = MaterialTheme.typography.headlineSmall
+                            style = MaterialTheme.typography.titleLarge
                         )
                     }
                 }
@@ -5415,32 +5616,32 @@ private fun ChoreCard(
                 ) {
                     Text(
                         text = typeTitle,
-                        style = MaterialTheme.typography.titleMedium,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.ExtraBold,
                         color = MaterialTheme.colorScheme.onSurface,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${formatDueAtForMockCard(chore.dueAt)} • ${chore.groupTitle.ifBlank { "Home" }}",
-                        style = MaterialTheme.typography.bodyMedium,
+                        text = "${formatDueAtForMockCard(chore.dueAt)} - ${chore.groupTitle.ifBlank { "Home" }}",
+                        style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                 }
                 Surface(
-                    modifier = Modifier.widthIn(min = 86.dp, max = 112.dp).heightIn(min = 44.dp),
+                    modifier = Modifier.widthIn(min = 78.dp, max = 106.dp).heightIn(min = 40.dp),
                     shape = RoundedCornerShape(14.dp),
                     color = mockStatusContainer
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
                             text = mockStatusLabel,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.ExtraBold,
                             color = mockStatusContent,
                             maxLines = 1,

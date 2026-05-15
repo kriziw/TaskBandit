@@ -1,5 +1,5 @@
 import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
-import type { CSSProperties, RefObject } from "react";
+import type { CSSProperties, ReactNode, RefObject } from "react";
 import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
@@ -854,7 +854,7 @@ function createReleaseKey(release: ReleaseInfo) {
 }
 
 function formatReleaseLabel(release: ReleaseInfo) {
-  return `v${release.releaseVersion} Â· build ${release.buildNumber}`;
+  return `v${release.releaseVersion} - build ${release.buildNumber}`;
 }
 
 function formatReleaseDetails(release: ReleaseInfo) {
@@ -3358,6 +3358,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
 
     return renderCompactChoreSection(title, items, emptyMessage);
+  }
+
+  function renderMockMobileChoreList(
+    items: ChoreInstance[],
+    renderCard: (instance: ChoreInstance) => ReactNode,
+    emptyMessage: string
+  ) {
+    return items.length === 0 ? (
+      <p className="empty-state mock-mobile-empty-state">{emptyMessage}</p>
+    ) : (
+      <div className="stack-list mock-mobile-card-list">{items.map((instance) => renderCard(instance))}</div>
+    );
   }
 
   function firstNameFromDisplayName(value: string) {
@@ -6949,7 +6961,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 )}
               </div>
               {showClientMobileShell ? (
-                clientMobileMyChores.length === 0 ? (
+                showNewClientMobileShell ? (
+                  renderMockMobileChoreList(clientMobileMyChores.slice(0, 6), renderMyChoreCard, t("submission.empty"))
+                ) : clientMobileMyChores.length === 0 ? (
                   <p className="empty-state">{t("submission.empty")}</p>
                 ) : (
                   <div className="stack-list my-chore-groups">
@@ -7258,7 +7272,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
               </div>
               {showClientMobileShell ? (
-                clientMobileUnassignedChores.length === 0 && clientMobileOtherChores.length === 0 ? (
+                showNewClientMobileShell ? (
+                  renderMockMobileChoreList(
+                    [...clientMobileUnassignedChores, ...clientMobileOtherChores].slice(0, 6),
+                    renderHouseholdChoreCard,
+                    t("empty.filtered_chores")
+                  )
+                ) : clientMobileUnassignedChores.length === 0 && clientMobileOtherChores.length === 0 ? (
                   <p className="empty-state">{t("empty.filtered_chores")}</p>
                 ) : (
                   <div className="stack-list my-chore-groups">

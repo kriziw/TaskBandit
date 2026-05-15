@@ -95,6 +95,8 @@
     <string name="mobile_view_task">Feladat megtekintése</string>
     <string name="mobile_chore_read_only_hint">Vedd át a feladatot, mielőtt dolgozni kezdesz rajta.</string>
     <string name="mobile_my_chores">Feladataim</string>
+    <string name="mobile_up_next">Kovetkezok</string>
+    <string name="mobile_view_all">Osszes</string>
     <string name="mobile_no_chores">Jelenleg nincs aktív feladat.</string>
     <string name="mobile_chores_history">Legutóbbi előzmények</string>
     <string name="mobile_chore_open_history">Megnyitás</string>

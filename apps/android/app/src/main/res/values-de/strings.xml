@@ -95,6 +95,8 @@
     <string name="mobile_view_task">Aufgabe ansehen</string>
     <string name="mobile_chore_read_only_hint">Ãœbernimm diese Aufgabe, bevor du daran arbeitest.</string>
     <string name="mobile_my_chores">Meine Aufgaben</string>
+    <string name="mobile_up_next">Als Naechstes</string>
+    <string name="mobile_view_all">Alle anzeigen</string>
     <string name="mobile_no_chores">Im Moment gibt es keine aktiven Aufgaben.</string>
     <string name="mobile_chores_history">Letzte AktivitÃ¤ten</string>
     <string name="mobile_chore_open_history">Ã–ffnen</string>
