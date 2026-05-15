@@ -5272,22 +5272,22 @@ private fun ChoreCard(
     if (isNewMobileUi) {
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp),
+            shape = RoundedCornerShape(14.dp),
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
             border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
         ) {
             Row(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 8.dp),
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(12.dp),
                     color = accentContainerColor.copy(alpha = 0.5f)
                 ) {
                     Text(
                         text = choreIcon,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 9.dp),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 10.dp),
                         style = MaterialTheme.typography.titleMedium
                     )
                 }
@@ -5297,13 +5297,13 @@ private fun ChoreCard(
                 ) {
                     Text(
                         text = typeTitle,
-                        style = MaterialTheme.typography.bodyLarge,
+                        style = MaterialTheme.typography.titleSmall,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${formatDueAtForCard(chore.dueAt)} â€¢ ${chore.groupTitle.ifBlank { "Home" }}",
+                        text = "${formatDueAtForCard(chore.dueAt)} • ${chore.groupTitle.ifBlank { "Home" }}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -5311,7 +5311,7 @@ private fun ChoreCard(
                     )
                 }
                 Surface(
-                    shape = RoundedCornerShape(10.dp),
+                    shape = RoundedCornerShape(999.dp),
                     color = accentContainerColor.copy(alpha = 0.75f)
                 ) {
                     Text(

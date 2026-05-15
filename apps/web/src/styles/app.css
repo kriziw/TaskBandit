@@ -3088,19 +3088,18 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card {
     grid-template-columns: auto minmax(0, 1fr) auto;
-    gap: 10px;
+    gap: 12px;
     align-items: center;
-    min-height: 78px;
   }
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card-icon {
-    width: 44px;
-    height: 44px;
+    width: 48px;
+    height: 48px;
     display: grid;
     place-items: center;
-    border-radius: 10px;
+    border-radius: 12px;
     background: #e7ecef;
-    font-size: 1.2rem;
+    font-size: 1.35rem;
   }
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card-body {
@@ -3110,24 +3109,16 @@ h4,
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-title {
     display: block;
     margin: 0;
-    font-size: 1.04rem;
+    font-size: 1.1rem;
     font-weight: 700;
     line-height: 1.22;
   }
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-compact-meta {
     display: block;
-    margin: 2px 0 0;
+    margin: 3px 0 0;
     color: var(--mobile-text-muted);
-    font-size: 0.88rem;
-  }
-
-  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .status-pill {
-    justify-self: end;
-    white-space: nowrap;
-    padding: 6px 10px;
-    border-radius: 10px;
-    font-size: 0.82rem;
+    font-size: 0.92rem;
   }
 
   .app-shell.variant-client.mobile-ui-new .task-row-header {
