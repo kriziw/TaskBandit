@@ -58,6 +58,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
@@ -3590,21 +3591,15 @@ private fun DashboardScreen(
                     ) {
                         Row(
                             modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
                             Image(
-                                painter = painterResource(R.drawable.ic_taskbandit_mark),
+                                painter = painterResource(R.drawable.taskbandit_logo),
                                 contentDescription = stringResource(R.string.brand_mark_description),
-                                modifier = Modifier.size(42.dp)
-                            )
-                            Text(
-                                text = "TaskBandit",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold,
-                                color = MaterialTheme.colorScheme.onBackground,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
+                                modifier = Modifier
+                                    .widthIn(max = 170.dp)
+                                    .heightIn(max = 44.dp)
                             )
                         }
                         Surface(
@@ -3654,9 +3649,13 @@ private fun DashboardScreen(
                     onClick = { activeTab = MobileDashboardTab.CREATE },
                     shape = CircleShape,
                     contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(76.dp)
+                    modifier = Modifier.size(60.dp)
                 ) {
-                    Text(text = "+", style = MaterialTheme.typography.headlineLarge)
+                    Icon(
+                        imageVector = Icons.Rounded.Add,
+                        contentDescription = stringResource(R.string.mobile_create_action),
+                        modifier = Modifier.size(28.dp)
+                    )
                 }
             }
         },
@@ -3775,7 +3774,7 @@ private fun DashboardScreen(
                 LazyColumn(
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = if (isTablet) 28.dp else 20.dp, vertical = 16.dp)
+                        .padding(horizontal = if (isTablet) 28.dp else if (isNewMobileUi) 6.dp else 20.dp, vertical = 16.dp)
                         .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -4570,7 +4569,7 @@ private fun MobileTabButton(
             if (showLabel) {
                 Text(
                     text = label,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 0.88f),
+                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.04f),
                     color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
@@ -5798,26 +5797,26 @@ private fun ChoreCard(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(min = 108.dp)
-                    .padding(horizontal = 18.dp, vertical = 16.dp),
-                horizontalArrangement = Arrangement.spacedBy(16.dp),
+                    .heightIn(min = 92.dp)
+                    .padding(horizontal = 8.dp, vertical = 10.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Surface(
-                    modifier = Modifier.size(66.dp),
-                    shape = RoundedCornerShape(15.dp),
+                    modifier = Modifier.size(46.dp),
+                    shape = RoundedCornerShape(11.dp),
                     color = accentContainerColor.copy(alpha = 0.58f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Text(
                             text = choreIcon,
-                            style = MaterialTheme.typography.titleMedium
+                            style = MaterialTheme.typography.titleLarge
                         )
                     }
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                    verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
                         text = typeTitle,
@@ -5836,12 +5835,12 @@ private fun ChoreCard(
                     )
                 }
                 Surface(
-                    modifier = Modifier.widthIn(min = 78.dp, max = 106.dp).heightIn(min = 40.dp),
-                    shape = RoundedCornerShape(14.dp),
+                    modifier = Modifier.widthIn(min = 64.dp, max = 88.dp).heightIn(min = 30.dp),
+                    shape = RoundedCornerShape(10.dp),
                     color = mockStatusContainer
                 ) {
                     Box(
-                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp),
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(

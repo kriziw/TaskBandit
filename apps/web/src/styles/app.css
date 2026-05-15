@@ -2524,7 +2524,7 @@ h4,
     --mobile-neutral-text: rgba(36, 48, 67, 0.86);
     max-width: 430px;
     min-height: 100vh;
-    padding: 12px 20px calc(140px + var(--safe-area-bottom));
+    padding: 10px 8px calc(132px + var(--safe-area-bottom));
     background:
       radial-gradient(circle at 18% -8%, rgba(115, 201, 244, 0.28), transparent 34%),
       radial-gradient(circle at 92% 8%, rgba(255, 201, 74, 0.22), transparent 32%),
@@ -2573,22 +2573,18 @@ h4,
   .app-shell.variant-client.mobile-ui-new .mobile-new-toolbar .toolbar-brand {
     min-width: 0;
     padding: 0;
-    gap: 8px;
+    gap: 0;
     background: transparent;
     border: 0;
     box-shadow: none;
   }
 
-  .app-shell.variant-client.mobile-ui-new .mobile-new-toolbar .toolbar-brand-mascot {
-    width: 46px;
-    height: 46px;
-  }
-
-  .app-shell.variant-client.mobile-ui-new .mobile-new-toolbar .toolbar-brand strong {
+  .app-shell.variant-client.mobile-ui-new .mobile-new-toolbar-logo {
+    width: 156px;
+    height: 42px;
+    object-fit: contain;
+    object-position: left center;
     display: block;
-    font-size: 1.18rem;
-    line-height: 1;
-    letter-spacing: 0.01em;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-new-icon-button,
@@ -2728,11 +2724,11 @@ h4,
   .app-shell.variant-client.mobile-ui-new .task-row,
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card {
     display: grid;
-    grid-template-columns: 52px minmax(0, 1fr) auto;
-    gap: 12px;
+    grid-template-columns: 44px minmax(0, 1fr) auto;
+    gap: 8px;
     align-items: center;
-    min-height: 84px;
-    padding: 12px 14px;
+    min-height: 78px;
+    padding: 8px 8px;
     border-radius: 12px;
     background: var(--mobile-surface);
     border: 1px solid var(--mobile-border);
@@ -2741,15 +2737,15 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card-icon,
   .app-shell.variant-client.mobile-ui-new .task-row-title-icon {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
     margin: 0;
     display: grid;
     place-items: center;
     border-radius: 12px;
     background: linear-gradient(135deg, rgba(115, 201, 244, 0.24), rgba(255, 201, 74, 0.20));
     color: var(--mobile-accent-strong);
-    font-size: 1.25rem;
+    font-size: 1.32rem;
   }
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card-body {
@@ -2785,19 +2781,20 @@ h4,
   .app-shell.variant-client.mobile-ui-new .task-row .status-pill {
     justify-self: end;
     align-self: center;
-    min-width: 66px;
-    max-width: 92px;
-    min-height: 32px;
+    min-width: 62px;
+    max-width: 88px;
+    min-height: 30px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    padding: 6px 10px;
+    padding: 5px 8px;
     border-radius: 10px;
     border: 0;
     white-space: nowrap;
     font-size: 0.72rem;
     font-weight: 850;
     text-transform: none;
+    margin-right: 0;
   }
 
   .app-shell.variant-client.mobile-ui-new .mock-status-done {
@@ -3043,7 +3040,7 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .mobile-bottom-nav-label {
     display: block;
-    font-size: 0.74rem;
+    font-size: 0.82rem;
     font-weight: 780;
     opacity: 0.76;
   }
@@ -3057,13 +3054,16 @@ h4,
     position: fixed;
     right: max(28px, calc((100vw - 430px) / 2 + 28px));
     bottom: calc(78px + var(--safe-area-bottom));
-    width: 62px;
-    height: 62px;
+    width: 54px;
+    height: 54px;
     border-radius: 999px;
     border: 0;
     color: var(--cream);
-    font-size: 2.1rem;
+    font-size: 1.7rem;
     line-height: 1;
+    display: grid;
+    place-items: center;
+    padding: 0;
     background: linear-gradient(135deg, var(--ink), rgba(36, 48, 67, 0.88));
     box-shadow: 0 18px 34px rgba(36, 48, 67, 0.28);
     z-index: 64;
@@ -3187,7 +3187,7 @@ h4,
 
 @media (max-width: 1080px) and (max-width: 420px) {
   .app-shell.variant-client.mobile-ui-new {
-    padding-inline: 12px;
+    padding-inline: 6px;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card {
