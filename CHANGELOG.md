@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.58.0](https://github.com/kriziw/TaskBandit/compare/v0.57.0...v0.58.0) (2026-05-15)
+
+
+### Features
+
+* **mobile:** refine mock-style chores home UI ([#405](https://github.com/kriziw/TaskBandit/issues/405)) ([c698ba2](https://github.com/kriziw/TaskBandit/commit/c698ba23dc7f7e16fe931500ad84891a22fdad35))
+
 ## [0.57.0](https://github.com/kriziw/TaskBandit/compare/v0.56.0...v0.57.0) (2026-05-15)
 
 
