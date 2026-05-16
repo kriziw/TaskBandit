@@ -218,9 +218,9 @@
     <string name="mobile_settings_theme">Theme</string>
     <string name="mobile_settings_language">Language</string>
     <string name="mobile_settings_ui_mode">Mobile UI mode</string>
-    <string name="mobile_ui_mode_classic">Classic</string>
-    <string name="mobile_ui_mode_new">New</string>
-    <string name="mobile_settings_ui_mode_hint">Temporary rollout toggle: switch to New to use the mock-style mobile interface.</string>
+    <string name="mobile_ui_mode_stable">Stable</string>
+    <string name="mobile_ui_mode_beta">Beta</string>
+    <string name="mobile_settings_ui_mode_hint">Temporary rollout toggle: switch to Beta to use the mock-style mobile interface.</string>
     <string name="mobile_theme_system">System</string>
     <string name="mobile_theme_light">Light</string>
     <string name="mobile_theme_dark">Dark</string>
@@ -241,6 +241,8 @@
     <string name="mobile_device_push_token_needed">Waiting for Firebase token registration</string>
     <string name="mobile_device_push_disabled">Registered, but notifications are disabled for this device</string>
     <string name="mobile_device_push_readiness_hint">Admins should see this device as push-ready in System status and Mobile Push Devices.</string>
+    <string name="mobile_device_show_details">Show details</string>
+    <string name="mobile_device_hide_details">Hide details</string>
     <string name="mobile_settings_installation_id">Installation ID</string>
     <string name="mobile_settings_provider">Provider</string>
     <string name="mobile_settings_device_name">Device name</string>
@@ -432,6 +434,7 @@
     <string name="mobile_queue_synced">Synced %1$d queued chore(s).</string>
     <string name="mobile_leaderboard">Leaderboard</string>
     <string name="mobile_leaderboard_hint">Track household points, streak momentum, and who is leading this week.</string>
+    <string name="mobile_leaderboard_cheer">Mascot says keep the streak alive. Top three earn the trophy shine.</string>
     <string name="mobile_leaderboard_empty">No leaderboard entries yet. Complete chores to start the race.</string>
     <string name="mobile_points_value">%1$d points</string>
     <string name="mobile_streak_value">%1$d streak</string>

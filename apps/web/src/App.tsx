@@ -1278,6 +1278,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [mobileDueEditorVariantId, setMobileDueEditorVariantId] = useState<string>("");
   const [mobileCardMenuInstanceId, setMobileCardMenuInstanceId] = useState<string | null>(null);
   const [mobileChoreDialogInstanceId, setMobileChoreDialogInstanceId] = useState<string | null>(null);
+  const [expandedDeviceDetailsById, setExpandedDeviceDetailsById] = useState<Record<string, boolean>>({});
   const [isQuickLogComposerOpen, setIsQuickLogComposerOpen] = useState(false);
   const [quickLogQuery, setQuickLogQuery] = useState("");
   const [quickLogNote, setQuickLogNote] = useState("");
@@ -6888,27 +6889,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 {showNewClientMobileShell ? (
                   <>
                     {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
-                      <article className="mobile-quick-log-card">
-                        <div className="mobile-quick-log-card-icon" aria-hidden="true">
+                      <button
+                        className="mobile-quick-log-card mobile-quick-log-card-button"
+                        type="button"
+                        onClick={() => {
+                          resetQuickLogComposer();
+                          setIsQuickLogComposerOpen(true);
+                        }}
+                      >
+                        <span className="mobile-quick-log-card-icon" aria-hidden="true">
                           &#9889;
-                        </div>
-                        <div className="mobile-quick-log-card-copy">
+                        </span>
+                        <span className="mobile-quick-log-card-copy">
                           <h4>Quick log</h4>
-                        </div>
-                        <button
-                          className="primary-button mobile-quick-log-card-cta mobile-quick-log-plus-button"
-                          type="button"
-                          onClick={() => {
-                            resetQuickLogComposer();
-                            setIsQuickLogComposerOpen(true);
-                          }}
-                        >
-                          <span>Quick log</span>
-                          <span className="mobile-quick-log-plus-sign" aria-hidden="true">
-                            +
-                          </span>
-                        </button>
-                      </article>
+                        </span>
+                      </button>
                     ) : null}
                   </>
                 ) : (
@@ -7250,11 +7245,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
               </div>
+              {showNewClientMobileShell ? (
+                <div className="mock-mobile-leaderboard-cheer">
+                  <img src="/brand/mascot-celebration.png" alt="" aria-hidden="true" />
+                  <p>{t("mobile.leaderboard_cheer")}</p>
+                </div>
+              ) : null}
               <div className={`stack-list ${showNewClientMobileShell ? "mock-mobile-leaderboard-list" : ""}`}>
                 {payload.dashboard.leaderboard.map((member, index) => (
                   <div className={`leader-row ${showNewClientMobileShell ? "mock-mobile-leader-row" : ""}`} key={member.id}>
                     <div>
-                      <strong>{index + 1}. {member.displayName}</strong>
+                      <strong>
+                        <span className={`leader-rank-badge rank-${index + 1}`}>
+                          {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`}
+                        </span>{" "}
+                        {member.displayName}
+                      </strong>
                       <p>
                         {t(`role.${member.role}`)} - {member.currentStreak} {t("user.streak")}
                       </p>
@@ -7802,23 +7808,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             {workspaceVariant === "client" ? (
               <article className="panel page-panel page-settings mobile-ui-mode-panel">
                 <div className="section-heading">
-                  <h2>Mobile UI mode</h2>
-                  <span className="section-kicker">Device only</span>
+                  <h2>{t("settings.mobile_ui_mode_title")}</h2>
+                  <span className="section-kicker">{t("settings.mobile_ui_mode_device_only")}</span>
                 </div>
-                <p className="inline-message">
-                  This is a temporary rollout toggle and will be removed after validation.
-                </p>
+                <p className="inline-message">{t("settings.mobile_ui_mode_hint")}</p>
                 <div className="settings-list">
                   <label>
-                    <span>Mobile UI mode</span>
+                    <span>{t("settings.mobile_ui_mode_title")}</span>
                     <select
                       value={mobileUiMode}
                       onChange={(event) =>
                         handleMobileUiModeChange(event.target.value === "new" ? "new" : "classic")
                       }
                     >
-                      <option value="classic">Classic</option>
-                      <option value="new">New</option>
+                      <option value="classic">{t("settings.mobile_ui_mode_stable")}</option>
+                      <option value="new">{t("settings.mobile_ui_mode_beta")}</option>
                     </select>
                   </label>
                 </div>
@@ -7944,25 +7948,43 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           </span>
                         </div>
                         <p>
-                          {t("settings.notification_device_provider")}:{" "}
-                          {device.provider === "fcm"
-                            ? t("settings.notification_device_provider_fcm")
-                            : device.provider === "web_push"
-                              ? t("settings.notification_device_provider_web_push")
-                              : t("settings.notification_device_provider_generic")}
-                        </p>
-                        <p>
                           {t("settings.notification_device_last_seen")}: {formatDate(device.lastSeenAt)}
                         </p>
-                        {device.appVersion ? (
-                          <p>
-                            {t("settings.notification_device_app_version")}: {device.appVersion}
-                          </p>
-                        ) : null}
-                        {device.locale ? (
-                          <p>
-                            {t("settings.notification_device_locale")}: {device.locale}
-                          </p>
+                        <button
+                          className="ghost-button"
+                          type="button"
+                          onClick={() =>
+                            setExpandedDeviceDetailsById((current) => ({
+                              ...current,
+                              [device.id]: !current[device.id]
+                            }))
+                          }
+                        >
+                          {expandedDeviceDetailsById[device.id]
+                            ? t("settings.notification_device_hide_details")
+                            : t("settings.notification_device_show_details")}
+                        </button>
+                        {expandedDeviceDetailsById[device.id] ? (
+                          <div className="notification-device-details">
+                            <p>
+                              {t("settings.notification_device_provider")}:{" "}
+                              {device.provider === "fcm"
+                                ? t("settings.notification_device_provider_fcm")
+                                : device.provider === "web_push"
+                                  ? t("settings.notification_device_provider_web_push")
+                                  : t("settings.notification_device_provider_generic")}
+                            </p>
+                            {device.appVersion ? (
+                              <p>
+                                {t("settings.notification_device_app_version")}: {device.appVersion}
+                              </p>
+                            ) : null}
+                            {device.locale ? (
+                              <p>
+                                {t("settings.notification_device_locale")}: {device.locale}
+                              </p>
+                            ) : null}
+                          </div>
                         ) : null}
                         <div className="button-row">
                           <button
@@ -10079,15 +10101,19 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         </div>
       ) : null}
       {showNewClientMobileShell && mobileChoreDialogInstance ? (
-        <div className="mobile-composer-backdrop" role="presentation">
+        <div
+          className="mobile-composer-backdrop mobile-chore-actions-backdrop"
+          role="presentation"
+          onClick={() => setMobileChoreDialogInstanceId(null)}
+        >
           <div
-            className="mobile-composer-sheet"
+            className="mobile-composer-sheet mobile-chore-actions-sheet"
             role="dialog"
             aria-modal="true"
             aria-labelledby="mobile-chore-actions-title"
             onClick={(event) => event.stopPropagation()}
           >
-            <article className="panel mobile-composer-panel">
+            <article className="panel mobile-composer-panel mobile-chore-actions-panel">
               <div className="section-heading mobile-composer-heading">
                 <div>
                   <h2 id="mobile-chore-actions-title">Chore actions</h2>
@@ -10096,15 +10122,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               {mobileChoreDialogIsMine
                 ? renderMyChoreCard(mobileChoreDialogInstance, { forceLegacy: true })
                 : renderHouseholdChoreCard(mobileChoreDialogInstance, { forceLegacy: true })}
-              <div className="button-row schedule-form-actions">
-                <button
-                  className="ghost-button"
-                  type="button"
-                  onClick={() => setMobileChoreDialogInstanceId(null)}
-                >
-                  {t("common.cancel")}
-                </button>
-              </div>
             </article>
           </div>
         </div>

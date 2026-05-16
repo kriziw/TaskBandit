@@ -65,6 +65,7 @@ import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
@@ -3640,7 +3641,7 @@ private fun DashboardScreen(
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp),
+                    .padding(horizontal = 15.dp),
                 shape = RoundedCornerShape(20.dp),
                 color = MaterialTheme.colorScheme.surface,
                 border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
@@ -3649,7 +3650,7 @@ private fun DashboardScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(14.dp),
+                        .padding(10.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
                     Text(
@@ -3690,16 +3691,10 @@ private fun DashboardScreen(
                             },
                             onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
                             onEditChoreDueAt = onEditChoreDueAt,
-                            editableVariants = activeNewUiChoreDialog.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty()
+                            editableVariants = activeNewUiChoreDialog.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
+                            showSectionBadge = false,
+                            showTitleIcon = false
                         )
-                    }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.End
-                    ) {
-                        TextButton(onClick = { activeNewUiChoreDialogId = null }) {
-                            Text(stringResource(R.string.mobile_request_takeover_cancel))
-                        }
                     }
                 }
             }
@@ -3726,7 +3721,7 @@ private fun DashboardScreen(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 20.dp, vertical = 10.dp),
+                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
@@ -4267,6 +4262,22 @@ private fun DashboardScreen(
                                     .padding(18.dp),
                                 verticalArrangement = Arrangement.spacedBy(12.dp)
                             ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = painterResource(R.drawable.ic_taskbandit_mascot_success),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(38.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_leaderboard_cheer),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
                                 leaderboardEntries.forEachIndexed { index, member ->
                                     LeaderboardEntryRow(
                                         rank = index + 1,
@@ -4612,7 +4623,7 @@ private fun DashboardScreen(
                             SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
                                 SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
                             }
-                            SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
+                            SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
                                 SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
                             }
                         }
@@ -4620,7 +4631,7 @@ private fun DashboardScreen(
                     item {
                         SettingsSectionCard(
                             modifier = Modifier.fillMaxWidth(),
-                            icon = Icons.Rounded.DarkMode,
+                            icon = Icons.AutoMirrored.Rounded.Logout,
                             title = stringResource(R.string.mobile_logout)
                         ) {
                             SettingsLogoutContent(onLogout = onLogout)
@@ -4657,12 +4668,12 @@ private fun DashboardScreen(
                         }
                     }
                     item {
-                        SettingsSectionCard(icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_settings_actions)) {
+                        SettingsSectionCard(icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
                             SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
                         }
                     }
                     item {
-                        SettingsSectionCard(icon = Icons.Rounded.DarkMode, title = stringResource(R.string.mobile_logout)) {
+                        SettingsSectionCard(icon = Icons.AutoMirrored.Rounded.Logout, title = stringResource(R.string.mobile_logout)) {
                             SettingsLogoutContent(onLogout = onLogout)
                         }
                     }
@@ -4921,6 +4932,12 @@ private fun LeaderboardEntryRow(
     entry: MobileLeaderboardEntry
 ) {
     val isNewMobileUi = LocalIsNewMobileUi.current
+    val trophyTint = when (rank) {
+        1 -> Color(0xFFD4AF37)
+        2 -> Color(0xFFC0C0C0)
+        3 -> Color(0xFFCD7F32)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
     Surface(
         shape = RoundedCornerShape(if (isNewMobileUi) 14.dp else 16.dp),
         color = if (isNewMobileUi) {
@@ -4937,17 +4954,29 @@ private fun LeaderboardEntryRow(
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text(
-                    text = "$rank. ${entry.displayName}",
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.Bold
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = trophyTint,
+                    modifier = Modifier.size(20.dp)
                 )
-                Text(
-                    text = "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
-                    style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = "$rank. ${entry.displayName}",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold
+                    )
+                    Text(
+                        text = "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
             }
             Surface(
                 shape = RoundedCornerShape(999.dp),
@@ -5761,7 +5790,9 @@ private fun ChoreCard(
     chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?, activeDueAtAction: String?,
     outgoingTakeoverRequest: MobileTakeoverRequest?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
-    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onEditChoreDueAt: (String, String, String, String?) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onEditChoreDueAt: (String, String, String, String?) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>,
+    showSectionBadge: Boolean = true,
+    showTitleIcon: Boolean = true
 ) {
     val context = LocalContext.current
     val zoneId = remember { ZoneId.systemDefault() }
@@ -6175,16 +6206,18 @@ private fun ChoreCard(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.Top
             ) {
-                Surface(
-                    shape = CircleShape,
-                    color = accentContainerColor
-                ) {
-                    Icon(
-                        imageVector = sectionIcon,
-                        contentDescription = null,
-                        tint = accentContentColor,
-                        modifier = Modifier.padding(6.dp).size(14.dp)
-                    )
+                if (showSectionBadge) {
+                    Surface(
+                        shape = CircleShape,
+                        color = accentContainerColor
+                    ) {
+                        Icon(
+                            imageVector = sectionIcon,
+                            contentDescription = null,
+                            tint = accentContentColor,
+                            modifier = Modifier.padding(6.dp).size(14.dp)
+                        )
+                    }
                 }
                 Column(
                     modifier = Modifier.weight(1f),
@@ -6196,7 +6229,7 @@ private fun ChoreCard(
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
-                            text = "$choreIcon $typeTitle",
+                            text = if (showTitleIcon) "$choreIcon $typeTitle" else typeTitle,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 2,
@@ -7374,12 +7407,12 @@ private fun SettingsAppearanceContent(
     Text(text = stringResource(R.string.mobile_settings_ui_mode), style = MaterialTheme.typography.titleMedium)
     MobileChoiceRow(options = listOf(
         MobileChoiceOption(
-            label = stringResource(R.string.mobile_ui_mode_classic),
+            label = stringResource(R.string.mobile_ui_mode_stable),
             selected = mobileUiMode == MobileUiMode.CLASSIC,
             onClick = { onMobileUiModeChange(MobileUiMode.CLASSIC) }
         ),
         MobileChoiceOption(
-            label = stringResource(R.string.mobile_ui_mode_new),
+            label = stringResource(R.string.mobile_ui_mode_beta),
             selected = mobileUiMode == MobileUiMode.NEW,
             onClick = { onMobileUiModeChange(MobileUiMode.NEW) }
         )
@@ -7402,6 +7435,7 @@ private fun SettingsDeviceContent(
     onRequestNotificationPermission: () -> Unit,
     onRemoveNotificationDevice: (String) -> Unit
 ) {
+    var showTechnicalDetails by rememberSaveable(currentDevice?.id) { mutableStateOf(false) }
     val pushReadinessText = when {
         currentDevice == null -> stringResource(R.string.mobile_device_push_missing)
         !notificationsPermissionGranted -> stringResource(R.string.mobile_device_push_permission_needed)
@@ -7414,9 +7448,33 @@ private fun SettingsDeviceContent(
     SettingsValueLine(label = stringResource(R.string.mobile_settings_notifications_permission), value = stringResource(if (notificationsPermissionGranted) R.string.mobile_settings_notifications_allowed else R.string.mobile_settings_notifications_needed))
     SettingsValueLine(label = stringResource(R.string.mobile_settings_push_readiness), value = pushReadinessText)
     Text(text = stringResource(R.string.mobile_device_push_readiness_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    SettingsValueLine(label = stringResource(R.string.mobile_settings_installation_id), value = installationId)
-    currentDevice?.let { device ->
-        SettingsValueLine(label = stringResource(R.string.mobile_settings_last_seen), value = formatApiTimestamp(device.lastSeenAt))
+    TextButton(onClick = { showTechnicalDetails = !showTechnicalDetails }) {
+        Text(
+            stringResource(
+                if (showTechnicalDetails) {
+                    R.string.mobile_device_hide_details
+                } else {
+                    R.string.mobile_device_show_details
+                }
+            )
+        )
+    }
+    if (showTechnicalDetails) {
+        SettingsValueLine(label = stringResource(R.string.mobile_settings_installation_id), value = installationId)
+        currentDevice?.let { device ->
+            SettingsValueLine(label = stringResource(R.string.mobile_settings_provider), value = device.provider)
+            SettingsValueLine(
+                label = stringResource(R.string.mobile_settings_device_name),
+                value = device.deviceName ?: stringResource(R.string.mobile_settings_unknown)
+            )
+            device.appVersion?.let {
+                SettingsValueLine(label = stringResource(R.string.mobile_settings_app_version), value = it)
+            }
+            device.locale?.let {
+                SettingsValueLine(label = stringResource(R.string.mobile_settings_locale), value = it)
+            }
+            SettingsValueLine(label = stringResource(R.string.mobile_settings_last_seen), value = formatApiTimestamp(device.lastSeenAt))
+        }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_device_refresh)) }

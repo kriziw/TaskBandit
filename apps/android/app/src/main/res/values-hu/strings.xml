@@ -169,7 +169,11 @@
     <string name="mobile_settings_hint">Itt találod az alkalmazás beállításait, az eszközregisztrációt és a buildadatokat.</string>
     <string name="mobile_settings_appearance">Megjelenés</string>
     <string name="mobile_settings_theme">Téma</string>
-    <string name="mobile_settings_language">Nyelv</string>
+    
+    <string name="mobile_settings_ui_mode">Mobil UI mod</string>
+    <string name="mobile_ui_mode_stable">Stable</string>
+    <string name="mobile_ui_mode_beta">Beta</string>
+    <string name="mobile_settings_ui_mode_hint">Ideiglenes bevezeto kapcsolo: valts Betara a mock mobil felulethez.</string>
     <string name="mobile_theme_system">Rendszer</string>
     <string name="mobile_theme_light">Világos</string>
     <string name="mobile_theme_dark">Sötét</string>
@@ -189,7 +193,9 @@
     <string name="mobile_device_push_permission_needed">Engedélyezd az értesítéseket, hogy az Android megjelenítse a push üzeneteket</string>
     <string name="mobile_device_push_token_needed">Firebase token regisztrációra vár</string>
     <string name="mobile_device_push_disabled">Regisztrálva van, de az értesítések ki vannak kapcsolva ezen az eszközön</string>
-    <string name="mobile_device_push_readiness_hint">Az adminnak ezt az eszközt push-készként kell látnia a System status és Mobile Push Devices nézetben.</string>
+    
+    <string name="mobile_device_show_details">Reszletek mutatasa</string>
+    <string name="mobile_device_hide_details">Reszletek elrejtese</string>
     <string name="mobile_settings_installation_id">Telepítési azonosító</string>
     <string name="mobile_settings_provider">Szolgáltató</string>
     <string name="mobile_settings_device_name">Eszköz neve</string>
@@ -312,7 +318,8 @@
     <string name="mobile_syncing_queue">A sorba állított feladatok szinkronizálása folyamatban...</string>
     <string name="mobile_queue_synced">%1$d sorba állított feladat szinkronizálva lett.</string>
     <string name="mobile_leaderboard">Rangsor</string>
-    <string name="mobile_leaderboard_hint">Kövesd a pontokat, a szériákat és azt, ki vezet ezen a héten.</string>
+    
+    <string name="mobile_leaderboard_cheer">A mascot szurkol, a top 3 arany, ezust es bronz jelzest kap.</string>
     <string name="mobile_leaderboard_empty">Még nincs rangsor-bejegyzés. Fejezz be feladatokat, hogy elinduljon a verseny.</string>
     <string name="mobile_points_value">%1$d pont</string>
     <string name="mobile_streak_value">%1$d streak</string>
@@ -397,5 +404,6 @@
     <string name="mobile_due_at_updated">Határidő frissítve.</string>
     <string name="mobile_due_at_update_failed">A határidő frissítése nem sikerült.</string>
 </resources>
+
 
 
