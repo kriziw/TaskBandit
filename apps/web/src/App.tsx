@@ -6897,11 +6897,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           setIsQuickLogComposerOpen(true);
                         }}
                       >
-                        <span className="mobile-quick-log-card-icon" aria-hidden="true">
-                          &#9889;
-                        </span>
                         <span className="mobile-quick-log-card-copy">
                           <h4>Quick log</h4>
+                        </span>
+                        <span className="mobile-quick-log-card-chevron" aria-hidden="true">
+                          &#8250;
                         </span>
                       </button>
                     ) : null}

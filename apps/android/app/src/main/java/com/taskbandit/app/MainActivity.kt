@@ -70,6 +70,7 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.ChevronRight
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
@@ -3918,12 +3919,19 @@ private fun DashboardScreen(
                 if (canUseQuickLog) {
                     item {
                         Card(
+                            onClick = { showQuickLogDialog = true },
+                            enabled = activeQuickLogAction == null,
                             shape = RoundedCornerShape(if (isNewMobileUi) 18.dp else 18.dp),
                             colors = CardDefaults.cardColors(
                                 containerColor = if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
                                 } else {
-                                    MaterialTheme.colorScheme.surface.copy(alpha = 0.92f)
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
+                                },
+                                disabledContainerColor = if (isNewMobileUi) {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
+                                } else {
+                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.14f)
                                 }
                             ),
                             border = BorderStroke(
@@ -3936,76 +3944,24 @@ private fun DashboardScreen(
                             )
                         ) {
                             Row(
-                                modifier = Modifier.fillMaxWidth().heightIn(min = if (isNewMobileUi) 72.dp else 0.dp).padding(horizontal = if (isNewMobileUi) 10.dp else 14.dp, vertical = if (isNewMobileUi) 8.dp else 12.dp),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .heightIn(min = if (isNewMobileUi) 66.dp else 56.dp)
+                                    .padding(horizontal = if (isNewMobileUi) 14.dp else 12.dp, vertical = if (isNewMobileUi) 8.dp else 10.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                Surface(
-                                    modifier = if (isNewMobileUi) Modifier.size(38.dp) else Modifier,
-                                    shape = RoundedCornerShape(if (isNewMobileUi) 12.dp else 999.dp),
-                                    color = if (isNewMobileUi) {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    } else {
-                                        MaterialTheme.colorScheme.primaryContainer
-                                    }
-                                ) {
-                                    Icon(
-                                        imageVector = Icons.Rounded.AddCircle,
-                                        contentDescription = null,
-                                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
-                                        modifier = Modifier.padding(if (isNewMobileUi) 8.dp else 8.dp).size(if (isNewMobileUi) 22.dp else 16.dp)
-                                    )
-                                }
-                                Column(
-                                    modifier = Modifier.weight(1f),
-                                    verticalArrangement = Arrangement.spacedBy(2.dp)
-                                ) {
-                                    Text(
-                                        text = stringResource(R.string.mobile_quick_log_card_title),
-                                        style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleSmall,
-                                        fontWeight = FontWeight.SemiBold
-                                    )
-                                    if (!isNewMobileUi) {
-                                        Text(
-                                            text = stringResource(R.string.mobile_quick_log_card_body),
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
-                                    }
-                                }
-                                Row(
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    OutlinedButton(
-                                        onClick = { showQuickLogDialog = true },
-                                        enabled = activeQuickLogAction == null,
-                                        contentPadding = PaddingValues(horizontal = if (isNewMobileUi) 8.dp else 12.dp, vertical = if (isNewMobileUi) 3.dp else 6.dp)
-                                    ) {
-                                        Text(stringResource(R.string.mobile_quick_log_open))
-                                    }
-                                    Button(
-                                        onClick = { showQuickLogDialog = true },
-                                        enabled = activeQuickLogAction == null,
-                                        contentPadding = PaddingValues(0.dp),
-                                        shape = CircleShape,
-                                        modifier = Modifier.size(36.dp)
-                                    ) {
-                                        Icon(
-                                            imageVector = Icons.Rounded.Add,
-                                            contentDescription = stringResource(R.string.mobile_quick_log_open),
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                    }
-                                    if (!isNewMobileUi && isCreatorRole && canManageChores) {
-                                        OutlinedButton(
-                                            onClick = { openTab(MobileDashboardTab.CREATE) },
-                                            contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                                        ) {
-                                            Text(stringResource(R.string.mobile_tab_create))
-                                        }
-                                    }
-                                }
+                                Text(
+                                    text = stringResource(R.string.mobile_quick_log_card_title),
+                                    style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
+                                    fontWeight = FontWeight.SemiBold
+                                )
+                                Icon(
+                                    imageVector = Icons.Rounded.ChevronRight,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    modifier = Modifier.size(20.dp)
+                                )
                             }
                         }
                     }
@@ -4584,7 +4540,13 @@ private fun DashboardScreen(
             }
 
             if (activeTab == MobileDashboardTab.SETTINGS) {
-                item { SectionIntro(title = stringResource(R.string.mobile_settings_title), body = stringResource(R.string.mobile_settings_hint)) }
+                item {
+                    SectionIntro(
+                        title = stringResource(R.string.mobile_settings_title),
+                        body = stringResource(R.string.mobile_settings_hint),
+                        compact = true
+                    )
+                }
                 if (isTablet && !isNewMobileUi) {
                     item {
                         Row(
@@ -4639,7 +4601,7 @@ private fun DashboardScreen(
                     }
                 } else {
                     item {
-                        SettingsSectionCard(icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
                             SettingsAppearanceContent(
                                 themeMode = themeMode,
                                 onThemeModeChange = onThemeModeChange,
@@ -4651,29 +4613,29 @@ private fun DashboardScreen(
                         }
                     }
                     item {
-                        SettingsSectionCard(icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
                             SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
                         }
                     }
                     if (hostedSubscription.hostedMode && isCreatorRole) {
                         item {
-                            SettingsSectionCard(icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
+                            SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
                                 SettingsPlanContent(hostedSubscription = hostedSubscription)
                             }
                         }
                     }
                     item {
-                        SettingsSectionCard(icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
                             SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
                         }
                     }
                     item {
-                        SettingsSectionCard(icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
                             SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
                         }
                     }
                     item {
-                        SettingsSectionCard(icon = Icons.AutoMirrored.Rounded.Logout, title = stringResource(R.string.mobile_logout)) {
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.Logout, title = stringResource(R.string.mobile_logout)) {
                             SettingsLogoutContent(onLogout = onLogout)
                         }
                     }
@@ -4919,10 +4881,14 @@ private fun ChoreConnectionBanner(message: String) {
 }
 
 @Composable
-private fun SectionIntro(title: String, body: String) {
-    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        Text(text = title, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
-        Text(text = body, style = MaterialTheme.typography.bodyMedium)
+private fun SectionIntro(title: String, body: String, compact: Boolean = false) {
+    Column(verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
+        Text(
+            text = title,
+            style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(text = body, style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
     }
 }
 
@@ -6829,12 +6795,15 @@ private fun SettingsSectionCard(modifier: Modifier = Modifier, icon: ImageVector
         shape = RoundedCornerShape(if (isNewMobileUi) 16.dp else 24.dp),
         border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
     ) {
-        Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier.padding(horizontal = if (isNewMobileUi) 10.dp else 12.dp, vertical = if (isNewMobileUi) 9.dp else 10.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 8.dp else 10.dp)
+        ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = icon, contentDescription = null)
                 Text(
                     text = title,
-                    style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleSmall
                 )
             }
             content()
@@ -6845,8 +6814,8 @@ private fun SettingsSectionCard(modifier: Modifier = Modifier, icon: ImageVector
 @Composable
 private fun SettingsValueLine(label: String, value: String) {
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(text = label, style = MaterialTheme.typography.bodySmall)
-        Text(text = value, style = MaterialTheme.typography.bodyMedium)
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
+        Text(text = value, style = MaterialTheme.typography.bodySmall)
     }
 }
 

@@ -2628,14 +2628,14 @@ h4,
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card {
-    min-height: 84px;
+    min-height: 66px;
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr);
-    gap: 10px;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
     align-items: center;
-    padding: 10px 12px;
+    padding: 10px 14px;
     border-radius: 14px;
-    background: var(--mobile-surface);
+    background: var(--mobile-accent-soft);
     border: 1px solid var(--mobile-border);
     box-shadow: var(--mobile-card-shadow);
   }
@@ -2647,22 +2647,20 @@ h4,
     color: inherit;
   }
 
-  .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-icon {
-    width: 40px;
-    height: 40px;
-    display: grid;
-    place-items: center;
-    border-radius: 12px;
-    background: var(--mobile-accent-soft);
-    color: var(--mobile-accent-strong);
-    font-size: 1.12rem;
-  }
-
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-copy h4 {
     margin: 0;
-    font-size: 0.96rem;
+    font-size: 0.94rem;
     line-height: 1.12;
     color: var(--mobile-text);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-chevron {
+    display: inline-grid;
+    place-items: center;
+    color: var(--mobile-text-muted);
+    font-size: 1.18rem;
+    line-height: 1;
+    font-weight: 800;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-copy p {
@@ -2730,6 +2728,49 @@ h4,
     background: var(--mobile-surface);
     border: 1px solid var(--mobile-border);
     box-shadow: var(--mobile-card-shadow);
+    width: 100%;
+    justify-self: stretch;
+    box-sizing: border-box;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .dashboard-grid {
+    gap: 10px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings {
+    padding: 12px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .section-heading {
+    margin: 0 0 8px;
+    gap: 8px;
+    align-items: center;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .section-kicker {
+    font-size: 0.68rem;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings p,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings li,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings label {
+    font-size: 0.88rem;
+    line-height: 1.35;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .settings-list,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .stack-list {
+    gap: 8px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .settings-sections {
+    gap: 10px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .settings-section {
+    gap: 8px;
+    padding: 10px;
+    border-radius: 16px;
   }
 
   .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="chores"] .page-chores {
