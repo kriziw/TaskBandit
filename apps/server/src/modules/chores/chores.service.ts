@@ -6,6 +6,7 @@ import { SupportedLanguage } from "../../common/i18n/supported-languages";
 import { FeatureAccessService, PackageFeatureId } from "../../common/tenancy/feature-access.service";
 import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
 import { DashboardSyncService } from "../dashboard/dashboard-sync.service";
+import { AchievementsService } from "../achievements/achievements.service";
 import { PointsService } from "../gamification/points.service";
 import { HouseholdRepository } from "../household/household.repository";
 import { CompleteExternalChoreDto } from "./dto/complete-external-chore.dto";
@@ -30,7 +31,8 @@ export class ChoresService {
     private readonly featureAccessService: FeatureAccessService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly proofStorageService: ProofStorageService,
-    private readonly dashboardSyncService: DashboardSyncService
+    private readonly dashboardSyncService: DashboardSyncService,
+    private readonly achievementsService: AchievementsService
   ) {}
 
   async getTemplates(user: AuthenticatedUser, language: SupportedLanguage) {
@@ -544,6 +546,23 @@ export class ChoresService {
       "instance",
       instanceId
     );
+
+    if (!shouldRequireApproval) {
+      const beneficiaryId = instance.assigneeId ?? user.id;
+      const newlyUnlocked = await this.achievementsService.evaluateForUser({
+        userId: beneficiaryId,
+        householdId: user.householdId,
+        tenantId: user.tenantId,
+        choreCompleted: true,
+        difficulty: instance.difficulty as "easy" | "medium" | "hard",
+        choreGroupTitle: instance.groupTitle ?? null,
+        isPerfectDay: "completionMilestone" in submittedInstance && submittedInstance.completionMilestone?.type === "perfect_day"
+      });
+      if (newlyUnlocked.length > 0) {
+        return { ...submittedInstance, newlyUnlockedAchievements: newlyUnlocked };
+      }
+    }
+
     return submittedInstance;
   }
 
@@ -625,6 +644,23 @@ export class ChoresService {
       awardedPoints
     });
     this.publishSyncEvent(user, "instance.approved", "instance", instanceId);
+
+    const beneficiaryId = instance.assigneeId ?? null;
+    if (beneficiaryId) {
+      const newlyUnlocked = await this.achievementsService.evaluateForUser({
+        userId: beneficiaryId,
+        householdId: user.householdId,
+        tenantId: user.tenantId,
+        choreCompleted: true,
+        difficulty: instance.difficulty as "easy" | "medium" | "hard",
+        choreGroupTitle: instance.groupTitle ?? null,
+        isPerfectDay: "completionMilestone" in reviewedInstance && reviewedInstance.completionMilestone?.type === "perfect_day"
+      });
+      if (newlyUnlocked.length > 0) {
+        return { ...reviewedInstance, newlyUnlockedAchievements: newlyUnlocked };
+      }
+    }
+
     return reviewedInstance;
   }
 

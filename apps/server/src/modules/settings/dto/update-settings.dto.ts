@@ -29,6 +29,11 @@ export class UpdateSettingsDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsBoolean()
+  enableAchievements?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsInt()
   @Min(-1000)
   @Max(1000)

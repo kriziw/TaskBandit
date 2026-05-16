@@ -1,4 +1,6 @@
 import type {
+  Achievement,
+  AchievementHouseholdEntry,
   AdminSystemStatus,
   AuditLogEntry,
   ApiStatusResponse,
@@ -227,6 +229,15 @@ export const taskBanditApi = {
       token,
       language
     });
+  },
+  getAchievements(token: string, language: AppLanguage) {
+    return request<Achievement[]>("/api/achievements", { token, language });
+  },
+  getHouseholdAchievements(token: string, language: AppLanguage) {
+    return request<AchievementHouseholdEntry[]>("/api/achievements/household", { token, language });
+  },
+  resetAchievements(token: string, language: AppLanguage) {
+    return request("/api/achievements/reset", { method: "DELETE", token, language });
   },
   getNotifications(token: string, language: AppLanguage) {
     return request<NotificationEntry[]>("/api/dashboard/notifications", {
