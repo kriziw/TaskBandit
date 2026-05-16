@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.62.0](https://github.com/kriziw/TaskBandit/compare/v0.61.4...v0.62.0) (2026-05-16)
+
+
+### Features
+
+* add lightweight achievement support ([#273](https://github.com/kriziw/TaskBandit/issues/273)) ([#425](https://github.com/kriziw/TaskBandit/issues/425)) ([3d553ed](https://github.com/kriziw/TaskBandit/commit/3d553ed1a3773976703a854327492b5f8799c3ce))
+
+
+### Bug Fixes
+
+* **mobile:** give chore icon containers a visible tinted background ([#423](https://github.com/kriziw/TaskBandit/issues/423)) ([46742e8](https://github.com/kriziw/TaskBandit/commit/46742e8d20b6c5f2a504a1ee1a77bc841144189b))
+
 ## [0.61.4](https://github.com/kriziw/TaskBandit/compare/v0.61.3...v0.61.4) (2026-05-16)
 
 
