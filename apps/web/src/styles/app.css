@@ -1693,6 +1693,13 @@ h4,
   margin: 2px 0 0;
 }
 
+.leader-rank-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6rem;
+}
+
 .task-row-header {
   justify-content: space-between;
   gap: 10px;
@@ -2548,7 +2555,7 @@ h4,
     grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     gap: 10px;
-    padding: 8px 0 18px;
+    padding: 8px 0 10px;
     background: transparent;
     border: 0;
     box-shadow: none;
@@ -2623,14 +2630,21 @@ h4,
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card {
     min-height: 84px;
     display: grid;
-    grid-template-columns: 40px minmax(0, 1fr) auto;
-    gap: 8px;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
     align-items: center;
-    padding: 10px 10px;
+    padding: 10px 12px;
     border-radius: 14px;
     background: var(--mobile-surface);
     border: 1px solid var(--mobile-border);
     box-shadow: var(--mobile-card-shadow);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-button {
+    width: 100%;
+    text-align: left;
+    cursor: pointer;
+    color: inherit;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-icon {
@@ -2653,6 +2667,30 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-copy p {
     display: none;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-leaderboard-cheer {
+    display: grid;
+    grid-template-columns: 40px minmax(0, 1fr);
+    gap: 10px;
+    align-items: center;
+    margin: 0 0 10px;
+    padding: 10px 12px;
+    border-radius: 14px;
+    background: var(--mobile-accent-soft);
+    border: 1px solid var(--mobile-border);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-leaderboard-cheer img {
+    width: 36px;
+    height: 36px;
+    object-fit: contain;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-leaderboard-cheer p {
+    margin: 0;
+    font-size: 0.88rem;
+    color: var(--mobile-text);
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-cta {
@@ -2865,10 +2903,18 @@ h4,
     -webkit-backdrop-filter: blur(12px);
   }
 
+  .app-shell.variant-client.mobile-ui-new .mobile-chore-actions-backdrop {
+    padding: 15px;
+  }
+
   .app-shell.variant-client.mobile-ui-new .mobile-composer-sheet {
     width: min(560px, 78vw);
     height: auto;
     max-height: min(88vh, 820px);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-chore-actions-sheet {
+    width: min(560px, calc(100vw - 30px));
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-composer-panel {
@@ -2879,6 +2925,14 @@ h4,
     background: var(--mobile-surface-strong);
     border: 1px solid var(--mobile-border);
     box-shadow: 0 30px 80px rgba(20, 24, 32, 0.28);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-chore-actions-panel {
+    padding: 10px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-chore-actions-panel .task-row-title-icon {
+    display: none;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-heading {
@@ -3229,22 +3283,9 @@ h4,
     padding-inline: 6px;
   }
 
-  .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card {
-    grid-template-columns: 44px minmax(0, 1fr);
-    gap: 10px;
-    padding: 10px 12px;
-  }
-
   .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-icon {
     width: 40px;
     height: 40px;
-  }
-
-  .app-shell.variant-client.mobile-ui-new .mobile-quick-log-card-cta {
-    grid-column: 1 / -1;
-    justify-self: end;
-    min-width: 96px;
-    min-height: 38px;
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-composer-sheet {
