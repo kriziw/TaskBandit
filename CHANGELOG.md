@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.61.4](https://github.com/kriziw/TaskBandit/compare/v0.61.3...v0.61.4) (2026-05-16)
+
+
+### Bug Fixes
+
+* **mobile:** make quick log card a single clickable row on legacy mobile UI ([#421](https://github.com/kriziw/TaskBandit/issues/421)) ([9f55071](https://github.com/kriziw/TaskBandit/commit/9f55071ba790181020c8cb989331217237fe5e8b))
+
 ## [0.61.3](https://github.com/kriziw/TaskBandit/compare/v0.61.2...v0.61.3) (2026-05-16)
 
 
