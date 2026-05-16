@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.61.3](https://github.com/kriziw/TaskBandit/compare/v0.61.2...v0.61.3) (2026-05-16)
+
+
+### Bug Fixes
+
+* **mobile:** streamline quick log and compact settings cards ([#419](https://github.com/kriziw/TaskBandit/issues/419)) ([134edd8](https://github.com/kriziw/TaskBandit/commit/134edd8d28bead3a188d424d24dee07d211e9745))
+
 ## [0.61.2](https://github.com/kriziw/TaskBandit/compare/v0.61.1...v0.61.2) (2026-05-16)
 
 
