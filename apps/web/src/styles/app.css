@@ -1726,6 +1726,22 @@ h4,
   width: 1.35em;
 }
 
+.mock-mobile-card-icon {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: linear-gradient(135deg, rgba(115, 201, 244, 0.44), rgba(255, 201, 74, 0.36));
+}
+
+.mock-mobile-card-icon img {
+  width: 94%;
+  height: 94%;
+  object-fit: contain;
+}
+
 .task-row-group-title,
 .task-row-subtype-label {
   margin: 0;
@@ -2844,7 +2860,7 @@ h4,
     display: grid;
     place-items: center;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(115, 201, 244, 0.24), rgba(255, 201, 74, 0.20));
+    background: linear-gradient(135deg, rgba(115, 201, 244, 0.44), rgba(255, 201, 74, 0.36));
     color: var(--mobile-accent-strong);
     font-size: 1.52rem;
   }

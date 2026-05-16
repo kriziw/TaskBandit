@@ -6098,7 +6098,7 @@ private fun ChoreCard(
                 Surface(
                     modifier = Modifier.size(42.dp),
                     shape = RoundedCornerShape(10.dp),
-                    color = accentContainerColor.copy(alpha = 0.58f)
+                    color = accentContainerColor.copy(alpha = 0.80f)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         if (choreIconDrawable != null) {
