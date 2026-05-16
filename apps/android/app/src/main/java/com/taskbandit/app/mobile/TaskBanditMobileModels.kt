@@ -172,7 +172,8 @@ data class MobileChore(
     val completedChecklistIds: List<String>,
     val variantId: String? = null,
     val templateId: String? = null,
-    val completionMilestone: MobileCompletionMilestone? = null
+    val completionMilestone: MobileCompletionMilestone? = null,
+    val newlyUnlockedAchievements: List<MobileUnlockedAchievement> = emptyList()
 )
 
 data class MobileChecklistItem(
@@ -282,6 +283,29 @@ data class MobileChoreTemplate(
     val variants: List<MobileTemplateVariant> = emptyList()
 )
 
+data class MobileAchievement(
+    val key: String,
+    val name: String,
+    val descriptionKey: String,
+    val category: String,
+    val isRepeatable: Boolean,
+    val goal: Int,
+    val bonusPoints: Int,
+    val sortOrder: Int,
+    val progress: Int,
+    val earnedAt: String?,
+    val timesEarned: Int
+)
+
+data class MobileUnlockedAchievement(
+    val key: String,
+    val name: String,
+    val descriptionKey: String,
+    val category: String,
+    val bonusPoints: Int,
+    val timesEarned: Int
+)
+
 data class MobileDashboard(
     val user: MobileUser,
     val pendingApprovals: Int,
@@ -294,5 +318,7 @@ data class MobileDashboard(
     val members: List<MobileHouseholdMember>,
     val templates: List<MobileChoreTemplate>,
     val quickLogPointsDefault: Int? = null,
-    val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility()
+    val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility(),
+    val achievements: List<MobileAchievement> = emptyList(),
+    val enableAchievements: Boolean = true
 )

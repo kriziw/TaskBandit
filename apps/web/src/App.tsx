@@ -11,6 +11,7 @@ import {
 } from "./pwa/clientPush";
 import { resolveApiBaseUrl, setApiBaseUrlOverride } from "./runtimeConfig";
 import type {
+  Achievement,
   AdminSystemStatus,
   AuditLogEntry,
   BackupReadiness,
@@ -47,6 +48,7 @@ import type {
   SignupInput,
   TakeoverRequestEntry,
   TemplateTranslationLocale,
+  UnlockedAchievement,
   UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
@@ -77,6 +79,7 @@ type DashboardPayload = {
   takeoverRequests: TakeoverRequestEntry[];
   hostedSubscription: HostedSubscriptionOverview;
   compatibility: ServerCompatibility;
+  achievements: Achievement[];
 };
 
 type CompletionCelebration = {
@@ -85,7 +88,8 @@ type CompletionCelebration = {
   titleKey: string;
   eyebrowKey: string;
   phraseKey: string;
-  variant: "standard" | "rare" | "chore" | "perfect";
+  variant: "standard" | "rare" | "chore" | "perfect" | "achievement";
+  unlockedAchievement?: UnlockedAchievement;
 };
 
 type ReadinessChecklistItem = {
@@ -2881,6 +2885,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         backupReadinessResult,
         notificationPreferences,
         pointsLedger,
+        achievementsResult,
         templates,
         instances,
         takeoverRequestsResult,
@@ -2924,6 +2929,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           : Promise.resolve({ value: null, supported: false }),
         taskBanditApi.getNotificationPreferences(accessToken, language),
         taskBanditApi.getPointsLedger(accessToken, language),
+        loadOptionalFeature(
+          () => taskBanditApi.getAchievements(accessToken, language),
+          [] as Achievement[]
+        ),
         currentUser.role === "child"
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
@@ -2960,6 +2969,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         backupReadiness: backupReadinessResult.value,
         notificationPreferences,
         pointsLedger,
+        achievements: achievementsResult.value,
         templates,
         instances,
         takeoverRequests: takeoverRequestsResult.value,
@@ -3872,9 +3882,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         note: submitNotes[instanceId]
       });
       if (submittedChore.state === "completed") {
-        const celebration = buildCompletionCelebration(submittedChore, lastCompletionCelebrationPhraseKey);
-        setCompletionCelebration(celebration);
-        setLastCompletionCelebrationPhraseKey(celebration.phraseKey);
+        const unlockedAchievement = submittedChore.newlyUnlockedAchievements?.[0] ?? null;
+        if (unlockedAchievement) {
+          setCompletionCelebration({
+            points: unlockedAchievement.bonusPoints,
+            choreTitle: unlockedAchievement.name,
+            titleKey: "celebration.achievement_title",
+            eyebrowKey: "celebration.achievement_eyebrow",
+            phraseKey: "celebration.achievement_phrase",
+            variant: "achievement",
+            unlockedAchievement
+          });
+        } else {
+          const celebration = buildCompletionCelebration(submittedChore, lastCompletionCelebrationPhraseKey);
+          setCompletionCelebration(celebration);
+          setLastCompletionCelebrationPhraseKey(celebration.phraseKey);
+        }
       }
       setNotice(t("submission.success"));
       setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
@@ -4069,7 +4092,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       if (action === "approve") {
         const reviewedChore = await taskBanditApi.approveChore(token, language, instanceId, reviewNotes[instanceId]);
-        if (reviewedChore.completionMilestone?.type === "perfect_day") {
+        const unlockedAchievement = reviewedChore.newlyUnlockedAchievements?.[0] ?? null;
+        if (unlockedAchievement) {
+          setCompletionCelebration({
+            points: unlockedAchievement.bonusPoints,
+            choreTitle: unlockedAchievement.name,
+            titleKey: "celebration.achievement_title",
+            eyebrowKey: "celebration.achievement_eyebrow",
+            phraseKey: "celebration.achievement_phrase",
+            variant: "achievement",
+            unlockedAchievement
+          });
+        } else if (reviewedChore.completionMilestone?.type === "perfect_day") {
           const celebration = buildCompletionCelebration(reviewedChore, lastCompletionCelebrationPhraseKey);
           setCompletionCelebration(celebration);
           setLastCompletionCelebrationPhraseKey(celebration.phraseKey);
@@ -6232,9 +6266,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <div className="celebration-copy">
               <p className="eyebrow">{t(completionCelebration.eyebrowKey)}</p>
               <h2 id="completion-celebration-title">{t(completionCelebration.titleKey)}</h2>
-              <p className="celebration-points">
-                {t("celebration.points").replace("{points}", formatNumber(completionCelebration.points))}
-              </p>
+              {completionCelebration.points > 0 ? (
+                <p className="celebration-points">
+                  {t("celebration.points").replace("{points}", formatNumber(completionCelebration.points))}
+                </p>
+              ) : null}
               <p className="celebration-chore">{completionCelebration.choreTitle}</p>
               <p className="celebration-quote">{t(completionCelebration.phraseKey)}</p>
               <button
@@ -8995,6 +9031,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             }
                           />
                         </label>
+                        <label className="toggle-row">
+                          <span>{t("settings.enable_achievements")}</span>
+                          <input
+                            type="checkbox"
+                            checked={settingsDraft.enableAchievements}
+                            onChange={(event) =>
+                              setSettingsDraft((current) =>
+                                current ? { ...current, enableAchievements: event.target.checked } : current
+                              )
+                            }
+                          />
+                        </label>
                         <label>
                           <span>{t("settings.takeover_points_delta")}</span>
                           <input
@@ -10333,6 +10381,26 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                 ) : null}
               </div>
+              {payload.household.settings.enableAchievements && payload.achievements.length > 0 ? (
+                <div className="mobile-profile-achievements">
+                  <h3 className="mobile-profile-achievements-heading">{t("achievements.panel_title")}</h3>
+                  <ul className="achievement-list">
+                    {payload.achievements.map((a) => (
+                      <li key={a.key} className={`achievement-row ${a.earnedAt ? "achievement-row--earned" : "achievement-row--locked"}`}>
+                        <div className="achievement-row-info">
+                          <span className="achievement-name">{a.name}</span>
+                          {a.earnedAt ? (
+                            <span className="achievement-earned-badge">{t("achievements.earned")}</span>
+                          ) : (
+                            <span className="achievement-progress-text">{a.progress}/{a.goal}</span>
+                          )}
+                        </div>
+                        <progress className="achievement-progress-bar" value={a.progress} max={a.goal} />
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
               <div className="mobile-profile-avatar-controls">
                 <p>Choose avatar</p>
                 <div className="mobile-profile-avatar-preset-row" role="list" aria-label="Avatar presets">

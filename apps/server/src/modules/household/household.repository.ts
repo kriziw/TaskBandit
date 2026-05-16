@@ -388,6 +388,8 @@ export class HouseholdRepository {
           dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
         enableOverduePenalties:
           dto.enableOverduePenalties ?? household.settings?.enableOverduePenalties,
+        enableAchievements:
+          dto.enableAchievements ?? household.settings?.enableAchievements ?? true,
         takeoverPointsDelta:
           dto.takeoverPointsDelta ?? household.settings?.takeoverPointsDelta ?? 0,
         localAuthEnabled: dto.localAuthEnabled ?? household.settings?.localAuthEnabled ?? true,
@@ -5770,6 +5772,7 @@ export class HouseholdRepository {
         quickLogPointsDefault: household.settings?.quickLogPointsDefault ?? null,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
+        enableAchievements: household.settings?.enableAchievements ?? true,
         takeoverPointsDelta: household.settings?.takeoverPointsDelta ?? 0,
         localAuthEnabled: household.settings?.localAuthEnabled ?? true,
         localAuthForcedByConfig: false,

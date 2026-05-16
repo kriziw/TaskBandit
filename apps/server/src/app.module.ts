@@ -11,6 +11,7 @@ import { BootstrapModule } from "./modules/bootstrap/bootstrap.module";
 import { ChoresModule } from "./modules/chores/chores.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { GamificationModule } from "./modules/gamification/gamification.module";
+import { AchievementsModule } from "./modules/achievements/achievements.module";
 import { SettingsModule } from "./modules/settings/settings.module";
 
 @Module({
@@ -28,7 +29,8 @@ import { SettingsModule } from "./modules/settings/settings.module";
     DashboardModule,
     SettingsModule,
     ChoresModule,
-    GamificationModule
+    GamificationModule,
+    AchievementsModule
   ],
   controllers: [AppController]
 })

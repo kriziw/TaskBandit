@@ -227,6 +227,39 @@ export type HouseholdMember = {
   currentStreak: number;
 };
 
+export type Achievement = {
+  key: string;
+  name: string;
+  descriptionKey: string;
+  category: string;
+  isRepeatable: boolean;
+  goal: number;
+  bonusPoints: number;
+  sortOrder: number;
+  progress: number;
+  earnedAt: string | null;
+  timesEarned: number;
+};
+
+export type AchievementHouseholdEntry = Achievement & {
+  userProgress: Array<{
+    userId: string;
+    displayName: string;
+    progress: number;
+    earnedAt: string | null;
+    timesEarned: number;
+  }>;
+};
+
+export type UnlockedAchievement = {
+  key: string;
+  name: string;
+  descriptionKey: string;
+  category: string;
+  bonusPoints: number;
+  timesEarned: number;
+};
+
 export type HouseholdSettings = {
   selfSignupEnabled: boolean;
   onboardingCompleted: boolean;
@@ -234,6 +267,7 @@ export type HouseholdSettings = {
   quickLogPointsDefault: number | null;
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;
+  enableAchievements: boolean;
   takeoverPointsDelta: number;
   localAuthEnabled: boolean;
   localAuthForcedByConfig: boolean;
@@ -544,6 +578,7 @@ export type ChoreInstance = {
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
   completionMilestone?: CompletionMilestone | null;
+  newlyUnlockedAchievements?: UnlockedAchievement[];
 };
 
 export type QuickLogInput = {

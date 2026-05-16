@@ -1,4 +1,5 @@
 import { Module } from "@nestjs/common";
+import { AchievementsModule } from "../achievements/achievements.module";
 import { DashboardModule } from "../dashboard/dashboard.module";
 import { GamificationModule } from "../gamification/gamification.module";
 import { HouseholdRepository } from "../household/household.repository";
@@ -8,7 +9,7 @@ import { ChoresService } from "./chores.service";
 import { ProofStorageService } from "./proof-storage.service";
 
 @Module({
-  imports: [GamificationModule, DashboardModule],
+  imports: [GamificationModule, DashboardModule, AchievementsModule],
   controllers: [ChoresController, HostedTemplateSeedController],
   providers: [ChoresService, HouseholdRepository, ProofStorageService]
 })

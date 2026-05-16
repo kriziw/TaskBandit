@@ -411,15 +411,28 @@ class TaskBanditMobileApi {
             null
         }
         val members = householdSettingsJson?.optJSONArray("members")?.let(::parseMembers).orEmpty()
-        val quickLogPointsDefault = householdSettingsJson
-            ?.optJSONObject("settings")
-            ?.let { settings ->
-                if (settings.has("quickLogPointsDefault") && !settings.isNull("quickLogPointsDefault")) {
-                    settings.optInt("quickLogPointsDefault")
-                } else {
-                    null
-                }
+        val householdSettings = householdSettingsJson?.optJSONObject("settings")
+        val quickLogPointsDefault = householdSettings?.let { settings ->
+            if (settings.has("quickLogPointsDefault") && !settings.isNull("quickLogPointsDefault")) {
+                settings.optInt("quickLogPointsDefault")
+            } else {
+                null
             }
+        }
+        val enableAchievements = householdSettings?.optBoolean("enableAchievements", true) ?: true
+
+        val achievementsJson = if (enableAchievements) {
+            runCatching { requestJsonArray(baseUrl, "/api/achievements", token = token) }.getOrNull()
+        } else {
+            null
+        }
+        val achievements = buildList {
+            val arr = achievementsJson ?: JSONArray()
+            for (index in 0 until arr.length()) {
+                val a = arr.optJSONObject(index) ?: continue
+                add(parseAchievement(a))
+            }
+        }
 
         return MobileDashboard(
             user = user,
@@ -435,7 +448,35 @@ class TaskBanditMobileApi {
             quickLogPointsDefault = quickLogPointsDefault,
             compatibility = MobileDashboardCompatibility(
                 takeoverRequestsSupported = takeoverRequestsSupported
-            )
+            ),
+            achievements = achievements,
+            enableAchievements = enableAchievements
+        )
+    }
+
+    fun fetchAchievements(baseUrl: String, token: String): List<MobileAchievement> {
+        val arr = requestJsonArray(baseUrl, "/api/achievements", token = token)
+        return buildList {
+            for (index in 0 until arr.length()) {
+                val a = arr.optJSONObject(index) ?: continue
+                add(parseAchievement(a))
+            }
+        }
+    }
+
+    private fun parseAchievement(json: JSONObject): MobileAchievement {
+        return MobileAchievement(
+            key = json.optString("key"),
+            name = json.optString("name"),
+            descriptionKey = json.optString("descriptionKey"),
+            category = json.optString("category"),
+            isRepeatable = json.optBoolean("isRepeatable"),
+            goal = json.optInt("goal"),
+            bonusPoints = json.optInt("bonusPoints"),
+            sortOrder = json.optInt("sortOrder"),
+            progress = json.optInt("progress"),
+            earnedAt = json.optString("earnedAt").ifBlank { null },
+            timesEarned = json.optInt("timesEarned")
         )
     }
 
