@@ -234,14 +234,20 @@ select {
 .mobile-quick-log-card {
   margin-top: 12px;
   display: grid;
-  gap: 10px;
-  padding: 12px;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 8px;
+  align-items: center;
+  padding: 12px 14px;
   border-radius: 22px;
   border: 1px solid rgba(36, 48, 67, 0.1);
   background:
     radial-gradient(circle at top right, rgba(115, 201, 244, 0.34), transparent 62%),
     linear-gradient(160deg, rgba(255, 255, 255, 0.94), rgba(250, 255, 250, 0.9));
   box-shadow: 0 14px 28px rgba(36, 48, 67, 0.1);
+  cursor: pointer;
+  text-align: left;
+  color: inherit;
+  width: 100%;
 }
 
 .mobile-quick-log-card-copy h4 {
@@ -250,16 +256,13 @@ select {
   font-family: var(--font-brand);
 }
 
-.mobile-quick-log-card-copy p {
-  margin: 4px 0 0;
-}
-
-.mobile-quick-log-card-copy .workspace-nav-kicker {
-  margin-bottom: 6px;
-}
-
-.mobile-quick-log-card-cta {
-  width: 100%;
+.mobile-quick-log-card-chevron {
+  display: inline-grid;
+  place-items: center;
+  color: rgba(36, 48, 67, 0.45);
+  font-size: 1.18rem;
+  line-height: 1;
+  font-weight: 800;
 }
 
 .toolbar,

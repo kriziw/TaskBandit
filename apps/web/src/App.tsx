@@ -6932,23 +6932,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       </div>
                     </div>
                     {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
-                      <article className="mobile-quick-log-card">
-                        <div className="mobile-quick-log-card-copy">
-                          <p className="workspace-nav-kicker">TaskBandit quick log</p>
+                      <button
+                        className="mobile-quick-log-card mobile-quick-log-card-button"
+                        type="button"
+                        onClick={() => {
+                          resetQuickLogComposer();
+                          setIsQuickLogComposerOpen(true);
+                        }}
+                      >
+                        <span className="mobile-quick-log-card-copy">
                           <h4>Quick log</h4>
-                          <p>Log a completed chore instantly, even if it was never created.</p>
-                        </div>
-                        <button
-                          className="primary-button mobile-quick-log-card-cta"
-                          type="button"
-                          onClick={() => {
-                            resetQuickLogComposer();
-                            setIsQuickLogComposerOpen(true);
-                          }}
-                        >
-                          Quick log
-                        </button>
-                      </article>
+                        </span>
+                        <span className="mobile-quick-log-card-chevron" aria-hidden="true">
+                          &#8250;
+                        </span>
+                      </button>
                     ) : null}
                     <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
                       {payload.currentUser.role !== "child" ? (
