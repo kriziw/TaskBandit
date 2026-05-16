@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.61.2](https://github.com/kriziw/TaskBandit/compare/v0.61.1...v0.61.2) (2026-05-16)
+
+
+### Bug Fixes
+
+* **mobile:** align android and pwa chore action ux ([#417](https://github.com/kriziw/TaskBandit/issues/417)) ([d4ecebd](https://github.com/kriziw/TaskBandit/commit/d4ecebd32e02813779845aac6549b9a25bcccb65))
+
 ## [0.61.1](https://github.com/kriziw/TaskBandit/compare/v0.61.0...v0.61.1) (2026-05-15)
 
 
