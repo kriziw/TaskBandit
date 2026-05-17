@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.64.2](https://github.com/kriziw/TaskBandit/compare/v0.64.1...v0.64.2) (2026-05-17)
+
+
+### Bug Fixes
+
+* **mobile:** add missing cancel series action to chore action sheet ([#434](https://github.com/kriziw/TaskBandit/issues/434)) ([63f684d](https://github.com/kriziw/TaskBandit/commit/63f684d38fa19a7a217cf607bb3d3159cf24863f))
+
 ## [0.64.1](https://github.com/kriziw/TaskBandit/compare/v0.64.0...v0.64.1) (2026-05-17)
 
 
