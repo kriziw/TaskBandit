@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.64.0](https://github.com/kriziw/TaskBandit/compare/v0.63.0...v0.64.0) (2026-05-17)
+
+
+### Features
+
+* **mobile:** new PNG icon pack for quick log, optional icon selection, transparent icon backgrounds ([#429](https://github.com/kriziw/TaskBandit/issues/429)) ([5863d1e](https://github.com/kriziw/TaskBandit/commit/5863d1e2061d3a3677c720376199d64886797548))
+* **mobile:** promote beta UI to stable and remove UI mode toggle ([#431](https://github.com/kriziw/TaskBandit/issues/431)) ([14fbf1d](https://github.com/kriziw/TaskBandit/commit/14fbf1de1a2f5dc5eed683744c8fb437fa9ae89c))
+
 ## [0.63.0](https://github.com/kriziw/TaskBandit/compare/v0.62.0...v0.63.0) (2026-05-17)
 
 
