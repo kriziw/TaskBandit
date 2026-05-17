@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.1](https://github.com/kriziw/TaskBandit/compare/v0.65.0...v0.65.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **android:** show update card even when previously dismissed version matches latest ([#440](https://github.com/kriziw/TaskBandit/issues/440)) ([5a132a3](https://github.com/kriziw/TaskBandit/commit/5a132a3c07a89e3a7a0504c0dcd923ab0e3db2f1))
+
 ## [0.65.0](https://github.com/kriziw/TaskBandit/compare/v0.64.2...v0.65.0) (2026-05-17)
 
 
