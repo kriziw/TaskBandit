@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.63.0](https://github.com/kriziw/TaskBandit/compare/v0.62.0...v0.63.0) (2026-05-17)
+
+
+### Features
+
+* **mobile:** add external completion to Android app ([#427](https://github.com/kriziw/TaskBandit/issues/427)) ([a621dcc](https://github.com/kriziw/TaskBandit/commit/a621dcc7bef90a8a8b2d6ccf9ddace5bbcbe8ad0))
+
+
+### Bug Fixes
+
+* **chores:** prevent same-day repeat when chore is completed late ([#426](https://github.com/kriziw/TaskBandit/issues/426)) ([5028804](https://github.com/kriziw/TaskBandit/commit/5028804da3a74579c3403d69e3974c52a47bf882))
+
 ## [0.62.0](https://github.com/kriziw/TaskBandit/compare/v0.61.4...v0.62.0) (2026-05-16)
 
 
