@@ -3786,6 +3786,7 @@ private fun DashboardScreen(
                 onSubmitChore = { choreId -> activeNewUiChoreDialogId = null; submitConfirmationChoreId = choreId },
                 onEditChoreDueAt = { a, b, c, d -> activeNewUiChoreDialogId = null; onEditChoreDueAt(a, b, c, d) },
                 onCancelChoreOccurrence = { choreId -> activeNewUiChoreDialogId = null; onCancelChoreOccurrence(choreId) },
+                onCloseChoreCycle = { choreId -> activeNewUiChoreDialogId = null; onCloseChoreCycle(choreId) },
                 onCompleteExternalChore = { choreId, name -> activeNewUiChoreDialogId = null; onCompleteExternalChore(choreId, name) }
             )
         }
@@ -7811,6 +7812,7 @@ private fun ChoreActionSheet(
     onSubmitChore: (String) -> Unit,
     onEditChoreDueAt: (String, String, String, String?) -> Unit,
     onCancelChoreOccurrence: (String) -> Unit,
+    onCloseChoreCycle: (String) -> Unit,
     onCompleteExternalChore: (String, String) -> Unit
 ) {
     val context = LocalContext.current
@@ -7830,14 +7832,16 @@ private fun ChoreActionSheet(
     val canRequestTakeover = canManageChores && canUseTakeoverRequestsLocal && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
     val canEditDueAt = canManageChores && currentUserRole != "child" && chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
+    val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
     val hasAnyPrimaryAction = (isPendingApproval && canApproveChores) || canSubmit || canClaimChore
-    val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || (canCompleteExternal && isSubmittableState)
+    val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || canCloseCycle || (canCompleteExternal && isSubmittableState)
 
     val zoneId = remember { ZoneId.systemDefault() }
     var moreExpanded by remember { mutableStateOf(false) }
     var showApproveConfirm by remember { mutableStateOf(false) }
     var showRejectConfirm by remember { mutableStateOf(false) }
     var showCancelOccurrenceConfirm by remember { mutableStateOf(false) }
+    var showCloseCycleConfirm by remember { mutableStateOf(false) }
     var showExternalCompleteDialog by remember { mutableStateOf(false) }
     var externalCompleterNameInput by remember { mutableStateOf("") }
     var showDueAtEditor by remember { mutableStateOf(false) }
@@ -7917,6 +7921,23 @@ private fun ChoreActionSheet(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showCancelOccurrenceConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showCloseCycleConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCloseCycleConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_series_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_series_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showCloseCycleConfirm = false; onCloseChoreCycle(chore.id) }) {
+                    Text(stringResource(R.string.mobile_cancel_series_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCloseCycleConfirm = false }) {
                     Text(stringResource(R.string.mobile_request_takeover_cancel))
                 }
             }
@@ -8197,6 +8218,14 @@ private fun ChoreActionSheet(
                             label = stringResource(R.string.mobile_cancel_occurrence),
                             enabled = activeCloseCycleAction == null,
                             onClick = { showCancelOccurrenceConfirm = true }
+                        )
+                    }
+                    if (canCloseCycle) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.EventBusy,
+                            label = stringResource(R.string.mobile_cancel_series),
+                            enabled = activeCloseCycleAction == null,
+                            onClick = { showCloseCycleConfirm = true }
                         )
                     }
                     if (canCompleteExternal && isSubmittableState) {
