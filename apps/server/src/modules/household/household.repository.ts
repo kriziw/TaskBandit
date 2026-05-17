@@ -5350,13 +5350,9 @@ export class HouseholdRepository {
           : null;
         const followUpTitle = this.composeChoreTitle(template.title, carriedSubtypeLabel);
         const effectiveFollowUpRequirePhotoProof = carriedRequirePhotoProof || template.requirePhotoProof;
-        const followUpState =
-          followUpDueAt.getTime() > Date.now()
-            ? ChoreState.DEFERRED
-            : assignmentDecision.assigneeId
-              ? ChoreState.ASSIGNED
-              : ChoreState.OPEN;
-        const notBeforeAtUtc = followUpState === ChoreState.DEFERRED ? followUpDueAt : null;
+        const followUpState = assignmentDecision.assigneeId
+          ? ChoreState.ASSIGNED
+          : ChoreState.OPEN;
 
         await tx.choreInstance.create({
           data: {
@@ -5371,16 +5367,15 @@ export class HouseholdRepository {
             state: followUpState,
             assigneeId: assignmentDecision.assigneeId,
             dueAtUtc: followUpDueAt,
-            notBeforeAtUtc,
-            deferredReason:
-              followUpState === ChoreState.DEFERRED ? "Waiting for follow-up readiness window." : null,
+            notBeforeAtUtc: null,
+            deferredReason: null,
             variantId: matchingVariant?.id ?? null,
             assignmentLocked: assignmentDecision.locked,
             assignmentReason: assignmentDecision.reason
           }
         });
 
-        if (assignmentDecision.assigneeId && followUpState !== ChoreState.DEFERRED) {
+        if (assignmentDecision.assigneeId) {
           await this.recordNotification(tx, {
             householdId: instance.householdId,
             recipientUserId: assignmentDecision.assigneeId,
