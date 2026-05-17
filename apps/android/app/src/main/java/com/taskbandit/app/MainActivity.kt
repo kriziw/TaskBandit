@@ -157,7 +157,6 @@ import com.taskbandit.app.mobile.MobileLeaderboardEntry
 import com.taskbandit.app.mobile.MobileTakeoverRequest
 import com.taskbandit.app.mobile.MobileTemplateRecurrence
 import com.taskbandit.app.mobile.MobileThemeMode
-import com.taskbandit.app.mobile.MobileUiMode
 import com.taskbandit.app.mobile.MobileUploadedProof
 import com.taskbandit.app.mobile.MobileOnboardingDeepLink
 import com.taskbandit.app.mobile.MobileResolvedInvite
@@ -248,7 +247,7 @@ private enum class MobileChoreSectionTone {
 }
 
 private val LocalMobileFeatureAccess = compositionLocalOf { MobileFeatureAccess() }
-private val LocalIsNewMobileUi = compositionLocalOf { false }
+private val LocalIsNewMobileUi = compositionLocalOf { true }
 
 private fun isTabletWidth(maxWidth: Dp): Boolean = maxWidth >= 840.dp
 
@@ -598,7 +597,6 @@ private fun TaskBanditApp(
     var session by remember { mutableStateOf(sessionStore.readSession()) }
     var themeMode by remember { mutableStateOf(appPreferencesStore.readThemeMode()) }
     var languageTag by remember { mutableStateOf(appPreferencesStore.readLanguageTag()) }
-    var mobileUiMode by remember { mutableStateOf(appPreferencesStore.readMobileUiMode()) }
     var mobileAvatarKey by remember { mutableStateOf(appPreferencesStore.readMobileAvatarKey()) }
     val currentReleaseInfo = remember {
         MobileReleaseInfo(
@@ -1642,11 +1640,6 @@ private fun TaskBanditApp(
         languageTag = nextLanguageTag
     }
 
-    fun updateMobileUiMode(nextMode: MobileUiMode) {
-        appPreferencesStore.saveMobileUiMode(nextMode)
-        mobileUiMode = nextMode
-    }
-
     LaunchedEffect(session.token) {
         if (session.token != null) {
             dashboardCacheStore.read(session.baseUrl)?.dashboard?.let { cachedDashboard ->
@@ -2019,7 +2012,6 @@ private fun TaskBanditApp(
                     installationId = installationId,
                     languageTag = languageTag,
                     themeMode = themeMode,
-                    mobileUiMode = mobileUiMode,
                     mobileAvatarKey = mobileAvatarKey,
                     notificationsPermissionGranted = notificationsPermissionGranted,
                     isBusy = isBusy,
@@ -2069,7 +2061,6 @@ private fun TaskBanditApp(
                     onRemoveNotificationDevice = ::removeNotificationDevice,
                     onThemeModeChange = ::updateThemeMode,
                     onLanguageTagChange = ::updateLanguageTag,
-                    onMobileUiModeChange = ::updateMobileUiMode,
                     onAvatarPresetSelect = { avatarKey ->
                         mobileAvatarKey = avatarKey
                         appPreferencesStore.saveMobileAvatarKey(avatarKey)
@@ -2629,7 +2620,6 @@ private fun DashboardScreen(
     installationId: String,
     languageTag: String,
     themeMode: MobileThemeMode,
-    mobileUiMode: MobileUiMode,
     mobileAvatarKey: String,
     notificationsPermissionGranted: Boolean,
     isBusy: Boolean,
@@ -2679,7 +2669,6 @@ private fun DashboardScreen(
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
-    onMobileUiModeChange: (MobileUiMode) -> Unit,
     onAvatarPresetSelect: (String) -> Unit,
     onAvatarUpload: () -> Unit,
     onRequestNotificationPermission: () -> Unit
@@ -2692,7 +2681,7 @@ private fun DashboardScreen(
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val canUseQuickLog = isCreatorRole && featureAccess.quickLog
-    val isNewMobileUi = mobileUiMode == MobileUiMode.NEW
+    val isNewMobileUi = true
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
@@ -3697,7 +3686,7 @@ private fun DashboardScreen(
     val activeNewUiChoreDialog = remember(sortedChores, activeNewUiChoreDialogId) {
         sortedChores.firstOrNull { it.id == activeNewUiChoreDialogId }
     }
-    if (isNewMobileUi && activeNewUiChoreDialog != null) {
+    if (activeNewUiChoreDialog != null) {
         Dialog(
             onDismissRequest = { activeNewUiChoreDialogId = null },
             properties = DialogProperties(usePlatformDefaultWidth = false)
@@ -3722,46 +3711,44 @@ private fun DashboardScreen(
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold
                     )
-                    CompositionLocalProvider(LocalIsNewMobileUi provides false) {
-                        ChoreCard(
-                            chore = activeNewUiChoreDialog,
-                            currentUserId = currentUserId,
-                            currentUserRole = currentUserRole,
-                            supportsTakeoverRequests = canUseTakeoverRequests,
-                            expanded = true,
-                            activeReviewAction = activeReviewAction,
-                            activeStartAction = activeStartAction,
-                            activeSubmitAction = activeSubmitAction,
-                            activeCloseCycleAction = activeCloseCycleAction,
-                            activeTakeoverRequestAction = activeTakeoverRequestAction,
-                            activeDueAtAction = activeDueAtAction,
-                            outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[activeNewUiChoreDialog.id],
-                            selectedChecklistIds = submitSelections[activeNewUiChoreDialog.id]
-                                ?: activeNewUiChoreDialog.completedChecklistIds.toSet(),
-                            selectedProofCount = selectedProofUris[activeNewUiChoreDialog.id]?.size ?: 0,
-                            onExpandedChange = {},
-                            onApprove = onApprove,
-                            onReject = onReject,
-                            onToggleChecklistItem = onToggleChecklistItem,
-                            onPickProofs = onPickProofs,
-                            onTakeProofPhoto = onTakeProofPhoto,
-                            onStartChore = { choreId -> startConfirmationChoreId = choreId },
-                            onCancelChoreOccurrence = onCancelChoreOccurrence,
-                            onCloseChoreCycle = onCloseChoreCycle,
-                            onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
-                            onRequestTakeover = { choreId ->
-                                requestTakeoverChoreId = choreId
-                                requestTakeoverMemberId = null
-                            },
-                            onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
-                            onEditChoreDueAt = onEditChoreDueAt,
-                            editableVariants = activeNewUiChoreDialog.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
-                            activeExternalCompleteAction = activeExternalCompleteAction,
-                            onCompleteExternalChore = onCompleteExternalChore,
-                            showSectionBadge = false,
-                            showTitleIcon = false
-                        )
-                    }
+                    ChoreCard(
+                        chore = activeNewUiChoreDialog,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expanded = true,
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        activeDueAtAction = activeDueAtAction,
+                        outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[activeNewUiChoreDialog.id],
+                        selectedChecklistIds = submitSelections[activeNewUiChoreDialog.id]
+                            ?: activeNewUiChoreDialog.completedChecklistIds.toSet(),
+                        selectedProofCount = selectedProofUris[activeNewUiChoreDialog.id]?.size ?: 0,
+                        onExpandedChange = {},
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId ->
+                            requestTakeoverChoreId = choreId
+                            requestTakeoverMemberId = null
+                        },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        editableVariants = activeNewUiChoreDialog.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
+                        activeExternalCompleteAction = activeExternalCompleteAction,
+                        onCompleteExternalChore = onCompleteExternalChore,
+                        showSectionBadge = false,
+                        showTitleIcon = false
+                    )
                 }
             }
         }
@@ -3775,7 +3762,7 @@ private fun DashboardScreen(
 
     CompositionLocalProvider(
         LocalMobileFeatureAccess provides featureAccess,
-        LocalIsNewMobileUi provides isNewMobileUi
+        LocalIsNewMobileUi provides true
     ) {
         Scaffold(
         topBar = {
@@ -4618,97 +4605,41 @@ private fun DashboardScreen(
                         compact = true
                     )
                 }
-                if (isTablet && !isNewMobileUi) {
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
+                        SettingsAppearanceContent(
+                            themeMode = themeMode,
+                            onThemeModeChange = onThemeModeChange,
+                            languageTag = languageTag,
+                            onLanguageTagChange = onLanguageTagChange
+                        )
+                    }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
+                        SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
+                    }
+                }
+                if (hostedSubscription.hostedMode && isCreatorRole) {
                     item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(18.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
-                                SettingsAppearanceContent(
-                                    themeMode = themeMode,
-                                    onThemeModeChange = onThemeModeChange,
-                                    languageTag = languageTag,
-                                    onLanguageTagChange = onLanguageTagChange,
-                                    mobileUiMode = mobileUiMode,
-                                    onMobileUiModeChange = onMobileUiModeChange
-                                )
-                            }
-                            SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
-                                SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
-                            }
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
+                            SettingsPlanContent(hostedSubscription = hostedSubscription)
                         }
                     }
-                    if (hostedSubscription.hostedMode && isCreatorRole) {
-                        item {
-                            SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
-                                SettingsPlanContent(hostedSubscription = hostedSubscription)
-                            }
-                        }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
                     }
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(18.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                                SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
-                            }
-                            SettingsSectionCard(modifier = Modifier.weight(1f), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
-                                SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
-                            }
-                        }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
+                        SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
                     }
-                    item {
-                        SettingsSectionCard(
-                            modifier = Modifier.fillMaxWidth(),
-                            icon = Icons.AutoMirrored.Rounded.Logout,
-                            title = stringResource(R.string.mobile_logout)
-                        ) {
-                            SettingsLogoutContent(onLogout = onLogout)
-                        }
-                    }
-                } else {
-                    item {
-                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
-                            SettingsAppearanceContent(
-                                themeMode = themeMode,
-                                onThemeModeChange = onThemeModeChange,
-                                languageTag = languageTag,
-                                onLanguageTagChange = onLanguageTagChange,
-                                mobileUiMode = mobileUiMode,
-                                onMobileUiModeChange = onMobileUiModeChange
-                            )
-                        }
-                    }
-                    item {
-                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
-                            SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
-                        }
-                    }
-                    if (hostedSubscription.hostedMode && isCreatorRole) {
-                        item {
-                            SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
-                                SettingsPlanContent(hostedSubscription = hostedSubscription)
-                            }
-                        }
-                    }
-                    item {
-                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                            SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
-                        }
-                    }
-                    item {
-                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
-                            SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
-                        }
-                    }
-                    item {
-                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.Logout, title = stringResource(R.string.mobile_logout)) {
-                            SettingsLogoutContent(onLogout = onLogout)
-                        }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.Logout, title = stringResource(R.string.mobile_logout)) {
+                        SettingsLogoutContent(onLogout = onLogout)
                     }
                 }
             }
@@ -7507,9 +7438,7 @@ private fun SettingsAppearanceContent(
     themeMode: MobileThemeMode,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     languageTag: String,
-    onLanguageTagChange: (String) -> Unit,
-    mobileUiMode: MobileUiMode,
-    onMobileUiModeChange: (MobileUiMode) -> Unit
+    onLanguageTagChange: (String) -> Unit
 ) {
     Text(text = stringResource(R.string.mobile_settings_theme), style = MaterialTheme.typography.titleMedium)
     MobileChoiceRow(options = listOf(
@@ -7524,24 +7453,6 @@ private fun SettingsAppearanceContent(
         MobileChoiceOption(label = stringResource(R.string.mobile_language_de), selected = languageTag == "de", onClick = { onLanguageTagChange("de") }),
         MobileChoiceOption(label = stringResource(R.string.mobile_language_hu), selected = languageTag == "hu", onClick = { onLanguageTagChange("hu") })
     ))
-    Text(text = stringResource(R.string.mobile_settings_ui_mode), style = MaterialTheme.typography.titleMedium)
-    MobileChoiceRow(options = listOf(
-        MobileChoiceOption(
-            label = stringResource(R.string.mobile_ui_mode_stable),
-            selected = mobileUiMode == MobileUiMode.CLASSIC,
-            onClick = { onMobileUiModeChange(MobileUiMode.CLASSIC) }
-        ),
-        MobileChoiceOption(
-            label = stringResource(R.string.mobile_ui_mode_beta),
-            selected = mobileUiMode == MobileUiMode.NEW,
-            onClick = { onMobileUiModeChange(MobileUiMode.NEW) }
-        )
-    ))
-    Text(
-        text = stringResource(R.string.mobile_settings_ui_mode_hint),
-        style = MaterialTheme.typography.bodySmall,
-        color = MaterialTheme.colorScheme.onSurfaceVariant
-    )
 }
 
 @Composable
