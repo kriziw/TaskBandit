@@ -95,6 +95,21 @@ jobs:
           name: taskbandit-release-apk
           path: ${{ steps.apk.outputs.path }}
 
+      - name: Create GitHub Release
+        if: ${{ env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '' }}
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        shell: bash
+        run: |
+          VERSION="${{ steps.version.outputs.value }}"
+          BUILD="${{ github.run_number }}"
+          TAG="android-v${VERSION}-${BUILD}"
+          gh release create "$TAG" \
+            --title "Android v${VERSION} (build ${BUILD})" \
+            --notes "Android release ${VERSION} (build ${BUILD}, commit ${{ github.sha }})" \
+            "${{ steps.apk.outputs.path }}#taskbandit-release.apk" \
+            --repo "${{ github.repository }}"
+
       - name: Note unsigned release build
         if: ${{ !(env.ANDROID_KEYSTORE_BASE64 != '' && env.ANDROID_KEYSTORE_PASSWORD != '' && env.ANDROID_KEY_ALIAS != '' && env.ANDROID_KEY_PASSWORD != '') }}
         shell: bash
