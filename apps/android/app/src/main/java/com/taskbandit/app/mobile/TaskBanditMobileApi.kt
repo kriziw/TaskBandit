@@ -813,6 +813,31 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun completeExternalChore(
+        baseUrl: String,
+        token: String,
+        instanceId: String,
+        externalCompleterName: String,
+        completedChecklistItemIds: List<String> = emptyList(),
+        note: String? = null
+    ): MobileChore {
+        val payload = JSONObject()
+            .put("externalCompleterName", externalCompleterName)
+            .put("completedChecklistItemIds", JSONArray(completedChecklistItemIds))
+            .put("attachments", JSONArray())
+            .put("note", note ?: "")
+
+        return parseChore(
+            requestJson(
+                baseUrl = baseUrl,
+                path = "/api/chores/instances/$instanceId/complete-external",
+                token = token,
+                method = "POST",
+                body = payload
+            )
+        )
+    }
+
     fun uploadProof(
         baseUrl: String,
         token: String,

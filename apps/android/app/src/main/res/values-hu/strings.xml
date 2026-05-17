@@ -403,6 +403,15 @@
     <string name="mobile_updating_due_at">Határidő frissítése...</string>
     <string name="mobile_due_at_updated">Határidő frissítve.</string>
     <string name="mobile_due_at_update_failed">A határidő frissítése nem sikerült.</string>
+    <string name="mobile_complete_external">Külső teljesítésként jelölés</string>
+    <string name="mobile_completing_external">Befejezettnek jelölés folyamatban…</string>
+    <string name="mobile_complete_external_dialog_title">Ki végezte el?</string>
+    <string name="mobile_complete_external_dialog_body">Add meg annak a személynek a nevét, aki elvégezte: \"%1$s\".</string>
+    <string name="mobile_complete_external_name_label">A személy neve</string>
+    <string name="mobile_complete_external_confirm">Befejezettnek jelölés</string>
+    <string name="mobile_complete_external_success">A feladat külső teljesítésként lett jelölve.</string>
+    <string name="mobile_complete_external_failed">Nem sikerült a feladatot külső teljesítésként jelölni.</string>
+    <string name="mobile_feature_external_completion_disabled">A külső teljesítés nem érhető el a jelenlegi csomagodban.</string>
 </resources>
 
 
