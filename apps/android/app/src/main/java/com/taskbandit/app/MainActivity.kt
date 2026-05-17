@@ -5767,7 +5767,7 @@ private fun HistoricChoreCard(
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Text(
-                        text = "$choreIcon $typeTitle",
+                        text = typeTitle,
                         style = MaterialTheme.typography.titleMedium,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 2,
@@ -5850,7 +5850,7 @@ private fun ChoreCard(
     onCompleteExternalChore: (String, String) -> Unit,
     editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>,
     showSectionBadge: Boolean = true,
-    showTitleIcon: Boolean = true
+    @Suppress("UNUSED_PARAMETER") showTitleIcon: Boolean = true
 ) {
     val context = LocalContext.current
     val zoneId = remember { ZoneId.systemDefault() }
@@ -6326,7 +6326,7 @@ private fun ChoreCard(
                         verticalAlignment = Alignment.Top
                     ) {
                         Text(
-                            text = if (showTitleIcon) "$choreIcon $typeTitle" else typeTitle,
+                            text = typeTitle,
                             style = MaterialTheme.typography.titleMedium,
                             fontWeight = FontWeight.SemiBold,
                             maxLines = 2,
