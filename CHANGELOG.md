@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.64.1](https://github.com/kriziw/TaskBandit/compare/v0.64.0...v0.64.1) (2026-05-17)
+
+
+### Bug Fixes
+
+* **mobile:** restore chore actions + add GitHub auto-update ([#432](https://github.com/kriziw/TaskBandit/issues/432)) ([206c842](https://github.com/kriziw/TaskBandit/commit/206c84271697a31a4cb5092f7ed752ad839209bc))
+
 ## [0.64.0](https://github.com/kriziw/TaskBandit/compare/v0.63.0...v0.64.0) (2026-05-17)
 
 
