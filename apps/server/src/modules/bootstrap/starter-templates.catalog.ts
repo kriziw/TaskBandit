@@ -380,7 +380,7 @@ export const starterTemplateCatalog: StarterCatalog = [
     assignmentStrategy: AssignmentStrategyType.ROUND_ROBIN,
     recurrenceType: RecurrenceType.WEEKLY,
     requirePhotoProof: false,
-    recurrenceStartStrategy: RecurrenceStartStrategy.DUE_AT,
+    recurrenceStartStrategy: RecurrenceStartStrategy.COMPLETED_AT,
     recommended: true
   },
   {
@@ -396,7 +396,7 @@ export const starterTemplateCatalog: StarterCatalog = [
     assignmentStrategy: AssignmentStrategyType.ROUND_ROBIN,
     recurrenceType: RecurrenceType.WEEKLY,
     requirePhotoProof: false,
-    recurrenceStartStrategy: RecurrenceStartStrategy.DUE_AT,
+    recurrenceStartStrategy: RecurrenceStartStrategy.COMPLETED_AT,
     variants: [
       { label: { en: "Indoor plants", de: "Zimmerpflanzen", hu: "Szobanövények" } },
       { label: { en: "Balcony plants", de: "Balkonpflanzen", hu: "Erkélynövények" } }
