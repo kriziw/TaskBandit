@@ -5476,6 +5476,32 @@ export class HouseholdRepository {
       }
     }
 
+    // DUE_AT anchors to the original schedule, but a late completion can produce a
+    // next due date on the same day as (or very soon after) completion. Advance by
+    // one interval at a time until we are at least half an interval past completion.
+    if (
+      options?.trigger !== "cancellation" &&
+      effectiveRecurrence.startStrategy === RecurrenceStartStrategy.DUE_AT &&
+      instance.completedAtUtc
+    ) {
+      const minNextDue = new Date(
+        instance.completedAtUtc.getTime() +
+          this.getHalfIntervalMs(effectiveRecurrence.type, effectiveRecurrence.intervalDays)
+      );
+      let attempts = 0;
+      while (nextDueAt < minNextDue && attempts < 1000) {
+        const advanced = this.calculateRecurringDueAt(
+          nextDueAt,
+          effectiveRecurrence.type,
+          effectiveRecurrence.intervalDays,
+          effectiveRecurrence.weekdays
+        );
+        if (!advanced || advanced.getTime() === nextDueAt.getTime()) break;
+        nextDueAt = advanced;
+        attempts++;
+      }
+    }
+
     const variantId = (instance as any).variantId ?? null;
     const variant = variantId
       ? template.variants.find((v) => v.id === variantId) ?? null
@@ -5743,6 +5769,18 @@ export class HouseholdRepository {
         return 6;
       default:
         return null;
+    }
+  }
+
+  private getHalfIntervalMs(recurrenceType: RecurrenceType, intervalDays: number | null): number {
+    const DAY_MS = 24 * 60 * 60 * 1000;
+    switch (recurrenceType) {
+      case RecurrenceType.DAILY: return DAY_MS / 2;
+      case RecurrenceType.WEEKLY: return (7 * DAY_MS) / 2;
+      case RecurrenceType.MONTHLY: return 15 * DAY_MS;
+      case RecurrenceType.EVERY_X_DAYS: return ((intervalDays ?? 1) * DAY_MS) / 2;
+      case RecurrenceType.CUSTOM_WEEKLY: return DAY_MS / 2;
+      default: return 0;
     }
   }
 
