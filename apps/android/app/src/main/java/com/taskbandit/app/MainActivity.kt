@@ -7592,7 +7592,9 @@ private fun SettingsReleaseContent(
     onDismissGithubUpdate: () -> Unit,
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
 ) {
-    val isUpToDate = githubCheckDone && githubLatestVersion != null && visibleGithubUpdate == null
+    val isUpToDate = githubCheckDone &&
+        githubLatestVersion != null &&
+        compareReleaseVersions(BuildConfig.TASKBANDIT_RELEASE_VERSION, githubLatestVersion) >= 0
     val githubVersionDisplay = when {
         !githubCheckDone -> null
         githubLatestVersion == null -> stringResource(R.string.mobile_settings_unknown)
