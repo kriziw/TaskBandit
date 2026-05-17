@@ -34,6 +34,16 @@
     <string name="mobile_update_available_title">Newer version available</string>
     <string name="mobile_update_available_body">This app is on %1$s while the server is already on %2$s. Update when you can.</string>
     <string name="mobile_update_dismiss">Dismiss</string>
+    <string name="mobile_github_update_available_title">GitHub update available</string>
+    <string name="mobile_github_update_available_subtitle">%1$s → %2$s</string>
+    <string name="mobile_github_download_install">Download &amp; Install %1$s</string>
+    <string name="mobile_github_downloading">Downloading… %1$d%%</string>
+    <string name="mobile_github_download_failed">Download failed, please try again</string>
+    <string name="mobile_settings_latest_github">Latest on GitHub</string>
+    <string name="mobile_settings_up_to_date">Up to date</string>
+    <string name="mobile_chore_actions_title">Chore actions</string>
+    <string name="mobile_chore_actions_more">More options</string>
+    <string name="mobile_chore_assigned_to">Assigned to %1$s</string>
     <string name="mobile_server_url">Server URL</string>
     <string name="mobile_server_url_hint">Use this only for advanced self-hosted setup. TaskBandit Cloud onboarding is automatic by default.</string>
     <string name="mobile_auth_methods_hint">Press Next after the server URL to check which sign-in methods this server supports.</string>
@@ -354,6 +364,7 @@
     <string name="mobile_edit_due_at">Edit due date/time</string>
     <string name="mobile_edit_due_at_title">Edit due date/time</string>
     <string name="mobile_edit_due_at_body">Reschedule \"%1$s\".</string>
+    <string name="mobile_edit_due_at_confirm">Save changes</string>
     <string name="mobile_chore_title_label">Title</string>
     <string name="mobile_save_due_at">Save due date/time</string>
     <string name="mobile_updating_due_at">Updating due date/time...</string>

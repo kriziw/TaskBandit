@@ -63,15 +63,22 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddCircle
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
+import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.EventBusy
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.HowToReg
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.PeopleAlt
 import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -84,16 +91,21 @@ import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -257,6 +269,8 @@ private data class MobileDashboardRefresh(
     val notificationDevices: List<MobileNotificationDevice>,
     val hostedSubscription: MobileHostedSubscriptionOverview
 )
+
+private data class GitHubReleaseInfo(val version: String, val apkDownloadUrl: String, val body: String)
 
 private data class MobileChoiceOption(
     val label: String,
@@ -630,6 +644,12 @@ private fun TaskBanditApp(
     var hostedSubscription by remember { mutableStateOf(MobileHostedSubscriptionOverview()) }
     var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
     var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
+    var githubReleaseInfo by remember { mutableStateOf<GitHubReleaseInfo?>(null) }
+    var githubCheckDone by remember { mutableStateOf(false) }
+    var dismissedGithubVersion by remember { mutableStateOf(sessionStore.readDismissedGithubVersion()) }
+    var isDownloadingUpdate by remember { mutableStateOf(false) }
+    var downloadProgress by remember { mutableStateOf(0f) }
+    var downloadError by remember { mutableStateOf(false) }
     var isBusy by remember { mutableStateOf(session.token != null) }
     var refreshQueued by remember { mutableStateOf(false) }
     var isSyncingQueue by remember { mutableStateOf(false) }
@@ -959,6 +979,12 @@ private fun TaskBanditApp(
         isBusy = true
         refreshQueued = false
         errorMessage = null
+
+        coroutineScope.launch {
+            val fetchedGithubRelease = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }.getOrNull()
+            githubReleaseInfo = fetchedGithubRelease
+            githubCheckDone = true
+        }
 
         coroutineScope.launch {
             runCatching {
@@ -1784,10 +1810,20 @@ private fun TaskBanditApp(
     val visibleUpdate = availableUpdate?.takeIf { availableUpdateKey != dismissedUpdateKey }
     val currentReleaseLabel = formatReleaseLabel(currentReleaseInfo)
     val serverReleaseLabel = serverReleaseInfo?.let(::formatReleaseLabel)
+    val visibleGithubUpdate = githubReleaseInfo?.takeIf { info ->
+        githubCheckDone &&
+            compareReleaseVersions(BuildConfig.TASKBANDIT_RELEASE_VERSION, info.version) < 0 &&
+            info.version != dismissedGithubVersion
+    }
     fun dismissUpdateNotice() {
         val updateKey = availableUpdateKey ?: return
         sessionStore.saveDismissedUpdateKey(updateKey)
         dismissedUpdateKey = updateKey
+    }
+    fun dismissGithubUpdate() {
+        val version = githubReleaseInfo?.version ?: return
+        sessionStore.saveDismissedGithubVersion(version)
+        dismissedGithubVersion = version
     }
 
     val isDarkTheme = when (themeMode) {
@@ -2037,6 +2073,27 @@ private fun TaskBanditApp(
                     onDismissValidationDialog = { validationDialogMessage = null },
                     onDismissCompletionCelebration = { completionCelebration = null },
                     onDismissUpdate = ::dismissUpdateNotice,
+                    visibleGithubUpdate = visibleGithubUpdate,
+                    githubCheckDone = githubCheckDone,
+                    isDownloadingUpdate = isDownloadingUpdate,
+                    downloadProgress = downloadProgress,
+                    downloadError = downloadError,
+                    onDismissGithubUpdate = ::dismissGithubUpdate,
+                    onDownloadAndInstall = { info ->
+                        isDownloadingUpdate = true
+                        downloadProgress = 0f
+                        downloadError = false
+                        coroutineScope.launch(Dispatchers.IO) {
+                            downloadAndInstallApk(
+                                context = context,
+                                url = info.apkDownloadUrl,
+                                version = info.version,
+                                onProgress = { p -> downloadProgress = p },
+                                onDone = { isDownloadingUpdate = false },
+                                onError = { isDownloadingUpdate = false; downloadError = true }
+                            )
+                        }
+                    },
                     onRefresh = ::requestDashboardRefresh,
                     onDownloadSettingsLogs = ::downloadSettingsLogs,
                     onLogout = ::logout,
@@ -2645,6 +2702,13 @@ private fun DashboardScreen(
     onDismissValidationDialog: () -> Unit,
     onDismissCompletionCelebration: () -> Unit,
     onDismissUpdate: () -> Unit,
+    visibleGithubUpdate: GitHubReleaseInfo?,
+    githubCheckDone: Boolean,
+    isDownloadingUpdate: Boolean,
+    downloadProgress: Float,
+    downloadError: Boolean,
+    onDismissGithubUpdate: () -> Unit,
+    onDownloadAndInstall: (GitHubReleaseInfo) -> Unit,
     onRefresh: () -> Unit,
     onDownloadSettingsLogs: () -> Unit,
     onLogout: () -> Unit,
@@ -3687,70 +3751,43 @@ private fun DashboardScreen(
         sortedChores.firstOrNull { it.id == activeNewUiChoreDialogId }
     }
     if (activeNewUiChoreDialog != null) {
-        Dialog(
+        ModalBottomSheet(
             onDismissRequest = { activeNewUiChoreDialogId = null },
-            properties = DialogProperties(usePlatformDefaultWidth = false)
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
         ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 15.dp),
-                shape = RoundedCornerShape(20.dp),
-                color = MaterialTheme.colorScheme.surface,
-                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)),
-                tonalElevation = 8.dp
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(10.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
-                ) {
-                    Text(
-                        text = "Chore actions",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold
-                    )
-                    ChoreCard(
-                        chore = activeNewUiChoreDialog,
-                        currentUserId = currentUserId,
-                        currentUserRole = currentUserRole,
-                        supportsTakeoverRequests = canUseTakeoverRequests,
-                        expanded = true,
-                        activeReviewAction = activeReviewAction,
-                        activeStartAction = activeStartAction,
-                        activeSubmitAction = activeSubmitAction,
-                        activeCloseCycleAction = activeCloseCycleAction,
-                        activeTakeoverRequestAction = activeTakeoverRequestAction,
-                        activeDueAtAction = activeDueAtAction,
-                        outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[activeNewUiChoreDialog.id],
-                        selectedChecklistIds = submitSelections[activeNewUiChoreDialog.id]
-                            ?: activeNewUiChoreDialog.completedChecklistIds.toSet(),
-                        selectedProofCount = selectedProofUris[activeNewUiChoreDialog.id]?.size ?: 0,
-                        onExpandedChange = {},
-                        onApprove = onApprove,
-                        onReject = onReject,
-                        onToggleChecklistItem = onToggleChecklistItem,
-                        onPickProofs = onPickProofs,
-                        onTakeProofPhoto = onTakeProofPhoto,
-                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
-                        onCancelChoreOccurrence = onCancelChoreOccurrence,
-                        onCloseChoreCycle = onCloseChoreCycle,
-                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
-                        onRequestTakeover = { choreId ->
-                            requestTakeoverChoreId = choreId
-                            requestTakeoverMemberId = null
-                        },
-                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
-                        onEditChoreDueAt = onEditChoreDueAt,
-                        editableVariants = activeNewUiChoreDialog.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
-                        activeExternalCompleteAction = activeExternalCompleteAction,
-                        onCompleteExternalChore = onCompleteExternalChore,
-                        showSectionBadge = false,
-                        showTitleIcon = false
-                    )
-                }
-            }
+            ChoreActionSheet(
+                chore = activeNewUiChoreDialog,
+                currentUserId = currentUserId,
+                currentUserRole = currentUserRole,
+                supportsTakeoverRequests = canUseTakeoverRequests,
+                outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[activeNewUiChoreDialog.id],
+                activeReviewAction = activeReviewAction,
+                activeStartAction = activeStartAction,
+                activeSubmitAction = activeSubmitAction,
+                activeCloseCycleAction = activeCloseCycleAction,
+                activeTakeoverRequestAction = activeTakeoverRequestAction,
+                activeDueAtAction = activeDueAtAction,
+                activeExternalCompleteAction = activeExternalCompleteAction,
+                selectedChecklistIds = submitSelections[activeNewUiChoreDialog.id]
+                    ?: activeNewUiChoreDialog.completedChecklistIds.toSet(),
+                selectedProofCount = selectedProofUris[activeNewUiChoreDialog.id]?.size ?: 0,
+                editableVariants = activeNewUiChoreDialog.templateId
+                    ?.let { templateVariantsByTemplateId[it] }.orEmpty(),
+                onDismiss = { activeNewUiChoreDialogId = null },
+                onApprove = { choreId -> activeNewUiChoreDialogId = null; onApprove(choreId) },
+                onReject = { choreId -> activeNewUiChoreDialogId = null; onReject(choreId) },
+                onClaimChore = { choreId -> activeNewUiChoreDialogId = null; startConfirmationChoreId = choreId },
+                onTakeOverChore = { choreId -> activeNewUiChoreDialogId = null; takeoverConfirmationChoreId = choreId },
+                onRequestTakeover = { choreId ->
+                    activeNewUiChoreDialogId = null
+                    requestTakeoverChoreId = choreId
+                    requestTakeoverMemberId = null
+                },
+                onSubmitChore = { choreId -> activeNewUiChoreDialogId = null; submitConfirmationChoreId = choreId },
+                onEditChoreDueAt = { a, b, c, d -> activeNewUiChoreDialogId = null; onEditChoreDueAt(a, b, c, d) },
+                onCancelChoreOccurrence = { choreId -> activeNewUiChoreDialogId = null; onCancelChoreOccurrence(choreId) },
+                onCompleteExternalChore = { choreId, name -> activeNewUiChoreDialogId = null; onCompleteExternalChore(choreId, name) }
+            )
         }
     }
 
@@ -4629,7 +4666,7 @@ private fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate)
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
                     }
                 }
                 item {
@@ -7530,10 +7567,61 @@ private fun SettingsReleaseContent(
     serverReleaseLabel: String?,
     serverUrl: String,
     availableUpdate: MobileReleaseInfo?,
-    onDismissUpdate: () -> Unit
+    onDismissUpdate: () -> Unit,
+    visibleGithubUpdate: GitHubReleaseInfo?,
+    githubCheckDone: Boolean,
+    isDownloadingUpdate: Boolean,
+    downloadProgress: Float,
+    downloadError: Boolean,
+    onDismissGithubUpdate: () -> Unit,
+    onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
 ) {
-    SettingsValueLine(label = stringResource(R.string.mobile_settings_app_release), value = currentReleaseLabel)
+    val isUpToDate = githubCheckDone && visibleGithubUpdate == null
+    val githubVersionDisplay = when {
+        !githubCheckDone -> null
+        visibleGithubUpdate != null -> "v${visibleGithubUpdate.version}"
+        else -> stringResource(R.string.mobile_settings_up_to_date)
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.mobile_settings_app_release),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (isUpToDate) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_settings_up_to_date),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+            }
+            Text(text = currentReleaseLabel, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
     SettingsValueLine(label = stringResource(R.string.mobile_settings_server_release), value = serverReleaseLabel ?: stringResource(R.string.mobile_settings_unknown))
+    if (!githubCheckDone) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = stringResource(R.string.mobile_settings_latest_github), style = MaterialTheme.typography.labelSmall)
+            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
+        }
+    } else {
+        SettingsValueLine(label = stringResource(R.string.mobile_settings_latest_github), value = githubVersionDisplay ?: stringResource(R.string.mobile_settings_unknown))
+    }
     SettingsValueLine(label = stringResource(R.string.mobile_settings_server_url), value = serverUrl)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_commit), value = BuildConfig.TASKBANDIT_COMMIT_SHA)
     if (availableUpdate != null) {
@@ -7542,6 +7630,62 @@ private fun SettingsReleaseContent(
                 Text(text = stringResource(R.string.mobile_update_available_title), style = MaterialTheme.typography.titleMedium)
                 Text(text = stringResource(R.string.mobile_update_available_body, currentReleaseLabel, formatReleaseLabel(availableUpdate)), style = MaterialTheme.typography.bodySmall)
                 Button(onClick = onDismissUpdate) { Text(stringResource(R.string.mobile_update_dismiss)) }
+            }
+        }
+    }
+    if (visibleGithubUpdate != null) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = stringResource(R.string.mobile_github_update_available_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = stringResource(R.string.mobile_github_update_available_subtitle, "v${BuildConfig.TASKBANDIT_RELEASE_VERSION}", "v${visibleGithubUpdate.version}"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (visibleGithubUpdate.body.isNotBlank()) {
+                    Text(
+                        text = visibleGithubUpdate.body.trim(),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (isDownloadingUpdate) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LinearProgressIndicator(
+                            progress = { downloadProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = stringResource(R.string.mobile_github_downloading, (downloadProgress * 100).toInt()),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    if (downloadError) {
+                        Text(
+                            text = stringResource(R.string.mobile_github_download_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onDownloadAndInstall(visibleGithubUpdate) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.mobile_github_download_install, "v${visibleGithubUpdate.version}"))
+                        }
+                        TextButton(onClick = onDismissGithubUpdate) {
+                            Text(stringResource(R.string.mobile_update_dismiss))
+                        }
+                    }
+                }
             }
         }
     }
@@ -7639,6 +7783,473 @@ private fun SettingsLogoutContent(onLogout: () -> Unit) {
         onClick = onLogout,
         modifier = Modifier.fillMaxWidth()
     ) { Text(stringResource(R.string.mobile_logout)) }
+}
+
+@Composable
+private fun ChoreActionSheet(
+    chore: MobileChore,
+    currentUserId: String?,
+    currentUserRole: String?,
+    supportsTakeoverRequests: Boolean,
+    outgoingTakeoverRequest: MobileTakeoverRequest?,
+    activeReviewAction: String?,
+    activeStartAction: String?,
+    activeSubmitAction: String?,
+    activeCloseCycleAction: String?,
+    activeTakeoverRequestAction: String?,
+    activeDueAtAction: String?,
+    activeExternalCompleteAction: String?,
+    selectedChecklistIds: Set<String>,
+    selectedProofCount: Int,
+    editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>,
+    onDismiss: () -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit,
+    onClaimChore: (String) -> Unit,
+    onTakeOverChore: (String) -> Unit,
+    onRequestTakeover: (String) -> Unit,
+    onSubmitChore: (String) -> Unit,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
+    onCompleteExternalChore: (String, String) -> Unit
+) {
+    val context = LocalContext.current
+    val featureAccess = LocalMobileFeatureAccess.current
+    val canManageChores = featureAccess.choresManage
+    val canApproveChores = featureAccess.approvals
+    val canUseDirectTakeover = featureAccess.takeoverDirect
+    val canUseTakeoverRequestsLocal = featureAccess.takeoverRequests && supportsTakeoverRequests
+    val canCompleteExternal = featureAccess.externalCompletion && currentUserRole != "child"
+    val isPendingApproval = chore.state == "pending_approval"
+    val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+    val isAssignedToCurrentUser = chore.assigneeId != null && chore.assigneeId == currentUserId
+    val isUnassigned = chore.assigneeId == null
+    val canClaimChore = canManageChores && isSubmittableState && !isAssignedToCurrentUser && (isUnassigned || canUseDirectTakeover)
+    val canSubmit = canManageChores && isAssignedToCurrentUser && isSubmittableState
+    val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
+    val canRequestTakeover = canManageChores && canUseTakeoverRequestsLocal && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
+    val canEditDueAt = canManageChores && currentUserRole != "child" && chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+    val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
+    val hasAnyPrimaryAction = (isPendingApproval && canApproveChores) || canSubmit || canClaimChore
+    val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || (canCompleteExternal && isSubmittableState)
+
+    val zoneId = remember { ZoneId.systemDefault() }
+    var moreExpanded by remember { mutableStateOf(false) }
+    var showApproveConfirm by remember { mutableStateOf(false) }
+    var showRejectConfirm by remember { mutableStateOf(false) }
+    var showCancelOccurrenceConfirm by remember { mutableStateOf(false) }
+    var showExternalCompleteDialog by remember { mutableStateOf(false) }
+    var externalCompleterNameInput by remember { mutableStateOf("") }
+    var showDueAtEditor by remember { mutableStateOf(false) }
+    var dueAtEditorTitle by remember(chore.id, chore.title) { mutableStateOf(chore.title) }
+    var dueAtEditorVariantId by remember(chore.id, chore.variantId) { mutableStateOf(chore.variantId ?: "") }
+    var dueAtVariantDropdownExpanded by remember { mutableStateOf(false) }
+    var dueAtEditorMillis by remember(chore.id, chore.dueAt) {
+        mutableLongStateOf(
+            runCatching { Instant.parse(chore.dueAt).toEpochMilli() }.getOrElse { System.currentTimeMillis() }
+        )
+    }
+    val dueAtEditorDatePicker = remember(context, dueAtEditorMillis) {
+        val ldt = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+        DatePickerDialog(context, { _, year, month, day ->
+            val existing = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+            dueAtEditorMillis = existing.withYear(year).withMonth(month + 1).withDayOfMonth(day).atZone(zoneId).toInstant().toEpochMilli()
+        }, ldt.year, ldt.monthValue - 1, ldt.dayOfMonth)
+    }
+    val dueAtEditorTimePicker = remember(context, dueAtEditorMillis) {
+        val ldt = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+        TimePickerDialog(context, { _, h, m ->
+            val existing = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+            dueAtEditorMillis = existing.withHour(h).withMinute(m).withSecond(0).withNano(0).atZone(zoneId).toInstant().toEpochMilli()
+        }, ldt.hour, ldt.minute, true)
+    }
+
+    val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
+    val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle, chore.subtypeLabel)
+    val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
+    val dueFormatted = formatDueAtForMockCard(chore.dueAt)
+    val isDueSoon = isDueSoonForMockCard(chore.dueAt)
+    val activeDueAtActionKey = "update-due:${chore.id}"
+
+    if (showApproveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showApproveConfirm = false },
+            title = { Text(stringResource(R.string.mobile_approve_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_approve_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showApproveConfirm = false; onApprove(chore.id) }) {
+                    Text(stringResource(R.string.mobile_approve_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showApproveConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showRejectConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRejectConfirm = false },
+            title = { Text(stringResource(R.string.mobile_reject_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_reject_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showRejectConfirm = false; onReject(chore.id) }) {
+                    Text(stringResource(R.string.mobile_reject_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showRejectConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showCancelOccurrenceConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelOccurrenceConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showCancelOccurrenceConfirm = false; onCancelChoreOccurrence(chore.id) }) {
+                    Text(stringResource(R.string.mobile_cancel_occurrence_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelOccurrenceConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showExternalCompleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showExternalCompleteDialog = false; externalCompleterNameInput = "" },
+            title = { Text(stringResource(R.string.mobile_complete_external_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.mobile_complete_external_dialog_body, chore.title))
+                    OutlinedTextField(
+                        value = externalCompleterNameInput,
+                        onValueChange = { externalCompleterNameInput = it },
+                        label = { Text(stringResource(R.string.mobile_complete_external_name_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = externalCompleterNameInput.trim()
+                        showExternalCompleteDialog = false
+                        externalCompleterNameInput = ""
+                        onCompleteExternalChore(chore.id, name)
+                    },
+                    enabled = activeExternalCompleteAction == null && externalCompleterNameInput.isNotBlank()
+                ) {
+                    Text(stringResource(
+                        if (activeExternalCompleteAction == "complete-external:${chore.id}") R.string.mobile_completing_external
+                        else R.string.mobile_complete_external_confirm
+                    ))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showExternalCompleteDialog = false; externalCompleterNameInput = "" }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showDueAtEditor) {
+        AlertDialog(
+            onDismissRequest = { showDueAtEditor = false },
+            title = { Text(stringResource(R.string.mobile_edit_due_at_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.mobile_edit_due_at_body, chore.title))
+                    OutlinedTextField(
+                        value = dueAtEditorTitle,
+                        onValueChange = { dueAtEditorTitle = it },
+                        label = { Text(stringResource(R.string.mobile_chore_title_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    if (editableVariants.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = dueAtVariantDropdownExpanded,
+                            onExpandedChange = { dueAtVariantDropdownExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = editableVariants.firstOrNull { it.id == dueAtEditorVariantId }?.label
+                                    ?: stringResource(R.string.mobile_create_select_variant_prompt),
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dueAtVariantDropdownExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = dueAtVariantDropdownExpanded,
+                                onDismissRequest = { dueAtVariantDropdownExpanded = false }
+                            ) {
+                                editableVariants.forEach { variant ->
+                                    DropdownMenuItem(
+                                        text = { Text(variant.label) },
+                                        onClick = { dueAtEditorVariantId = variant.id; dueAtVariantDropdownExpanded = false }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { dueAtEditorDatePicker.show() }) {
+                            Text(stringResource(R.string.mobile_create_pick_date))
+                        }
+                        OutlinedButton(onClick = { dueAtEditorTimePicker.show() }) {
+                            Text(stringResource(R.string.mobile_create_pick_time))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDueAtEditor = false
+                        onEditChoreDueAt(
+                            chore.id,
+                            Instant.ofEpochMilli(dueAtEditorMillis).toString(),
+                            dueAtEditorTitle.trim(),
+                            dueAtEditorVariantId.ifBlank { null }
+                        )
+                    },
+                    enabled = activeDueAtAction == null
+                ) {
+                    Text(stringResource(
+                        if (activeDueAtAction == activeDueAtActionKey) R.string.mobile_updating_due_at
+                        else R.string.mobile_edit_due_at_confirm
+                    ))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDueAtEditor = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 300.dp)
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (choreIconDrawable != null) {
+                Image(
+                    painter = painterResource(choreIconDrawable),
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(text = typeTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = "${chore.groupTitle.ifBlank { "Home" }} · $dueFormatted",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (chore.isOverdue || isDueSoon) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (chore.isOverdue) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(
+                            text = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else "Due soon",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (chore.isOverdue) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                if (chore.assigneeDisplayName != null) {
+                    Text(
+                        text = stringResource(R.string.mobile_chore_assigned_to, chore.assigneeDisplayName),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider()
+
+        if (isPendingApproval && canApproveChores) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { showApproveConfirm = true },
+                    enabled = activeReviewAction == null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(if (activeReviewAction == "approve:${chore.id}") R.string.mobile_approving else R.string.mobile_approve))
+                }
+                OutlinedButton(
+                    onClick = { showRejectConfirm = true },
+                    enabled = activeReviewAction == null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(if (activeReviewAction == "reject:${chore.id}") R.string.mobile_rejecting else R.string.mobile_reject))
+                }
+            }
+        }
+
+        if (canSubmit) {
+            Button(
+                onClick = { onSubmitChore(chore.id) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = activeSubmitAction == null
+            ) {
+                Text(stringResource(R.string.mobile_submit))
+            }
+        }
+
+        if (canClaimChore) {
+            Button(
+                onClick = {
+                    if (isUnassigned) onClaimChore(chore.id) else onTakeOverChore(chore.id)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = activeStartAction == null
+            ) {
+                Text(stringResource(
+                    if (isUnassigned) {
+                        if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else R.string.mobile_claim_task
+                    } else {
+                        if (activeStartAction == "takeover:${chore.id}") R.string.mobile_taking_over_task else R.string.mobile_take_over_task
+                    }
+                ))
+            }
+        }
+
+        if (!hasAnyPrimaryAction && !hasSecondaryActions) {
+            Text(
+                text = stringResource(R.string.mobile_chore_read_only_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (hasSecondaryActions) {
+            if (hasAnyPrimaryAction) HorizontalDivider()
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { moreExpanded = !moreExpanded },
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.mobile_chore_actions_more), style = MaterialTheme.typography.bodyMedium)
+                    Icon(
+                        imageVector = if (moreExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            AnimatedVisibility(visible = moreExpanded) {
+                Column {
+                    if (canRequestTakeover) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.SwapHoriz,
+                            label = stringResource(
+                                if (activeTakeoverRequestAction?.startsWith("request:${chore.id}:") == true) R.string.mobile_request_takeover_sending
+                                else R.string.mobile_request_takeover
+                            ),
+                            enabled = activeTakeoverRequestAction == null,
+                            onClick = { onRequestTakeover(chore.id) }
+                        )
+                    }
+                    if (canEditDueAt) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.CalendarMonth,
+                            label = stringResource(R.string.mobile_edit_due_at),
+                            enabled = activeDueAtAction == null,
+                            onClick = { showDueAtEditor = true }
+                        )
+                    }
+                    if (canCancelOccurrence) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.EventBusy,
+                            label = stringResource(R.string.mobile_cancel_occurrence),
+                            enabled = activeCloseCycleAction == null,
+                            onClick = { showCancelOccurrenceConfirm = true }
+                        )
+                    }
+                    if (canCompleteExternal && isSubmittableState) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.HowToReg,
+                            label = stringResource(
+                                if (activeExternalCompleteAction == "complete-external:${chore.id}") R.string.mobile_completing_external
+                                else R.string.mobile_complete_external
+                            ),
+                            enabled = activeExternalCompleteAction == null,
+                            onClick = { showExternalCompleteDialog = true }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecondaryActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
+    }
 }
 
 private fun resolveChoreSection(chore: MobileChore, currentUserId: String?): MobileChoreSection = when {
@@ -8130,4 +8741,88 @@ private fun readUriDisplayName(contentResolver: ContentResolver, uri: Uri): Stri
 private fun createProofCaptureFile(context: android.content.Context): File {
     val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
     return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
+}
+
+private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
+    val connection = java.net.URL("https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=10")
+        .openConnection() as java.net.HttpURLConnection
+    connection.setRequestProperty("Accept", "application/vnd.github+json")
+    connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+    connection.connectTimeout = 10_000
+    connection.readTimeout = 10_000
+    return try {
+        if (connection.responseCode != 200) return null
+        val responseText = connection.inputStream.bufferedReader().readText()
+        val releases = org.json.JSONArray(responseText)
+        for (i in 0 until releases.length()) {
+            val json = releases.getJSONObject(i)
+            if (json.optBoolean("draft") || json.optBoolean("prerelease")) continue
+            val tagName = json.optString("tag_name", "")
+            if (!tagName.startsWith("android-v")) continue
+            val cleaned = tagName.removePrefix("android-v")
+            val version = cleaned.substringBeforeLast('-').ifBlank { cleaned }
+            if (version.isBlank()) continue
+            val body = json.optString("body", "")
+            val assets = json.optJSONArray("assets") ?: continue
+            var apkUrl: String? = null
+            for (j in 0 until assets.length()) {
+                val asset = assets.getJSONObject(j)
+                if (asset.optString("name").endsWith(".apk")) {
+                    apkUrl = asset.optString("browser_download_url").ifBlank { null }
+                    break
+                }
+            }
+            if (apkUrl != null) return GitHubReleaseInfo(version = version, apkDownloadUrl = apkUrl, body = body)
+        }
+        null
+    } catch (_: Exception) {
+        null
+    } finally {
+        connection.disconnect()
+    }
+}
+
+private fun downloadAndInstallApk(
+    context: android.content.Context,
+    url: String,
+    version: String,
+    onProgress: (Float) -> Unit,
+    onDone: () -> Unit,
+    onError: () -> Unit
+) {
+    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    try {
+        val dir = java.io.File(context.cacheDir, "apk-downloads").also { it.mkdirs() }
+        val file = java.io.File(dir, "taskbandit-$version.apk")
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 120_000
+        connection.connect()
+        val total = connection.contentLengthLong
+        var downloaded = 0L
+        connection.inputStream.use { input ->
+            file.outputStream().use { output ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    output.write(buffer, 0, read)
+                    downloaded += read
+                    if (total > 0) {
+                        val progress = downloaded.toFloat() / total
+                        mainHandler.post { onProgress(progress) }
+                    }
+                }
+            }
+        }
+        mainHandler.post { onDone() }
+        val fileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(fileUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(installIntent)
+    } catch (_: Exception) {
+        mainHandler.post { onError() }
+    }
 }

@@ -3,4 +3,7 @@
     <files-path
         name="proof_captures"
         path="proof-captures/" />
+    <cache-path
+        name="apk_downloads"
+        path="apk-downloads/" />
 </paths>

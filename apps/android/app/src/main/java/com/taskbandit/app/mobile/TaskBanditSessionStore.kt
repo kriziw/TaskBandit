@@ -59,6 +59,14 @@ class TaskBanditSessionStore(
             .apply()
     }
 
+    fun readDismissedGithubVersion(): String? = preferences.getString("dismissed_github_version", null)
+
+    fun saveDismissedGithubVersion(value: String) {
+        preferences.edit()
+            .putString("dismissed_github_version", value)
+            .apply()
+    }
+
     fun clearToken(baseUrl: String) {
         preferences.edit()
             .putString("base_url", baseUrl.ifBlank { defaultApiBaseUrl })
