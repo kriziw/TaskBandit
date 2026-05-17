@@ -403,6 +403,15 @@
     <string name="mobile_cancel_series_confirm_title">Gesamte Serie stornieren?</string>
     <string name="mobile_cancel_series_confirm_body">"%1$s" stornieren und alle noch offenen zukuenftigen Aufgaben dieser Serie stoppen? Verknuepfte Folgeaufgaben der Serie werden ebenfalls storniert.</string>
     <string name="mobile_cancel_series_confirm_action">Gesamte Serie stornieren</string>
+    <string name="mobile_complete_external">Extern erledigt markieren</string>
+    <string name="mobile_completing_external">Wird als erledigt markiert…</string>
+    <string name="mobile_complete_external_dialog_title">Wer hat das erledigt?</string>
+    <string name="mobile_complete_external_dialog_body">Gib den Namen der Person ein, die "%1$s" erledigt hat.</string>
+    <string name="mobile_complete_external_name_label">Name der Person</string>
+    <string name="mobile_complete_external_confirm">Als erledigt markieren</string>
+    <string name="mobile_complete_external_success">Aufgabe wurde als extern erledigt markiert.</string>
+    <string name="mobile_complete_external_failed">Die Aufgabe konnte nicht als extern erledigt markiert werden.</string>
+    <string name="mobile_feature_external_completion_disabled">Externe Erledigung ist in deinem aktuellen Paket nicht verfügbar.</string>
 </resources>
 
 

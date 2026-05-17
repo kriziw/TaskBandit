@@ -458,5 +458,14 @@
     <string name="widget_refreshing">Refreshing widget...</string>
     <string name="mobile_push_channel_name">TaskBandit alerts</string>
     <string name="mobile_push_channel_description">Due-soon reminders, approvals, and household TaskBandit updates.</string>
+    <string name="mobile_complete_external">Mark completed externally</string>
+    <string name="mobile_completing_external">Marking as completed…</string>
+    <string name="mobile_complete_external_dialog_title">Who completed this?</string>
+    <string name="mobile_complete_external_dialog_body">Enter the name of the person who completed \"%1$s\".</string>
+    <string name="mobile_complete_external_name_label">Person\'s name</string>
+    <string name="mobile_complete_external_confirm">Mark as completed</string>
+    <string name="mobile_complete_external_success">Chore marked as completed externally.</string>
+    <string name="mobile_complete_external_failed">Could not mark the chore as completed externally.</string>
+    <string name="mobile_feature_external_completion_disabled">External completion is not available in your current package.</string>
 </resources>
 
