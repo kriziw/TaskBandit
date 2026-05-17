@@ -283,6 +283,13 @@ private val quickLogIconCart = String(Character.toChars(0x1F6D2))
 private val quickLogIconBox = String(Character.toChars(0x1F4E6))
 private val quickLogIconSparkle = "\u2728"
 private val quickLogLegacyMojibakePrefix = Regex("^[\\u00C3\\u00E2\\u00F0]")
+private val quickLogDrawableIconIds = listOf(
+    "take_out_trash", "recycle_sorting", "feed_pets", "wash_dishes_sink",
+    "make_bed", "change_bed_sheets", "do_laundry", "vacuum_floor",
+    "water_plants", "clean_toilet", "clean_mirror_sink", "wipe_counter",
+    "dishwasher", "grocery_shopping", "sort_mail"
+)
+
 private val quickLogIconOptions = listOf(
     quickLogIconCheck,
     quickLogIconBroom,
@@ -2724,7 +2731,7 @@ private fun DashboardScreen(
     var quickLogNote by rememberSaveable { mutableStateOf("") }
     var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
     var quickLogSelectedId by rememberSaveable { mutableStateOf<String?>(null) }
-    var quickLogIcon by rememberSaveable { mutableStateOf(quickLogIconCheck) }
+    var quickLogIcon by rememberSaveable { mutableStateOf<String?>(null) }
     var quickLogCreateTemplate by rememberSaveable { mutableStateOf(false) }
     var quickLogUsePointsOverride by rememberSaveable { mutableStateOf(false) }
     var quickLogPointsOverrideInput by rememberSaveable { mutableStateOf("") }
@@ -3117,7 +3124,7 @@ private fun DashboardScreen(
         quickLogNote = ""
         quickLogSelectedKind = null
         quickLogSelectedId = null
-        quickLogIcon = quickLogIconCheck
+        quickLogIcon = null
         quickLogCreateTemplate = false
         quickLogUsePointsOverride = false
         quickLogPointsOverrideInput = ""
@@ -3144,7 +3151,7 @@ private fun DashboardScreen(
             val typedTitle = quickLogQuery.trim()
             val fallbackTitle = selectedQuickLogCandidate?.title?.trim().orEmpty()
             val titleSource = typedTitle.ifBlank { fallbackTitle }
-            val decoratedTitle = applyQuickLogIcon(titleSource, quickLogIcon)
+            val decoratedTitle = applyChoreIconTokenToTitle(titleSource, quickLogIcon)
             val pointsOverride =
                 if (quickLogUsePointsOverride) quickLogPointsOverrideInput.trim().toIntOrNull() else null
             onQuickLog(
@@ -3214,18 +3221,38 @@ private fun DashboardScreen(
                             .horizontalScroll(rememberScrollState()),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        quickLogIconOptions.forEach { iconOption ->
+                        OutlinedButton(
+                            onClick = { quickLogIcon = null },
+                            modifier = Modifier.size(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(
+                                if (quickLogIcon == null) 2.dp else 1.dp,
+                                if (quickLogIcon == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("—", style = MaterialTheme.typography.titleMedium)
+                        }
+                        quickLogDrawableIconIds.forEach { iconId ->
+                            val drawable = resolveChoreIconDrawableFromToken(iconId)
                             OutlinedButton(
-                                onClick = { quickLogIcon = iconOption },
+                                onClick = { quickLogIcon = iconId },
                                 modifier = Modifier.size(52.dp),
                                 shape = RoundedCornerShape(12.dp),
                                 border = BorderStroke(
-                                    if (quickLogIcon == iconOption) 2.dp else 1.dp,
-                                    if (quickLogIcon == iconOption) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                                    if (quickLogIcon == iconId) 2.dp else 1.dp,
+                                    if (quickLogIcon == iconId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
                                 ),
-                                contentPadding = PaddingValues(0.dp)
+                                contentPadding = PaddingValues(4.dp)
                             ) {
-                                Text(iconOption, style = MaterialTheme.typography.titleMedium)
+                                if (drawable != null) {
+                                    Image(
+                                        painter = painterResource(drawable),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
                             }
                         }
                     }
@@ -3240,7 +3267,7 @@ private fun DashboardScreen(
                                     quickLogSelectedKind = candidate.kind
                                     quickLogSelectedId = candidate.id
                                     quickLogQuery = candidate.title
-                                    quickLogIcon = resolveQuickLogIcon(candidate.title, candidate.subtitle)
+                                    quickLogIcon = resolveChoreIconIdFromTitle(candidate.title, candidate.subtitle)
                                     quickLogCreateTemplate = false
                                 }
                             )
@@ -3255,7 +3282,7 @@ private fun DashboardScreen(
                                     quickLogSelectedKind = candidate.kind
                                     quickLogSelectedId = candidate.id
                                     quickLogQuery = candidate.title
-                                    quickLogIcon = resolveQuickLogIcon(candidate.title, candidate.subtitle)
+                                    quickLogIcon = resolveChoreIconIdFromTitle(candidate.title, candidate.subtitle)
                                 }
                             )
                         }
@@ -4710,12 +4737,13 @@ private fun DashboardScreen(
 }
 @Composable
 private fun QuickLogMatchChip(
-    icon: String,
+    icon: String?,
     label: String,
     @Suppress("UNUSED_PARAMETER") title: String,
     selected: Boolean,
     onClick: () -> Unit
 ) {
+    val iconDrawable = resolveChoreIconDrawableFromToken(icon)
     OutlinedButton(
         onClick = onClick,
         shape = RoundedCornerShape(10.dp),
@@ -4732,7 +4760,14 @@ private fun QuickLogMatchChip(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp)
         ) {
-            Text(icon, style = MaterialTheme.typography.titleSmall)
+            if (iconDrawable != null) {
+                Image(
+                    painter = painterResource(iconDrawable),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
             Text(
                 text = label,
                 style = MaterialTheme.typography.bodyMedium,
@@ -5631,7 +5666,7 @@ private fun HistoricChoreCard(
     val statusLabel = chore.state.replace('_', ' ')
     val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
     val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
-    val choreIcon = resolveQuickLogIcon(baseTypeTitle, chore.groupTitle)
+    val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle)
     val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val historicDate = if (chore.state == "cancelled") {
@@ -5656,15 +5691,18 @@ private fun HistoricChoreCard(
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    shape = RoundedCornerShape(10.dp),
-                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.5f)
-                ) {
-                    Text(
-                        text = choreIcon,
-                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 9.dp),
-                        style = MaterialTheme.typography.titleMedium
-                    )
+                if (choreIconDrawable != null) {
+                    Box(
+                        modifier = Modifier.size(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(choreIconDrawable),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
                 }
                 Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -6116,7 +6154,6 @@ private fun ChoreCard(
     val canCompleteExternal = featureAccess.externalCompletion && currentUserRole != "child" && isSubmittableState
     val section = resolveChoreSection(chore, currentUserId)
     val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
-    val choreIcon = resolveQuickLogIcon(baseTypeTitle, chore.groupTitle)
     val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle, chore.subtypeLabel)
     val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
     val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
@@ -6197,25 +6234,17 @@ private fun ChoreCard(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                Surface(
-                    modifier = Modifier.size(42.dp),
-                    shape = RoundedCornerShape(10.dp),
-                    color = accentContainerColor.copy(alpha = 0.80f)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        if (choreIconDrawable != null) {
-                            Image(
-                                painter = painterResource(choreIconDrawable),
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.size(38.dp)
-                            )
-                        } else {
-                            Text(
-                                text = if (quickLogIconOptions.contains(choreIcon)) choreIcon else quickLogIconCheck,
-                                style = MaterialTheme.typography.titleMedium
-                            )
-                        }
+                if (choreIconDrawable != null) {
+                    Box(
+                        modifier = Modifier.size(42.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(choreIconDrawable),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(38.dp)
+                        )
                     }
                 }
                 Column(
@@ -8025,30 +8054,33 @@ private fun stripLeadingQuickLogIcon(text: String): String {
     return trimmed.removePrefix(token).trimStart()
 }
 
-private fun applyQuickLogIcon(text: String, icon: String): String {
-    val stripped = stripLeadingQuickLogIcon(text)
-    if (stripped.isBlank()) {
-        return ""
-    }
-    return "$icon $stripped"
+private fun applyChoreIconTokenToTitle(text: String, iconId: String?): String {
+    val stripped = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(text))
+    if (stripped.isBlank()) return ""
+    if (iconId.isNullOrBlank()) return stripped
+    return "[[icon:$iconId]] $stripped"
 }
 
-private fun resolveQuickLogIcon(title: String, context: String? = null): String {
-    detectLeadingQuickLogIcon(title)?.let { return it }
-
-    val searchable = listOfNotNull(title, context)
-        .joinToString(" ")
-        .lowercase(Locale.getDefault())
+private fun resolveChoreIconIdFromTitle(title: String, context: String? = null): String? {
+    detectLeadingChoreIconToken(title)?.let { return it }
+    val searchable = listOfNotNull(
+        stripLeadingChoreIconToken(stripLeadingQuickLogIcon(title)), context
+    ).joinToString(" ").lowercase(Locale.getDefault())
     return when {
-        Regex("(dish|kitchen|plate|cook|meal|fridge|oven)").containsMatchIn(searchable) -> quickLogIconPlate
-        Regex("(laundry|wash|clothes|linen|fold)").containsMatchIn(searchable) -> quickLogIconBasket
-        Regex("(trash|garbage|recycl|waste|bin)").containsMatchIn(searchable) -> quickLogIconTrash
-        Regex("(clean|vacuum|mop|dust|bathroom|toilet)").containsMatchIn(searchable) -> quickLogIconBroom
-        Regex("(toy|kid|child|play|nursery)").containsMatchIn(searchable) -> quickLogIconTeddy
-        Regex("(shop|grocery|buy|market)").containsMatchIn(searchable) -> quickLogIconCart
-        else -> quickLogIconCheck
+        Regex("(trash|garbage|bin|waste)").containsMatchIn(searchable) -> "take_out_trash"
+        Regex("(recycl)").containsMatchIn(searchable) -> "recycle_sorting"
+        Regex("(pet|cat|dog|litter)").containsMatchIn(searchable) -> "feed_pets"
+        Regex("(dish|kitchen|plate|sink)").containsMatchIn(searchable) -> "wash_dishes_sink"
+        Regex("(bed|sheet|blanket)").containsMatchIn(searchable) -> "make_bed"
+        Regex("(laundry|clothes|linen|towel|wash)").containsMatchIn(searchable) -> "do_laundry"
+        Regex("(vacuum)").containsMatchIn(searchable) -> "vacuum_floor"
+        Regex("(plant|garden|water)").containsMatchIn(searchable) -> "water_plants"
+        Regex("(bathroom|toilet)").containsMatchIn(searchable) -> "clean_toilet"
+        Regex("(grocery|shop|market)").containsMatchIn(searchable) -> "grocery_shopping"
+        else -> null
     }
 }
+
 
 private fun formatDueAtForMockCard(value: String): String {
     return runCatching {

@@ -1291,7 +1291,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [quickLogCreateTemplateFromEntry, setQuickLogCreateTemplateFromEntry] = useState(false);
   const [quickLogUsePointsOverride, setQuickLogUsePointsOverride] = useState(false);
   const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
-  const [quickLogIcon, setQuickLogIcon] = useState<string>(quickLogIcons.check);
+  const [quickLogIcon, setQuickLogIcon] = useState<ChoreIconId | null>(null);
   const [showMobileCompletedChores, setShowMobileCompletedChores] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
@@ -4036,7 +4036,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setQuickLogCreateTemplateFromEntry(false);
     setQuickLogUsePointsOverride(false);
     setQuickLogPointsOverride("");
-    setQuickLogIcon(quickLogIcons.check);
+    setQuickLogIcon(null);
   }
 
   async function handleSubmitQuickLog() {
@@ -4060,7 +4060,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       const decoratedTitle = quickLogSelectedInstanceId
         ? undefined
-        : applyQuickLogIconToTitle(normalizedQuery, quickLogIcon) || undefined;
+        : applyChoreIconToken(stripLeadingQuickLogIcon(normalizedQuery), quickLogIcon ?? "") || undefined;
       await taskBanditApi.quickLog(token, language, {
         instanceId: quickLogSelectedInstanceId ?? undefined,
         templateId: quickLogSelectedTemplateId ?? undefined,
@@ -10229,14 +10229,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                 </label>
                 <div className="mobile-quick-log-icon-picker" role="group" aria-label="Chore icon">
-                  {quickLogIconOptions.map((iconOption) => (
+                  <button
+                    key="__none__"
+                    className={`ghost-button mobile-quick-log-icon-chip ${quickLogIcon === null ? "active" : ""}`}
+                    type="button"
+                    onClick={() => setQuickLogIcon(null)}
+                  >
+                    —
+                  </button>
+                  {choreIconPresets.map((preset) => (
                     <button
-                      key={iconOption}
-                      className={`ghost-button mobile-quick-log-icon-chip ${quickLogIcon === iconOption ? "active" : ""}`}
+                      key={preset.id}
+                      className={`ghost-button mobile-quick-log-icon-chip ${quickLogIcon === preset.id ? "active" : ""}`}
                       type="button"
-                      onClick={() => setQuickLogIcon(iconOption)}
+                      onClick={() => setQuickLogIcon(preset.id)}
                     >
-                      {iconOption}
+                      <img src={preset.assetPath} alt={preset.label} />
                     </button>
                   ))}
                 </div>
@@ -10255,7 +10263,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             setQuickLogQuery(match.label);
                             setQuickLogSelectedInstanceId(match.kind === "instance" ? match.id : null);
                             setQuickLogSelectedTemplateId(match.kind === "template" ? match.id : null);
-                            setQuickLogIcon(resolveChoreIconFromText(match.label, match.detail));
+                            setQuickLogIcon(resolveChoreIconIdFromText(match.label, match.detail));
                             if (match.kind === "instance") {
                               setQuickLogCreateTemplateFromEntry(false);
                             }

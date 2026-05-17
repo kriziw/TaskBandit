@@ -1733,7 +1733,7 @@ h4,
   display: grid;
   place-items: center;
   border-radius: 12px;
-  background: linear-gradient(135deg, rgba(115, 201, 244, 0.44), rgba(255, 201, 74, 0.36));
+  background: transparent;
 }
 
 .mock-mobile-card-icon img {
@@ -2414,15 +2414,21 @@ h4,
 
 .mobile-quick-log-icon-picker {
   display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 6px;
 }
 
 .mobile-quick-log-icon-chip {
-  min-height: 38px;
-  padding: 0;
+  min-height: 48px;
+  padding: 4px;
   font-size: 1.05rem;
   border-radius: 12px;
+}
+
+.mobile-quick-log-icon-chip img {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
 }
 
 .mobile-quick-log-icon-chip.active {
@@ -2860,7 +2866,7 @@ h4,
     display: grid;
     place-items: center;
     border-radius: 12px;
-    background: linear-gradient(135deg, rgba(115, 201, 244, 0.44), rgba(255, 201, 74, 0.36));
+    background: transparent;
     color: var(--mobile-accent-strong);
     font-size: 1.52rem;
   }
