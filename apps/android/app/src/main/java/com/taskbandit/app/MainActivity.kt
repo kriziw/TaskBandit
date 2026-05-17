@@ -2075,6 +2075,7 @@ private fun TaskBanditApp(
                     onDismissUpdate = ::dismissUpdateNotice,
                     visibleGithubUpdate = visibleGithubUpdate,
                     githubCheckDone = githubCheckDone,
+                    githubLatestVersion = githubReleaseInfo?.version,
                     isDownloadingUpdate = isDownloadingUpdate,
                     downloadProgress = downloadProgress,
                     downloadError = downloadError,
@@ -2704,6 +2705,7 @@ private fun DashboardScreen(
     onDismissUpdate: () -> Unit,
     visibleGithubUpdate: GitHubReleaseInfo?,
     githubCheckDone: Boolean,
+    githubLatestVersion: String?,
     isDownloadingUpdate: Boolean,
     downloadProgress: Float,
     downloadError: Boolean,
@@ -4666,7 +4668,7 @@ private fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
                     }
                 }
                 item {
@@ -7570,17 +7572,18 @@ private fun SettingsReleaseContent(
     onDismissUpdate: () -> Unit,
     visibleGithubUpdate: GitHubReleaseInfo?,
     githubCheckDone: Boolean,
+    githubLatestVersion: String?,
     isDownloadingUpdate: Boolean,
     downloadProgress: Float,
     downloadError: Boolean,
     onDismissGithubUpdate: () -> Unit,
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
 ) {
-    val isUpToDate = githubCheckDone && visibleGithubUpdate == null
+    val isUpToDate = githubCheckDone && githubLatestVersion != null && visibleGithubUpdate == null
     val githubVersionDisplay = when {
         !githubCheckDone -> null
-        visibleGithubUpdate != null -> "v${visibleGithubUpdate.version}"
-        else -> stringResource(R.string.mobile_settings_up_to_date)
+        githubLatestVersion == null -> stringResource(R.string.mobile_settings_unknown)
+        else -> "v$githubLatestVersion"
     }
     Row(
         modifier = Modifier.fillMaxWidth(),
