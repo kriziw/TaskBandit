@@ -56,10 +56,8 @@ const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
-const mobileUiModeStorageKey = "taskbandit-mobile-ui-mode";
 const mobileAvatarStorageKey = "taskbandit-mobile-avatar";
 type WorkspaceVariant = "admin" | "client";
-type MobileUiMode = "classic" | "new";
 
 type DashboardPayload = {
   currentUser: AuthenticatedUser;
@@ -724,21 +722,8 @@ function getWorkspacePageStorageKey(variant: WorkspaceVariant) {
   return `${workspacePageStorageKey}-${variant}`;
 }
 
-function getMobileUiModeStorageKey(variant: WorkspaceVariant) {
-  return `${mobileUiModeStorageKey}-${variant}`;
-}
-
 function getMobileAvatarStorageKey(variant: WorkspaceVariant) {
   return `${mobileAvatarStorageKey}-${variant}`;
-}
-
-function readStoredMobileUiMode(variant: WorkspaceVariant): MobileUiMode {
-  const stored = window.localStorage.getItem(getMobileUiModeStorageKey(variant));
-  return stored === "classic" ? "classic" : "new";
-}
-
-function writeStoredMobileUiMode(variant: WorkspaceVariant, mode: MobileUiMode) {
-  window.localStorage.setItem(getMobileUiModeStorageKey(variant), mode);
 }
 
 function readStoredMobileAvatar(variant: WorkspaceVariant) {
@@ -1270,9 +1255,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     () =>
       typeof window !== "undefined" &&
       window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
-  );
-  const [mobileUiMode, setMobileUiMode] = useState<MobileUiMode>(() =>
-    readStoredMobileUiMode(workspaceVariant)
   );
   const [isClientComposerOpen, setIsClientComposerOpen] = useState(false);
   const [mobileDueEditorInstanceId, setMobileDueEditorInstanceId] = useState<string | null>(null);
@@ -2429,7 +2411,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const isHostedSaas = Boolean(payload?.hostedSubscription.hostedMode);
   const isClientVariant = workspaceVariant === "client";
   const showClientMobileShell = isClientVariant && Boolean(payload) && isClientMobileViewport;
-  const showNewClientMobileShell = showClientMobileShell && mobileUiMode === "new";
+  const showNewClientMobileShell = showClientMobileShell;
   const isStandaloneDisplayMode =
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: window-controls-overlay)").matches ||
@@ -2468,7 +2450,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setInstallPromptDismissed(
       window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
     );
-    setMobileUiMode(readStoredMobileUiMode(workspaceVariant));
     setMobileProfileAvatar(readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset);
     setOnboardingTourCompleted(readStoredOnboardingTourCompletion(workspaceVariant));
     setOnboardingDismissed(false);
@@ -5727,11 +5708,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setInstallPromptEvent(null);
   }
 
-  function handleMobileUiModeChange(nextMode: MobileUiMode) {
-    writeStoredMobileUiMode(workspaceVariant, nextMode);
-    setMobileUiMode(nextMode);
-  }
-
   function handleSelectMobileAvatar(avatarAssetPath: string) {
     setMobileProfileAvatar(avatarAssetPath);
     writeStoredMobileAvatar(workspaceVariant, avatarAssetPath);
@@ -6922,89 +6898,23 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {showClientMobileShell && activePage === "chores" ? (
               <section className="panel mobile-workspace-summary" ref={mobileSummaryRef}>
-                {showNewClientMobileShell ? (
-                  <>
-                    {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
-                      <button
-                        className="mobile-quick-log-card mobile-quick-log-card-button"
-                        type="button"
-                        onClick={() => {
-                          resetQuickLogComposer();
-                          setIsQuickLogComposerOpen(true);
-                        }}
-                      >
-                        <span className="mobile-quick-log-card-copy">
-                          <h4>Quick log</h4>
-                        </span>
-                        <span className="mobile-quick-log-card-chevron" aria-hidden="true">
-                          &#8250;
-                        </span>
-                      </button>
-                    ) : null}
-                  </>
-                ) : (
-                  <>
-                    <div className="section-heading section-heading-compact mobile-workspace-summary-heading">
-                      <div>
-                        <p className="workspace-nav-kicker">{payload.household.name}</p>
-                        <h3>{t("panel.my_chores")}</h3>
-                      </div>
-                      <button className="ghost-button" type="button" onClick={handleOpenOnboarding}>
-                        {t(showOnboarding ? "onboarding.restart" : "onboarding.open_tour")}
-                      </button>
-                    </div>
-                    <div className="mobile-workspace-stats">
-                      <div className="mobile-workspace-stat">
-                        <span>{t("panel.my_chores")}</span>
-                        <strong>{myActionableChoreCount}</strong>
-                      </div>
-                      <div className="mobile-workspace-stat">
-                        <span>{t("panel.notifications")}</span>
-                        <strong>{unreadNotifications.length}</strong>
-                      </div>
-                      <div className="mobile-workspace-stat">
-                        <span>{t("panel.household_chores")}</span>
-                        <strong>{clientMobileUnassignedChores.length + clientMobileOtherChores.length}</strong>
-                      </div>
-                    </div>
-                    {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
-                      <button
-                        className="mobile-quick-log-card mobile-quick-log-card-button"
-                        type="button"
-                        onClick={() => {
-                          resetQuickLogComposer();
-                          setIsQuickLogComposerOpen(true);
-                        }}
-                      >
-                        <span className="mobile-quick-log-card-copy">
-                          <h4>Quick log</h4>
-                        </span>
-                        <span className="mobile-quick-log-card-chevron" aria-hidden="true">
-                          &#8250;
-                        </span>
-                      </button>
-                    ) : null}
-                    <section className="mobile-chores-rail" ref={mobileChoresRailRef}>
-                      {payload.currentUser.role !== "child" ? (
-                        <button className="secondary-button" type="button" onClick={handleOpenClientComposer}>
-                          {t("instances.create")}
-                        </button>
-                      ) : null}
-                      {pageSectionLinks
-                        .filter((link) => link.key !== "chores-schedule")
-                        .map((link) => (
-                          <button
-                            key={link.key}
-                            className="ghost-button"
-                            type="button"
-                            onClick={() => scrollToSection(link.ref)}
-                          >
-                            {link.label}
-                          </button>
-                        ))}
-                    </section>
-                  </>
-                )}
+                {payload.currentUser.role !== "child" && hasFeature("quick_log") ? (
+                  <button
+                    className="mobile-quick-log-card mobile-quick-log-card-button"
+                    type="button"
+                    onClick={() => {
+                      resetQuickLogComposer();
+                      setIsQuickLogComposerOpen(true);
+                    }}
+                  >
+                    <span className="mobile-quick-log-card-copy">
+                      <h4>Quick log</h4>
+                    </span>
+                    <span className="mobile-quick-log-card-chevron" aria-hidden="true">
+                      &#8250;
+                    </span>
+                  </button>
+                ) : null}
               </section>
             ) : null}
 
@@ -7204,42 +7114,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ref={myChoresRef}
             >
               <div className="section-heading">
-                <h2>{showNewClientMobileShell ? "Due today" : t("panel.my_chores")}</h2>
-                {showNewClientMobileShell ? (
-                  <span className="section-kicker">{clientMobileDueTodayChores.length}</span>
-                ) : (
-                  <span className="section-kicker">
-                    {showClientMobileShell ? clientMobileMyChores.length : myChores.length}
-                  </span>
-                )}
+                <h2>Due today</h2>
+                <span className="section-kicker">{clientMobileDueTodayChores.length}</span>
               </div>
               {showClientMobileShell ? (
-                showNewClientMobileShell ? (
-                  renderMockMobileChoreList(
-                    clientMobileDueTodayChores.slice(0, 12),
-                    renderClientMobileDueBucketCard,
-                    t("submission.empty")
-                  )
-                ) : clientMobileMyChores.length === 0 ? (
-                  <p className="empty-state">{t("submission.empty")}</p>
-                ) : (
-                  <div className="stack-list my-chore-groups">
-                    {renderVisibleMyChoreSection(
-                      t("chores.mobile_due_today"),
-                      clientMobileMyChoresDueToday,
-                      t("submission.empty")
-                    )}
-                    {renderVisibleMyChoreSection(
-                      t("chores.mobile_due_this_week"),
-                      clientMobileMyChoresDueThisWeek,
-                      t("submission.empty")
-                    )}
-                    {renderVisibleMyChoreSection(
-                      t("chores.mobile_due_later"),
-                      clientMobileMyChoresDueLater,
-                      t("submission.empty")
-                    )}
-                  </div>
+                renderMockMobileChoreList(
+                  clientMobileDueTodayChores.slice(0, 12),
+                  renderClientMobileDueBucketCard,
+                  t("submission.empty")
                 )
               ) : myChores.length === 0 ? (
                 <p className="empty-state">{t("submission.empty")}</p>
@@ -7279,15 +7161,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
               </div>
-              {showNewClientMobileShell ? (
+              {showClientMobileShell ? (
                 <div className="mock-mobile-leaderboard-cheer">
                   <img src="/brand/mascot-celebration.png" alt="" aria-hidden="true" />
                   <p>{t("mobile.leaderboard_cheer")}</p>
                 </div>
               ) : null}
-              <div className={`stack-list ${showNewClientMobileShell ? "mock-mobile-leaderboard-list" : ""}`}>
+              <div className={`stack-list ${showClientMobileShell ? "mock-mobile-leaderboard-list" : ""}`}>
                 {payload.dashboard.leaderboard.map((member, index) => (
-                  <div className={`leader-row ${showNewClientMobileShell ? "mock-mobile-leader-row" : ""}`} key={member.id}>
+                  <div className={`leader-row ${showClientMobileShell ? "mock-mobile-leader-row" : ""}`} key={member.id}>
                     <div>
                       <strong>
                         <span className={`leader-rank-badge rank-${index + 1}`}>
@@ -7520,13 +7402,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <div className="section-heading">
                 <h2>{showNewClientMobileShell ? "Due this week" : t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
-                  {!showNewClientMobileShell ? (
-                    <span className="section-kicker">
-                      {showClientMobileShell
-                        ? clientMobileUnassignedChores.length + clientMobileOtherChores.length
-                        : visibleHouseholdChores.length}
-                    </span>
-                  ) : null}
                   {payload.currentUser.role === "admin" ? (
                     <button
                       className="ghost-button"
@@ -7540,27 +7415,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
               </div>
               {showClientMobileShell ? (
-                showNewClientMobileShell ? (
-                  renderMockMobileChoreList(
-                    clientMobileDueThisWeekChores.slice(0, 12),
-                    renderClientMobileDueBucketCard,
-                    t("empty.filtered_chores")
-                  )
-                ) : clientMobileUnassignedChores.length === 0 && clientMobileOtherChores.length === 0 ? (
-                  <p className="empty-state">{t("empty.filtered_chores")}</p>
-                ) : (
-                  <div className="stack-list my-chore-groups">
-                    {renderVisibleCompactChoreSection(
-                      t("panel.unassigned_chores"),
-                      clientMobileUnassignedChores,
-                      t("chores.empty_unassigned")
-                    )}
-                    {renderVisibleCompactChoreSection(
-                      t("panel.assigned_elsewhere"),
-                      clientMobileOtherChores,
-                      t("chores.empty_assigned_elsewhere")
-                    )}
-                  </div>
+                renderMockMobileChoreList(
+                  clientMobileDueThisWeekChores.slice(0, 12),
+                  renderClientMobileDueBucketCard,
+                  t("empty.filtered_chores")
                 )
               ) : (
                 <>
@@ -7673,7 +7531,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               )}
             </article>
 
-            {showNewClientMobileShell ? (
+            {showClientMobileShell ? (
               <article className="panel panel-wide page-panel page-chores mobile-due-later-panel">
                 <div className="section-heading">
                   <h2>Due later</h2>
@@ -7689,16 +7547,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             <article className="panel panel-wide page-panel page-chores mobile-history-panel" ref={choreHistoryRef}>
               <div className="section-heading">
-                <h2>{showNewClientMobileShell ? "Completed chores" : t("panel.chore_history")}</h2>
+                <h2>{showClientMobileShell ? "Completed chores" : t("panel.chore_history")}</h2>
                 <div className="toolbar-group">
                   <span className="section-kicker">
-                    {showNewClientMobileShell
+                    {showClientMobileShell
                       ? Math.min(historicChores.length, 15)
-                      : showClientMobileShell
-                        ? Math.min(historicChores.length, 2)
-                        : historicChores.length}
+                      : historicChores.length}
                   </span>
-                  {showNewClientMobileShell ? (
+                  {showClientMobileShell ? (
                     <button
                       className="ghost-button mock-mobile-view-all"
                       type="button"
@@ -7717,23 +7573,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
               </div>
               {showClientMobileShell ? (
-                showNewClientMobileShell ? (
-                  !showMobileCompletedChores ? (
-                    <p className="empty-state">Open to load the latest completed chores.</p>
-                  ) : historicChores.length === 0 ? (
-                    <p className="empty-state">{t("history.empty")}</p>
-                  ) : (
-                    <div className="stack-list">
-                      {historicChores.slice(0, 15).map((instance) =>
-                        renderHouseholdChoreCard(instance, { historic: true })
-                      )}
-                    </div>
-                  )
+                !showMobileCompletedChores ? (
+                  <p className="empty-state">Open to load the latest completed chores.</p>
                 ) : historicChores.length === 0 ? (
                   <p className="empty-state">{t("history.empty")}</p>
                 ) : (
                   <div className="stack-list">
-                    {historicChores.slice(0, 2).map((instance) =>
+                    {historicChores.slice(0, 15).map((instance) =>
                       renderHouseholdChoreCard(instance, { historic: true })
                     )}
                   </div>
@@ -7838,30 +7684,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </>
               )}
             </article>
-
-            {workspaceVariant === "client" ? (
-              <article className="panel page-panel page-settings mobile-ui-mode-panel">
-                <div className="section-heading">
-                  <h2>{t("settings.mobile_ui_mode_title")}</h2>
-                  <span className="section-kicker">{t("settings.mobile_ui_mode_device_only")}</span>
-                </div>
-                <p className="inline-message">{t("settings.mobile_ui_mode_hint")}</p>
-                <div className="settings-list">
-                  <label>
-                    <span>{t("settings.mobile_ui_mode_title")}</span>
-                    <select
-                      value={mobileUiMode}
-                      onChange={(event) =>
-                        handleMobileUiModeChange(event.target.value === "new" ? "new" : "classic")
-                      }
-                    >
-                      <option value="classic">{t("settings.mobile_ui_mode_stable")}</option>
-                      <option value="new">{t("settings.mobile_ui_mode_beta")}</option>
-                    </select>
-                  </label>
-                </div>
-              </article>
-            ) : null}
 
             {notificationPreferencesDraft ? (
               <article
@@ -10482,9 +10304,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     aria-hidden="true"
                   />
                 ) : null}
-                {showNewClientMobileShell ? (
-                  <span className="mobile-bottom-nav-label">{page.label}</span>
-                ) : null}
+                <span className="mobile-bottom-nav-label">{page.label}</span>
               </button>
             ))}
           </div>
