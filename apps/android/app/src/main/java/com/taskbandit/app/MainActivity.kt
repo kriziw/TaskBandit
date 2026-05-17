@@ -973,6 +973,15 @@ private fun TaskBanditApp(
         }
     }
 
+    fun checkForGithubUpdates() {
+        githubCheckDone = false
+        coroutineScope.launch {
+            val fetched = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }.getOrNull()
+            githubReleaseInfo = fetched
+            githubCheckDone = true
+        }
+    }
+
     fun refreshDashboard() {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
@@ -2079,6 +2088,7 @@ private fun TaskBanditApp(
                     isDownloadingUpdate = isDownloadingUpdate,
                     downloadProgress = downloadProgress,
                     downloadError = downloadError,
+                    onCheckForUpdates = ::checkForGithubUpdates,
                     onDismissGithubUpdate = ::dismissGithubUpdate,
                     onDownloadAndInstall = { info ->
                         isDownloadingUpdate = true
@@ -2709,6 +2719,7 @@ private fun DashboardScreen(
     isDownloadingUpdate: Boolean,
     downloadProgress: Float,
     downloadError: Boolean,
+    onCheckForUpdates: () -> Unit,
     onDismissGithubUpdate: () -> Unit,
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit,
     onRefresh: () -> Unit,
@@ -4669,7 +4680,7 @@ private fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onCheckForUpdates = onCheckForUpdates, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
                     }
                 }
                 item {
@@ -7577,6 +7588,7 @@ private fun SettingsReleaseContent(
     isDownloadingUpdate: Boolean,
     downloadProgress: Float,
     downloadError: Boolean,
+    onCheckForUpdates: () -> Unit,
     onDismissGithubUpdate: () -> Unit,
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
 ) {
@@ -7625,6 +7637,13 @@ private fun SettingsReleaseContent(
         }
     } else {
         SettingsValueLine(label = stringResource(R.string.mobile_settings_latest_github), value = githubVersionDisplay ?: stringResource(R.string.mobile_settings_unknown))
+    }
+    OutlinedButton(
+        onClick = onCheckForUpdates,
+        enabled = githubCheckDone && !isDownloadingUpdate,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(stringResource(R.string.mobile_settings_check_for_updates))
     }
     SettingsValueLine(label = stringResource(R.string.mobile_settings_server_url), value = serverUrl)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_commit), value = BuildConfig.TASKBANDIT_COMMIT_SHA)
