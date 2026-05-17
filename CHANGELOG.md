@@ -2,6 +2,19 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.0](https://github.com/kriziw/TaskBandit/compare/v0.64.2...v0.65.0) (2026-05-17)
+
+
+### Features
+
+* **mobile:** add Check for updates button to Settings release section ([#437](https://github.com/kriziw/TaskBandit/issues/437)) ([e6edcfd](https://github.com/kriziw/TaskBandit/commit/e6edcfd70f512c15e5e62d1d707c9497eeabd1a9))
+
+
+### Bug Fixes
+
+* **mobile:** don't show Up to date when no GitHub releases exist ([#436](https://github.com/kriziw/TaskBandit/issues/436)) ([5d55d13](https://github.com/kriziw/TaskBandit/commit/5d55d134d954c7640f4ad98f6d74208a582571c6))
+* **server:** create follow-up chores as actionable immediately ([#439](https://github.com/kriziw/TaskBandit/issues/439)) ([f0179fe](https://github.com/kriziw/TaskBandit/commit/f0179fe77117c392837d3a8b844eb374c79fb07c))
+
 ## [0.64.2](https://github.com/kriziw/TaskBandit/compare/v0.64.1...v0.64.2) (2026-05-17)
 
 
