@@ -2565,7 +2565,12 @@ h4,
   }
 
   .app-shell.variant-client.mobile-ui-new .workspace-shell {
+    grid-template-columns: 1fr;
     margin-top: 8px;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-sidebar {
+    display: none;
   }
 
   .app-shell.variant-client.mobile-ui-new .app-release-footer,
@@ -2645,6 +2650,7 @@ h4,
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-workspace-summary {
+    display: block;
     margin: 0 0 16px;
     padding: 0;
     background: transparent;
@@ -2963,7 +2969,10 @@ h4,
   .app-shell.variant-client.mobile-ui-new .mobile-composer-backdrop {
     display: grid;
     place-items: center;
+    position: fixed;
+    inset: 0;
     padding: 24px;
+    z-index: 100;
     background: rgba(20, 24, 32, 0.46);
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
@@ -3154,6 +3163,8 @@ h4,
   }
 
   .app-shell.variant-client.mobile-ui-new .mobile-bottom-nav {
+    display: flex;
+    position: fixed;
     left: 0;
     right: 0;
     bottom: 0;
@@ -3164,6 +3175,7 @@ h4,
     max-width: 430px;
     margin: 0 auto;
     display: grid;
+    grid-template-columns: repeat(var(--mobile-nav-columns), 1fr);
     border-radius: 22px 22px 0 0;
     border-left: 0;
     border-right: 0;
