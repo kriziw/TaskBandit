@@ -17,6 +17,7 @@
   "release.update_available_title": "Neuere Version verfügbar",
   "release.update_available_body": "Dieser Client läuft auf {current}, während der Server schon auf {latest} ist. Bitte aktualisiere oder lade die App neu, sobald es passt.",
   "release.update_available_chip": "Update verfügbar: {release}",
+  "release.reload_to_update": "Neu laden",
   "release.dismiss_update": "Ausblenden",
   "release.web_build": "Web-App: {release}",
   "release.server_build": "Server: {release}",
