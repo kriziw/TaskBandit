@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.9](https://github.com/kriziw/TaskBandit/compare/v0.65.8...v0.65.9) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web,android:** fix settings layout, PWA dark mode settings, and Android GitHub update check ([#456](https://github.com/kriziw/TaskBandit/issues/456)) ([b496ab7](https://github.com/kriziw/TaskBandit/commit/b496ab7fea5f3a6c4c5d757aed0534365f4a7d8a))
+
 ## [0.65.8](https://github.com/kriziw/TaskBandit/compare/v0.65.7...v0.65.8) (2026-05-18)
 
 
