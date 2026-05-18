@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.7](https://github.com/kriziw/TaskBandit/compare/v0.65.6...v0.65.7) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web:** fix PWA action sheet, nav contrast, icon backgrounds, and notice stack ([#452](https://github.com/kriziw/TaskBandit/issues/452)) ([b82a184](https://github.com/kriziw/TaskBandit/commit/b82a184e188e82001e246004e16e8721660fcda1))
+
 ## [0.65.6](https://github.com/kriziw/TaskBandit/compare/v0.65.5...v0.65.6) (2026-05-18)
 
 
