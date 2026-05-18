@@ -6,10 +6,9 @@ export function registerClientPwa() {
   }
 
   window.addEventListener("load", () => {
-    const serviceWorkerUrl = new URL("./client-sw.js", window.location.href);
     clientRegistrationPromise = navigator.serviceWorker
-      .register(serviceWorkerUrl, {
-        scope: "./"
+      .register("/client-sw.js", {
+        scope: "/"
       })
       .catch(() => null);
   });
@@ -21,10 +20,9 @@ export async function getClientServiceWorkerRegistration() {
   }
 
   if (!clientRegistrationPromise) {
-    const serviceWorkerUrl = new URL("./client-sw.js", window.location.href);
     clientRegistrationPromise = navigator.serviceWorker
-      .register(serviceWorkerUrl, {
-        scope: "./"
+      .register("/client-sw.js", {
+        scope: "/"
       })
       .then((registration) => registration)
       .catch(() => null);
