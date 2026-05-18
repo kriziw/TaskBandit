@@ -593,6 +593,16 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun cancelChore(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/cancel",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
     fun cancelChoreOccurrence(baseUrl: String, token: String, instanceId: String) {
         requestJson(
             baseUrl = baseUrl,

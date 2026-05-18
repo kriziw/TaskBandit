@@ -270,6 +270,7 @@
     <string name="mobile_settings_download_logs">Download logs</string>
     <string name="mobile_settings_logs_saved">Settings logs saved.</string>
     <string name="mobile_settings_unknown">Unknown</string>
+    <string name="mobile_settings_github_check_failed">Check failed — tap to retry</string>
     <string name="mobile_settings_plan_features">Plan and features</string>
     <string name="mobile_plan_package_name">Package name</string>
     <string name="mobile_plan_status">Plan status</string>
@@ -376,6 +377,13 @@
     <string name="mobile_close_cycle_confirm_title">Cancel this chore?</string>
     <string name="mobile_close_cycle_confirm_body">Cancel \"%1$s\" and stop its future repeats? This will cancel every still-open chore in the repeat.</string>
     <string name="mobile_close_cycle_confirm_action">Yes, cancel chore</string>
+    <string name="mobile_cancel_chore">Cancel chore</string>
+    <string name="mobile_cancelling_chore">Cancelling chore...</string>
+    <string name="mobile_chore_cancelled">Chore was cancelled.</string>
+    <string name="mobile_cancel_chore_failed">Could not cancel this chore.</string>
+    <string name="mobile_cancel_chore_confirm_title">Cancel this chore?</string>
+    <string name="mobile_cancel_chore_confirm_body">Cancel \"%1$s\"? This cannot be undone.</string>
+    <string name="mobile_cancel_chore_confirm_action">Yes, cancel it</string>
     <string name="mobile_cancel_occurrence">Cancel this occurrence</string>
     <string name="mobile_cancelling_occurrence">Cancelling this occurrence...</string>
     <string name="mobile_occurrence_cancelled">This occurrence was cancelled. Future repeats stay active.</string>

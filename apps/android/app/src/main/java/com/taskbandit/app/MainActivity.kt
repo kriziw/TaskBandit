@@ -585,6 +585,7 @@ private fun TaskBanditApp(
     val creatingChoreMessage = stringResource(R.string.mobile_create_creating)
     val quickLoggingMessage = stringResource(R.string.mobile_quick_log_saving)
     val updatingDueAtMessage = stringResource(R.string.mobile_updating_due_at)
+    val cancellingChoreMessage = stringResource(R.string.mobile_cancelling_chore)
     val cancellingOccurrenceMessage = stringResource(R.string.mobile_cancelling_occurrence)
     val cancellingSeriesMessage = stringResource(R.string.mobile_cancelling_series)
     val deviceRemovingMessage = stringResource(R.string.mobile_device_removing)
@@ -598,10 +599,12 @@ private fun TaskBanditApp(
     val quickLogSuccessMessage = stringResource(R.string.mobile_quick_log_success)
     val quickLogFailedMessage = stringResource(R.string.mobile_quick_log_failed)
     val dueAtUpdatedMessage = stringResource(R.string.mobile_due_at_updated)
+    val choreCancelledMessage = stringResource(R.string.mobile_chore_cancelled)
     val occurrenceCancelledMessage = stringResource(R.string.mobile_occurrence_cancelled)
     val seriesCancelledMessage = stringResource(R.string.mobile_series_cancelled)
     val deviceRemovedMessage = stringResource(R.string.mobile_device_removed)
     val reconnectFailedMessage = stringResource(R.string.mobile_connection_restore_failed)
+    val cancelChoreFailedMessage = stringResource(R.string.mobile_cancel_chore_failed)
     val cancelOccurrenceFailedMessage = stringResource(R.string.mobile_cancel_occurrence_failed)
     val cancelSeriesFailedMessage = stringResource(R.string.mobile_cancel_series_failed)
     val dueAtUpdateFailedMessage = stringResource(R.string.mobile_due_at_update_failed)
@@ -646,6 +649,7 @@ private fun TaskBanditApp(
     var dismissedUpdateKey by remember { mutableStateOf(sessionStore.readDismissedUpdateKey()) }
     var githubReleaseInfo by remember { mutableStateOf<GitHubReleaseInfo?>(null) }
     var githubCheckDone by remember { mutableStateOf(false) }
+    var githubCheckError by remember { mutableStateOf(false) }
     var dismissedGithubVersion by remember { mutableStateOf(sessionStore.readDismissedGithubVersion()) }
     var isDownloadingUpdate by remember { mutableStateOf(false) }
     var downloadProgress by remember { mutableStateOf(0f) }
@@ -658,6 +662,7 @@ private fun TaskBanditApp(
     var activeStartAction by remember { mutableStateOf<String?>(null) }
     var activeSubmitAction by remember { mutableStateOf<String?>(null) }
     var activeCloseCycleAction by remember { mutableStateOf<String?>(null) }
+    var activeCancelChoreAction by remember { mutableStateOf<String?>(null) }
     var activeExternalCompleteAction by remember { mutableStateOf<String?>(null) }
     var activeTakeoverRequestAction by remember { mutableStateOf<String?>(null) }
     var activeCreateAction by remember { mutableStateOf<String?>(null) }
@@ -975,9 +980,11 @@ private fun TaskBanditApp(
 
     fun checkForGithubUpdates() {
         githubCheckDone = false
+        githubCheckError = false
         coroutineScope.launch {
-            val fetched = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }.getOrNull()
-            githubReleaseInfo = fetched
+            val result = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
+            githubReleaseInfo = result.getOrNull()
+            githubCheckError = result.isFailure || (result.isSuccess && result.getOrNull() == null)
             githubCheckDone = true
         }
     }
@@ -990,8 +997,9 @@ private fun TaskBanditApp(
         errorMessage = null
 
         coroutineScope.launch {
-            val fetchedGithubRelease = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }.getOrNull()
-            githubReleaseInfo = fetchedGithubRelease
+            val githubResult = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
+            githubReleaseInfo = githubResult.getOrNull()
+            githubCheckError = githubResult.isFailure || (githubResult.isSuccess && githubResult.getOrNull() == null)
             githubCheckDone = true
         }
 
@@ -1554,6 +1562,34 @@ private fun TaskBanditApp(
         }
     }
 
+    fun cancelChore(choreId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        activeCancelChoreAction = "cancel:$choreId"
+        errorMessage = null
+        noticeMessage = null
+
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    runMutationWithReconnectWindow(cancellingChoreMessage) {
+                        api.cancelChore(baseUrl, token, choreId)
+                    }
+                }
+            }.onSuccess {
+                noticeMessage = choreCancelledMessage
+                requestDashboardRefresh()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) {
+                    logout()
+                } else {
+                    errorMessage = throwable.message ?: cancelChoreFailedMessage
+                }
+            }
+            activeCancelChoreAction = null
+        }
+    }
+
     fun closeChoreCycle(choreId: String) {
         val token = session.token ?: return
         val baseUrl = normalizedServerUrl()
@@ -2066,6 +2102,7 @@ private fun TaskBanditApp(
                     activeStartAction = activeStartAction,
                     activeSubmitAction = activeSubmitAction,
                     activeCloseCycleAction = activeCloseCycleAction,
+                    activeCancelChoreAction = activeCancelChoreAction,
                     activeExternalCompleteAction = activeExternalCompleteAction,
                     activeDueAtAction = activeDueAtAction,
                     activeTakeoverRequestAction = activeTakeoverRequestAction,
@@ -2084,6 +2121,7 @@ private fun TaskBanditApp(
                     onDismissUpdate = ::dismissUpdateNotice,
                     visibleGithubUpdate = visibleGithubUpdate,
                     githubCheckDone = githubCheckDone,
+                    githubCheckError = githubCheckError,
                     githubLatestVersion = githubReleaseInfo?.version,
                     isDownloadingUpdate = isDownloadingUpdate,
                     downloadProgress = downloadProgress,
@@ -2118,6 +2156,7 @@ private fun TaskBanditApp(
                     onStartChore = ::startChore,
                     onCancelChoreOccurrence = ::cancelChoreOccurrence,
                     onCloseChoreCycle = ::closeChoreCycle,
+                    onCancelChore = ::cancelChore,
                     onCompleteExternalChore = ::completeChoreExternally,
                     onEditChoreDueAt = ::updateChoreDueAt,
                     onTakeOverChore = ::takeOverChore,
@@ -2697,6 +2736,7 @@ private fun DashboardScreen(
     activeStartAction: String?,
     activeSubmitAction: String?,
     activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
     activeExternalCompleteAction: String?,
     activeDueAtAction: String?,
     activeTakeoverRequestAction: String?,
@@ -2715,6 +2755,7 @@ private fun DashboardScreen(
     onDismissUpdate: () -> Unit,
     visibleGithubUpdate: GitHubReleaseInfo?,
     githubCheckDone: Boolean,
+    githubCheckError: Boolean,
     githubLatestVersion: String?,
     isDownloadingUpdate: Boolean,
     downloadProgress: Float,
@@ -2735,6 +2776,7 @@ private fun DashboardScreen(
     onStartChore: (String) -> Unit,
     onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
     onCompleteExternalChore: (String, String) -> Unit,
     onEditChoreDueAt: (String, String, String, String?) -> Unit,
     onTakeOverChore: (String) -> Unit,
@@ -3778,6 +3820,7 @@ private fun DashboardScreen(
                 activeStartAction = activeStartAction,
                 activeSubmitAction = activeSubmitAction,
                 activeCloseCycleAction = activeCloseCycleAction,
+                activeCancelChoreAction = activeCancelChoreAction,
                 activeTakeoverRequestAction = activeTakeoverRequestAction,
                 activeDueAtAction = activeDueAtAction,
                 activeExternalCompleteAction = activeExternalCompleteAction,
@@ -3800,6 +3843,7 @@ private fun DashboardScreen(
                 onEditChoreDueAt = { a, b, c, d -> activeNewUiChoreDialogId = null; onEditChoreDueAt(a, b, c, d) },
                 onCancelChoreOccurrence = { choreId -> activeNewUiChoreDialogId = null; onCancelChoreOccurrence(choreId) },
                 onCloseChoreCycle = { choreId -> activeNewUiChoreDialogId = null; onCloseChoreCycle(choreId) },
+                onCancelChore = { choreId -> activeNewUiChoreDialogId = null; onCancelChore(choreId) },
                 onCompleteExternalChore = { choreId, name -> activeNewUiChoreDialogId = null; onCompleteExternalChore(choreId, name) }
             )
         }
@@ -4095,6 +4139,7 @@ private fun DashboardScreen(
                         activeStartAction = activeStartAction,
                         activeSubmitAction = activeSubmitAction,
                         activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
                         activeTakeoverRequestAction = activeTakeoverRequestAction,
                         outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
                         submitSelections = submitSelections,
@@ -4107,6 +4152,7 @@ private fun DashboardScreen(
                         onStartChore = { choreId -> startConfirmationChoreId = choreId },
                         onCancelChoreOccurrence = onCancelChoreOccurrence,
                         onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
                         onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
                         onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
                         onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
@@ -4129,6 +4175,7 @@ private fun DashboardScreen(
                         activeStartAction = activeStartAction,
                         activeSubmitAction = activeSubmitAction,
                         activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
                         activeTakeoverRequestAction = activeTakeoverRequestAction,
                         outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
                         submitSelections = submitSelections,
@@ -4141,6 +4188,7 @@ private fun DashboardScreen(
                         onStartChore = { choreId -> startConfirmationChoreId = choreId },
                         onCancelChoreOccurrence = onCancelChoreOccurrence,
                         onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
                         onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
                         onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
                         onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
@@ -4163,6 +4211,7 @@ private fun DashboardScreen(
                         activeStartAction = activeStartAction,
                         activeSubmitAction = activeSubmitAction,
                         activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
                         activeTakeoverRequestAction = activeTakeoverRequestAction,
                         outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
                         submitSelections = submitSelections,
@@ -4175,6 +4224,7 @@ private fun DashboardScreen(
                         onStartChore = { choreId -> startConfirmationChoreId = choreId },
                         onCancelChoreOccurrence = onCancelChoreOccurrence,
                         onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
                         onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
                         onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
                         onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
@@ -4233,11 +4283,11 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
-                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                             }
                             Column(
                                 modifier = Modifier.weight(1f),
@@ -4276,11 +4326,11 @@ private fun DashboardScreen(
                             )
                         }
                     }
-                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                     historicChoreSection(
                         chores = historicChores,
                         title = choresHistoryLabel,
@@ -4680,7 +4730,7 @@ private fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onCheckForUpdates = onCheckForUpdates, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubCheckError = githubCheckError, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onCheckForUpdates = onCheckForUpdates, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
                     }
                 }
                 item {
@@ -5023,8 +5073,8 @@ private fun LeaderboardEntryRow(
 
 private fun LazyListScope.choreSection(
     chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
-    activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit
+    activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeCancelChoreAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit
 ) {
     if (chores.isEmpty()) return
     val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
@@ -5036,7 +5086,7 @@ private fun LazyListScope.choreSection(
     item {
         ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
             chores.forEach { chore ->
-                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeTakeoverRequestAction = activeTakeoverRequestAction, activeDueAtAction = activeDueAtAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onEditChoreDueAt = onEditChoreDueAt, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore, editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(), activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, activeDueAtAction = activeDueAtAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onEditChoreDueAt = onEditChoreDueAt, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore, editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(), activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
             }
         }
     }
@@ -5054,6 +5104,7 @@ private fun LazyListScope.mockMobileChoreSection(
     activeStartAction: String?,
     activeSubmitAction: String?,
     activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
     activeTakeoverRequestAction: String?,
     outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>,
     submitSelections: Map<String, Set<String>>,
@@ -5066,6 +5117,7 @@ private fun LazyListScope.mockMobileChoreSection(
     onStartChore: (String) -> Unit,
     onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
     onTakeOverChore: (String) -> Unit,
     onRequestTakeover: (String) -> Unit,
     onSubmitChore: (String) -> Unit,
@@ -5104,6 +5156,7 @@ private fun LazyListScope.mockMobileChoreSection(
             activeStartAction = activeStartAction,
             activeSubmitAction = activeSubmitAction,
             activeCloseCycleAction = activeCloseCycleAction,
+            activeCancelChoreAction = activeCancelChoreAction,
             activeTakeoverRequestAction = activeTakeoverRequestAction,
             activeDueAtAction = activeDueAtAction,
             outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id],
@@ -5118,6 +5171,7 @@ private fun LazyListScope.mockMobileChoreSection(
             onStartChore = onStartChore,
             onCancelChoreOccurrence = onCancelChoreOccurrence,
             onCloseChoreCycle = onCloseChoreCycle,
+            onCancelChore = onCancelChore,
             onEditChoreDueAt = onEditChoreDueAt,
             onTakeOverChore = onTakeOverChore,
             onRequestTakeover = onRequestTakeover,
@@ -5257,6 +5311,7 @@ private fun ChoreSectionColumn(
     activeStartAction: String?,
     activeSubmitAction: String?,
     activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
     activeTakeoverRequestAction: String?,
     outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>,
     submitSelections: Map<String, Set<String>>,
@@ -5270,6 +5325,7 @@ private fun ChoreSectionColumn(
     onStartChore: (String) -> Unit,
     onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
     activeDueAtAction: String?,
     onEditChoreDueAt: (String, String, String, String?) -> Unit,
     templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>,
@@ -5298,6 +5354,7 @@ private fun ChoreSectionColumn(
                 activeStartAction = activeStartAction,
                 activeSubmitAction = activeSubmitAction,
                 activeCloseCycleAction = activeCloseCycleAction,
+                activeCancelChoreAction = activeCancelChoreAction,
                 activeTakeoverRequestAction = activeTakeoverRequestAction,
                 activeDueAtAction = activeDueAtAction,
                 outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id],
@@ -5312,6 +5369,7 @@ private fun ChoreSectionColumn(
                 onStartChore = onStartChore,
                 onCancelChoreOccurrence = onCancelChoreOccurrence,
                 onCloseChoreCycle = onCloseChoreCycle,
+                onCancelChore = onCancelChore,
                 onEditChoreDueAt = onEditChoreDueAt,
                 editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
                 onTakeOverChore = onTakeOverChore,
@@ -5825,10 +5883,10 @@ private fun HistoricChoreCard(
 
 @Composable
 private fun ChoreCard(
-    chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeTakeoverRequestAction: String?, activeDueAtAction: String?,
+    chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeCancelChoreAction: String?, activeTakeoverRequestAction: String?, activeDueAtAction: String?,
     outgoingTakeoverRequest: MobileTakeoverRequest?,
     selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
-    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onEditChoreDueAt: (String, String, String, String?) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeExternalCompleteAction: String?,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onEditChoreDueAt: (String, String, String, String?) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeExternalCompleteAction: String?,
     onCompleteExternalChore: (String, String) -> Unit,
     editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>,
     showSectionBadge: Boolean = true,
@@ -7584,6 +7642,7 @@ private fun SettingsReleaseContent(
     onDismissUpdate: () -> Unit,
     visibleGithubUpdate: GitHubReleaseInfo?,
     githubCheckDone: Boolean,
+    githubCheckError: Boolean,
     githubLatestVersion: String?,
     isDownloadingUpdate: Boolean,
     downloadProgress: Float,
@@ -7593,10 +7652,12 @@ private fun SettingsReleaseContent(
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
 ) {
     val isUpToDate = githubCheckDone &&
+        !githubCheckError &&
         githubLatestVersion != null &&
         compareReleaseVersions(BuildConfig.TASKBANDIT_RELEASE_VERSION, githubLatestVersion) >= 0
     val githubVersionDisplay = when {
         !githubCheckDone -> null
+        githubCheckError -> stringResource(R.string.mobile_settings_github_check_failed)
         githubLatestVersion == null -> stringResource(R.string.mobile_settings_unknown)
         else -> "v$githubLatestVersion"
     }
@@ -7821,6 +7882,7 @@ private fun ChoreActionSheet(
     activeStartAction: String?,
     activeSubmitAction: String?,
     activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
     activeTakeoverRequestAction: String?,
     activeDueAtAction: String?,
     activeExternalCompleteAction: String?,
@@ -7837,6 +7899,7 @@ private fun ChoreActionSheet(
     onEditChoreDueAt: (String, String, String, String?) -> Unit,
     onCancelChoreOccurrence: (String) -> Unit,
     onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
     onCompleteExternalChore: (String, String) -> Unit
 ) {
     val context = LocalContext.current
@@ -7857,8 +7920,9 @@ private fun ChoreActionSheet(
     val canEditDueAt = canManageChores && currentUserRole != "child" && chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
     val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
+    val canCancelChore = canManageChores && currentUserRole != "child" && isSubmittableState
     val hasAnyPrimaryAction = (isPendingApproval && canApproveChores) || canSubmit || canClaimChore
-    val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || canCloseCycle || (canCompleteExternal && isSubmittableState)
+    val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || canCloseCycle || canCancelChore || (canCompleteExternal && isSubmittableState)
 
     val zoneId = remember { ZoneId.systemDefault() }
     var moreExpanded by remember { mutableStateOf(false) }
@@ -7866,6 +7930,7 @@ private fun ChoreActionSheet(
     var showRejectConfirm by remember { mutableStateOf(false) }
     var showCancelOccurrenceConfirm by remember { mutableStateOf(false) }
     var showCloseCycleConfirm by remember { mutableStateOf(false) }
+    var showCancelChoreConfirm by remember { mutableStateOf(false) }
     var showExternalCompleteDialog by remember { mutableStateOf(false) }
     var externalCompleterNameInput by remember { mutableStateOf("") }
     var showDueAtEditor by remember { mutableStateOf(false) }
@@ -7962,6 +8027,23 @@ private fun ChoreActionSheet(
             },
             dismissButton = {
                 OutlinedButton(onClick = { showCloseCycleConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showCancelChoreConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelChoreConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_chore_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_chore_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showCancelChoreConfirm = false; onCancelChore(chore.id) }) {
+                    Text(stringResource(R.string.mobile_cancel_chore_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelChoreConfirm = false }) {
                     Text(stringResource(R.string.mobile_request_takeover_cancel))
                 }
             }
@@ -8250,6 +8332,14 @@ private fun ChoreActionSheet(
                             label = stringResource(R.string.mobile_cancel_series),
                             enabled = activeCloseCycleAction == null,
                             onClick = { showCloseCycleConfirm = true }
+                        )
+                    }
+                    if (canCancelChore) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.EventBusy,
+                            label = stringResource(R.string.mobile_cancel_chore),
+                            enabled = activeCancelChoreAction == null,
+                            onClick = { showCancelChoreConfirm = true }
                         )
                     }
                     if (canCompleteExternal && isSubmittableState) {
@@ -8797,7 +8887,7 @@ private fun createProofCaptureFile(context: android.content.Context): File {
 }
 
 private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
-    val connection = java.net.URL("https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=10")
+    val connection = java.net.URL("https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=50")
         .openConnection() as java.net.HttpURLConnection
     connection.setRequestProperty("Accept", "application/vnd.github+json")
     connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
