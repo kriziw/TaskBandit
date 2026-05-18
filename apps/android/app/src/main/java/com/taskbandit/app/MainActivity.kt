@@ -8889,8 +8889,8 @@ private fun createProofCaptureFile(context: android.content.Context): File {
 }
 
 private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
-    // Releases use tag format "v{VERSION}" (e.g. "v0.65.8") with an
-    // "app-release.apk" asset attached to every release by CI.
+    // Releases use tag format "v{VERSION}" (e.g. "v0.65.8") with a
+    // "taskbandit-{VERSION}.apk" asset attached to every release by CI.
     val connection = java.net.URL(
         "https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=10"
     ).openConnection() as java.net.HttpURLConnection
