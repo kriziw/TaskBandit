@@ -39,6 +39,7 @@
   "release.update_available_title": "Újabb verzió érhető el",
   "release.update_available_body": "Ez a kliens jelenleg {current} verzión fut, miközben a szerver már {latest} verzión jár. Frissítsd vagy töltsd újra az alkalmazást, amikor tudod.",
   "release.update_available_chip": "Frissítés érhető el: {release}",
+  "release.reload_to_update": "Újratöltés",
   "release.dismiss_update": "Elrejtés",
   "release.web_build": "Webalkalmazás: {release}",
   "release.server_build": "Szerver: {release}",
