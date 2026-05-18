@@ -984,7 +984,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             val result = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
             githubReleaseInfo = result.getOrNull()
-            githubCheckError = result.isFailure || (result.isSuccess && result.getOrNull() == null)
+            // Only flag an error on an actual exception — a null result just means
+            // no android-v* release was found yet, which is a valid "not found" state.
+            githubCheckError = result.isFailure
             githubCheckDone = true
         }
     }
@@ -999,7 +1001,7 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             val githubResult = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
             githubReleaseInfo = githubResult.getOrNull()
-            githubCheckError = githubResult.isFailure || (githubResult.isSuccess && githubResult.getOrNull() == null)
+            githubCheckError = githubResult.isFailure
             githubCheckDone = true
         }
 
@@ -8887,42 +8889,46 @@ private fun createProofCaptureFile(context: android.content.Context): File {
 }
 
 private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
-    val connection = java.net.URL("https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=50")
-        .openConnection() as java.net.HttpURLConnection
-    connection.setRequestProperty("Accept", "application/vnd.github+json")
-    connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
-    connection.connectTimeout = 10_000
-    connection.readTimeout = 10_000
-    return try {
-        if (connection.responseCode != 200) return null
-        val responseText = connection.inputStream.bufferedReader().readText()
-        val releases = org.json.JSONArray(responseText)
-        for (i in 0 until releases.length()) {
-            val json = releases.getJSONObject(i)
-            if (json.optBoolean("draft") || json.optBoolean("prerelease")) continue
-            val tagName = json.optString("tag_name", "")
-            if (!tagName.startsWith("android-v")) continue
-            val cleaned = tagName.removePrefix("android-v")
-            val version = cleaned.substringBeforeLast('-').ifBlank { cleaned }
-            if (version.isBlank()) continue
-            val body = json.optString("body", "")
-            val assets = json.optJSONArray("assets") ?: continue
-            var apkUrl: String? = null
-            for (j in 0 until assets.length()) {
-                val asset = assets.getJSONObject(j)
-                if (asset.optString("name").endsWith(".apk")) {
-                    apkUrl = asset.optString("browser_download_url").ifBlank { null }
-                    break
+    // Paginate up to 5 pages (500 releases) so android-v* tags are found even
+    // when many server releases have been created since the last Android build.
+    for (page in 1..5) {
+        val connection = java.net.URL(
+            "https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=100&page=$page"
+        ).openConnection() as java.net.HttpURLConnection
+        connection.setRequestProperty("Accept", "application/vnd.github+json")
+        connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+        connection.connectTimeout = 10_000
+        connection.readTimeout = 10_000
+        try {
+            if (connection.responseCode != 200) return null
+            val responseText = connection.inputStream.bufferedReader().readText()
+            val releases = org.json.JSONArray(responseText)
+            if (releases.length() == 0) return null  // No more pages
+            for (i in 0 until releases.length()) {
+                val json = releases.getJSONObject(i)
+                if (json.optBoolean("draft") || json.optBoolean("prerelease")) continue
+                val tagName = json.optString("tag_name", "")
+                if (!tagName.startsWith("android-v")) continue
+                val cleaned = tagName.removePrefix("android-v")
+                val version = cleaned.substringBeforeLast('-').ifBlank { cleaned }
+                if (version.isBlank()) continue
+                val body = json.optString("body", "")
+                val assets = json.optJSONArray("assets") ?: continue
+                var apkUrl: String? = null
+                for (j in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(j)
+                    if (asset.optString("name").endsWith(".apk")) {
+                        apkUrl = asset.optString("browser_download_url").ifBlank { null }
+                        break
+                    }
                 }
+                if (apkUrl != null) return GitHubReleaseInfo(version = version, apkDownloadUrl = apkUrl, body = body)
             }
-            if (apkUrl != null) return GitHubReleaseInfo(version = version, apkDownloadUrl = apkUrl, body = body)
+        } finally {
+            connection.disconnect()
         }
-        null
-    } catch (_: Exception) {
-        null
-    } finally {
-        connection.disconnect()
     }
+    return null
 }
 
 private fun downloadAndInstallApk(
