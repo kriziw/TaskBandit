@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.6](https://github.com/kriziw/TaskBandit/compare/v0.65.5...v0.65.6) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web:** fix desktop color regression, mobile single-page layout, and tour persistence ([#450](https://github.com/kriziw/TaskBandit/issues/450)) ([e51c001](https://github.com/kriziw/TaskBandit/commit/e51c0017e0ff6db0f4965e11514c4593ac245e49))
+
 ## [0.65.5](https://github.com/kriziw/TaskBandit/compare/v0.65.4...v0.65.5) (2026-05-18)
 
 
