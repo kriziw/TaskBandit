@@ -984,7 +984,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             val result = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
             githubReleaseInfo = result.getOrNull()
-            githubCheckError = result.isFailure || (result.isSuccess && result.getOrNull() == null)
+            // Only flag an error on an actual exception — a null result just means
+            // no android-v* release was found yet, which is a valid "not found" state.
+            githubCheckError = result.isFailure
             githubCheckDone = true
         }
     }
@@ -999,7 +1001,7 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             val githubResult = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
             githubReleaseInfo = githubResult.getOrNull()
-            githubCheckError = githubResult.isFailure || (githubResult.isSuccess && githubResult.getOrNull() == null)
+            githubCheckError = githubResult.isFailure
             githubCheckDone = true
         }
 
@@ -8887,8 +8889,11 @@ private fun createProofCaptureFile(context: android.content.Context): File {
 }
 
 private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
-    val connection = java.net.URL("https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=50")
-        .openConnection() as java.net.HttpURLConnection
+    // Releases use tag format "v{VERSION}" (e.g. "v0.65.8") with a
+    // "taskbandit-{VERSION}.apk" asset attached to every release by CI.
+    val connection = java.net.URL(
+        "https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=10"
+    ).openConnection() as java.net.HttpURLConnection
     connection.setRequestProperty("Accept", "application/vnd.github+json")
     connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
     connection.connectTimeout = 10_000
@@ -8901,9 +8906,8 @@ private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
             val json = releases.getJSONObject(i)
             if (json.optBoolean("draft") || json.optBoolean("prerelease")) continue
             val tagName = json.optString("tag_name", "")
-            if (!tagName.startsWith("android-v")) continue
-            val cleaned = tagName.removePrefix("android-v")
-            val version = cleaned.substringBeforeLast('-').ifBlank { cleaned }
+            if (!tagName.startsWith("v")) continue
+            val version = tagName.removePrefix("v")
             if (version.isBlank()) continue
             val body = json.optString("body", "")
             val assets = json.optJSONArray("assets") ?: continue

@@ -113,7 +113,10 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}
         shell: bash
         run: |
-          gh release upload "${{ needs.release_please.outputs.tag_name }}" "${{ steps.apk.outputs.path }}" --clobber
+          VERSION="${{ needs.release_please.outputs.version }}"
+          NAMED_APK="$(dirname "${{ steps.apk.outputs.path }}")/taskbandit-${VERSION}.apk"
+          cp "${{ steps.apk.outputs.path }}" "$NAMED_APK"
+          gh release upload "${{ needs.release_please.outputs.tag_name }}" "$NAMED_APK" --clobber
 
   release_docker:
     needs: release_please
