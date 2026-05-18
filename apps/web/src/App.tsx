@@ -7404,7 +7404,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <div className="section-heading">
                 <h2>{showNewClientMobileShell ? "Due this week" : t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
-                  {payload.currentUser.role === "admin" ? (
+                  {payload.currentUser.role === "admin" && !showNewClientMobileShell ? (
                     <button
                       className="ghost-button"
                       type="button"
