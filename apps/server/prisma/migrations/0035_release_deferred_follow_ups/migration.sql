@@ -3,9 +3,9 @@
 -- which is distinct from manually snoozed chores.
 UPDATE "ChoreInstance"
 SET
-  state = CASE WHEN "assigneeId" IS NOT NULL THEN 'ASSIGNED' ELSE 'OPEN' END,
+  state = CASE WHEN "assigneeId" IS NOT NULL THEN 'ASSIGNED'::"ChoreState" ELSE 'OPEN'::"ChoreState" END,
   "deferredReason" = NULL,
   "notBeforeAtUtc" = NULL
 WHERE
-  state = 'DEFERRED'
+  state = 'DEFERRED'::"ChoreState"
   AND "deferredReason" = 'Waiting for follow-up readiness window.';
