@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.4](https://github.com/kriziw/TaskBandit/compare/v0.65.3...v0.65.4) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web:** restore PWA mobile navigation and fix overlay layout ([#446](https://github.com/kriziw/TaskBandit/issues/446)) ([5e873ba](https://github.com/kriziw/TaskBandit/commit/5e873ba9f5e788684140efd3c218d7fd6583d792))
+
 ## [0.65.3](https://github.com/kriziw/TaskBandit/compare/v0.65.2...v0.65.3) (2026-05-18)
 
 
