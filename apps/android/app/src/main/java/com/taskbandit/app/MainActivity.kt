@@ -7700,6 +7700,24 @@ private fun SettingsReleaseContent(
             Text(text = stringResource(R.string.mobile_settings_latest_github), style = MaterialTheme.typography.labelSmall)
             CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
         }
+    } else if (githubCheckError) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onCheckForUpdates),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.mobile_settings_latest_github),
+                style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                text = stringResource(R.string.mobile_settings_github_check_failed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     } else {
         SettingsValueLine(label = stringResource(R.string.mobile_settings_latest_github), value = githubVersionDisplay ?: stringResource(R.string.mobile_settings_unknown))
     }
@@ -7708,7 +7726,10 @@ private fun SettingsReleaseContent(
         enabled = githubCheckDone && !isDownloadingUpdate,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(stringResource(R.string.mobile_settings_check_for_updates))
+        Text(
+            if (githubCheckError) stringResource(R.string.mobile_settings_retry_check)
+            else stringResource(R.string.mobile_settings_check_for_updates)
+        )
     }
     SettingsValueLine(label = stringResource(R.string.mobile_settings_server_url), value = serverUrl)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_commit), value = BuildConfig.TASKBANDIT_COMMIT_SHA)
