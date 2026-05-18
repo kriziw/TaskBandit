@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.10](https://github.com/kriziw/TaskBandit/compare/v0.65.9...v0.65.10) (2026-05-18)
+
+
+### Bug Fixes
+
+* **android:** make failed GitHub update check row tappable and show Retry button ([#458](https://github.com/kriziw/TaskBandit/issues/458)) ([1fc3fe4](https://github.com/kriziw/TaskBandit/commit/1fc3fe4c8037335d6aa91639d97eceaac28d0942))
+
 ## [0.65.9](https://github.com/kriziw/TaskBandit/compare/v0.65.8...v0.65.9) (2026-05-18)
 
 
