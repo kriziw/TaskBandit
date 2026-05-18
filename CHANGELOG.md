@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.3](https://github.com/kriziw/TaskBandit/compare/v0.65.2...v0.65.3) (2026-05-18)
+
+
+### Bug Fixes
+
+* **android:** add cancel chore action and fix GitHub update check ([#444](https://github.com/kriziw/TaskBandit/issues/444)) ([84cba78](https://github.com/kriziw/TaskBandit/commit/84cba7803e7c97e425f7b3ad003a54465f3874d4))
+
 ## [0.65.2](https://github.com/kriziw/TaskBandit/compare/v0.65.1...v0.65.2) (2026-05-18)
 
 
