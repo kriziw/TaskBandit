@@ -4237,6 +4237,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   function handleDismissOnboarding() {
+    writeStoredOnboardingTourCompletion(onboardingTourMode, true);
+    setOnboardingTourCompleted(true);
     setOnboardingDismissed(true);
     setOnboardingManuallyOpened(false);
     setOnboardingStep("welcome");
@@ -9864,6 +9866,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <li>{t("templates.follow_up_assignment_sticky")}</li>
               </ul>
             </article>
+
+            {showClientMobileShell ? (
+              <article className="panel page-panel page-settings">
+                <div className="section-heading">
+                  <h2>{t("onboarding.workspace_client_mobile")}</h2>
+                </div>
+                <button className="primary-button" type="button" onClick={handleOpenOnboarding}>
+                  {t("onboarding.open_tour")}
+                </button>
+              </article>
+            ) : null}
           </section>
           </div>
         </div>
