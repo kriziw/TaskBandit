@@ -8336,7 +8336,7 @@ private fun ChoreActionSheet(
                     }
                     if (canCancelChore) {
                         SecondaryActionRow(
-                            icon = Icons.Rounded.Close,
+                            icon = Icons.Rounded.EventBusy,
                             label = stringResource(R.string.mobile_cancel_chore),
                             enabled = activeCancelChoreAction == null,
                             onClick = { showCancelChoreConfirm = true }
