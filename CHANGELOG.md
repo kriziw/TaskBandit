@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.8](https://github.com/kriziw/TaskBandit/compare/v0.65.7...v0.65.8) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web:** fix PWA blank screen on refresh and enlarge toolbar logo ([#454](https://github.com/kriziw/TaskBandit/issues/454)) ([6d2535d](https://github.com/kriziw/TaskBandit/commit/6d2535dd4d0e0e31781fe33472d1b24345f72d8a))
+
 ## [0.65.7](https://github.com/kriziw/TaskBandit/compare/v0.65.6...v0.65.7) (2026-05-18)
 
 
