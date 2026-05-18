@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.5](https://github.com/kriziw/TaskBandit/compare/v0.65.4...v0.65.5) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web:** fix PWA dark mode and onboarding walkthrough overlap ([#448](https://github.com/kriziw/TaskBandit/issues/448)) ([7cd2019](https://github.com/kriziw/TaskBandit/commit/7cd2019a99847cc630deebc0fcdfbffc3fda82dc))
+
 ## [0.65.4](https://github.com/kriziw/TaskBandit/compare/v0.65.3...v0.65.4) (2026-05-18)
 
 
