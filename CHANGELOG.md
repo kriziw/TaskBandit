@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.65.2](https://github.com/kriziw/TaskBandit/compare/v0.65.1...v0.65.2) (2026-05-18)
+
+
+### Bug Fixes
+
+* **server:** cast enum literals in migration 0035 for PostgreSQL compatibility ([#442](https://github.com/kriziw/TaskBandit/issues/442)) ([3f1c6f1](https://github.com/kriziw/TaskBandit/commit/3f1c6f1c7be74c841ca65c6f510d49dd1c242729))
+
 ## [0.65.1](https://github.com/kriziw/TaskBandit/compare/v0.65.0...v0.65.1) (2026-05-17)
 
 
