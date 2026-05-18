@@ -43,6 +43,7 @@ body {
     radial-gradient(circle at top left, rgba(115, 201, 244, 0.55), transparent 30%),
     radial-gradient(circle at top right, rgba(255, 201, 74, 0.45), transparent 35%),
     linear-gradient(180deg, #fff5dd 0%, #ffe9d7 100%);
+  color-scheme: light dark;
 }
 
 button,
@@ -3450,6 +3451,13 @@ h4,
     --celebration-accent: #b8965a;
     --celebration-bg: #fdf6e8;
   }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-onboarding-floating {
+    bottom: calc(18px + 82px + var(--safe-area-bottom));
+    z-index: 65;
+    width: min(420px, calc(100vw - 16px));
+    right: 8px;
+  }
 }
 
 @media (max-width: 1080px) and (max-width: 420px) {
@@ -3468,6 +3476,10 @@ h4,
 }
 
 @media (prefers-color-scheme: dark) and (max-width: 1080px) {
+  body {
+    background: #070813;
+  }
+
   .app-shell.variant-client.mobile-ui-new {
     --mobile-bg-start: #151225;
     --mobile-bg-end: #070813;
@@ -3499,5 +3511,13 @@ h4,
   .app-shell.variant-client.mobile-ui-new .mobile-fab-add {
     background: linear-gradient(135deg, var(--sky), #6d73ff);
     color: #07101f;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mobile-onboarding-floating .onboarding-floating-panel {
+    background:
+      linear-gradient(180deg, rgba(24, 29, 51, 0.98), rgba(20, 24, 44, 0.97)),
+      rgba(115, 201, 244, 0.05);
+    color: var(--mobile-text);
+    border: 1px solid var(--mobile-border);
   }
 }
