@@ -10342,6 +10342,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <button
                 className="app-release-dismiss"
                 type="button"
+                onClick={() => window.location.reload()}
+              >
+                {t("release.reload_to_update")}
+              </button>
+              <button
+                className="app-release-dismiss"
+                type="button"
                 onClick={handleDismissAvailableUpdate}
               >
                 {t("release.dismiss_update")}

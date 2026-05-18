@@ -34,7 +34,7 @@ export default defineConfig(({ mode }) => {
       "import.meta.env.VITE_TASKBANDIT_COMMIT_SHA": JSON.stringify(commitSha),
       "import.meta.env.VITE_TASKBANDIT_WEB_IMAGE_TAG": JSON.stringify(imageTag)
     },
-    base: "./",
+    base: "/",
     server: {
       port: 5173
     },
