@@ -2416,15 +2416,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     window.matchMedia("(display-mode: standalone)").matches ||
     window.matchMedia("(display-mode: window-controls-overlay)").matches ||
     (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
-  const showInstallPrompt = false;
-
   useEffect(() => {
     if (!isClientVariant) {
       return;
     }
 
     const onBeforeInstallPrompt = (event: Event) => {
-      event.preventDefault();
+      // Do NOT call event.preventDefault() — this lets the browser show its own
+      // native install prompt (address bar icon / bottom sheet on Android).
+      // We still store the event so it can be triggered programmatically if needed.
       setInstallPromptEvent(event as BeforeInstallPromptEvent);
     };
 
@@ -6291,22 +6291,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </button>
             </div>
           ) : null}
-        </div>
-      ) : null}
-      {showInstallPrompt ? (
-        <div className="notice-banner info update-banner">
-          <div>
-            <strong>{t("pwa.install_title")}</strong>
-            <p>{t("pwa.install_body")}</p>
-          </div>
-          <div className="button-row">
-            <button className="secondary-button" type="button" onClick={() => void handleInstallPwa()}>
-              {t("pwa.install_action")}
-            </button>
-            <button className="ghost-button" type="button" onClick={handleDismissInstallPrompt}>
-              {t("pwa.install_later")}
-            </button>
-          </div>
         </div>
       ) : null}
       {workspaceVariant === "client" &&
