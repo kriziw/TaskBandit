@@ -3017,6 +3017,7 @@ private fun DashboardScreen(
     }
     val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
     val choresOverdueLabel = stringResource(R.string.mobile_chores_overdue)
+    val overdueHeaderColor = MaterialTheme.colorScheme.error
     val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)
     val choresDueThisWeekLabel = stringResource(R.string.mobile_chores_due_this_week)
     val choresDueLaterLabel = stringResource(R.string.mobile_chores_due_later)
@@ -4171,7 +4172,7 @@ private fun DashboardScreen(
                         templateVariantsByTemplateId = templateVariantsByTemplateId,
                         activeExternalCompleteAction = activeExternalCompleteAction,
                         onCompleteExternalChore = onCompleteExternalChore,
-                        sectionTitleColor = MaterialTheme.colorScheme.error
+                        sectionTitleColor = overdueHeaderColor
                     )
                     mockMobileChoreSection(
                         chores = choresDueToday,
