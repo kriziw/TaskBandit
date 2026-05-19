@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.66.0](https://github.com/kriziw/TaskBandit/compare/v0.65.10...v0.66.0) (2026-05-19)
+
+
+### Features
+
+* **android:** add Overdue section before Due today with alarming colours ([#460](https://github.com/kriziw/TaskBandit/issues/460)) ([0be4ca4](https://github.com/kriziw/TaskBandit/commit/0be4ca4f972ef668f5329b4d5106426d58d9af4b))
+
 ## [0.65.10](https://github.com/kriziw/TaskBandit/compare/v0.65.9...v0.65.10) (2026-05-18)
 
 
