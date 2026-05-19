@@ -252,6 +252,7 @@ internal fun resolveTemplateCreateCapabilities(
 }
 
 private enum class MobileChoreSectionTone {
+    OVERDUE,
     MINE,
     UNASSIGNED,
     OTHERS,
@@ -2948,6 +2949,9 @@ private fun DashboardScreen(
             .sortedByDescending { parseInstantForSort(it.dueAt) }
     }
     val myChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.MINE } }
+    val myChoresOverdue = remember(myChores, languageTag) {
+        myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.OVERDUE }
+    }
     val myChoresDueToday = remember(myChores, languageTag) {
         myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
     }
@@ -2956,6 +2960,9 @@ private fun DashboardScreen(
     }
     val myChoresDueLater = remember(myChores, languageTag) {
         myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.LATER }
+    }
+    val choresOverdue = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.OVERDUE }
     }
     val choresDueToday = remember(sortedChores, languageTag) {
         sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
@@ -3009,6 +3016,8 @@ private fun DashboardScreen(
         }
     }
     val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
+    val choresOverdueLabel = stringResource(R.string.mobile_chores_overdue)
+    val overdueHeaderColor = MaterialTheme.colorScheme.error
     val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)
     val choresDueThisWeekLabel = stringResource(R.string.mobile_chores_due_this_week)
     val choresDueLaterLabel = stringResource(R.string.mobile_chores_due_later)
@@ -4130,6 +4139,42 @@ private fun DashboardScreen(
                         }
                     }
                     mockMobileChoreSection(
+                        chores = choresOverdue,
+                        title = choresOverdueLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        activeExternalCompleteAction = activeExternalCompleteAction,
+                        onCompleteExternalChore = onCompleteExternalChore,
+                        sectionTitleColor = overdueHeaderColor
+                    )
+                    mockMobileChoreSection(
                         chores = choresDueToday,
                         title = choresDueTodayLabel,
                         currentUserId = currentUserId,
@@ -4285,6 +4330,7 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
+                                ChoreSectionColumn(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
                                 ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                                 ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                                 ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
@@ -4328,6 +4374,7 @@ private fun DashboardScreen(
                             )
                         }
                     }
+                    choreSection(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
                     choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                     choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                     choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
@@ -5076,10 +5123,11 @@ private fun LeaderboardEntryRow(
 private fun LazyListScope.choreSection(
     chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeCancelChoreAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit,
+    toneOverride: MobileChoreSectionTone? = null
 ) {
     if (chores.isEmpty()) return
-    val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+    val tone = toneOverride ?: when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
         MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
         MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
         MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
@@ -5130,10 +5178,11 @@ private fun LazyListScope.mockMobileChoreSection(
     onCompleteExternalChore: (String, String) -> Unit,
     showViewAll: Boolean = false,
     viewAllLabel: String = "",
-    emptyMessage: String? = null
+    emptyMessage: String? = null,
+    sectionTitleColor: Color = Color.Unspecified
 ) {
     item {
-        MockMobileSectionHeader(title = title, showViewAll = showViewAll, viewAllLabel = viewAllLabel)
+        MockMobileSectionHeader(title = title, showViewAll = showViewAll, viewAllLabel = viewAllLabel, titleColor = sectionTitleColor)
     }
     if (chores.isEmpty()) {
         if (!emptyMessage.isNullOrBlank()) {
@@ -5186,7 +5235,12 @@ private fun LazyListScope.mockMobileChoreSection(
 }
 
 @Composable
-private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAllLabel: String) {
+private fun MockMobileSectionHeader(
+    title: String,
+    showViewAll: Boolean,
+    viewAllLabel: String,
+    titleColor: Color = Color.Unspecified
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -5196,7 +5250,7 @@ private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAll
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = if (titleColor != Color.Unspecified) titleColor else MaterialTheme.colorScheme.onBackground
         )
         if (showViewAll) {
             TextButton(onClick = { }) {
@@ -5336,9 +5390,10 @@ private fun ChoreSectionColumn(
     onSubmitChore: (String) -> Unit,
     activeExternalCompleteAction: String?,
     onCompleteExternalChore: (String, String) -> Unit,
+    toneOverride: MobileChoreSectionTone? = null,
 ) {
     if (chores.isEmpty()) return
-    val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+    val tone = toneOverride ?: when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
         MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
         MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
         MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
@@ -5458,6 +5513,13 @@ private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionTone
 
     return if (isDarkTheme) {
         when (tone) {
+            MobileChoreSectionTone.OVERDUE -> SectionToneColors(
+                container = Color(0xFF3B1818),
+                content = Color(0xFFFFECEC),
+                badgeContainer = Color(0xFFFF6B6B),
+                badgeContent = Color(0xFF3B0000),
+                borderColor = Color(0xFFCC3333)
+            )
             MobileChoreSectionTone.MINE -> SectionToneColors(
                 container = Color(0xFF24354A),
                 content = Color(0xFFF7F5FF),
@@ -5489,6 +5551,13 @@ private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionTone
         }
     } else {
         when (tone) {
+            MobileChoreSectionTone.OVERDUE -> SectionToneColors(
+                container = Color(0xFFFFF0F0),
+                content = Color(0xFF3D1010),
+                badgeContainer = Color(0xFFD94040),
+                badgeContent = Color(0xFFFFEEEE),
+                borderColor = Color(0xFFE08080)
+            )
             MobileChoreSectionTone.MINE -> SectionToneColors(
                 container = Color(0xFFF0E1C5),
                 content = MaterialTheme.colorScheme.onSurface,
@@ -6232,18 +6301,22 @@ private fun ChoreCard(
     }
 
     if (isNewMobileUi) {
+        val isOverdueBucket = resolveMyChoreDueBucket(chore) == MobileMyChoreDueBucket.OVERDUE
         val mockStatusLabel = when {
             chore.state == "completed" -> "Done"
+            isOverdueBucket -> "Overdue"
             chore.isOverdue || isDueSoonForMockCard(chore.dueAt) -> "Due soon"
             else -> "To do"
         }
         val mockStatusContainer = when (mockStatusLabel) {
             "Done" -> MaterialTheme.colorScheme.primaryContainer
+            "Overdue" -> MaterialTheme.colorScheme.errorContainer
             "Due soon" -> MaterialTheme.colorScheme.tertiaryContainer
             else -> MaterialTheme.colorScheme.surfaceVariant
         }
         val mockStatusContent = when (mockStatusLabel) {
             "Done" -> MaterialTheme.colorScheme.onPrimaryContainer
+            "Overdue" -> MaterialTheme.colorScheme.onErrorContainer
             "Due soon" -> MaterialTheme.colorScheme.onTertiaryContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
@@ -6253,18 +6326,18 @@ private fun ChoreCard(
                 .clickable { onExpandedChange() },
             shape = RoundedCornerShape(15.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isAssignedToCurrentUser) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                } else {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                containerColor = when {
+                    isOverdueBucket -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.22f)
+                    isAssignedToCurrentUser -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                 }
             ),
             border = BorderStroke(
                 1.dp,
-                if (isAssignedToCurrentUser) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-                } else {
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+                when {
+                    isOverdueBucket -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                    isAssignedToCurrentUser -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
                 }
             )
         ) {
@@ -8425,6 +8498,7 @@ private fun resolveChoreSection(chore: MobileChore, currentUserId: String?): Mob
 }
 
 private enum class MobileMyChoreDueBucket {
+    OVERDUE,
     TODAY,
     THIS_WEEK,
     LATER
@@ -8438,6 +8512,9 @@ private fun resolveMyChoreDueBucket(
     val today = LocalDate.now(zoneId)
     val dueDate = runCatching { Instant.parse(chore.dueAt).atZone(zoneId).toLocalDate() }.getOrDefault(today)
 
+    if (dueDate.isBefore(today)) {
+        return MobileMyChoreDueBucket.OVERDUE
+    }
     if (!dueDate.isAfter(today)) {
         return MobileMyChoreDueBucket.TODAY
     }
