@@ -971,9 +971,19 @@ h4,
     grid-column: span 6;
   }
 
-  /* Settings panels stack full-width — half-width created large blank columns
-     next to short panels and alongside hidden SaaS-only sections */
+  /* Notifications page — full width, capped like settings */
+  .workspace-main[data-page="notifications"] .page-notifications {
+    grid-column: span 12;
+    max-width: 860px;
+  }
+
+  /* Settings panels — two per row to eliminate the empty right column */
   .workspace-main[data-page="settings"] .page-settings {
+    grid-column: span 6;
+  }
+
+  /* Wide variant for complex admin panels (household + general settings) */
+  .workspace-main[data-page="settings"] .page-settings.settings-panel-wide {
     grid-column: span 12;
     max-width: 860px;
   }

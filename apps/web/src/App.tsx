@@ -7182,7 +7182,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ? renderScheduleChorePanel("page-chores")
               : null}
 
-            <article className="panel page-panel page-household page-leaderboard" ref={leaderboardRef}>
+            <article className="panel page-panel page-overview page-leaderboard" ref={leaderboardRef}>
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
@@ -7221,7 +7221,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </article>
 
             <article
-              className={`panel page-panel page-overview ${
+              className={`panel page-panel page-notifications ${
                 workspaceVariant === "client" && showClientMobileShell ? "page-settings" : ""
               }`}
               ref={notificationsRef}
