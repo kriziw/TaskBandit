@@ -62,6 +62,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.DarkMode
@@ -70,13 +72,16 @@ import androidx.compose.material.icons.rounded.EventBusy
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.HowToReg
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PeopleAlt
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
@@ -106,6 +111,11 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -131,6 +141,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -252,6 +263,7 @@ internal fun resolveTemplateCreateCapabilities(
 }
 
 private enum class MobileChoreSectionTone {
+    OVERDUE,
     MINE,
     UNASSIGNED,
     OTHERS,
@@ -643,6 +655,12 @@ private fun TaskBanditApp(
     var dashboard by remember { mutableStateOf<MobileDashboard?>(initialCachedDashboard) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(noticeMessage) {
+        if (noticeMessage != null) {
+            kotlinx.coroutines.delay(4000)
+            noticeMessage = null
+        }
+    }
     var serverReleaseInfo by remember { mutableStateOf<MobileReleaseInfo?>(null) }
     var hostedSubscription by remember { mutableStateOf(MobileHostedSubscriptionOverview()) }
     var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
@@ -984,7 +1002,9 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             val result = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
             githubReleaseInfo = result.getOrNull()
-            githubCheckError = result.isFailure || (result.isSuccess && result.getOrNull() == null)
+            // Only flag an error on an actual exception — a null result just means
+            // no android-v* release was found yet, which is a valid "not found" state.
+            githubCheckError = result.isFailure
             githubCheckDone = true
         }
     }
@@ -999,7 +1019,7 @@ private fun TaskBanditApp(
         coroutineScope.launch {
             val githubResult = runCatching { withContext(Dispatchers.IO) { fetchGitHubLatestRelease() } }
             githubReleaseInfo = githubResult.getOrNull()
-            githubCheckError = githubResult.isFailure || (githubResult.isSuccess && githubResult.getOrNull() == null)
+            githubCheckError = githubResult.isFailure
             githubCheckDone = true
         }
 
@@ -2832,6 +2852,7 @@ private fun DashboardScreen(
     var requestTakeoverChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
+    var showSpeedDial by rememberSaveable { mutableStateOf(false) }
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
@@ -2946,6 +2967,9 @@ private fun DashboardScreen(
             .sortedByDescending { parseInstantForSort(it.dueAt) }
     }
     val myChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.MINE } }
+    val myChoresOverdue = remember(myChores, languageTag) {
+        myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.OVERDUE }
+    }
     val myChoresDueToday = remember(myChores, languageTag) {
         myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
     }
@@ -2954,6 +2978,9 @@ private fun DashboardScreen(
     }
     val myChoresDueLater = remember(myChores, languageTag) {
         myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.LATER }
+    }
+    val choresOverdue = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.OVERDUE }
     }
     val choresDueToday = remember(sortedChores, languageTag) {
         sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
@@ -3007,6 +3034,8 @@ private fun DashboardScreen(
         }
     }
     val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
+    val choresOverdueLabel = stringResource(R.string.mobile_chores_overdue)
+    val overdueHeaderColor = MaterialTheme.colorScheme.error
     val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)
     val choresDueThisWeekLabel = stringResource(R.string.mobile_chores_due_this_week)
     val choresDueLaterLabel = stringResource(R.string.mobile_chores_due_later)
@@ -3850,9 +3879,9 @@ private fun DashboardScreen(
     }
 
     BackHandler(
-        enabled = showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
+        enabled = showSpeedDial || showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
     ) {
-        backWithinDashboard()
+        if (showSpeedDial) { showSpeedDial = false } else backWithinDashboard()
     }
 
     CompositionLocalProvider(
@@ -3929,17 +3958,80 @@ private fun DashboardScreen(
         },
         floatingActionButton = {
             if (isNewMobileUi && activeTab == MobileDashboardTab.CHORES && canManageChores) {
-                Button(
-                    onClick = { openTab(MobileDashboardTab.CREATE) },
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(60.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.mobile_create_action),
-                        modifier = Modifier.size(28.dp)
-                    )
+                if (canUseQuickLog) {
+                    // Speed dial: two actions available (Quick Log + Create Chore)
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AnimatedVisibility(
+                            visible = showSpeedDial,
+                            enter = fadeIn(animationSpec = tween(160)) + slideInVertically(
+                                animationSpec = tween(200),
+                                initialOffsetY = { it / 2 }
+                            ),
+                            exit = fadeOut(animationSpec = tween(120)) + slideOutVertically(
+                                animationSpec = tween(160),
+                                targetOffsetY = { it / 2 }
+                            )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                SpeedDialAction(
+                                    label = stringResource(R.string.mobile_quick_log_card_title),
+                                    icon = Icons.Rounded.Bolt,
+                                    onClick = {
+                                        showSpeedDial = false
+                                        showQuickLogDialog = true
+                                    }
+                                )
+                                SpeedDialAction(
+                                    label = stringResource(R.string.mobile_create_action),
+                                    icon = Icons.Rounded.Add,
+                                    onClick = {
+                                        showSpeedDial = false
+                                        openTab(MobileDashboardTab.CREATE)
+                                    }
+                                )
+                            }
+                        }
+                        // Main FAB — rotates + → × when expanded
+                        val fabRotation by animateFloatAsState(
+                            targetValue = if (showSpeedDial) 45f else 0f,
+                            animationSpec = tween(200),
+                            label = "fabRotation"
+                        )
+                        Button(
+                            onClick = { showSpeedDial = !showSpeedDial },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.size(60.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = if (showSpeedDial) stringResource(R.string.mobile_update_dismiss) else stringResource(R.string.mobile_create_action),
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .rotate(fabRotation)
+                            )
+                        }
+                    }
+                } else {
+                    // Quick Log not available on this plan — single-tap FAB goes straight to Create
+                    Button(
+                        onClick = { openTab(MobileDashboardTab.CREATE) },
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(60.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.mobile_create_action),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         },
@@ -4063,56 +4155,6 @@ private fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 10.dp else 16.dp)
                 ) {
             if (activeTab == MobileDashboardTab.CHORES) {
-                if (canUseQuickLog) {
-                    item {
-                        Card(
-                            onClick = { showQuickLogDialog = true },
-                            enabled = activeQuickLogAction == null,
-                            shape = RoundedCornerShape(if (isNewMobileUi) 18.dp else 18.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-                                } else {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
-                                },
-                                disabledContainerColor = if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
-                                } else {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.14f)
-                                }
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
-                                } else {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                                }
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = if (isNewMobileUi) 66.dp else 56.dp)
-                                    .padding(horizontal = if (isNewMobileUi) 14.dp else 12.dp, vertical = if (isNewMobileUi) 8.dp else 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.mobile_quick_log_card_title),
-                                    style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Icon(
-                                    imageVector = Icons.Rounded.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = noChoresLabel, style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -4126,6 +4168,44 @@ private fun DashboardScreen(
                                 onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                             )
                         }
+                    }
+                    if (choresOverdue.isNotEmpty()) {
+                        mockMobileChoreSection(
+                            chores = choresOverdue,
+                            title = choresOverdueLabel,
+                            currentUserId = currentUserId,
+                            currentUserRole = currentUserRole,
+                            supportsTakeoverRequests = canUseTakeoverRequests,
+                            expandedChoreIds = expandedChoreIds,
+                            onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                            activeReviewAction = activeReviewAction,
+                            activeStartAction = activeStartAction,
+                            activeSubmitAction = activeSubmitAction,
+                            activeCloseCycleAction = activeCloseCycleAction,
+                            activeCancelChoreAction = activeCancelChoreAction,
+                            activeTakeoverRequestAction = activeTakeoverRequestAction,
+                            outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                            submitSelections = submitSelections,
+                            selectedProofUris = selectedProofUris,
+                            onApprove = onApprove,
+                            onReject = onReject,
+                            onToggleChecklistItem = onToggleChecklistItem,
+                            onPickProofs = onPickProofs,
+                            onTakeProofPhoto = onTakeProofPhoto,
+                            onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                            onCancelChoreOccurrence = onCancelChoreOccurrence,
+                            onCloseChoreCycle = onCloseChoreCycle,
+                            onCancelChore = onCancelChore,
+                            onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                            onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                            onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                            activeDueAtAction = activeDueAtAction,
+                            onEditChoreDueAt = onEditChoreDueAt,
+                            templateVariantsByTemplateId = templateVariantsByTemplateId,
+                            activeExternalCompleteAction = activeExternalCompleteAction,
+                            onCompleteExternalChore = onCompleteExternalChore,
+                            sectionTitleColor = overdueHeaderColor
+                        )
                     }
                     mockMobileChoreSection(
                         chores = choresDueToday,
@@ -4283,6 +4363,7 @@ private fun DashboardScreen(
                                         onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
                                     )
                                 }
+                                ChoreSectionColumn(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
                                 ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                                 ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                                 ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
@@ -4326,6 +4407,7 @@ private fun DashboardScreen(
                             )
                         }
                     }
+                    choreSection(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
                     choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                     choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
                     choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
@@ -4762,6 +4844,69 @@ private fun DashboardScreen(
                         )
                     }
                 }
+
+                AnimatedVisibility(
+                    visible = visibleGithubUpdate != null && activeTab == MobileDashboardTab.CHORES,
+                    enter = fadeIn(animationSpec = tween(300)),
+                    exit = fadeOut(animationSpec = tween(200)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .then(if (isTablet) Modifier.widthIn(max = 480.dp) else Modifier)
+                ) {
+                    visibleGithubUpdate?.let { update ->
+                        Card(
+                            onClick = { openTab(MobileDashboardTab.SETTINGS) },
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SystemUpdate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_banner_title, "v${update.version}"),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_banner_body),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onDismissGithubUpdate,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = stringResource(R.string.mobile_update_dismiss),
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -4806,6 +4951,42 @@ private fun QuickLogMatchChip(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+@Composable
+private fun SpeedDialAction(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.inverseSurface,
+            tonalElevation = 2.dp
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.inverseOnSurface,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        Button(
+            onClick = onClick,
+            shape = CircleShape,
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(46.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(22.dp)
             )
         }
     }
@@ -5043,13 +5224,35 @@ private fun LeaderboardEntryRow(
                     modifier = Modifier.size(20.dp)
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$rank. ${entry.displayName}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (entry.isExternal) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "ext",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
-                        text = "$rank. ${entry.displayName}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
+                        text = if (entry.isExternal) {
+                            "External helper"
+                        } else {
+                            "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -5074,10 +5277,11 @@ private fun LeaderboardEntryRow(
 private fun LazyListScope.choreSection(
     chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
     activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeCancelChoreAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
-    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit,
+    toneOverride: MobileChoreSectionTone? = null
 ) {
     if (chores.isEmpty()) return
-    val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+    val tone = toneOverride ?: when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
         MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
         MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
         MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
@@ -5128,10 +5332,11 @@ private fun LazyListScope.mockMobileChoreSection(
     onCompleteExternalChore: (String, String) -> Unit,
     showViewAll: Boolean = false,
     viewAllLabel: String = "",
-    emptyMessage: String? = null
+    emptyMessage: String? = null,
+    sectionTitleColor: Color = Color.Unspecified
 ) {
     item {
-        MockMobileSectionHeader(title = title, showViewAll = showViewAll, viewAllLabel = viewAllLabel)
+        MockMobileSectionHeader(title = title, showViewAll = showViewAll, viewAllLabel = viewAllLabel, titleColor = sectionTitleColor)
     }
     if (chores.isEmpty()) {
         if (!emptyMessage.isNullOrBlank()) {
@@ -5184,7 +5389,12 @@ private fun LazyListScope.mockMobileChoreSection(
 }
 
 @Composable
-private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAllLabel: String) {
+private fun MockMobileSectionHeader(
+    title: String,
+    showViewAll: Boolean,
+    viewAllLabel: String,
+    titleColor: Color = Color.Unspecified
+) {
     Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
@@ -5194,7 +5404,7 @@ private fun MockMobileSectionHeader(title: String, showViewAll: Boolean, viewAll
             text = title,
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.ExtraBold,
-            color = MaterialTheme.colorScheme.onBackground
+            color = if (titleColor != Color.Unspecified) titleColor else MaterialTheme.colorScheme.onBackground
         )
         if (showViewAll) {
             TextButton(onClick = { }) {
@@ -5334,9 +5544,10 @@ private fun ChoreSectionColumn(
     onSubmitChore: (String) -> Unit,
     activeExternalCompleteAction: String?,
     onCompleteExternalChore: (String, String) -> Unit,
+    toneOverride: MobileChoreSectionTone? = null,
 ) {
     if (chores.isEmpty()) return
-    val tone = when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+    val tone = toneOverride ?: when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
         MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
         MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
         MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
@@ -5456,6 +5667,13 @@ private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionTone
 
     return if (isDarkTheme) {
         when (tone) {
+            MobileChoreSectionTone.OVERDUE -> SectionToneColors(
+                container = Color(0xFF3B1818),
+                content = Color(0xFFFFECEC),
+                badgeContainer = Color(0xFFFF6B6B),
+                badgeContent = Color(0xFF3B0000),
+                borderColor = Color(0xFFCC3333)
+            )
             MobileChoreSectionTone.MINE -> SectionToneColors(
                 container = Color(0xFF24354A),
                 content = Color(0xFFF7F5FF),
@@ -5487,6 +5705,13 @@ private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionTone
         }
     } else {
         when (tone) {
+            MobileChoreSectionTone.OVERDUE -> SectionToneColors(
+                container = Color(0xFFFFF0F0),
+                content = Color(0xFF3D1010),
+                badgeContainer = Color(0xFFD94040),
+                badgeContent = Color(0xFFFFEEEE),
+                borderColor = Color(0xFFE08080)
+            )
             MobileChoreSectionTone.MINE -> SectionToneColors(
                 container = Color(0xFFF0E1C5),
                 content = MaterialTheme.colorScheme.onSurface,
@@ -6230,18 +6455,22 @@ private fun ChoreCard(
     }
 
     if (isNewMobileUi) {
+        val isOverdueBucket = resolveMyChoreDueBucket(chore) == MobileMyChoreDueBucket.OVERDUE
         val mockStatusLabel = when {
             chore.state == "completed" -> "Done"
+            isOverdueBucket -> "Overdue"
             chore.isOverdue || isDueSoonForMockCard(chore.dueAt) -> "Due soon"
             else -> "To do"
         }
         val mockStatusContainer = when (mockStatusLabel) {
             "Done" -> MaterialTheme.colorScheme.primaryContainer
+            "Overdue" -> MaterialTheme.colorScheme.errorContainer
             "Due soon" -> MaterialTheme.colorScheme.tertiaryContainer
             else -> MaterialTheme.colorScheme.surfaceVariant
         }
         val mockStatusContent = when (mockStatusLabel) {
             "Done" -> MaterialTheme.colorScheme.onPrimaryContainer
+            "Overdue" -> MaterialTheme.colorScheme.onErrorContainer
             "Due soon" -> MaterialTheme.colorScheme.onTertiaryContainer
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         }
@@ -6251,18 +6480,18 @@ private fun ChoreCard(
                 .clickable { onExpandedChange() },
             shape = RoundedCornerShape(15.dp),
             colors = CardDefaults.cardColors(
-                containerColor = if (isAssignedToCurrentUser) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-                } else {
-                    MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                containerColor = when {
+                    isOverdueBucket -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.22f)
+                    isAssignedToCurrentUser -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
                 }
             ),
             border = BorderStroke(
                 1.dp,
-                if (isAssignedToCurrentUser) {
-                    MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
-                } else {
-                    MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+                when {
+                    isOverdueBucket -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                    isAssignedToCurrentUser -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
                 }
             )
         ) {
@@ -6270,7 +6499,10 @@ private fun ChoreCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 78.dp)
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                    .padding(
+                        horizontal = 4.dp,
+                        vertical = if (!subtypeLabel.isNullOrBlank()) 5.dp else 8.dp
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -6289,7 +6521,9 @@ private fun ChoreCard(
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(
+                        if (!subtypeLabel.isNullOrBlank()) 1.dp else 4.dp
+                    )
                 ) {
                     Text(
                         text = typeTitle,
@@ -6299,6 +6533,15 @@ private fun ChoreCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (!subtypeLabel.isNullOrBlank()) {
+                        Text(
+                            text = subtypeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
                         text = "${formatDueAtForMockCard(chore.dueAt)} - ${chore.groupTitle.ifBlank { "Home" }}",
                         style = MaterialTheme.typography.bodySmall,
@@ -7698,6 +7941,24 @@ private fun SettingsReleaseContent(
             Text(text = stringResource(R.string.mobile_settings_latest_github), style = MaterialTheme.typography.labelSmall)
             CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
         }
+    } else if (githubCheckError) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onCheckForUpdates),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.mobile_settings_latest_github),
+                style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                text = stringResource(R.string.mobile_settings_github_check_failed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
     } else {
         SettingsValueLine(label = stringResource(R.string.mobile_settings_latest_github), value = githubVersionDisplay ?: stringResource(R.string.mobile_settings_unknown))
     }
@@ -7706,7 +7967,10 @@ private fun SettingsReleaseContent(
         enabled = githubCheckDone && !isDownloadingUpdate,
         modifier = Modifier.fillMaxWidth()
     ) {
-        Text(stringResource(R.string.mobile_settings_check_for_updates))
+        Text(
+            if (githubCheckError) stringResource(R.string.mobile_settings_retry_check)
+            else stringResource(R.string.mobile_settings_check_for_updates)
+        )
     }
     SettingsValueLine(label = stringResource(R.string.mobile_settings_server_url), value = serverUrl)
     SettingsValueLine(label = stringResource(R.string.mobile_settings_commit), value = BuildConfig.TASKBANDIT_COMMIT_SHA)
@@ -7920,7 +8184,7 @@ private fun ChoreActionSheet(
     val canEditDueAt = canManageChores && currentUserRole != "child" && chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
     val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
-    val canCancelChore = canManageChores && currentUserRole != "child" && isSubmittableState
+    val canCancelChore = canManageChores && currentUserRole != "child" && isSubmittableState && !canCancelOccurrence && !canCloseCycle
     val hasAnyPrimaryAction = (isPendingApproval && canApproveChores) || canSubmit || canClaimChore
     val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || canCloseCycle || canCancelChore || (canCompleteExternal && isSubmittableState)
 
@@ -7962,6 +8226,7 @@ private fun ChoreActionSheet(
     val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
     val dueFormatted = formatDueAtForMockCard(chore.dueAt)
     val isDueSoon = isDueSoonForMockCard(chore.dueAt)
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val activeDueAtActionKey = "update-due:${chore.id}"
 
     if (showApproveConfirm) {
@@ -8193,6 +8458,19 @@ private fun ChoreActionSheet(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (!subtypeLabel.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = subtypeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
                 if (chore.isOverdue || isDueSoon) {
                     Surface(
                         shape = RoundedCornerShape(999.dp),
@@ -8217,6 +8495,46 @@ private fun ChoreActionSheet(
         }
 
         HorizontalDivider()
+
+        chore.triggerInfo?.let { trigger ->
+            val completerName = when {
+                trigger.completedByExternal && !trigger.externalCompleterName.isNullOrBlank() ->
+                    trigger.externalCompleterName!!
+                !trigger.completedByDisplayName.isNullOrBlank() ->
+                    trigger.completedByDisplayName!!
+                else -> "someone"
+            }
+            val whenStr = trigger.completedAt
+                ?.let { runCatching { formatDueAtForCard(it) }.getOrElse { "" } }
+                .orEmpty()
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Link,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = buildString {
+                            append("After: ${trigger.title}")
+                            if (whenStr.isNotBlank()) append(" · $whenStr")
+                            append(" by $completerName")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
 
         if (isPendingApproval && canApproveChores) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -8402,6 +8720,7 @@ private fun resolveChoreSection(chore: MobileChore, currentUserId: String?): Mob
 }
 
 private enum class MobileMyChoreDueBucket {
+    OVERDUE,
     TODAY,
     THIS_WEEK,
     LATER
@@ -8415,6 +8734,9 @@ private fun resolveMyChoreDueBucket(
     val today = LocalDate.now(zoneId)
     val dueDate = runCatching { Instant.parse(chore.dueAt).atZone(zoneId).toLocalDate() }.getOrDefault(today)
 
+    if (dueDate.isBefore(today)) {
+        return MobileMyChoreDueBucket.OVERDUE
+    }
     if (!dueDate.isAfter(today)) {
         return MobileMyChoreDueBucket.TODAY
     }
@@ -8887,8 +9209,11 @@ private fun createProofCaptureFile(context: android.content.Context): File {
 }
 
 private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
-    val connection = java.net.URL("https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=50")
-        .openConnection() as java.net.HttpURLConnection
+    // Releases use tag format "v{VERSION}" (e.g. "v0.65.8") with a
+    // "taskbandit-{VERSION}.apk" asset attached to every release by CI.
+    val connection = java.net.URL(
+        "https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=10"
+    ).openConnection() as java.net.HttpURLConnection
     connection.setRequestProperty("Accept", "application/vnd.github+json")
     connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
     connection.connectTimeout = 10_000
@@ -8901,9 +9226,8 @@ private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
             val json = releases.getJSONObject(i)
             if (json.optBoolean("draft") || json.optBoolean("prerelease")) continue
             val tagName = json.optString("tag_name", "")
-            if (!tagName.startsWith("android-v")) continue
-            val cleaned = tagName.removePrefix("android-v")
-            val version = cleaned.substringBeforeLast('-').ifBlank { cleaned }
+            if (!tagName.startsWith("v")) continue
+            val version = tagName.removePrefix("v")
             if (version.isBlank()) continue
             val body = json.optString("body", "")
             val assets = json.optJSONArray("assets") ?: continue

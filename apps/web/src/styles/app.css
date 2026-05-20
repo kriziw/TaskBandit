@@ -967,9 +967,15 @@ h4,
     grid-column: span 12;
   }
 
-  .workspace-main[data-page="household"] .page-household,
-  .workspace-main[data-page="settings"] .page-settings {
+  .workspace-main[data-page="household"] .page-household {
     grid-column: span 6;
+  }
+
+  /* Settings panels stack full-width — half-width created large blank columns
+     next to short panels and alongside hidden SaaS-only sections */
+  .workspace-main[data-page="settings"] .page-settings {
+    grid-column: span 12;
+    max-width: 860px;
   }
 
   .workspace-main[data-page="admin"] .page-admin {
@@ -2792,9 +2798,38 @@ h4,
 
   .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings p,
   .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings li,
-  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings label {
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings label,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings span {
     font-size: 0.88rem;
     line-height: 1.35;
+    color: var(--mobile-text);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings input:not([type="checkbox"]),
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings textarea,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings select {
+    background: var(--mobile-surface-strong);
+    border-color: var(--mobile-border);
+    color: var(--mobile-text);
+    box-shadow: none;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings input::placeholder,
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings textarea::placeholder {
+    color: var(--mobile-text-muted);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .settings-section {
+    background: var(--mobile-surface-strong);
+    border-color: var(--mobile-border);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .inline-message {
+    color: var(--mobile-text-muted);
+  }
+
+  .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings button {
+    color: var(--mobile-text);
   }
 
   .app-shell.variant-client.mobile-ui-new .workspace-main[data-page="settings"] .page-settings .settings-list,
@@ -2929,6 +2964,22 @@ h4,
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-card-subtype {
+    display: block;
+    margin: 2px 0 0;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    color: var(--mobile-text-muted);
+    opacity: 0.82;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-card-subtype + .task-row-compact-meta {
+    margin-top: 1px;
   }
 
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card .status-pill,

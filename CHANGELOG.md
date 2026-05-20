@@ -2,6 +2,47 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.68.0](https://github.com/kriziw/TaskBandit/compare/v0.67.0...v0.68.0) (2026-05-20)
+
+
+### Features
+
+* **android:** floating update notification bubble on home screen ([#466](https://github.com/kriziw/TaskBandit/issues/466)) ([ab5384b](https://github.com/kriziw/TaskBandit/commit/ab5384be7a19322f366a612786d0482881de959f))
+* **android:** speed dial FAB, hide empty overdue, auto-dismiss notice ([#467](https://github.com/kriziw/TaskBandit/issues/467)) ([2ecf15b](https://github.com/kriziw/TaskBandit/commit/2ecf15b425dfe33a194f7f35ac73ae359e5d0f8a))
+
+
+### Bug Fixes
+
+* **server,android:** external completions now trigger follow-ups; deduplicate cancel menu ([#464](https://github.com/kriziw/TaskBandit/issues/464)) ([706ae15](https://github.com/kriziw/TaskBandit/commit/706ae15631852805b9bcfb9ae622fc362b935a59))
+
+## [0.67.0](https://github.com/kriziw/TaskBandit/compare/v0.66.0...v0.67.0) (2026-05-20)
+
+
+### Features
+
+* overdue section, subtype labels, trigger chain info, and external leaderboard ([#462](https://github.com/kriziw/TaskBandit/issues/462)) ([cb2b437](https://github.com/kriziw/TaskBandit/commit/cb2b43769d3ccff635ff53ec66e13f4d640b6e97))
+
+## [0.66.0](https://github.com/kriziw/TaskBandit/compare/v0.65.10...v0.66.0) (2026-05-19)
+
+
+### Features
+
+* **android:** add Overdue section before Due today with alarming colours ([#460](https://github.com/kriziw/TaskBandit/issues/460)) ([0be4ca4](https://github.com/kriziw/TaskBandit/commit/0be4ca4f972ef668f5329b4d5106426d58d9af4b))
+
+## [0.65.10](https://github.com/kriziw/TaskBandit/compare/v0.65.9...v0.65.10) (2026-05-18)
+
+
+### Bug Fixes
+
+* **android:** make failed GitHub update check row tappable and show Retry button ([#458](https://github.com/kriziw/TaskBandit/issues/458)) ([1fc3fe4](https://github.com/kriziw/TaskBandit/commit/1fc3fe4c8037335d6aa91639d97eceaac28d0942))
+
+## [0.65.9](https://github.com/kriziw/TaskBandit/compare/v0.65.8...v0.65.9) (2026-05-18)
+
+
+### Bug Fixes
+
+* **web,android:** fix settings layout, PWA dark mode settings, and Android GitHub update check ([#456](https://github.com/kriziw/TaskBandit/issues/456)) ([b496ab7](https://github.com/kriziw/TaskBandit/commit/b496ab7fea5f3a6c4c5d757aed0534365f4a7d8a))
+
 ## [0.65.8](https://github.com/kriziw/TaskBandit/compare/v0.65.7...v0.65.8) (2026-05-18)
 
 

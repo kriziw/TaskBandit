@@ -3139,6 +3139,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
           <div className="mock-mobile-card-body">
             <strong className="task-row-title">{choreTitleText}</strong>
+            {instance.subtypeLabel ? (
+              <span className="task-row-card-subtype">{instance.subtypeLabel}</span>
+            ) : null}
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
           <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
@@ -3210,6 +3213,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <div className="task-row-meta-item">
               <span>{t("templates.strategy")}</span>
               <strong>{t(`assignment_reason.${instance.assignmentReason}`)}</strong>
+            </div>
+          ) : null}
+          {instance.triggerInfo ? (
+            <div className="task-row-meta-item">
+              <span>Triggered after</span>
+              <strong>
+                {instance.triggerInfo.title}
+                {instance.triggerInfo.completedAt
+                  ? ` · ${formatDate(instance.triggerInfo.completedAt)}`
+                  : ""}
+                {" by "}
+                {instance.triggerInfo.completedByExternal
+                  ? (instance.triggerInfo.externalCompleterName ?? "outside helper")
+                  : (instance.triggerInfo.completedByDisplayName ?? "unknown")}
+              </strong>
             </div>
           ) : null}
           {instance.state === "deferred" && instance.notBeforeAt ? (
@@ -3380,6 +3398,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
           <div className="mock-mobile-card-body">
             <strong className="task-row-title">{choreTitleText}</strong>
+            {instance.subtypeLabel ? (
+              <span className="task-row-card-subtype">{instance.subtypeLabel}</span>
+            ) : null}
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
           <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
@@ -3406,6 +3427,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             <div className="task-row-meta-item">
               <span>{t("templates.strategy")}</span>
               <strong>{t(`assignment_reason.${instance.assignmentReason}`)}</strong>
+            </div>
+          ) : null}
+          {instance.triggerInfo ? (
+            <div className="task-row-meta-item">
+              <span>Triggered after</span>
+              <strong>
+                {instance.triggerInfo.title}
+                {instance.triggerInfo.completedAt
+                  ? ` · ${formatDate(instance.triggerInfo.completedAt)}`
+                  : ""}
+                {" by "}
+                {instance.triggerInfo.completedByExternal
+                  ? (instance.triggerInfo.externalCompleterName ?? "outside helper")
+                  : (instance.triggerInfo.completedByDisplayName ?? "unknown")}
+              </strong>
             </div>
           ) : null}
         </div>
@@ -7162,9 +7198,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           {index === 0 ? "🥇" : index === 1 ? "🥈" : index === 2 ? "🥉" : `${index + 1}.`}
                         </span>{" "}
                         {member.displayName}
+                        {member.isExternal ? (
+                          <span className="leader-external-badge" title="External helper"> ↗</span>
+                        ) : null}
                       </strong>
                       <p>
-                        {t(`role.${member.role}`)} - {member.currentStreak} {t("user.streak")}
+                        {member.isExternal
+                          ? "External helper"
+                          : `${t(`role.${member.role}`)} - ${member.currentStreak} ${t("user.streak")}`}
                       </p>
                     </div>
                     <strong>

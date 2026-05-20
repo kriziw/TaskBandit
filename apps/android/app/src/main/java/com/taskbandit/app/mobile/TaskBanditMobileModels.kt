@@ -136,7 +136,16 @@ data class MobileLeaderboardEntry(
     val displayName: String,
     val role: String,
     val points: Int,
-    val currentStreak: Int
+    val currentStreak: Int,
+    val isExternal: Boolean = false
+)
+
+data class MobileTriggerInfo(
+    val title: String,
+    val completedAt: String?,
+    val completedByDisplayName: String?,
+    val completedByExternal: Boolean,
+    val externalCompleterName: String?
 )
 
 data class MobileCompletionMilestone(
@@ -173,7 +182,8 @@ data class MobileChore(
     val variantId: String? = null,
     val templateId: String? = null,
     val completionMilestone: MobileCompletionMilestone? = null,
-    val newlyUnlockedAchievements: List<MobileUnlockedAchievement> = emptyList()
+    val newlyUnlockedAchievements: List<MobileUnlockedAchievement> = emptyList(),
+    val triggerInfo: MobileTriggerInfo? = null
 )
 
 data class MobileChecklistItem(

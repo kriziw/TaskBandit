@@ -337,7 +337,8 @@ class TaskBanditMobileApi {
                         displayName = entry.optString("displayName"),
                         role = entry.optString("role"),
                         points = entry.optInt("points"),
-                        currentStreak = entry.optInt("currentStreak")
+                        currentStreak = entry.optInt("currentStreak"),
+                        isExternal = entry.optBoolean("isExternal", false)
                     )
                 )
             }
@@ -1201,7 +1202,16 @@ class TaskBanditMobileApi {
             completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
             variantId = entry.optNullableString("variantId"),
             templateId = entry.optNullableString("templateId"),
-            completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone"))
+            completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone")),
+            triggerInfo = entry.optJSONObject("triggerInfo")?.let { tj ->
+                MobileTriggerInfo(
+                    title = tj.optString("title"),
+                    completedAt = tj.optNullableString("completedAt"),
+                    completedByDisplayName = tj.optNullableString("completedByDisplayName"),
+                    completedByExternal = tj.optBoolean("completedByExternal"),
+                    externalCompleterName = tj.optNullableString("externalCompleterName")
+                )
+            }
         )
     }
 
