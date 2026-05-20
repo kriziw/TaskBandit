@@ -616,30 +616,52 @@ export const starterTemplateCatalog: StarterCatalog = [
   }
 ];
 
-export type StarterTemplateKey = (typeof starterTemplateCatalog)[number]["key"];
+export type StarterTemplateOption = {
+  key: StarterTemplateKey;
+  groupTitle: string;
+  title: string;
+  description: string;
+  recommended: boolean;
+  followUps: Array<{ key: StarterTemplateKey; title: string }>;
+};
 
-export function getStarterTemplateDefinitionsByKey(keys: string[]): StarterTemplateDefinition[] {
-  return starterTemplateCatalog.filter((template) => keys.includes(template.key));
+function resolveLocalizedText(value: LocalizedText, language: SupportedLanguage) {
+  return value[language] || value[fallbackLanguage];
 }
 
-export function getStarterTemplateTranslations(language: SupportedLanguage): Array<{
-  key: StarterTemplateKey;
-  title: string;
-  followUps: Array<{ key: StarterTemplateKey; title: string }>;
-}> {
+export function getStarterTemplateOptionCatalog(language: SupportedLanguage): StarterTemplateOption[] {
+  const titleByKey = new Map<StarterTemplateKey, string>(
+    starterTemplateCatalog.map((template) => [template.key, resolveLocalizedText(template.title, language)])
+  );
+
   return starterTemplateCatalog.map((template) => ({
     key: template.key,
-    title: template.title[language] ?? template.title[fallbackLanguage],
+    groupTitle: resolveLocalizedText(template.groupTitle, language),
+    title: resolveLocalizedText(template.title, language),
+    description: resolveLocalizedText(template.description, language),
+    recommended: template.recommended !== false,
     followUps:
-      template.followUps?.map((followUp) => {
-        const followUpTemplate = starterTemplateCatalog.find((t) => t.key === followUp.key);
-        return {
-          key: followUp.key,
-          title:
-            followUpTemplate?.title[language] ??
-            followUpTemplate?.title[fallbackLanguage] ??
-            followUp.key
-        };
-      }) ?? []
+      template.followUps?.map((followUp) => ({
+        key: followUp.key,
+        title: titleByKey.get(followUp.key) ?? followUp.key
+      })) ?? []
   }));
+}
+
+export function getStarterTemplateDefinitionsByKey(keys?: string[]): StarterTemplateDefinition[] {
+  const allowedKeys = new Set(keys && keys.length > 0 ? keys : starterTemplateCatalog.map((template) => template.key));
+  return starterTemplateCatalog.filter((template) => allowedKeys.has(template.key));
+}
+
+export function getStarterTemplateTranslations(
+  value: LocalizedText,
+  defaultLocale: SupportedLanguage
+): Array<{ locale: SupportedLanguage; text: string }> {
+  return supportedLanguages
+    .filter((locale) => locale !== defaultLocale)
+    .map((locale) => ({
+      locale,
+      text: value[locale]
+    }))
+    .filter((entry) => entry.text.trim().length > 0);
 }
