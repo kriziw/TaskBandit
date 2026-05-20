@@ -424,6 +424,9 @@ h4,
   border: 1px solid #d6ba91;
 }
 
+.ghost-button.danger-button { color: #b91c1c; border-color: #fca5a5; }
+.ghost-button.danger-button:hover { background: rgba(254, 226, 226, 0.72); }
+
 .primary-button {
   color: #3f2f1c;
   background: linear-gradient(180deg, #f4e2c7 0%, #e9cfaa 62%, #dec29a 100%);

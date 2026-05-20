@@ -5406,6 +5406,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   }
 
+  async function handleResetTemplatesToDefaults() {
+    if (!token || !payload) return;
+    if (!window.confirm(t("templates.reset_to_defaults_confirm"))) return;
+    setBusyAction("reset-templates");
+    try {
+      const result = await taskBanditApi.resetTemplatesToDefaults(token, language);
+      const freshTemplates = await taskBanditApi.getTemplates(token, language);
+      setPayload((current) => (current ? { ...current, templates: freshTemplates } : current));
+      resetTemplateForm();
+      setNotice(t("templates.reset_to_defaults_done").replace("{count}", String(result.templateCount)));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("templates.reset_to_defaults_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
   function startEditingInstance(instance: ChoreInstance) {
     setEditingInstanceId(instance.id);
     setInstanceForm({
@@ -9304,6 +9322,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         >
                           {t("templates.new_template")}
                         </button>
+                        {payload.currentUser.role === "admin" && (
+                          <button
+                            className="ghost-button danger-button"
+                            type="button"
+                            disabled={!hasFeature("templates_manage") || busyAction === "reset-templates"}
+                            onClick={() => void handleResetTemplatesToDefaults()}
+                          >
+                            {t("templates.reset_to_defaults")}
+                          </button>
+                        )}
                       </div>
                       {filteredTemplateGroups.length === 0 ? (
                         <p className="inline-message">{t("templates.search_empty")}</p>
