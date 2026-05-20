@@ -77,7 +77,9 @@ import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.PeopleAlt
+import androidx.compose.material.icons.rounded.SystemUpdate
 import androidx.compose.material.icons.rounded.Smartphone
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
@@ -107,6 +109,8 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -4810,6 +4814,69 @@ private fun DashboardScreen(
                         ChoreConnectionBanner(
                             message = stringResource(R.string.mobile_sync_disconnected)
                         )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = visibleGithubUpdate != null && activeTab == MobileDashboardTab.CHORES,
+                    enter = fadeIn(animationSpec = tween(300)),
+                    exit = fadeOut(animationSpec = tween(200)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        .then(if (isTablet) Modifier.widthIn(max = 480.dp) else Modifier)
+                ) {
+                    visibleGithubUpdate?.let { update ->
+                        Card(
+                            onClick = { openTab(MobileDashboardTab.SETTINGS) },
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SystemUpdate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_banner_title, "v${update.version}"),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_banner_body),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onDismissGithubUpdate,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = stringResource(R.string.mobile_update_dismiss),
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
                     }
                 }
             }
