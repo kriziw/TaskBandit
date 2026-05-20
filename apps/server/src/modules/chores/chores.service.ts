@@ -599,7 +599,7 @@ export class ChoresService {
       completedChecklistItemIds,
       attachments: dto.attachments ?? [],
       note: dto.note,
-      awardedPoints: 0,
+      awardedPoints: instance.basePoints,
       completedByExternal: true,
       externalCompleterName: dto.externalCompleterName,
       externalCompletionNote: dto.note,

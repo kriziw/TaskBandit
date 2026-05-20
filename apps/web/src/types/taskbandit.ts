@@ -129,7 +129,7 @@ export type DashboardSummary = {
   pendingApprovals: number;
   activeChores: number;
   streakLeader: string;
-  leaderboard: HouseholdMember[];
+  leaderboard: Array<HouseholdMember & { isExternal?: boolean }>;
 };
 
 export type AuditLogEntry = {
@@ -579,6 +579,13 @@ export type ChoreInstance = {
   attachments: ChoreAttachment[];
   completionMilestone?: CompletionMilestone | null;
   newlyUnlockedAchievements?: UnlockedAchievement[];
+  triggerInfo?: {
+    title: string;
+    completedAt: string | null;
+    completedByDisplayName: string | null;
+    completedByExternal: boolean;
+    externalCompleterName: string | null;
+  } | null;
 };
 
 export type QuickLogInput = {

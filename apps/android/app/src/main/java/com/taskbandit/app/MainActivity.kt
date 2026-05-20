@@ -70,6 +70,7 @@ import androidx.compose.material.icons.rounded.EventBusy
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.HowToReg
+import androidx.compose.material.icons.rounded.Link
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Menu
@@ -5092,13 +5093,35 @@ private fun LeaderboardEntryRow(
                     modifier = Modifier.size(20.dp)
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$rank. ${entry.displayName}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (entry.isExternal) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "ext",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
                     Text(
-                        text = "$rank. ${entry.displayName}",
-                        style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}",
+                        text = if (entry.isExternal) {
+                            "External helper"
+                        } else {
+                            "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}"
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -6375,7 +6398,12 @@ private fun ChoreCard(
                         overflow = TextOverflow.Ellipsis
                     )
                     Text(
-                        text = "${formatDueAtForMockCard(chore.dueAt)} - ${chore.groupTitle.ifBlank { "Home" }}",
+                        text = buildString {
+                            append(formatDueAtForMockCard(chore.dueAt))
+                            append(" - ")
+                            append(chore.groupTitle.ifBlank { "Home" })
+                            if (!subtypeLabel.isNullOrBlank()) append(" · $subtypeLabel")
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
@@ -8058,6 +8086,7 @@ private fun ChoreActionSheet(
     val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
     val dueFormatted = formatDueAtForMockCard(chore.dueAt)
     val isDueSoon = isDueSoonForMockCard(chore.dueAt)
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
     val activeDueAtActionKey = "update-due:${chore.id}"
 
     if (showApproveConfirm) {
@@ -8289,6 +8318,19 @@ private fun ChoreActionSheet(
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
+                if (!subtypeLabel.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = subtypeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
                 if (chore.isOverdue || isDueSoon) {
                     Surface(
                         shape = RoundedCornerShape(999.dp),
@@ -8313,6 +8355,46 @@ private fun ChoreActionSheet(
         }
 
         HorizontalDivider()
+
+        chore.triggerInfo?.let { trigger ->
+            val completerName = when {
+                trigger.completedByExternal && !trigger.externalCompleterName.isNullOrBlank() ->
+                    trigger.externalCompleterName!!
+                !trigger.completedByDisplayName.isNullOrBlank() ->
+                    trigger.completedByDisplayName!!
+                else -> "someone"
+            }
+            val whenStr = trigger.completedAt
+                ?.let { runCatching { formatDueAtForCard(it) }.getOrElse { "" } }
+                .orEmpty()
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Link,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = buildString {
+                            append("After: ${trigger.title}")
+                            if (whenStr.isNotBlank()) append(" · $whenStr")
+                            append(" by $completerName")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
 
         if (isPendingApproval && canApproveChores) {
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

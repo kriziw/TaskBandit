@@ -2129,11 +2129,37 @@ export class HouseholdRepository {
         instance.state === ChoreState.ASSIGNED ||
         instance.state === ChoreState.IN_PROGRESS
     ).length;
-    const leaderboard = household.members
-      .map((member) => this.mapMember(member))
-      .sort((left, right) => right.points - left.points || right.currentStreak - left.currentStreak);
+    const memberLeaderboard = household.members
+      .map((member) => ({ ...this.mapMember(member), isExternal: false }));
+
+    const externalCompletions = await this.prisma.choreInstance.groupBy({
+      by: ["externalCompleterName"],
+      where: {
+        householdId,
+        completedByExternal: true,
+        externalCompleterName: { not: null }
+      },
+      _count: { id: true },
+      _sum: { awardedPoints: true }
+    });
+
+    const externalEntries = externalCompletions
+      .filter((entry) => (entry._count.id ?? 0) > 5)
+      .map((entry) => ({
+        id: `external:${entry.externalCompleterName}`,
+        displayName: entry.externalCompleterName!,
+        role: "external" as const,
+        points: entry._sum.awardedPoints ?? 0,
+        currentStreak: 0,
+        isExternal: true
+      }));
+
+    const leaderboard = [...memberLeaderboard, ...externalEntries].sort(
+      (left, right) => right.points - left.points || right.currentStreak - left.currentStreak
+    );
+
     const streakLeader =
-      [...leaderboard].sort(
+      [...memberLeaderboard].sort(
         (left, right) => right.currentStreak - left.currentStreak || right.points - left.points
       )[0]?.displayName ?? "Nobody";
 
@@ -2865,12 +2891,69 @@ export class HouseholdRepository {
       });
     }
 
-    return instances.map((instance) =>
+    const mappedInstances = instances.map((instance) =>
       this.mapInstance(instance, {
         redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id,
         assigneeDisplayName: instance.assigneeId ? assigneeDisplayNameById.get(instance.assigneeId) ?? null : null
       }, language)
     );
+
+    // Enrich follow-up chores with trigger info (who completed the previous step and when)
+    const sourceIds = Array.from(
+      new Set(
+        mappedInstances
+          .map((i) => (i as any).dependencySourceInstanceId)
+          .filter((id): id is string => Boolean(id))
+      )
+    );
+
+    if (sourceIds.length === 0) {
+      return mappedInstances;
+    }
+
+    const sourceInstances = await this.prisma.choreInstance.findMany({
+      where: { id: { in: sourceIds } },
+      select: {
+        id: true,
+        title: true,
+        completedAtUtc: true,
+        completedById: true,
+        completedByExternal: true,
+        externalCompleterName: true
+      }
+    });
+
+    const completerUserIds = Array.from(
+      new Set(sourceInstances.map((s) => s.completedById).filter((id): id is string => Boolean(id)))
+    );
+    const completerUsers =
+      completerUserIds.length > 0
+        ? await this.prisma.user.findMany({
+            where: { id: { in: completerUserIds } },
+            select: { id: true, displayName: true }
+          })
+        : [];
+    const userDisplayNameById = new Map(completerUsers.map((u) => [u.id, u.displayName]));
+
+    const triggerInfoMap = new Map(
+      sourceInstances.map((src) => [
+        src.id,
+        {
+          title: src.title,
+          completedAt: src.completedAtUtc ?? null,
+          completedByDisplayName: src.completedById ? (userDisplayNameById.get(src.completedById) ?? null) : null,
+          completedByExternal: Boolean((src as any).completedByExternal),
+          externalCompleterName: (src as any).externalCompleterName ?? null
+        }
+      ])
+    );
+
+    return mappedInstances.map((instance) => ({
+      ...instance,
+      triggerInfo: (instance as any).dependencySourceInstanceId
+        ? (triggerInfoMap.get((instance as any).dependencySourceInstanceId) ?? null)
+        : null
+    }));
   }
 
   async releaseEligibleDeferredInstances(householdId: string) {
