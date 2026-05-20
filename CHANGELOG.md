@@ -2,6 +2,19 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.68.0](https://github.com/kriziw/TaskBandit/compare/v0.67.0...v0.68.0) (2026-05-20)
+
+
+### Features
+
+* **android:** floating update notification bubble on home screen ([#466](https://github.com/kriziw/TaskBandit/issues/466)) ([ab5384b](https://github.com/kriziw/TaskBandit/commit/ab5384be7a19322f366a612786d0482881de959f))
+* **android:** speed dial FAB, hide empty overdue, auto-dismiss notice ([#467](https://github.com/kriziw/TaskBandit/issues/467)) ([2ecf15b](https://github.com/kriziw/TaskBandit/commit/2ecf15b425dfe33a194f7f35ac73ae359e5d0f8a))
+
+
+### Bug Fixes
+
+* **server,android:** external completions now trigger follow-ups; deduplicate cancel menu ([#464](https://github.com/kriziw/TaskBandit/issues/464)) ([706ae15](https://github.com/kriziw/TaskBandit/commit/706ae15631852805b9bcfb9ae622fc362b935a59))
+
 ## [0.67.0](https://github.com/kriziw/TaskBandit/compare/v0.66.0...v0.67.0) (2026-05-20)
 
 
