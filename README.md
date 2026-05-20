@@ -1,9 +1,13 @@
 <p align="center">
-  <img src="docs/assets/taskbandit-logo.svg" alt="TaskBandit logo" width="520" />
+  <picture>
+    <source media="(prefers-color-scheme: dark)" srcset="apps/web/public/brand/logo-dark.png" />
+    <source media="(prefers-color-scheme: light)" srcset="apps/web/public/brand/logo-light.png" />
+    <img src="apps/web/public/brand/logo-light.png" alt="TaskBandit logo" width="520" />
+  </picture>
 </p>
 
 <p align="center">
-  Self-hosted chores, approvals, streaks, and proof photos for playful households.
+  Self-hosted chores, streaks, achievements, proof photos, and follow-up chains for playful households.
 </p>
 
 TaskBandit is a self-hosted, heavily gamified household chore manager with:
@@ -11,8 +15,12 @@ TaskBandit is a self-hosted, heavily gamified household chore manager with:
 - a server component that exposes the API, auth, realtime sync, and notification delivery
 - an admin-facing web UI for templates, household configuration, translation, and system operations
 - a client-facing web UI that works in a normal desktop/mobile browser and can also be installed as a PWA
-- a native Android application for daily use, offline actions, photo proof, and widgets
+- a native Android application for daily use, offline actions, photo proof, widgets, and in-app update delivery from GitHub Releases
 - chore templates built around group, type, and optional sub-type layers so chores stay clear in both admin setup and client views
+- chore chains that automatically trigger follow-up tasks when a chore is completed
+- a lightweight achievement system that rewards household members for completing chores
+- an overdue section on both web and Android that surfaces missed chores with prominent alerting
+- external completion support for marking chores done from outside the app
 
 ## Documentation
 
@@ -79,7 +87,7 @@ For a real install, copy `.env.example` to `.env`, change the secrets and public
 
 ## Logging Safety Defaults
 
-TaskBandit now protects disk usage in two layers by default:
+TaskBandit protects disk usage in two layers by default:
 
 - the application runtime log under `data/taskbandit/storage/logs` rotates at `100 MB` and keeps up to `500 MB` total across the active log plus rotated archives
 - Docker `json-file` logs for the `postgres`, `server`, and `web` containers rotate at `100 MB` and keep `5` files per container
@@ -126,6 +134,8 @@ The public runtime still defaults to self-hosted operation. When `TASKBANDIT_HOS
 - tenant export and deletion manifests that inventory database rows alongside proof object keys
 - hosted plan telemetry in `/api/settings/subscription` with package display naming plus usage-vs-quota fields for members, storage, and monthly notifications
 - hosted template availability safety (seed defaults eagerly during provisioning or lazily when template lists are empty)
+- hosted invite deep-link onboarding for Android, landing invited members directly into household setup
+- runtime contract version handshake that detects and gracefully handles bridge incompatibility between the server and hosted control plane
 
 Hosted mode does not add private billing logic, operator support tooling, or hosted secret management to this repo. Those remain in the private control plane.
 The hosted runtime config bridge requests `/internal/runtime/tenants/:tenantId/config` using the runtime tenant id resolved from trusted runtime context.
