@@ -4279,6 +4279,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function handleDismissOnboarding() {
     writeStoredOnboardingTourCompletion(onboardingTourMode, true);
+    // Also dismiss for the other client mode so viewport resize won't re-trigger the tour
+    if (onboardingTourMode === "client") {
+      writeStoredOnboardingTourCompletion("client-mobile", true);
+    } else if (onboardingTourMode === "client-mobile") {
+      writeStoredOnboardingTourCompletion("client", true);
+    }
     setOnboardingTourCompleted(true);
     setOnboardingDismissed(true);
     setOnboardingManuallyOpened(false);
@@ -6974,11 +6980,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </p>
                     <h2>{t("onboarding.title")}</h2>
                   </div>
-                  <span className="section-kicker">
-                    {t("onboarding.progress")
-                      .replace("{current}", String(onboardingIndex + 1))
-                      .replace("{total}", String(onboardingSteps.length))}
-                  </span>
+                  <div className="toolbar-group">
+                    <span className="section-kicker">
+                      {t("onboarding.progress")
+                        .replace("{current}", String(onboardingIndex + 1))
+                        .replace("{total}", String(onboardingSteps.length))}
+                    </span>
+                    <button
+                      className="ghost-button onboarding-close-button"
+                      type="button"
+                      aria-label={t("onboarding.later")}
+                      onClick={handleDismissOnboarding}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 <div className="onboarding-step-list">
                   {onboardingSteps.map((step, index) => (
