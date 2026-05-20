@@ -62,6 +62,8 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Close
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.CalendarMonth
 import androidx.compose.material.icons.rounded.DarkMode
@@ -111,6 +113,9 @@ import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
@@ -136,6 +141,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -649,6 +655,12 @@ private fun TaskBanditApp(
     var dashboard by remember { mutableStateOf<MobileDashboard?>(initialCachedDashboard) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var noticeMessage by remember { mutableStateOf<String?>(null) }
+    LaunchedEffect(noticeMessage) {
+        if (noticeMessage != null) {
+            kotlinx.coroutines.delay(4000)
+            noticeMessage = null
+        }
+    }
     var serverReleaseInfo by remember { mutableStateOf<MobileReleaseInfo?>(null) }
     var hostedSubscription by remember { mutableStateOf(MobileHostedSubscriptionOverview()) }
     var notificationDevices by remember { mutableStateOf<List<MobileNotificationDevice>>(emptyList()) }
@@ -2840,6 +2852,7 @@ private fun DashboardScreen(
     var requestTakeoverChoreId by rememberSaveable { mutableStateOf<String?>(null) }
     var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
     var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
+    var showSpeedDial by rememberSaveable { mutableStateOf(false) }
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
@@ -3866,9 +3879,9 @@ private fun DashboardScreen(
     }
 
     BackHandler(
-        enabled = showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
+        enabled = showSpeedDial || showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
     ) {
-        backWithinDashboard()
+        if (showSpeedDial) { showSpeedDial = false } else backWithinDashboard()
     }
 
     CompositionLocalProvider(
@@ -3945,17 +3958,80 @@ private fun DashboardScreen(
         },
         floatingActionButton = {
             if (isNewMobileUi && activeTab == MobileDashboardTab.CHORES && canManageChores) {
-                Button(
-                    onClick = { openTab(MobileDashboardTab.CREATE) },
-                    shape = CircleShape,
-                    contentPadding = PaddingValues(0.dp),
-                    modifier = Modifier.size(60.dp)
-                ) {
-                    Icon(
-                        imageVector = Icons.Rounded.Add,
-                        contentDescription = stringResource(R.string.mobile_create_action),
-                        modifier = Modifier.size(28.dp)
-                    )
+                if (canUseQuickLog) {
+                    // Speed dial: two actions available (Quick Log + Create Chore)
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AnimatedVisibility(
+                            visible = showSpeedDial,
+                            enter = fadeIn(animationSpec = tween(160)) + slideInVertically(
+                                animationSpec = tween(200),
+                                initialOffsetY = { it / 2 }
+                            ),
+                            exit = fadeOut(animationSpec = tween(120)) + slideOutVertically(
+                                animationSpec = tween(160),
+                                targetOffsetY = { it / 2 }
+                            )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                SpeedDialAction(
+                                    label = stringResource(R.string.mobile_quick_log_card_title),
+                                    icon = Icons.Rounded.Bolt,
+                                    onClick = {
+                                        showSpeedDial = false
+                                        showQuickLogDialog = true
+                                    }
+                                )
+                                SpeedDialAction(
+                                    label = stringResource(R.string.mobile_create_action),
+                                    icon = Icons.Rounded.Add,
+                                    onClick = {
+                                        showSpeedDial = false
+                                        openTab(MobileDashboardTab.CREATE)
+                                    }
+                                )
+                            }
+                        }
+                        // Main FAB — rotates + → × when expanded
+                        val fabRotation by animateFloatAsState(
+                            targetValue = if (showSpeedDial) 45f else 0f,
+                            animationSpec = tween(200),
+                            label = "fabRotation"
+                        )
+                        Button(
+                            onClick = { showSpeedDial = !showSpeedDial },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.size(60.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = if (showSpeedDial) stringResource(R.string.mobile_update_dismiss) else stringResource(R.string.mobile_create_action),
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .rotate(fabRotation)
+                            )
+                        }
+                    }
+                } else {
+                    // Quick Log not available on this plan — single-tap FAB goes straight to Create
+                    Button(
+                        onClick = { openTab(MobileDashboardTab.CREATE) },
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(60.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.mobile_create_action),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
                 }
             }
         },
@@ -4079,56 +4155,6 @@ private fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 10.dp else 16.dp)
                 ) {
             if (activeTab == MobileDashboardTab.CHORES) {
-                if (canUseQuickLog) {
-                    item {
-                        Card(
-                            onClick = { showQuickLogDialog = true },
-                            enabled = activeQuickLogAction == null,
-                            shape = RoundedCornerShape(if (isNewMobileUi) 18.dp else 18.dp),
-                            colors = CardDefaults.cardColors(
-                                containerColor = if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.28f)
-                                } else {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.24f)
-                                },
-                                disabledContainerColor = if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.16f)
-                                } else {
-                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.14f)
-                                }
-                            ),
-                            border = BorderStroke(
-                                1.dp,
-                                if (isNewMobileUi) {
-                                    MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
-                                } else {
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.22f)
-                                }
-                            )
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(min = if (isNewMobileUi) 66.dp else 56.dp)
-                                    .padding(horizontal = if (isNewMobileUi) 14.dp else 12.dp, vertical = if (isNewMobileUi) 8.dp else 10.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = stringResource(R.string.mobile_quick_log_card_title),
-                                    style = if (isNewMobileUi) MaterialTheme.typography.titleSmall else MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold
-                                )
-                                Icon(
-                                    imageVector = Icons.Rounded.ChevronRight,
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-                            }
-                        }
-                    }
-                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = noChoresLabel, style = MaterialTheme.typography.bodyMedium) }
                 }
@@ -4143,42 +4169,44 @@ private fun DashboardScreen(
                             )
                         }
                     }
-                    mockMobileChoreSection(
-                        chores = choresOverdue,
-                        title = choresOverdueLabel,
-                        currentUserId = currentUserId,
-                        currentUserRole = currentUserRole,
-                        supportsTakeoverRequests = canUseTakeoverRequests,
-                        expandedChoreIds = expandedChoreIds,
-                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
-                        activeReviewAction = activeReviewAction,
-                        activeStartAction = activeStartAction,
-                        activeSubmitAction = activeSubmitAction,
-                        activeCloseCycleAction = activeCloseCycleAction,
-                        activeCancelChoreAction = activeCancelChoreAction,
-                        activeTakeoverRequestAction = activeTakeoverRequestAction,
-                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
-                        submitSelections = submitSelections,
-                        selectedProofUris = selectedProofUris,
-                        onApprove = onApprove,
-                        onReject = onReject,
-                        onToggleChecklistItem = onToggleChecklistItem,
-                        onPickProofs = onPickProofs,
-                        onTakeProofPhoto = onTakeProofPhoto,
-                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
-                        onCancelChoreOccurrence = onCancelChoreOccurrence,
-                        onCloseChoreCycle = onCloseChoreCycle,
-                        onCancelChore = onCancelChore,
-                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
-                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
-                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
-                        activeDueAtAction = activeDueAtAction,
-                        onEditChoreDueAt = onEditChoreDueAt,
-                        templateVariantsByTemplateId = templateVariantsByTemplateId,
-                        activeExternalCompleteAction = activeExternalCompleteAction,
-                        onCompleteExternalChore = onCompleteExternalChore,
-                        sectionTitleColor = overdueHeaderColor
-                    )
+                    if (choresOverdue.isNotEmpty()) {
+                        mockMobileChoreSection(
+                            chores = choresOverdue,
+                            title = choresOverdueLabel,
+                            currentUserId = currentUserId,
+                            currentUserRole = currentUserRole,
+                            supportsTakeoverRequests = canUseTakeoverRequests,
+                            expandedChoreIds = expandedChoreIds,
+                            onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                            activeReviewAction = activeReviewAction,
+                            activeStartAction = activeStartAction,
+                            activeSubmitAction = activeSubmitAction,
+                            activeCloseCycleAction = activeCloseCycleAction,
+                            activeCancelChoreAction = activeCancelChoreAction,
+                            activeTakeoverRequestAction = activeTakeoverRequestAction,
+                            outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                            submitSelections = submitSelections,
+                            selectedProofUris = selectedProofUris,
+                            onApprove = onApprove,
+                            onReject = onReject,
+                            onToggleChecklistItem = onToggleChecklistItem,
+                            onPickProofs = onPickProofs,
+                            onTakeProofPhoto = onTakeProofPhoto,
+                            onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                            onCancelChoreOccurrence = onCancelChoreOccurrence,
+                            onCloseChoreCycle = onCloseChoreCycle,
+                            onCancelChore = onCancelChore,
+                            onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                            onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                            onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                            activeDueAtAction = activeDueAtAction,
+                            onEditChoreDueAt = onEditChoreDueAt,
+                            templateVariantsByTemplateId = templateVariantsByTemplateId,
+                            activeExternalCompleteAction = activeExternalCompleteAction,
+                            onCompleteExternalChore = onCompleteExternalChore,
+                            sectionTitleColor = overdueHeaderColor
+                        )
+                    }
                     mockMobileChoreSection(
                         chores = choresDueToday,
                         title = choresDueTodayLabel,
@@ -4923,6 +4951,42 @@ private fun QuickLogMatchChip(
                 color = MaterialTheme.colorScheme.onSurface,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+@Composable
+private fun SpeedDialAction(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.inverseSurface,
+            tonalElevation = 2.dp
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.inverseOnSurface,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        Button(
+            onClick = onClick,
+            shape = CircleShape,
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(46.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(22.dp)
             )
         }
     }
