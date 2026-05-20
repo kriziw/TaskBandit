@@ -8613,12 +8613,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
               <>
-                <article className="panel page-panel page-settings" ref={householdSettingsRef}>
+                <article className="panel page-panel page-settings settings-panel-wide" ref={householdSettingsRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_settings")}</h2>
                     <span className="section-kicker">{t("settings.admin_only")}</span>
                   </div>
-                  <div className="settings-sections">
+                  <div className="settings-sections settings-sections-wide">
                     {!isHostedSaas ? (
                       <section className="settings-section settings-section-oidc" ref={oidcSettingsRef}>
                       <div className="section-heading section-heading-compact">

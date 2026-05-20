@@ -1406,6 +1406,12 @@ h4,
   gap: 14px;
 }
 
+@media (min-width: 1024px) {
+  .settings-sections.settings-sections-wide {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
 .settings-section {
   display: grid;
   gap: 10px;
