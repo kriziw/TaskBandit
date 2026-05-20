@@ -9272,6 +9272,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         >
                           {t("templates.new_template")}
                         </button>
+                        {payload.currentUser.role === "admin" && (
+                          <button
+                            className="ghost-button danger-button"
+                            type="button"
+                            disabled={!hasFeature("templates_manage") || busyAction === "reset-templates"}
+                            onClick={() => void handleResetTemplatesToDefaults()}
+                          >
+                            {t("templates.reset_to_defaults")}
+                          </button>
+                        )}
                       </div>
                       {filteredTemplateGroups.length === 0 ? (
                         <p className="inline-message">{t("templates.search_empty")}</p>

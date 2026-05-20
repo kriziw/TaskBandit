@@ -248,6 +248,7 @@ export class HouseholdRepository {
               : [],
           requirePhotoProof: template.requirePhotoProof,
           recurrenceStartStrategy: template.recurrenceStartStrategy,
+          stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
           checklistItems: {
             create:
               template.checklist?.map((item, index) => ({
@@ -2255,6 +2256,39 @@ export class HouseholdRepository {
     }
 
     return this.ensureDefaultTemplatesForHousehold(household.id, language);
+  }
+
+  async resetDefaultTemplatesForHousehold(
+    householdId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    return this.prisma.$transaction(async (tx) => {
+      const household = await tx.household.findFirst({
+        where: { id: householdId },
+        select: { id: true }
+      });
+      if (!household) {
+        throw new NotFoundException({ message: 'That household could not be found.' });
+      }
+      await tx.choreTemplate.deleteMany({ where: { householdId } });
+      await this.importStarterTemplates(tx, householdId, undefined, language);
+      const templateCount = await tx.choreTemplate.count({ where: { householdId } });
+      return { reset: true, templateCount };
+    });
+  }
+
+  async resetDefaultTemplatesForTenant(
+    tenantId: string,
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    const household = await this.prisma.household.findFirst({
+      where: { tenantId },
+      select: { id: true }
+    });
+    if (!household) {
+      throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
+    }
+    return this.resetDefaultTemplatesForHousehold(household.id, language);
   }
 
   async getTemplateForHousehold(

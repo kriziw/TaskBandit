@@ -78,6 +78,18 @@ export class ChoresController {
     );
   }
 
+  @Post("templates/reset-to-defaults")
+  @Roles("admin")
+  resetTemplatesToDefaults(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers("accept-language") acceptLanguage?: string
+  ) {
+    return this.choresService.resetTemplatesToDefaults(
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage)
+    );
+  }
+
   @Delete("templates/:id")
   @Roles("admin", "parent")
   deleteTemplate(
