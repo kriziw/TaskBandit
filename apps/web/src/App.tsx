@@ -2351,8 +2351,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       { key: "overview", label: t("nav.home") },
       { key: "chores", label: t("nav.plan") },
       { key: "household", label: t("nav.household") },
+      { key: "notifications", label: t("nav.notifications") },
       { key: "settings", label: t("nav.settings") }
     ];
+    if (showTemplateManager) {
+      pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
+    }
     if (showAdminOps) {
       pages.push({ key: "admin", label: t("nav.ops") });
     }
@@ -9244,7 +9248,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             {showTemplateManager ? (
-                <article className="panel panel-wide page-panel page-templates page-chores" ref={templatesRef}>
+                <article className="panel panel-wide page-panel page-templates" ref={templatesRef}>
                   <div className="section-heading">
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
