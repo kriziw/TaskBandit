@@ -14,6 +14,8 @@
   "common.enabled": "Aktiv",
   "common.disabled": "Deaktiviert",
   "common.retry": "Erneut versuchen",
+  "common.show": "Anzeigen",
+  "common.hide": "Ausblenden",
   "release.update_available_title": "Neuere Version verfügbar",
   "release.update_available_body": "Dieser Client läuft auf {current}, während der Server schon auf {latest} ist. Bitte aktualisiere oder lade die App neu, sobald es passt.",
   "release.update_available_chip": "Update verfügbar: {release}",

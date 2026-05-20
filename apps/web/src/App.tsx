@@ -1275,6 +1275,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
   const [quickLogIcon, setQuickLogIcon] = useState<ChoreIconId | null>(null);
   const [showMobileCompletedChores, setShowMobileCompletedChores] = useState(false);
+  const [showDesktopChoreHistory, setShowDesktopChoreHistory] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
     () => readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset
@@ -7595,11 +7596,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </button>
                   ) : null}
                   {!showClientMobileShell ? (
-                    <span className="inline-message">
-                      {t("history.page_indicator")
-                        .replace("{page}", String(historyPage))
-                        .replace("{pages}", String(historyPageCount))}
-                    </span>
+                    <>
+                      {showDesktopChoreHistory ? (
+                        <span className="inline-message">
+                          {t("history.page_indicator")
+                            .replace("{page}", String(historyPage))
+                            .replace("{pages}", String(historyPageCount))}
+                        </span>
+                      ) : null}
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        onClick={() => setShowDesktopChoreHistory((current) => !current)}
+                      >
+                        {showDesktopChoreHistory ? t("common.hide") : t("common.show")}
+                      </button>
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -7615,7 +7627,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     )}
                   </div>
                 )
-              ) : (
+              ) : showDesktopChoreHistory ? (
                 <>
                   <div className="household-filter-bar export-filter-bar">
                     <label>
@@ -7713,7 +7725,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </>
                   )}
                 </>
-              )}
+              ) : null}
             </article>
 
             {notificationPreferencesDraft ? (
