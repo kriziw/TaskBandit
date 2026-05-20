@@ -3124,7 +3124,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (showNewClientMobileShell && !options?.forceLegacy) {
       const compactMeta = `${options?.historic ? formatMobileDueLabel(getHistoricChoreDate(instance)) : formatMobileDueLabel(instance.dueAt)} - ${
         instance.groupTitle || "Home"
-      }${instance.subtypeLabel ? ` · ${instance.subtypeLabel}` : ""}`;
+      }`;
       const mockStatus = getMobileCardStatus(instance);
       const isMine = Boolean(payload?.currentUser.id && instance.assigneeId === payload.currentUser.id);
       return (
@@ -3139,6 +3139,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
           <div className="mock-mobile-card-body">
             <strong className="task-row-title">{choreTitleText}</strong>
+            {instance.subtypeLabel ? (
+              <span className="task-row-card-subtype">{instance.subtypeLabel}</span>
+            ) : null}
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
           <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>
@@ -3381,7 +3384,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }`;
 
     if (showNewClientMobileShell && !options?.forceLegacy) {
-      const compactMeta = `${formatMobileDueLabel(instance.dueAt)} - ${instance.groupTitle || "Home"}${instance.subtypeLabel ? ` · ${instance.subtypeLabel}` : ""}`;
+      const compactMeta = `${formatMobileDueLabel(instance.dueAt)} - ${instance.groupTitle || "Home"}`;
       const mockStatus = getMobileCardStatus(instance);
       return (
         <button
@@ -3395,6 +3398,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           </div>
           <div className="mock-mobile-card-body">
             <strong className="task-row-title">{choreTitleText}</strong>
+            {instance.subtypeLabel ? (
+              <span className="task-row-card-subtype">{instance.subtypeLabel}</span>
+            ) : null}
             <p className="task-row-compact-meta">{compactMeta}</p>
           </div>
           <span className={`status-pill ${mockStatus.className}`}>{mockStatus.label}</span>

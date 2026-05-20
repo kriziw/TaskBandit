@@ -6368,7 +6368,10 @@ private fun ChoreCard(
                 modifier = Modifier
                     .fillMaxWidth()
                     .heightIn(min = 78.dp)
-                    .padding(horizontal = 4.dp, vertical = 8.dp),
+                    .padding(
+                        horizontal = 4.dp,
+                        vertical = if (!subtypeLabel.isNullOrBlank()) 5.dp else 8.dp
+                    ),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -6387,7 +6390,9 @@ private fun ChoreCard(
                 }
                 Column(
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+                    verticalArrangement = Arrangement.spacedBy(
+                        if (!subtypeLabel.isNullOrBlank()) 1.dp else 4.dp
+                    )
                 ) {
                     Text(
                         text = typeTitle,
@@ -6397,13 +6402,17 @@ private fun ChoreCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis
                     )
+                    if (!subtypeLabel.isNullOrBlank()) {
+                        Text(
+                            text = subtypeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                     Text(
-                        text = buildString {
-                            append(formatDueAtForMockCard(chore.dueAt))
-                            append(" - ")
-                            append(chore.groupTitle.ifBlank { "Home" })
-                            if (!subtypeLabel.isNullOrBlank()) append(" · $subtypeLabel")
-                        },
+                        text = "${formatDueAtForMockCard(chore.dueAt)} - ${chore.groupTitle.ifBlank { "Home" }}",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,

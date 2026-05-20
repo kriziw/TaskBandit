@@ -2966,6 +2966,22 @@ h4,
     text-overflow: ellipsis;
   }
 
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-card-subtype {
+    display: block;
+    margin: 2px 0 0;
+    font-size: 0.7rem;
+    line-height: 1.2;
+    color: var(--mobile-text-muted);
+    opacity: 0.82;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .app-shell.variant-client.mobile-ui-new .mock-mobile-card .task-row-card-subtype + .task-row-compact-meta {
+    margin-top: 1px;
+  }
+
   .app-shell.variant-client.mobile-ui-new .mock-mobile-card .status-pill,
   .app-shell.variant-client.mobile-ui-new .task-row .status-pill {
     justify-self: end;
