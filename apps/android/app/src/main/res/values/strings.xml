@@ -36,6 +36,8 @@
     <string name="mobile_update_dismiss">Dismiss</string>
     <string name="mobile_github_update_available_title">GitHub update available</string>
     <string name="mobile_github_update_available_subtitle">%1$s → %2$s</string>
+    <string name="mobile_update_banner_title">Update available — %1$s</string>
+    <string name="mobile_update_banner_action">Update</string>
     <string name="mobile_github_download_install">Download &amp; Install %1$s</string>
     <string name="mobile_github_downloading">Downloading… %1$d%%</string>
     <string name="mobile_github_download_failed">Download failed, please try again</string>
