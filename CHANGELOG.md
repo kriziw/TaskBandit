@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.67.0](https://github.com/kriziw/TaskBandit/compare/v0.66.0...v0.67.0) (2026-05-20)
+
+
+### Features
+
+* overdue section, subtype labels, trigger chain info, and external leaderboard ([#462](https://github.com/kriziw/TaskBandit/issues/462)) ([cb2b437](https://github.com/kriziw/TaskBandit/commit/cb2b43769d3ccff635ff53ec66e13f4d640b6e97))
+
 ## [0.66.0](https://github.com/kriziw/TaskBandit/compare/v0.65.10...v0.66.0) (2026-05-19)
 
 
