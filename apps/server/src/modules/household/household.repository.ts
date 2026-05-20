@@ -4043,29 +4043,31 @@ export class HouseholdRepository {
     const updatedInstance = submissionResult.instance;
     let completionMilestone: CompletionMilestone | null = null;
 
-    if (submissionResult.didTransition && input.nextState === "completed" && !input.completedByExternal) {
-      const beneficiaryUserId = updatedInstance.assigneeId ?? input.actingUserId;
-      await this.prisma.user.update({
-        where: {
-          id: beneficiaryUserId
-        },
-        data: {
-          points: {
-            increment: input.awardedPoints
+    if (submissionResult.didTransition && input.nextState === "completed") {
+      if (!input.completedByExternal) {
+        const beneficiaryUserId = updatedInstance.assigneeId ?? input.actingUserId;
+        await this.prisma.user.update({
+          where: {
+            id: beneficiaryUserId
           },
-          currentStreak: {
-            increment: 1
+          data: {
+            points: {
+              increment: input.awardedPoints
+            },
+            currentStreak: {
+              increment: 1
+            }
           }
-        }
-      });
+        });
 
-      await this.recordPointsLedgerEntry(this.prisma, {
-        householdId: input.householdId,
-        userId: beneficiaryUserId,
-        choreInstanceId: updatedInstance.id,
-        amount: input.awardedPoints,
-        reason: `Completed chore "${updatedInstance.title}".`
-      });
+        await this.recordPointsLedgerEntry(this.prisma, {
+          householdId: input.householdId,
+          userId: beneficiaryUserId,
+          choreInstanceId: updatedInstance.id,
+          amount: input.awardedPoints,
+          reason: `Completed chore "${updatedInstance.title}".`
+        });
+      }
 
       await this.createFollowUpInstances(updatedInstance);
       await this.createRecurringInstance(updatedInstance);
