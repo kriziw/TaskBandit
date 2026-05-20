@@ -7737,7 +7737,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <h2>{t("panel.notification_preferences")}</h2>
                   <span className="section-kicker">{t("settings.member_level")}</span>
                 </div>
-                <div className="settings-list">
+                <div className="settings-list settings-list-columns">
                   <label className="toggle-row">
                     <span>{t("settings.notify_assignments")}</span>
                     <input

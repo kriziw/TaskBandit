@@ -1396,6 +1396,11 @@ h4,
   gap: 12px;
 }
 
+.settings-list.settings-list-columns {
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+
 .settings-sections {
   display: grid;
   gap: 14px;
