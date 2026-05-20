@@ -8053,7 +8053,7 @@ private fun ChoreActionSheet(
     val canEditDueAt = canManageChores && currentUserRole != "child" && chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
     val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
     val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
-    val canCancelChore = canManageChores && currentUserRole != "child" && isSubmittableState
+    val canCancelChore = canManageChores && currentUserRole != "child" && isSubmittableState && !canCancelOccurrence && !canCloseCycle
     val hasAnyPrimaryAction = (isPendingApproval && canApproveChores) || canSubmit || canClaimChore
     val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || canCloseCycle || canCancelChore || (canCompleteExternal && isSubmittableState)
 
