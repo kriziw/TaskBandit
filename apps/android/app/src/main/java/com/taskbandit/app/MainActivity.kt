@@ -141,7 +141,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
-import androidx.compose.ui.draw.graphicsLayer
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.rotate
@@ -4014,7 +4014,7 @@ private fun DashboardScreen(
                                 contentDescription = if (showSpeedDial) stringResource(R.string.mobile_update_dismiss) else stringResource(R.string.mobile_create_action),
                                 modifier = Modifier
                                     .size(28.dp)
-                                    .graphicsLayer { rotationZ = fabRotation }
+                                    .rotate(fabRotation)
                             )
                         }
                     }
