@@ -2270,6 +2270,29 @@ export class HouseholdRepository {
       if (!household) {
         throw new NotFoundException({ message: 'That household could not be found.' });
       }
+      // Suppress recurrence on every open instance before their template is
+      // deleted. Without this, createRecurringInstance would silently return
+      // null after the delete nulls out templateId — leaving suppressRecurrence
+      // false, which is misleading state. Setting it true now means the
+      // instance completes gracefully with no attempt to spawn a next occurrence.
+      await tx.choreInstance.updateMany({
+        where: {
+          householdId,
+          templateId: { not: null },
+          state: {
+            in: [
+              ChoreState.OPEN,
+              ChoreState.ASSIGNED,
+              ChoreState.IN_PROGRESS,
+              ChoreState.DEFERRED,
+              ChoreState.OVERDUE,
+              ChoreState.PENDING_APPROVAL,
+              ChoreState.NEEDS_FIXES
+            ]
+          }
+        },
+        data: { suppressRecurrence: true }
+      });
       await tx.choreTemplate.deleteMany({ where: { householdId } });
       await this.importStarterTemplates(tx, householdId, undefined, language);
       const templateCount = await tx.choreTemplate.count({ where: { householdId } });
