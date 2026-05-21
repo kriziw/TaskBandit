@@ -1,3 +1,5 @@
+import { readFileSync, existsSync } from "fs";
+import { join } from "path";
 import {
   AssignmentStrategyType,
   Difficulty,
@@ -46,6 +48,28 @@ export type StarterTemplateDefinition = {
 };
 
 type StarterCatalog = readonly StarterTemplateDefinition[];
+
+// ── Operator-authored templates ──────────────────────────────────────────────
+// Loaded from operator-templates.catalog.json at module init.
+// This file is managed by the control plane: operators author templates there
+// and raise a PR to add them here. The PR only touches the JSON file, keeping
+// diffs readable. An empty array is the safe default.
+function loadOperatorTemplateCatalog(): StarterTemplateDefinition[] {
+  try {
+    // __dirname is always available in CommonJS (the module format NestJS uses)
+    const filePath = join(__dirname, "operator-templates.catalog.json");
+    if (!existsSync(filePath)) {
+      return [];
+    }
+    const raw = readFileSync(filePath, "utf8");
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as StarterTemplateDefinition[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+const operatorTemplateCatalog: readonly StarterTemplateDefinition[] = loadOperatorTemplateCatalog();
 
 export const starterTemplateCatalog: StarterCatalog = [
   // ── LAUNDRY ──────────────────────────────────────────────────────────────
@@ -613,7 +637,12 @@ export const starterTemplateCatalog: StarterCatalog = [
     recurrenceIntervalDays: 30,
     requirePhotoProof: false,
     recurrenceStartStrategy: RecurrenceStartStrategy.COMPLETED_AT
-  }
+  },
+
+  // ── OPERATOR-AUTHORED TEMPLATES ───────────────────────────────────────────
+  // These entries are loaded at runtime from operator-templates.catalog.json.
+  // Do not edit this spread manually — use the control plane Template Studio.
+  ...operatorTemplateCatalog
 ];
 
 export type StarterTemplateOption = {
@@ -651,6 +680,15 @@ export function getStarterTemplateOptionCatalog(language: SupportedLanguage): St
 export function getStarterTemplateDefinitionsByKey(keys?: string[]): StarterTemplateDefinition[] {
   const allowedKeys = new Set(keys && keys.length > 0 ? keys : starterTemplateCatalog.map((template) => template.key));
   return starterTemplateCatalog.filter((template) => allowedKeys.has(template.key));
+}
+
+/**
+ * Returns operator-catalog entries only (keys starting with "op_").
+ * Used by the import endpoint to distinguish pushed definitions from
+ * core starter templates.
+ */
+export function getOperatorTemplateDefinitions(): StarterTemplateDefinition[] {
+  return [...operatorTemplateCatalog];
 }
 
 export function getStarterTemplateTranslations(

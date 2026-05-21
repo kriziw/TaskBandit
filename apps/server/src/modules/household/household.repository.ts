@@ -41,6 +41,7 @@ import {
   getStarterTemplateTranslations,
   StarterTemplateDefinition
 } from "../bootstrap/starter-templates.catalog";
+import { OperatorTemplateDto } from "../chores/dto/import-operator-templates.dto";
 import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto";
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
@@ -222,6 +223,7 @@ export class HouseholdRepository {
           id: templateId,
           householdId,
           defaultLocale,
+          catalogKey: template.key,
           groupTitle: template.groupTitle[defaultLocale],
           groupTitleTranslations: this.toPrismaJsonOrNull(
             this.mapStarterLocalizedText(template.groupTitle, defaultLocale)
@@ -2270,6 +2272,29 @@ export class HouseholdRepository {
       if (!household) {
         throw new NotFoundException({ message: 'That household could not be found.' });
       }
+      // Suppress recurrence on every open instance whose template is about to
+      // be deleted. Without this, createRecurringInstance would silently return
+      // null after the cascade nulls templateId — leaving suppressRecurrence
+      // false, which is misleading. Setting it true now means the instance
+      // completes gracefully without attempting to spawn a next occurrence.
+      await tx.choreInstance.updateMany({
+        where: {
+          householdId,
+          templateId: { not: null },
+          state: {
+            in: [
+              ChoreState.OPEN,
+              ChoreState.ASSIGNED,
+              ChoreState.IN_PROGRESS,
+              ChoreState.DEFERRED,
+              ChoreState.OVERDUE,
+              ChoreState.PENDING_APPROVAL,
+              ChoreState.NEEDS_FIXES
+            ]
+          }
+        },
+        data: { suppressRecurrence: true }
+      });
       await tx.choreTemplate.deleteMany({ where: { householdId } });
       await this.importStarterTemplates(tx, householdId, undefined, language);
       const templateCount = await tx.choreTemplate.count({ where: { householdId } });
@@ -2289,6 +2314,204 @@ export class HouseholdRepository {
       throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
     }
     return this.resetDefaultTemplatesForHousehold(household.id, language);
+  }
+
+  /**
+   * Upserts a list of operator-authored templates into a household.
+   * Each template is matched by (householdId, catalogKey). If found, the
+   * existing template definition and all nested records are replaced with the
+   * new definition. If not found, the template is created fresh.
+   * The isOperatorManaged flag is always set to true on upserted templates.
+   */
+  async importOperatorTemplatesForHousehold(
+    householdId: string,
+    templates: OperatorTemplateDto[],
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    if (templates.length === 0) {
+      return { upserted: 0 };
+    }
+    return this.prisma.$transaction(async (tx) => {
+      const household = await tx.household.findFirst({
+        where: { id: householdId },
+        select: { id: true }
+      });
+      if (!household) {
+        throw new NotFoundException({ message: 'That household could not be found.' });
+      }
+
+      let upserted = 0;
+      // First pass: create/update all template records and collect their IDs
+      // so we can wire follow-up dependencies in the second pass.
+      const templateIdByKey = new Map<string, string>();
+
+      for (const template of templates) {
+        const existing = await tx.choreTemplate.findFirst({
+          where: { householdId, catalogKey: template.key }
+        });
+
+        const localizedTitle = template.title.en;
+        const localizedDescription = template.description?.en ?? '';
+        const localizedGroupTitle = template.groupTitle.en;
+        const titleTranslations = this.buildOperatorTranslations(template.title, language);
+        const descTranslations = template.description
+          ? this.buildOperatorTranslations(template.description, language)
+          : {};
+        const groupTitleTranslations = this.buildOperatorTranslations(template.groupTitle, language);
+
+        const recurrenceIntervalDays =
+          template.recurrenceType === RecurrenceType.EVERY_X_DAYS
+            ? (template.recurrenceIntervalDays ?? 1)
+            : null;
+        const recurrenceWeekdays =
+          template.recurrenceType === RecurrenceType.CUSTOM_WEEKLY
+            ? (template.recurrenceWeekdays ?? [])
+            : [];
+
+        if (existing) {
+          // Replace nested records then update the parent
+          await tx.choreTemplateChecklistItem.deleteMany({ where: { templateId: existing.id } });
+          await tx.choreTemplateVariant.deleteMany({ where: { templateId: existing.id } });
+          await tx.choreTemplateDependency.deleteMany({ where: { templateId: existing.id } });
+
+          await tx.choreTemplate.update({
+            where: { id: existing.id },
+            data: {
+              defaultLocale: language,
+              groupTitle: localizedGroupTitle,
+              groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
+              title: localizedTitle,
+              titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
+              description: localizedDescription,
+              descriptionTranslations: this.toPrismaJsonOrNull(descTranslations),
+              difficulty: template.difficulty,
+              basePoints: this.getBasePoints(template.difficulty),
+              assignmentStrategy: template.assignmentStrategy,
+              recurrenceType: template.recurrenceType,
+              recurrenceIntervalDays,
+              recurrenceWeekdays,
+              requirePhotoProof: template.requirePhotoProof ?? false,
+              recurrenceStartStrategy: template.recurrenceStartStrategy,
+              stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
+              isOperatorManaged: true,
+              checklistItems: {
+                create: (template.checklist ?? []).map((item, idx) => ({
+                  title: item.title,
+                  required: item.required,
+                  sortOrder: idx + 1
+                }))
+              },
+              variants: {
+                create: (template.variants ?? []).map((v, idx) => ({
+                  label: v.label,
+                  sortOrder: idx + 1
+                }))
+              }
+            }
+          });
+          templateIdByKey.set(template.key, existing.id);
+        } else {
+          const newId = randomUUID();
+          templateIdByKey.set(template.key, newId);
+          await tx.choreTemplate.create({
+            data: {
+              id: newId,
+              householdId,
+              defaultLocale: language,
+              catalogKey: template.key,
+              isOperatorManaged: true,
+              groupTitle: localizedGroupTitle,
+              groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
+              title: localizedTitle,
+              titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
+              description: localizedDescription,
+              descriptionTranslations: this.toPrismaJsonOrNull(descTranslations),
+              difficulty: template.difficulty,
+              basePoints: this.getBasePoints(template.difficulty),
+              assignmentStrategy: template.assignmentStrategy,
+              recurrenceType: template.recurrenceType,
+              recurrenceIntervalDays,
+              recurrenceWeekdays,
+              requirePhotoProof: template.requirePhotoProof ?? false,
+              recurrenceStartStrategy: template.recurrenceStartStrategy,
+              stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
+              checklistItems: {
+                create: (template.checklist ?? []).map((item, idx) => ({
+                  title: item.title,
+                  required: item.required,
+                  sortOrder: idx + 1
+                }))
+              },
+              variants: {
+                create: (template.variants ?? []).map((v, idx) => ({
+                  label: v.label,
+                  sortOrder: idx + 1
+                }))
+              }
+            }
+          });
+        }
+        upserted++;
+      }
+
+      // Second pass: wire follow-up dependencies now that all IDs are known
+      for (const template of templates) {
+        const templateId = templateIdByKey.get(template.key);
+        if (!templateId || !template.followUps?.length) continue;
+
+        const deps = template.followUps
+          .map((fu) => {
+            const followUpTemplateId = templateIdByKey.get(fu.key);
+            if (!followUpTemplateId) return null;
+            return {
+              templateId,
+              followUpTemplateId,
+              followUpDelayValue: fu.delayValue,
+              followUpDelayUnit: fu.delayUnit
+            };
+          })
+          .filter((d): d is NonNullable<typeof d> => Boolean(d));
+
+        if (deps.length > 0) {
+          await tx.choreTemplateDependency.createMany({ data: deps });
+        }
+      }
+
+      return { upserted };
+    });
+  }
+
+  async importOperatorTemplatesForTenant(
+    tenantId: string,
+    templates: OperatorTemplateDto[],
+    language: SupportedLanguage = fallbackLanguage
+  ) {
+    const household = await this.prisma.household.findFirst({
+      where: { tenantId },
+      select: { id: true }
+    });
+    if (!household) {
+      throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
+    }
+    return this.importOperatorTemplatesForHousehold(household.id, templates, language);
+  }
+
+  private buildOperatorTranslations(
+    text: { en: string; de?: string; hu?: string },
+    defaultLocale: SupportedLanguage
+  ): LocalizedTextMap {
+    const result: LocalizedTextMap = {};
+    const entries: Array<[SupportedLanguage, string | undefined]> = [
+      ['en', text.en],
+      ['de', text.de],
+      ['hu', text.hu]
+    ];
+    for (const [locale, value] of entries) {
+      if (locale !== defaultLocale && value?.trim()) {
+        result[locale] = value.trim();
+      }
+    }
+    return result;
   }
 
   async getTemplateForHousehold(
@@ -6012,6 +6235,8 @@ export class HouseholdRepository {
       requirePhotoProof: template.requirePhotoProof,
       stickyFollowUpAssignee: template.stickyFollowUpAssignee,
       recurrenceStartStrategy: template.recurrenceStartStrategy.toLowerCase() as "due_at" | "completed_at",
+      isOperatorManaged: template.isOperatorManaged,
+      catalogKey: template.catalogKey ?? null,
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
         .map((item) => ({
