@@ -959,6 +959,11 @@ h4,
 }
 
 @media (min-width: 1024px) {
+  .workspace-main .content-grid,
+  .workspace-main .metrics {
+    margin-top: 0;
+  }
+
   .workspace-main .content-grid {
     grid-template-columns: repeat(12, minmax(0, 1fr));
     gap: 12px;
@@ -968,38 +973,62 @@ h4,
     grid-column: span 4;
   }
 
-  .workspace-main[data-page="overview"] .page-overview,
-  .workspace-main[data-page="chores"] .page-chores {
+  /* Overview: my-chores + leaderboard pair side-by-side; approval-queue and
+     takeover-requests are conditionally rendered so they take full width to
+     avoid orphaned half-width cards when only one is visible. */
+  .workspace-main[data-page="overview"] .page-overview {
     grid-column: span 6;
+  }
+
+  .workspace-main[data-page="overview"] .page-approval-queue,
+  .workspace-main[data-page="overview"] .page-takeover-requests {
+    grid-column: span 12;
+  }
+
+  /* Chores: schedule-chore panel is the only non-wide panel on desktop,
+     make it full-width to avoid a lone half-width card. */
+  .workspace-main[data-page="chores"] .page-chores {
+    grid-column: span 12;
   }
 
   .workspace-main[data-page="chores"] .panel-wide.page-chores {
     grid-column: span 12;
   }
 
+  /* Household: points-feed is always present but members panel is admin-only,
+     so use full-width to prevent a half-width orphan for non-admin users. */
   .workspace-main[data-page="household"] .page-household {
-    grid-column: span 6;
+    grid-column: span 12;
   }
 
-  /* Notifications page — full width, capped like settings */
+  /* Notifications page — full width, capped for readability */
   .workspace-main[data-page="notifications"] .page-notifications {
     grid-column: span 12;
     max-width: 860px;
   }
 
-  /* Settings panels — two per row to eliminate the empty right column */
+  /* Settings: variable number of conditional panels makes a 2-column layout
+     unpredictable; full-width keeps the settings page consistent. */
   .workspace-main[data-page="settings"] .page-settings {
-    grid-column: span 6;
+    grid-column: span 12;
   }
 
-  /* Wide variant for complex admin panels (household + general settings) */
+  /* Wide household-settings panel retains its readability cap */
   .workspace-main[data-page="settings"] .page-settings.settings-panel-wide {
     grid-column: span 12;
     max-width: 860px;
   }
 
+  /* Admin ops panels each carry dense detail — full-width avoids orphaned
+     half-width cards when some compatibility panels are absent. */
   .workspace-main[data-page="admin"] .page-admin {
-    grid-column: span 6;
+    grid-column: span 12;
+  }
+
+  /* Templates page — panel-wide but no explicit page rule previously;
+     add it so the template manager isn't squashed to span 4. */
+  .workspace-main[data-page="templates"] .page-templates {
+    grid-column: span 12;
   }
 }
 
