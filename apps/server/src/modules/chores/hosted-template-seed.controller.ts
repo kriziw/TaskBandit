@@ -45,6 +45,31 @@ export class HostedTemplateSeedController {
     };
   }
 
+  @Post("tenants/:tenantId/default-templates/reset")
+  async resetTenantDefaultTemplates(
+    @Param("tenantId") tenantId: string,
+    @Headers("accept-language") acceptLanguage?: string,
+    @Headers("x-internal-service-token") token?: string
+  ) {
+    this.assertInternalServiceToken(token);
+    const language = this.i18nService.resolveLanguage(acceptLanguage);
+    const result = await this.householdRepository.resetDefaultTemplatesForTenant(tenantId, language);
+    this.appLogService.warn(
+      `[hosted-template-seed] ${JSON.stringify({
+        reason: "hosted_default_templates_reset",
+        reset: result.reset,
+        templateCount: result.templateCount,
+        tenantId
+      })}`,
+      "HostedTemplateSeedController"
+    );
+    return {
+      reset: result.reset,
+      templateCount: result.templateCount,
+      tenantId
+    };
+  }
+
   private assertInternalServiceToken(requestToken?: string) {
     const configuredToken = this.appConfigService.controlPlaneInternalServiceToken;
     if (!configuredToken) {

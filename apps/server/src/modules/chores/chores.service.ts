@@ -90,6 +90,13 @@ export class ChoresService {
     return deleted;
   }
 
+  async resetTemplatesToDefaults(user: AuthenticatedUser, language: SupportedLanguage) {
+    await this.requireFeature(user, "templates_manage");
+    const result = await this.repository.resetDefaultTemplatesForHousehold(user.householdId, language);
+    this.publishSyncEvent(user, "templates.reset", "template");
+    return result;
+  }
+
   async createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser, language: SupportedLanguage) {
     await this.requireFeature(user, "chores_manage");
     if (dto.assigneeId) {

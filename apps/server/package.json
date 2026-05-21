@@ -12,16 +12,16 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.20",
+    "@nestjs/common": "^11.1.21",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.20",
+    "@nestjs/core": "^11.1.21",
     "@nestjs/platform-express": "^11.1.21",
     "@nestjs/swagger": "^11.4.2",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
-    "firebase-admin": "^13.9.0",
+    "firebase-admin": "^13.10.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.7",
@@ -36,11 +36,11 @@
     "@types/bcryptjs": "^3.0.0",
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.1.0",
-    "@types/node": "^25.7.0",
+    "@types/node": "^25.9.1",
     "@types/nodemailer": "^8.0.0",
     "@types/web-push": "^3.6.4",
     "typescript": "^6.0.3",
-    "vitest": "^4.1.5"
+    "vitest": "^4.1.7"
   },
   "overrides": {
     "@google-cloud/firestore": "8.5.0",

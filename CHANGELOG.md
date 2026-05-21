@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.69.0](https://github.com/kriziw/TaskBandit/compare/v0.68.0...v0.69.0) (2026-05-20)
+
+
+### Features
+
+* **server,web:** reset-to-defaults endpoint and overhaul starter template catalog ([#471](https://github.com/kriziw/TaskBandit/issues/471)) ([ef2db22](https://github.com/kriziw/TaskBandit/commit/ef2db22b94f3d7a5706b7c1722e747604146529b))
+
+
+### Bug Fixes
+
+* **web:** desktop UX improvements — leaderboard home, notifications nav, template nav, history collapse, household layout fixes ([#468](https://github.com/kriziw/TaskBandit/issues/468)) ([5f9f17b](https://github.com/kriziw/TaskBandit/commit/5f9f17bb907c98faf28377ac3c77885d0116bfeb))
+
 ## [0.68.0](https://github.com/kriziw/TaskBandit/compare/v0.67.0...v0.68.0) (2026-05-20)
 
 

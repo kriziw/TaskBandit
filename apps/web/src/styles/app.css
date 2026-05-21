@@ -424,6 +424,9 @@ h4,
   border: 1px solid #d6ba91;
 }
 
+.ghost-button.danger-button { color: #b91c1c; border-color: #fca5a5; }
+.ghost-button.danger-button:hover { background: rgba(254, 226, 226, 0.72); }
+
 .primary-button {
   color: #3f2f1c;
   background: linear-gradient(180deg, #f4e2c7 0%, #e9cfaa 62%, #dec29a 100%);
@@ -549,6 +552,13 @@ h4,
 
 .onboarding-floating-header h2 {
   margin: 0;
+}
+
+.onboarding-close-button {
+  flex-shrink: 0;
+  font-size: 1rem;
+  line-height: 1;
+  padding: 4px 8px;
 }
 
 .onboarding-target-active {
@@ -971,9 +981,19 @@ h4,
     grid-column: span 6;
   }
 
-  /* Settings panels stack full-width — half-width created large blank columns
-     next to short panels and alongside hidden SaaS-only sections */
+  /* Notifications page — full width, capped like settings */
+  .workspace-main[data-page="notifications"] .page-notifications {
+    grid-column: span 12;
+    max-width: 860px;
+  }
+
+  /* Settings panels — two per row to eliminate the empty right column */
   .workspace-main[data-page="settings"] .page-settings {
+    grid-column: span 6;
+  }
+
+  /* Wide variant for complex admin panels (household + general settings) */
+  .workspace-main[data-page="settings"] .page-settings.settings-panel-wide {
     grid-column: span 12;
     max-width: 860px;
   }
@@ -1386,9 +1406,20 @@ h4,
   gap: 12px;
 }
 
+.settings-list.settings-list-columns {
+  grid-template-columns: 1fr 1fr;
+  gap: 0 24px;
+}
+
 .settings-sections {
   display: grid;
   gap: 14px;
+}
+
+@media (min-width: 1024px) {
+  .settings-sections.settings-sections-wide {
+    grid-template-columns: 1fr 1fr;
+  }
 }
 
 .settings-section {
@@ -2227,11 +2258,6 @@ h4,
 }
 
 @media (min-width: 1100px) {
-  .household-member-layout {
-    grid-template-columns: minmax(0, 1.2fr) minmax(320px, 0.8fr);
-    align-items: start;
-  }
-
   .template-admin-layout {
     grid-template-columns: minmax(280px, 0.9fr) minmax(0, 1.3fr);
     align-items: start;

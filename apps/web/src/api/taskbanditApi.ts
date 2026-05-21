@@ -521,7 +521,14 @@ export const taskBanditApi = {
       language
     });
   },
-  createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
+  resetTemplatesToDefaults(token: string, language: AppLanguage) {
+    return request<{ reset: boolean; templateCount: number }>("/api/chores/templates/reset-to-defaults", {
+      method: "POST",
+      token,
+      language
+    });
+  },
+    createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
     return request<ChoreInstance>("/api/chores/instances", {
       method: "POST",
       token,

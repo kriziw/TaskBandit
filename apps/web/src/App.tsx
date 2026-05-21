@@ -1275,6 +1275,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
   const [quickLogIcon, setQuickLogIcon] = useState<ChoreIconId | null>(null);
   const [showMobileCompletedChores, setShowMobileCompletedChores] = useState(false);
+  const [showDesktopChoreHistory, setShowDesktopChoreHistory] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
     () => readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset
@@ -2351,8 +2352,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       { key: "overview", label: t("nav.home") },
       { key: "chores", label: t("nav.plan") },
       { key: "household", label: t("nav.household") },
+      { key: "notifications", label: t("nav.notifications") },
       { key: "settings", label: t("nav.settings") }
     ];
+    if (showTemplateManager) {
+      pages.splice(2, 0, { key: "templates", label: t("nav.templates") });
+    }
     if (showAdminOps) {
       pages.push({ key: "admin", label: t("nav.ops") });
     }
@@ -4274,6 +4279,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function handleDismissOnboarding() {
     writeStoredOnboardingTourCompletion(onboardingTourMode, true);
+    // Also dismiss for the other client mode so viewport resize won't re-trigger the tour
+    if (onboardingTourMode === "client") {
+      writeStoredOnboardingTourCompletion("client-mobile", true);
+    } else if (onboardingTourMode === "client-mobile") {
+      writeStoredOnboardingTourCompletion("client", true);
+    }
     setOnboardingTourCompleted(true);
     setOnboardingDismissed(true);
     setOnboardingManuallyOpened(false);
@@ -5390,6 +5401,24 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       setPageError(null);
     } catch (error) {
       setPageError(readErrorMessage(error, t("templates.delete_failed")));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleResetTemplatesToDefaults() {
+    if (!token || !payload) return;
+    if (!window.confirm(t("templates.reset_to_defaults_confirm"))) return;
+    setBusyAction("reset-templates");
+    try {
+      const result = await taskBanditApi.resetTemplatesToDefaults(token, language);
+      const freshTemplates = await taskBanditApi.getTemplates(token, language);
+      setPayload((current) => (current ? { ...current, templates: freshTemplates } : current));
+      resetTemplateForm();
+      setNotice(t("templates.reset_to_defaults_done").replace("{count}", String(result.templateCount)));
+      setPageError(null);
+    } catch (error) {
+      setPageError(readErrorMessage(error, t("templates.reset_to_defaults_failed")));
     } finally {
       setBusyAction(null);
     }
@@ -6969,11 +6998,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </p>
                     <h2>{t("onboarding.title")}</h2>
                   </div>
-                  <span className="section-kicker">
-                    {t("onboarding.progress")
-                      .replace("{current}", String(onboardingIndex + 1))
-                      .replace("{total}", String(onboardingSteps.length))}
-                  </span>
+                  <div className="toolbar-group">
+                    <span className="section-kicker">
+                      {t("onboarding.progress")
+                        .replace("{current}", String(onboardingIndex + 1))
+                        .replace("{total}", String(onboardingSteps.length))}
+                    </span>
+                    <button
+                      className="ghost-button onboarding-close-button"
+                      type="button"
+                      aria-label={t("onboarding.later")}
+                      onClick={handleDismissOnboarding}
+                    >
+                      ✕
+                    </button>
+                  </div>
                 </div>
                 <div className="onboarding-step-list">
                   {onboardingSteps.map((step, index) => (
@@ -7178,7 +7217,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ? renderScheduleChorePanel("page-chores")
               : null}
 
-            <article className="panel page-panel page-household page-leaderboard" ref={leaderboardRef}>
+            <article className="panel page-panel page-overview page-leaderboard" ref={leaderboardRef}>
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
@@ -7217,7 +7256,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </article>
 
             <article
-              className={`panel page-panel page-overview ${
+              className={`panel page-panel page-notifications ${
                 workspaceVariant === "client" && showClientMobileShell ? "page-settings" : ""
               }`}
               ref={notificationsRef}
@@ -7591,11 +7630,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </button>
                   ) : null}
                   {!showClientMobileShell ? (
-                    <span className="inline-message">
-                      {t("history.page_indicator")
-                        .replace("{page}", String(historyPage))
-                        .replace("{pages}", String(historyPageCount))}
-                    </span>
+                    <>
+                      {showDesktopChoreHistory ? (
+                        <span className="inline-message">
+                          {t("history.page_indicator")
+                            .replace("{page}", String(historyPage))
+                            .replace("{pages}", String(historyPageCount))}
+                        </span>
+                      ) : null}
+                      <button
+                        className="ghost-button"
+                        type="button"
+                        onClick={() => setShowDesktopChoreHistory((current) => !current)}
+                      >
+                        {showDesktopChoreHistory ? t("common.hide") : t("common.show")}
+                      </button>
+                    </>
                   ) : null}
                 </div>
               </div>
@@ -7611,7 +7661,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     )}
                   </div>
                 )
-              ) : (
+              ) : showDesktopChoreHistory ? (
                 <>
                   <div className="household-filter-bar export-filter-bar">
                     <label>
@@ -7709,7 +7759,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </>
                   )}
                 </>
-              )}
+              ) : null}
             </article>
 
             {notificationPreferencesDraft ? (
@@ -7721,7 +7771,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <h2>{t("panel.notification_preferences")}</h2>
                   <span className="section-kicker">{t("settings.member_level")}</span>
                 </div>
-                <div className="settings-list">
+                <div className="settings-list settings-list-columns">
                   <label className="toggle-row">
                     <span>{t("settings.notify_assignments")}</span>
                     <input
@@ -8597,12 +8647,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
             {payload.currentUser.role === "admin" && settingsDraft ? (
               <>
-                <article className="panel page-panel page-settings" ref={householdSettingsRef}>
+                <article className="panel page-panel page-settings settings-panel-wide" ref={householdSettingsRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_settings")}</h2>
                     <span className="section-kicker">{t("settings.admin_only")}</span>
                   </div>
-                  <div className="settings-sections">
+                  <div className="settings-sections settings-sections-wide">
                     {!isHostedSaas ? (
                       <section className="settings-section settings-section-oidc" ref={oidcSettingsRef}>
                       <div className="section-heading section-heading-compact">
@@ -9244,7 +9294,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             {showTemplateManager ? (
-                <article className="panel panel-wide page-panel page-templates page-chores" ref={templatesRef}>
+                <article className="panel panel-wide page-panel page-templates" ref={templatesRef}>
                   <div className="section-heading">
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
@@ -9272,6 +9322,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         >
                           {t("templates.new_template")}
                         </button>
+                        {payload.currentUser.role === "admin" && (
+                          <button
+                            className="ghost-button danger-button"
+                            type="button"
+                            disabled={!hasFeature("templates_manage") || busyAction === "reset-templates"}
+                            onClick={() => void handleResetTemplatesToDefaults()}
+                          >
+                            {t("templates.reset_to_defaults")}
+                          </button>
+                        )}
                       </div>
                       {filteredTemplateGroups.length === 0 ? (
                         <p className="inline-message">{t("templates.search_empty")}</p>
