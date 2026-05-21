@@ -1,4 +1,5 @@
 import {
+  Body,
   Controller,
   ForbiddenException,
   Headers,
@@ -10,6 +11,7 @@ import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { AppLogService } from "../../common/logging/app-log.service";
 import { HouseholdRepository } from "../household/household.repository";
+import { ImportOperatorTemplatesDto } from "./dto/import-operator-templates.dto";
 
 @Controller("internal/runtime")
 export class HostedTemplateSeedController {
@@ -66,6 +68,34 @@ export class HostedTemplateSeedController {
     return {
       reset: result.reset,
       templateCount: result.templateCount,
+      tenantId
+    };
+  }
+
+  @Post("tenants/:tenantId/templates/import")
+  async importOperatorTemplates(
+    @Param("tenantId") tenantId: string,
+    @Body() dto: ImportOperatorTemplatesDto,
+    @Headers("accept-language") acceptLanguage?: string,
+    @Headers("x-internal-service-token") token?: string
+  ) {
+    this.assertInternalServiceToken(token);
+    const language = this.i18nService.resolveLanguage(acceptLanguage);
+    const result = await this.householdRepository.importOperatorTemplatesForTenant(
+      tenantId,
+      dto.templates,
+      language
+    );
+    this.appLogService.log(
+      `[hosted-template-seed] ${JSON.stringify({
+        reason: "operator_templates_import",
+        upserted: result.upserted,
+        tenantId
+      })}`,
+      "HostedTemplateSeedController"
+    );
+    return {
+      upserted: result.upserted,
       tenantId
     };
   }

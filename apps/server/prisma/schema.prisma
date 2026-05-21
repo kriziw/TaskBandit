@@ -255,12 +255,16 @@ model ChoreTemplate {
   requirePhotoProof  Boolean                      @default(false)
   stickyFollowUpAssignee Boolean                  @default(false)
   recurrenceStartStrategy RecurrenceStartStrategy @default(DUE_AT)
+  catalogKey         String?
+  isOperatorManaged  Boolean                      @default(false)
   createdAtUtc       DateTime                     @default(now())
   household          Household                    @relation(fields: [householdId], references: [id], onDelete: Cascade)
   checklistItems     ChoreTemplateChecklistItem[]
   dependencies       ChoreTemplateDependency[]
   choreInstances     ChoreInstance[]
   variants           ChoreTemplateVariant[]
+
+  @@unique([householdId, catalogKey])
 }
 
 model ChoreTemplateChecklistItem {
