@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
+import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { AppConfigService } from "../../common/config/app-config.service";
 import { I18nService } from "../../common/i18n/i18n.service";
@@ -66,6 +66,12 @@ export class ChoresService {
     if (!template) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
     }
+    if (template.isOperatorManaged) {
+      throw new ForbiddenException({
+        code: "operator_managed_template",
+        message: "This template is managed by the operator and cannot be edited. Use 'Save as copy' to create an editable version."
+      });
+    }
 
     const updatedTemplate = await this.repository.updateTemplate(
       templateId,
@@ -83,6 +89,12 @@ export class ChoresService {
     const template = await this.repository.getTemplateForHousehold(templateId, user.householdId, language);
     if (!template) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
+    }
+    if (template.isOperatorManaged) {
+      throw new ForbiddenException({
+        code: "operator_managed_template",
+        message: "This template is managed by the operator and cannot be deleted. You can disable it instead."
+      });
     }
 
     const deleted = await this.repository.deleteTemplate(templateId, user.householdId, user.id);
