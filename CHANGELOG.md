@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.70.0](https://github.com/kriziw/TaskBandit/compare/v0.69.0...v0.70.0) (2026-05-21)
+
+
+### Features
+
+* **server:** operator template studio — schema, import endpoint, operator lock ([#479](https://github.com/kriziw/TaskBandit/issues/479)) ([c489cfe](https://github.com/kriziw/TaskBandit/commit/c489cfe2a6b9d33132670543662a4163ff6ab00e))
+
 ## [0.69.0](https://github.com/kriziw/TaskBandit/compare/v0.68.0...v0.69.0) (2026-05-20)
 
 
