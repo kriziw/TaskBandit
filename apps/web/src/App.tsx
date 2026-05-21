@@ -7083,7 +7083,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
           <section className="content-grid dashboard-grid">
             {payload.currentUser.role !== "child" && hasFeature("approvals") ? (
-              <article className="panel page-panel page-overview" ref={approvalQueueRef}>
+              <article className="panel page-panel page-overview page-approval-queue" ref={approvalQueueRef}>
                 <div className="section-heading">
                   <h2>{t("panel.approval_queue")}</h2>
                   <span className="section-kicker">{pendingApprovals.length}</span>
