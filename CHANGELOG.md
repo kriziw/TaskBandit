@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.71.0](https://github.com/kriziw/TaskBandit/compare/v0.70.1...v0.71.0) (2026-05-22)
+
+
+### Features
+
+* **web:** desktop UI density pass and layout improvements ([#484](https://github.com/kriziw/TaskBandit/issues/484)) ([e4b8482](https://github.com/kriziw/TaskBandit/commit/e4b848221775e272ded80cb3b9d5ccfae5b415b8))
+
 ## [0.70.1](https://github.com/kriziw/TaskBandit/compare/v0.70.0...v0.70.1) (2026-05-21)
 
 
