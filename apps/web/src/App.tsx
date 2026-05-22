@@ -1365,6 +1365,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
+  const [showAllPointsLedger, setShowAllPointsLedger] = useState(false);
   const [clientWebPushStatus, setClientWebPushStatus] = useState<ClientWebPushStatus>(
     getInitialClientWebPushStatus
   );
@@ -2352,7 +2353,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       { key: "overview", label: t("nav.home") },
       { key: "chores", label: t("nav.plan") },
       { key: "household", label: t("nav.household") },
-      { key: "notifications", label: t("nav.notifications") },
+      { key: "leaderboard", label: t("nav.leaderboard") },
+      ...(!payload.hostedSubscription.hostedMode ? [{ key: "notifications" as WorkspacePage, label: t("nav.notifications") }] : []),
       { key: "settings", label: t("nav.settings") }
     ];
     if (showTemplateManager) {
@@ -3454,10 +3456,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           <p className="inline-message">{t("feature.proof_uploads_disabled")}</p>
         ) : instance.requirePhotoProof ? (
           <p className="inline-message">{t("submission.photo_hint_required")}</p>
-        ) : (
-          <p className="inline-message">{t("submission.photo_hint_optional")}</p>
-        )}
-        {instance.attachments.length > 0
+        ) : null}
+        {instance.requirePhotoProof && instance.attachments.length > 0
           ? renderAttachmentList(t("submission.previous_uploads"), instance.attachments)
           : null}
         {instance.checklist.length ? (
@@ -3481,7 +3481,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         ) : (
           <p className="inline-message">{t("submission.one_tap")}</p>
         )}
-        {canUploadProofs ? (
+        {instance.requirePhotoProof && canUploadProofs ? (
           <label className="inline-field">
             <span>{t("task.attachments")}</span>
             <input
@@ -3492,7 +3492,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             />
           </label>
         ) : null}
-        {canUploadProofs && selectedFiles.length > 0 ? (
+        {instance.requirePhotoProof && canUploadProofs && selectedFiles.length > 0 ? (
           <p className="inline-message">
             {t("submission.selected_files")}: {selectedFiles.length}
           </p>
@@ -5618,7 +5618,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ]
             : []),
           { key: "chores-mine", label: t("panel.my_chores"), ref: myChoresRef },
-          { key: "chores-household", label: t("panel.household_chores"), ref: householdChoresRef },
           { key: "chores-history", label: t("panel.chore_history"), ref: choreHistoryRef }
         ];
       case "leaderboard":
@@ -5628,7 +5627,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       case "household":
         return [
           { key: "household-members", label: t("members.manage_section"), ref: membersRef },
-          { key: "household-members-create", label: t("members.create_section"), ref: memberCreateRef }
+          { key: "household-members-create", label: t("members.create_section"), ref: memberCreateRef },
+          { key: "household-chores", label: t("panel.household_chores"), ref: householdChoresRef }
         ];
       case "notifications":
         return [
@@ -7083,7 +7083,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
           <section className="content-grid dashboard-grid">
             {payload.currentUser.role !== "child" && hasFeature("approvals") ? (
-              <article className="panel page-panel page-overview" ref={approvalQueueRef}>
+              <article className="panel page-panel page-overview page-approval-queue" ref={approvalQueueRef}>
                 <div className="section-heading">
                   <h2>{t("panel.approval_queue")}</h2>
                   <span className="section-kicker">{pendingApprovals.length}</span>
@@ -7171,7 +7171,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : null}
 
             <article
-              className={`panel page-panel page-overview ${showClientMobileShell ? "page-chores" : ""}`}
+              className={`panel page-panel page-overview page-overview-home ${showClientMobileShell ? "page-chores" : ""}`}
               ref={myChoresRef}
             >
               <div className="section-heading">
@@ -7217,7 +7217,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ? renderScheduleChorePanel("page-chores")
               : null}
 
-            <article className="panel page-panel page-overview page-leaderboard" ref={leaderboardRef}>
+            <article className="panel page-panel page-leaderboard" ref={leaderboardRef}>
               <div className="section-heading">
                 <h2>{t("panel.leaderboard")}</h2>
                 <span className="section-kicker">{payload.dashboard.streakLeader}</span>
@@ -7348,16 +7348,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </div>
             </article>
 
-            <article className="panel page-panel page-household">
+            <article className="panel page-panel page-household page-household-points">
               <div className="section-heading">
                 <h2>{t("panel.points_feed")}</h2>
-                <span className="section-kicker">{payload.pointsLedger.length}</span>
+                <div className="toolbar-group">
+                  <span className="section-kicker">{payload.pointsLedger.length}</span>
+                  {payload.pointsLedger.length > 15 ? (
+                    <button
+                      className="ghost-button"
+                      type="button"
+                      onClick={() => setShowAllPointsLedger((c) => !c)}
+                    >
+                      {showAllPointsLedger ? t("common.hide") : t("common.show")}
+                    </button>
+                  ) : null}
+                </div>
               </div>
               <div className="stack-list">
                 {payload.pointsLedger.length === 0 ? (
                   <p className="inline-message">{t("points.empty")}</p>
                 ) : (
-                  payload.pointsLedger.map((entry) => (
+                  (showAllPointsLedger ? payload.pointsLedger : payload.pointsLedger.slice(0, 15)).map((entry) => (
                     <div className="task-row compact" key={entry.id}>
                       <div className="task-row-header">
                         <strong>{entry.user.displayName}</strong>
@@ -7366,9 +7377,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         </span>
                       </div>
                       <p>{entry.reason}</p>
-                      <p>
-                        {t("points.recorded")}: {formatDate(entry.createdAt)}
-                      </p>
                     </div>
                   ))
                 )}
@@ -7464,7 +7472,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </article>
             ) : null}
 
-            <article className="panel panel-wide page-panel page-chores" ref={householdChoresRef}>
+            <article className={`panel panel-wide page-panel ${showClientMobileShell ? "page-chores" : "page-household page-household-chores"}`} ref={householdChoresRef}>
               <div className="section-heading">
                 <h2>{showNewClientMobileShell ? "Due this week" : t("panel.household_chores")}</h2>
                 <div className="toolbar-group">
@@ -9087,7 +9095,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                   </article>
 
-                <article className="panel page-panel page-household" ref={membersRef}>
+                <article className="panel page-panel page-household page-household-members" ref={membersRef}>
                   <div className="section-heading">
                     <h2>{t("panel.household_members")}</h2>
                     <span className="section-kicker">{payload.household.members.length}</span>
