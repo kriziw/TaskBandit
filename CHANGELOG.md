@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.72.0](https://github.com/kriziw/TaskBandit/compare/v0.71.0...v0.72.0) (2026-05-23)
+
+
+### Features
+
+* **server:** rewards catalogue — schema, seeding, CRUD, redemption flow, operator import ([#486](https://github.com/kriziw/TaskBandit/issues/486)) ([0707fc2](https://github.com/kriziw/TaskBandit/commit/0707fc29720904d0608be5fa15509419431c22b7))
+* **web,android:** rewards shop — child view, admin management, redemption queue ([#487](https://github.com/kriziw/TaskBandit/issues/487)) ([d3fe1d6](https://github.com/kriziw/TaskBandit/commit/d3fe1d6a1bf5b34f7d562291e9d68adb814c1711))
+
 ## [0.71.0](https://github.com/kriziw/TaskBandit/compare/v0.70.1...v0.71.0) (2026-05-22)
 
 
