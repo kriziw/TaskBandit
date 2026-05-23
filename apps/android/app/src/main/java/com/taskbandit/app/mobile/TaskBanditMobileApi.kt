@@ -435,6 +435,50 @@ class TaskBanditMobileApi {
             }
         }
 
+        val rewardsJson = runCatching { requestJsonArray(baseUrl, "/api/rewards", token = token) }.getOrNull()
+        val redemptionsJson = runCatching { requestJsonArray(baseUrl, "/api/rewards/redemptions", token = token) }.getOrNull()
+
+        val rewards = buildList {
+            val arr = rewardsJson ?: JSONArray()
+            for (index in 0 until arr.length()) {
+                val r = arr.optJSONObject(index) ?: continue
+                add(MobileReward(
+                    id = r.optString("id"),
+                    catalogKey = r.optString("catalogKey").ifBlank { null },
+                    isOperatorManaged = r.optBoolean("isOperatorManaged"),
+                    isEnabled = r.optBoolean("isEnabled"),
+                    title = r.optString("title"),
+                    description = r.optString("description").ifBlank { null },
+                    category = r.optString("category"),
+                    icon = r.optString("icon").ifBlank { null },
+                    pointCost = r.optInt("pointCost"),
+                    maxRedemptionsPerChild = r.optInt("maxRedemptionsPerChild").takeIf { r.has("maxRedemptionsPerChild") && !r.isNull("maxRedemptionsPerChild") },
+                    cooldownDays = r.optInt("cooldownDays").takeIf { r.has("cooldownDays") && !r.isNull("cooldownDays") }
+                ))
+            }
+        }
+
+        val redemptions = buildList {
+            val arr = redemptionsJson ?: JSONArray()
+            for (index in 0 until arr.length()) {
+                val r = arr.optJSONObject(index) ?: continue
+                val reward = r.optJSONObject("reward")
+                val requestedBy = r.optJSONObject("requestedBy")
+                add(MobileRedemption(
+                    id = r.optString("id"),
+                    rewardId = reward?.optString("id").orEmpty(),
+                    rewardTitle = reward?.optString("title").orEmpty(),
+                    requestedById = requestedBy?.optString("id").orEmpty(),
+                    requestedByName = requestedBy?.optString("displayName").orEmpty(),
+                    status = r.optString("status"),
+                    requestedAtUtc = r.optString("requestedAtUtc"),
+                    resolvedAtUtc = r.optString("resolvedAtUtc").ifBlank { null },
+                    adminNote = r.optString("adminNote").ifBlank { null },
+                    pointsDeducted = r.optInt("pointsDeducted")
+                ))
+            }
+        }
+
         return MobileDashboard(
             user = user,
             pendingApprovals = summaryJson.optInt("pendingApprovals"),
@@ -451,7 +495,9 @@ class TaskBanditMobileApi {
                 takeoverRequestsSupported = takeoverRequestsSupported
             ),
             achievements = achievements,
-            enableAchievements = enableAchievements
+            enableAchievements = enableAchievements,
+            rewards = rewards,
+            redemptions = redemptions
         )
     }
 
@@ -1233,6 +1279,46 @@ class TaskBanditMobileApi {
             dayKey = dayKey,
             completedChoreCount = entry.optInt("completedChoreCount"),
             messageIndex = entry.optInt("messageIndex")
+        )
+    }
+
+    fun redeemReward(baseUrl: String, token: String, rewardId: String): MobileRedemption {
+        val json = requestJson(baseUrl, "/api/rewards/$rewardId/redeem", token = token, method = "POST")
+        val reward = json.optJSONObject("reward")
+        val requestedBy = json.optJSONObject("requestedBy")
+        return MobileRedemption(
+            id = json.optString("id"),
+            rewardId = reward?.optString("id").orEmpty(),
+            rewardTitle = reward?.optString("title").orEmpty(),
+            requestedById = requestedBy?.optString("id").orEmpty(),
+            requestedByName = requestedBy?.optString("displayName").orEmpty(),
+            status = json.optString("status"),
+            requestedAtUtc = json.optString("requestedAtUtc"),
+            resolvedAtUtc = json.optString("resolvedAtUtc").ifBlank { null },
+            adminNote = json.optString("adminNote").ifBlank { null },
+            pointsDeducted = json.optInt("pointsDeducted")
+        )
+    }
+
+    fun resolveRedemption(baseUrl: String, token: String, redemptionId: String, approved: Boolean, note: String? = null): MobileRedemption {
+        val payload = JSONObject().apply {
+            put("approved", approved)
+            if (!note.isNullOrBlank()) put("note", note.trim())
+        }
+        val json = requestJson(baseUrl, "/api/rewards/redemptions/$redemptionId/resolve", token = token, method = "POST", body = payload)
+        val reward = json.optJSONObject("reward")
+        val requestedBy = json.optJSONObject("requestedBy")
+        return MobileRedemption(
+            id = json.optString("id"),
+            rewardId = reward?.optString("id").orEmpty(),
+            rewardTitle = reward?.optString("title").orEmpty(),
+            requestedById = requestedBy?.optString("id").orEmpty(),
+            requestedByName = requestedBy?.optString("displayName").orEmpty(),
+            status = json.optString("status"),
+            requestedAtUtc = json.optString("requestedAtUtc"),
+            resolvedAtUtc = json.optString("resolvedAtUtc").ifBlank { null },
+            adminNote = json.optString("adminNote").ifBlank { null },
+            pointsDeducted = json.optInt("pointsDeducted")
         )
     }
 
