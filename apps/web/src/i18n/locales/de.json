@@ -897,11 +897,16 @@
   "reward.field.title": "Titel",
   "reward.field.description": "Beschreibung",
   "reward.field.category": "Kategorie",
+  "reward.field.eligibility": "Verfügbar für",
   "reward.field.point_cost": "Punktekosten",
   "reward.field.max_redemptions": "Max. Einlösungen pro Kind",
   "reward.field.cooldown_days": "Abklingzeit (Tage)",
   "reward.unlimited": "Unbegrenzt",
   "reward.no_cooldown": "Keine Abklingzeit",
+
+  "reward.eligibility.child_only": "Nur Kinder",
+  "reward.eligibility.all": "Alle",
+  "reward.eligibility.adult_only": "Nur Erwachsene",
 
   "reward.category.screen_time": "Bildschirmzeit",
   "reward.category.allowance": "Taschengeld",
@@ -910,5 +915,6 @@
   "reward.category.privilege": "Privileg",
   "reward.category.custom": "Benutzerdefiniert",
 
+  "rewards.manager.tab.my_shop": "Mein Shop",
   "settings.require_reward_approval": "Genehmigung für Belohnungseinlösungen erforderlich"
 }

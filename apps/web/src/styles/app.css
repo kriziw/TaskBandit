@@ -3752,6 +3752,25 @@ h4,
   color: rgba(36, 48, 67, 0.55);
 }
 
+.eligibility-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.eligibility-badge.eligibility-child_only {
+  background: rgba(115, 193, 255, 0.25);
+  color: #1a6fbe;
+}
+
+.eligibility-badge.eligibility-adult_only {
+  background: rgba(196, 167, 245, 0.3);
+  color: #6b35b8;
+}
+
 .redemption-row {
   flex-direction: column;
   align-items: flex-start;
