@@ -346,7 +346,8 @@ data class MobileReward(
     val icon: String?,
     val pointCost: Int,
     val maxRedemptionsPerChild: Int?,
-    val cooldownDays: Int?
+    val cooldownDays: Int?,
+    val eligibility: String = "ALL"
 )
 
 data class MobileRedemption(

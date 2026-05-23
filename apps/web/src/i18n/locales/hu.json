@@ -903,4 +903,9 @@
   ,"reward.category.activity": "Tevékenység"
   ,"reward.category.privilege": "Kiváltság"
   ,"reward.category.custom": "Egyéni"
+  ,"reward.field.eligibility": "Elérhető számára"
+  ,"reward.eligibility.child_only": "Csak gyerekek"
+  ,"reward.eligibility.all": "Mindenki"
+  ,"reward.eligibility.adult_only": "Csak felnőttek"
+  ,"rewards.manager.tab.my_shop": "Saját boltom"
   ,"settings.require_reward_approval": "Jutalombeváltáshoz jóváhagyás szükséges"}

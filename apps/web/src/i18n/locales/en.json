@@ -897,11 +897,16 @@
   "reward.field.title": "Title",
   "reward.field.description": "Description",
   "reward.field.category": "Category",
+  "reward.field.eligibility": "Available to",
   "reward.field.point_cost": "Point cost",
   "reward.field.max_redemptions": "Max redemptions per child",
   "reward.field.cooldown_days": "Cooldown (days)",
   "reward.unlimited": "Unlimited",
   "reward.no_cooldown": "No cooldown",
+
+  "reward.eligibility.child_only": "Children only",
+  "reward.eligibility.all": "Everyone",
+  "reward.eligibility.adult_only": "Adults only",
 
   "reward.category.screen_time": "Screen Time",
   "reward.category.allowance": "Allowance",
@@ -910,5 +915,6 @@
   "reward.category.privilege": "Privilege",
   "reward.category.custom": "Custom",
 
+  "rewards.manager.tab.my_shop": "My Shop",
   "settings.require_reward_approval": "Require approval for reward redemptions"
 }

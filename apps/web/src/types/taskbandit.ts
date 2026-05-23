@@ -302,6 +302,7 @@ export type NotificationPreferences = {
 
 export type RewardCategory = "SCREEN_TIME" | "ALLOWANCE" | "TREAT" | "ACTIVITY" | "PRIVILEGE" | "CUSTOM";
 export type RewardRedemptionStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type RewardEligibility = "CHILD_ONLY" | "ALL" | "ADULT_ONLY";
 
 export type Reward = {
   id: string;
@@ -311,6 +312,7 @@ export type Reward = {
   title: string;
   description: string | null;
   category: RewardCategory;
+  eligibility: RewardEligibility;
   icon: string | null;
   pointCost: number;
   maxRedemptionsPerChild: number | null;
