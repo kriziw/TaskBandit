@@ -92,6 +92,9 @@ enum NotificationType {
   DAILY_SUMMARY
   OVERDUE_PENALTY
   ACHIEVEMENT_UNLOCKED
+  REWARD_REDEMPTION_REQUESTED
+  REWARD_REDEMPTION_APPROVED
+  REWARD_REDEMPTION_REJECTED
 }
 
 enum NotificationDevicePlatform {
@@ -122,6 +125,22 @@ enum ChoreTakeoverRequestStatus {
   PENDING
   APPROVED
   DECLINED
+  CANCELLED
+}
+
+enum RewardCategory {
+  SCREEN_TIME
+  ALLOWANCE
+  TREAT
+  ACTIVITY
+  PRIVILEGE
+  CUSTOM
+}
+
+enum RewardRedemptionStatus {
+  PENDING
+  APPROVED
+  REJECTED
   CANCELLED
 }
 
@@ -157,6 +176,8 @@ model Household {
   notifications  Notification[]
   choreTakeoverRequests ChoreTakeoverRequest[]
   userAchievements UserAchievement[]
+  rewards        Reward[]
+  rewardRedemptions RewardRedemption[]
 }
 
 model HouseholdSettings {
@@ -183,6 +204,7 @@ model HouseholdSettings {
   smtpFromEmail                          String?
   smtpFromName                           String?
   enableAchievements                     Boolean   @default(true)
+  requireRewardApproval                  Boolean   @default(true)
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 
@@ -206,6 +228,8 @@ model User {
   takeoverRequestsRequested ChoreTakeoverRequest[] @relation("TakeoverRequester")
   takeoverRequestsReceived ChoreTakeoverRequest[] @relation("TakeoverRequested")
   userAchievements UserAchievement[]
+  redemptionsRequested RewardRedemption[] @relation("RedemptionRequester")
+  redemptionsResolved  RewardRedemption[] @relation("RedemptionResolver")
 }
 
 model AuthIdentity {
@@ -553,4 +577,49 @@ model UserAchievement {
   @@unique([userId, achievementKey])
   @@index([householdId, achievementKey])
   @@index([userId, updatedAtUtc])
+}
+
+model Reward {
+  id                     String         @id @default(uuid()) @db.Uuid
+  householdId            String         @db.Uuid
+  catalogKey             String?        // null=custom | "screen_time_30min"=starter | "rwd_*"=operator
+  isOperatorManaged      Boolean        @default(false)
+  isEnabled              Boolean        @default(false)
+  defaultLocale          String         @default("en") @db.VarChar(5)
+  title                  String         @db.VarChar(200)
+  titleTranslations      Json?
+  description            String?        @db.VarChar(2000)
+  descriptionTranslations Json?
+  category               RewardCategory @default(CUSTOM)
+  icon                   String?
+  pointCost              Int
+  maxRedemptionsPerChild Int?
+  cooldownDays           Int?
+  createdAtUtc           DateTime       @default(now())
+  household              Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  redemptions            RewardRedemption[]
+
+  @@unique([householdId, catalogKey])
+}
+
+model RewardRedemption {
+  id             String                 @id @default(uuid()) @db.Uuid
+  rewardId       String                 @db.Uuid
+  householdId    String                 @db.Uuid
+  tenantId       String                 @db.Uuid
+  requestedById  String                 @db.Uuid
+  status         RewardRedemptionStatus @default(PENDING)
+  requestedAtUtc DateTime               @default(now())
+  resolvedAtUtc  DateTime?
+  resolvedById   String?                @db.Uuid
+  adminNote      String?
+  pointsDeducted Int
+  reward         Reward                 @relation(fields: [rewardId], references: [id], onDelete: Cascade)
+  household      Household              @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  requestedBy    User                   @relation("RedemptionRequester", fields: [requestedById], references: [id])
+  resolvedBy     User?                  @relation("RedemptionResolver", fields: [resolvedById], references: [id])
+
+  @@index([householdId, requestedAtUtc])
+  @@index([requestedById, requestedAtUtc])
+  @@index([tenantId, requestedAtUtc])
 }

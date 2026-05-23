@@ -42,6 +42,7 @@ import {
   StarterTemplateDefinition
 } from "../bootstrap/starter-templates.catalog";
 import { OperatorTemplateDto } from "../chores/dto/import-operator-templates.dto";
+import { getStarterRewardDefinitionsByKey } from "../bootstrap/starter-rewards.catalog";
 import { CreateChoreInstanceDto } from "../chores/dto/create-chore-instance.dto";
 import { SubmitAttachmentDto } from "../chores/dto/submit-chore.dto";
 import { CreateChoreTemplateDto } from "../chores/dto/create-chore-template.dto";
@@ -194,6 +195,7 @@ export class HouseholdRepository {
       });
 
       await this.importStarterTemplates(tx, createdHousehold.id, starterTemplateKeys, language);
+      await this.importStarterRewards(tx, createdHousehold.id, language);
 
       return createdHousehold;
     });
@@ -300,6 +302,35 @@ export class HouseholdRepository {
           data: followUps
         });
       }
+    }
+  }
+
+  private async importStarterRewards(
+    tx: Prisma.TransactionClient,
+    householdId: string,
+    locale: SupportedLanguage
+  ) {
+    const definitions = getStarterRewardDefinitionsByKey();
+    for (const def of definitions) {
+      await tx.reward.upsert({
+        where: { householdId_catalogKey: { householdId, catalogKey: def.key } },
+        create: {
+          householdId,
+          catalogKey: def.key,
+          isEnabled: false,
+          defaultLocale: locale,
+          title: def.title[locale] ?? def.title["en"],
+          titleTranslations: def.title as unknown as Prisma.InputJsonValue,
+          description: def.description[locale] ?? def.description["en"] ?? null,
+          descriptionTranslations: def.description as unknown as Prisma.InputJsonValue,
+          category: def.category,
+          icon: def.icon ?? null,
+          pointCost: def.pointCost,
+          maxRedemptionsPerChild: def.maxRedemptionsPerChild ?? null,
+          cooldownDays: def.cooldownDays ?? null
+        },
+        update: {}
+      });
     }
   }
 

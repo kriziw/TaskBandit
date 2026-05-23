@@ -13,6 +13,7 @@ import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { GamificationModule } from "./modules/gamification/gamification.module";
 import { AchievementsModule } from "./modules/achievements/achievements.module";
 import { SettingsModule } from "./modules/settings/settings.module";
+import { RewardsModule } from "./modules/rewards/rewards.module";
 
 @Module({
   imports: [
@@ -30,7 +31,8 @@ import { SettingsModule } from "./modules/settings/settings.module";
     SettingsModule,
     ChoresModule,
     GamificationModule,
-    AchievementsModule
+    AchievementsModule,
+    RewardsModule
   ],
   controllers: [AppController]
 })
