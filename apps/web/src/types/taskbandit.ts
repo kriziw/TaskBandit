@@ -268,6 +268,7 @@ export type HouseholdSettings = {
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;
   enableAchievements: boolean;
+  requireRewardApproval: boolean;
   takeoverPointsDelta: number;
   localAuthEnabled: boolean;
   localAuthForcedByConfig: boolean;
@@ -297,6 +298,37 @@ export type NotificationPreferences = {
   receiveDueSoonReminders: boolean;
   receiveOverdueAlerts: boolean;
   receiveDailySummary: boolean;
+};
+
+export type RewardCategory = "SCREEN_TIME" | "ALLOWANCE" | "TREAT" | "ACTIVITY" | "PRIVILEGE" | "CUSTOM";
+export type RewardRedemptionStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
+export type RewardEligibility = "CHILD_ONLY" | "ALL" | "ADULT_ONLY";
+
+export type Reward = {
+  id: string;
+  catalogKey: string | null;
+  isOperatorManaged: boolean;
+  isEnabled: boolean;
+  title: string;
+  description: string | null;
+  category: RewardCategory;
+  eligibility: RewardEligibility;
+  icon: string | null;
+  pointCost: number;
+  maxRedemptionsPerChild: number | null;
+  cooldownDays: number | null;
+};
+
+export type RewardRedemption = {
+  id: string;
+  reward: Reward;
+  requestedBy: HouseholdMember;
+  status: RewardRedemptionStatus;
+  requestedAtUtc: string;
+  resolvedAtUtc: string | null;
+  resolvedBy: HouseholdMember | null;
+  adminNote: string | null;
+  pointsDeducted: number;
 };
 
 export type NotificationDevicePlatform = "android" | "web";

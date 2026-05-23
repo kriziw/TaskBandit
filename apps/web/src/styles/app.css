@@ -1039,6 +1039,11 @@ h4,
   .workspace-main[data-page="templates"] .page-templates {
     grid-column: span 12;
   }
+
+  /* Rewards: child shop (single column, capped); parent manager (full width, two-panel). */
+  .workspace-main[data-page="rewards"] .page-rewards {
+    grid-column: span 12;
+  }
 }
 
 .login-grid {
@@ -1225,6 +1230,7 @@ h4,
 .workspace-main[data-page="overview"] .page-overview,
 .workspace-main[data-page="chores"] .page-chores,
 .workspace-main[data-page="leaderboard"] .page-leaderboard,
+.workspace-main[data-page="rewards"] .page-rewards,
 .workspace-main[data-page="templates"] .page-templates,
 .workspace-main[data-page="household"] .page-household,
 .workspace-main[data-page="notifications"] .page-notifications,
@@ -3676,5 +3682,158 @@ h4,
       rgba(115, 201, 244, 0.05);
     color: var(--mobile-text);
     border: 1px solid var(--mobile-border);
+  }
+}
+
+/* ── Rewards ────────────────────────────────────────────────────────────── */
+
+.rewards-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 14px;
+  margin-top: 12px;
+}
+
+.reward-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: 14px;
+  background: var(--mist-strong);
+  border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(36, 48, 67, 0.07);
+}
+
+.reward-card.category-screen_time { border-left: 4px solid var(--sky); }
+.reward-card.category-allowance   { border-left: 4px solid var(--gold); }
+.reward-card.category-treat       { border-left: 4px solid var(--coral); }
+.reward-card.category-activity    { border-left: 4px solid var(--mint); }
+.reward-card.category-privilege   { border-left: 4px solid #c4a7f5; }
+.reward-card.category-custom      { border-left: 4px solid var(--line); }
+
+.reward-category-icon {
+  font-size: 1.6rem;
+  line-height: 1;
+}
+
+.reward-title {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 700;
+}
+
+.reward-description {
+  margin: 0;
+  font-size: 0.875rem;
+  color: rgba(36, 48, 67, 0.65);
+}
+
+.reward-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: auto;
+  padding-top: 8px;
+}
+
+.reward-cost-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  background: var(--gold);
+  font-weight: 700;
+  font-size: 0.85rem;
+}
+
+.reward-cooldown-notice {
+  font-size: 0.8rem;
+  color: rgba(36, 48, 67, 0.55);
+}
+
+.eligibility-badge {
+  display: inline-block;
+  padding: 2px 7px;
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+}
+
+.eligibility-badge.eligibility-child_only {
+  background: rgba(115, 193, 255, 0.25);
+  color: #1a6fbe;
+}
+
+.eligibility-badge.eligibility-adult_only {
+  background: rgba(196, 167, 245, 0.3);
+  color: #6b35b8;
+}
+
+.redemption-row {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.redemption-row-info {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.redemption-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.status-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+.status-badge.status-pending  { background: rgba(255, 201, 74, 0.28); }
+.status-badge.status-approved { background: rgba(115, 217, 179, 0.35); }
+.status-badge.status-rejected { background: rgba(255, 122, 107, 0.25); }
+.status-badge.status-cancelled { background: rgba(36, 48, 67, 0.1); }
+
+.inline-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: 999px;
+  background: var(--coral);
+  color: #fff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  margin-left: 6px;
+}
+
+.badge-alert {
+  background: var(--coral);
+  color: #fff;
+}
+
+.redemption-reward-title {
+  font-weight: 600;
+}
+
+.redemption-cost {
+  font-size: 0.875rem;
+  color: rgba(36, 48, 67, 0.6);
+}
+
+@media (max-width: 600px) {
+  .rewards-grid {
+    grid-template-columns: 1fr;
   }
 }

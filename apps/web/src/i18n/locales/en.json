@@ -856,5 +856,65 @@
   "achievement.points_1000.description": "Earn a total of 1,000 points.",
   "achievement.hard_chore_5.description": "Complete 5 hard-difficulty chores.",
   "achievement.hard_chore_25.description": "Complete 25 hard-difficulty chores.",
-  "achievement.multi_group_helper.description": "Complete chores across 3 or more different chore groups."
+  "achievement.multi_group_helper.description": "Complete chores across 3 or more different chore groups.",
+
+  "nav.rewards": "Rewards",
+  "page.rewards_description": "Browse and redeem rewards, or manage the rewards catalogue.",
+  "user.points_short": "pts",
+
+  "rewards.shop.title": "Rewards Shop",
+  "rewards.shop.empty": "No rewards are available yet. Ask a parent to enable some!",
+  "rewards.tab.shop": "Shop",
+  "rewards.tab.history": "My Redemptions",
+  "rewards.redeem": "Redeem",
+  "rewards.pending": "Pending…",
+  "rewards.on_cooldown": "On cooldown",
+  "rewards.limit_reached": "Limit reached",
+  "rewards.history.empty": "You haven't redeemed any rewards yet.",
+
+  "rewards.confirm_dialog.title": "Confirm Redemption",
+  "rewards.confirm_dialog.cost": "Cost",
+  "rewards.confirm_dialog.balance_after": "Balance after",
+  "rewards.confirm_dialog.confirm": "Redeem",
+
+  "rewards.manager.title": "Reward Manager",
+  "rewards.manager.tab.catalogue": "Catalogue",
+  "rewards.manager.tab.approvals": "Approvals",
+  "rewards.manager.add_custom": "Add custom reward",
+  "rewards.operator_managed": "Managed by operator",
+  "rewards.operator_managed_notice": "This reward is managed by the operator and cannot be edited.",
+  "rewards.approvals.empty": "No pending redemptions.",
+  "rewards.editor.select_or_create": "Select a reward or create a new one.",
+
+  "rewards.reject_dialog.title": "Reject Redemption",
+  "rewards.reject_dialog.note": "Note (optional)",
+
+  "redemption.status.pending": "Pending",
+  "redemption.status.approved": "Approved",
+  "redemption.status.rejected": "Rejected",
+  "redemption.status.cancelled": "Cancelled",
+
+  "reward.field.title": "Title",
+  "reward.field.description": "Description",
+  "reward.field.category": "Category",
+  "reward.field.eligibility": "Available to",
+  "reward.field.point_cost": "Point cost",
+  "reward.field.max_redemptions": "Max redemptions per child",
+  "reward.field.cooldown_days": "Cooldown (days)",
+  "reward.unlimited": "Unlimited",
+  "reward.no_cooldown": "No cooldown",
+
+  "reward.eligibility.child_only": "Children only",
+  "reward.eligibility.all": "Everyone",
+  "reward.eligibility.adult_only": "Adults only",
+
+  "reward.category.screen_time": "Screen Time",
+  "reward.category.allowance": "Allowance",
+  "reward.category.treat": "Treat",
+  "reward.category.activity": "Activity",
+  "reward.category.privilege": "Privilege",
+  "reward.category.custom": "Custom",
+
+  "rewards.manager.tab.my_shop": "My Shop",
+  "settings.require_reward_approval": "Require approval for reward redemptions"
 }

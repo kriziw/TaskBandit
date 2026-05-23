@@ -205,6 +205,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import androidx.compose.ui.unit.sp
 import java.text.NumberFormat
 import java.time.Instant
 import java.time.DayOfWeek
@@ -235,6 +236,7 @@ private data class AndroidOidcResult(
 private enum class MobileDashboardTab {
     CHORES,
     LEADERBOARD,
+    REWARDS,
     CREATE,
     SETTINGS
 }
@@ -1721,6 +1723,47 @@ private fun TaskBanditApp(
         }
     }
 
+    fun redeemReward(rewardId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        errorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.redeemReward(baseUrl, token, rewardId) }
+            }.onSuccess { redemption ->
+                dashboard = dashboard?.copy(
+                    redemptions = dashboard?.redemptions.orEmpty() + redemption,
+                    user = if (redemption.status == "APPROVED") {
+                        dashboard!!.user.copy(points = dashboard!!.user.points - redemption.pointsDeducted)
+                    } else {
+                        dashboard!!.user
+                    }
+                )
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else errorMessage = throwable.message
+            }
+        }
+    }
+
+    fun resolveRedemption(redemptionId: String, approved: Boolean, note: String? = null) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        errorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.resolveRedemption(baseUrl, token, redemptionId, approved, note) }
+            }.onSuccess { updated ->
+                dashboard = dashboard?.copy(
+                    redemptions = dashboard?.redemptions.orEmpty().map { r -> if (r.id == updated.id) updated else r }
+                )
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else errorMessage = throwable.message
+            }
+        }
+    }
+
     fun updateThemeMode(nextThemeMode: MobileThemeMode) {
         appPreferencesStore.saveThemeMode(nextThemeMode)
         themeMode = nextThemeMode
@@ -2199,7 +2242,9 @@ private fun TaskBanditApp(
                         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
-                    }
+                    },
+                    onRedeemReward = ::redeemReward,
+                    onResolveRedemption = ::resolveRedemption
                 )
             }
         }
@@ -2810,7 +2855,9 @@ private fun DashboardScreen(
     onLanguageTagChange: (String) -> Unit,
     onAvatarPresetSelect: (String) -> Unit,
     onAvatarUpload: () -> Unit,
-    onRequestNotificationPermission: () -> Unit
+    onRequestNotificationPermission: () -> Unit,
+    onRedeemReward: (String) -> Unit,
+    onResolveRedemption: (String, Boolean, String?) -> Unit
 ) {
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
@@ -2856,6 +2903,10 @@ private fun DashboardScreen(
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
+    var rewardsShopTab by rememberSaveable { mutableStateOf("shop") }
+    var redeemConfirmRewardId by rememberSaveable { mutableStateOf<String?>(null) }
+    var rejectRedemptionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var rejectRedemptionNote by rememberSaveable { mutableStateOf("") }
     var quickLogQuery by rememberSaveable { mutableStateOf("") }
     var quickLogNote by rememberSaveable { mutableStateOf("") }
     var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
@@ -2925,6 +2976,24 @@ private fun DashboardScreen(
     }
     val members = dashboard?.members.orEmpty()
     val leaderboardEntries = dashboard?.leaderboard.orEmpty()
+    val allRewards = dashboard?.rewards.orEmpty()
+    val enabledRewards = remember(allRewards, currentUserRole) {
+        allRewards.filter { reward ->
+            if (!reward.isEnabled) return@filter false
+            if (currentUserRole == "child") {
+                reward.eligibility == "CHILD_ONLY" || reward.eligibility == "ALL"
+            } else {
+                reward.eligibility == "ADULT_ONLY" || reward.eligibility == "ALL"
+            }
+        }
+    }
+    val allRedemptions = dashboard?.redemptions.orEmpty()
+    val pendingRedemptions = remember(allRedemptions) { allRedemptions.filter { it.status == "PENDING" } }
+    val myRedemptions = remember(allRedemptions, currentUserId) {
+        allRedemptions.filter { it.requestedById == currentUserId }
+    }
+    val isParentOrAdmin = currentUserRole != null && currentUserRole != "child"
+    val currentUserPoints = dashboard?.user?.points ?: 0
     val pendingTakeoverRequests = dashboard?.takeoverRequests.orEmpty()
     val supportsTakeoverRequests = dashboard?.compatibility?.takeoverRequestsSupported ?: true
     val canUseTakeoverRequests = supportsTakeoverRequests && canUseTakeoverRequestsFeature
@@ -3224,6 +3293,67 @@ private fun DashboardScreen(
             zoned.hour,
             zoned.minute,
             true
+        )
+    }
+
+    val redeemConfirmReward = allRewards.firstOrNull { it.id == redeemConfirmRewardId }
+    if (redeemConfirmReward != null) {
+        AlertDialog(
+            onDismissRequest = { redeemConfirmRewardId = null },
+            title = { Text(stringResource(R.string.mobile_rewards_confirm_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(redeemConfirmReward.title, style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.mobile_rewards_confirm_cost, redeemConfirmReward.pointCost))
+                    Text(stringResource(R.string.mobile_rewards_confirm_balance_after, currentUserPoints - redeemConfirmReward.pointCost))
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val id = redeemConfirmReward.id
+                    redeemConfirmRewardId = null
+                    onRedeemReward(id)
+                }) {
+                    Text(stringResource(R.string.mobile_rewards_redeem))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { redeemConfirmRewardId = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+
+    if (rejectRedemptionId != null) {
+        AlertDialog(
+            onDismissRequest = { rejectRedemptionId = null },
+            title = { Text(stringResource(R.string.mobile_rewards_reject_title)) },
+            text = {
+                OutlinedTextField(
+                    value = rejectRedemptionNote,
+                    onValueChange = { rejectRedemptionNote = it },
+                    label = { Text(stringResource(R.string.mobile_rewards_reject_note)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = rejectRedemptionId!!
+                        val note = rejectRedemptionNote.ifBlank { null }
+                        rejectRedemptionId = null
+                        rejectRedemptionNote = ""
+                        onResolveRedemption(id, false, note)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_rewards_reject)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { rejectRedemptionId = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
         )
     }
 
@@ -4071,6 +4201,15 @@ private fun DashboardScreen(
                         )
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
+                            selected = activeTab == MobileDashboardTab.REWARDS,
+                            label = stringResource(R.string.mobile_tab_rewards),
+                            iconRes = R.drawable.mobile_nav_rewards,
+                            showLabel = isNewMobileUi,
+                            badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
+                            onClick = { openTab(MobileDashboardTab.REWARDS) }
+                        )
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.SETTINGS,
                             label = stringResource(R.string.mobile_tab_settings),
                             iconRes = R.drawable.mobile_nav_settings,
@@ -4117,6 +4256,15 @@ private fun DashboardScreen(
                                     openTab(MobileDashboardTab.LEADERBOARD)
                                     expandedChoreIds = emptySet()
                                 }
+                            )
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.REWARDS,
+                                label = stringResource(R.string.mobile_tab_rewards),
+                                iconRes = R.drawable.mobile_nav_rewards,
+                                showLabel = isNewMobileUi,
+                                badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
+                                onClick = { openTab(MobileDashboardTab.REWARDS) }
                             )
                             MobileTabButton(
                                 modifier = Modifier.weight(1f),
@@ -4480,6 +4628,140 @@ private fun DashboardScreen(
                                         rank = index + 1,
                                         entry = member
                                     )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (activeTab == MobileDashboardTab.REWARDS) {
+                item {
+                    SectionIntro(
+                        title = stringResource(R.string.mobile_tab_rewards),
+                        body = if (isParentOrAdmin)
+                            stringResource(R.string.mobile_rewards_manager_hint)
+                        else
+                            stringResource(R.string.mobile_rewards_shop_hint, currentUserPoints)
+                    )
+                }
+
+                if (!isParentOrAdmin) {
+                    // ── Child: Shop ─────────────────────────────────────────
+                    item {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { rewardsShopTab = "shop" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (rewardsShopTab == "shop") MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) { Text(stringResource(R.string.mobile_rewards_tab_shop)) }
+                            Button(
+                                onClick = { rewardsShopTab = "history" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (rewardsShopTab == "history") MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) { Text(stringResource(R.string.mobile_rewards_tab_history)) }
+                        }
+                    }
+                    if (rewardsShopTab == "shop") {
+                        if (enabledRewards.isEmpty()) {
+                            item { Text(stringResource(R.string.mobile_rewards_shop_empty), style = MaterialTheme.typography.bodyMedium) }
+                        } else {
+                            items(enabledRewards) { reward ->
+                                val approvedForThisReward = myRedemptions.filter { it.rewardId == reward.id && it.status == "APPROVED" }
+                                val hasPending = myRedemptions.any { it.rewardId == reward.id && it.status == "PENDING" }
+                                val reachedLimit = reward.maxRedemptionsPerChild != null && approvedForThisReward.size >= reward.maxRedemptionsPerChild
+                                val lastApprovedAt = approvedForThisReward.maxByOrNull { it.requestedAtUtc }?.requestedAtUtc
+                                val onCooldown = reward.cooldownDays != null && lastApprovedAt != null &&
+                                    (System.currentTimeMillis() - parseInstantForSort(lastApprovedAt).toEpochMilli()) < reward.cooldownDays * 86_400_000L
+                                val canAfford = currentUserPoints >= reward.pointCost
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Text(rewardCategoryEmoji(reward.category), style = MaterialTheme.typography.headlineMedium)
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(reward.title, style = MaterialTheme.typography.titleMedium)
+                                                reward.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            }
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                            Text(
+                                                text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Button(
+                                                onClick = { redeemConfirmRewardId = reward.id },
+                                                enabled = canAfford && !onCooldown && !hasPending && !reachedLimit
+                                            ) {
+                                                Text(
+                                                    if (hasPending) stringResource(R.string.mobile_rewards_pending)
+                                                    else stringResource(R.string.mobile_rewards_redeem)
+                                                )
+                                            }
+                                        }
+                                        if (onCooldown) Text(stringResource(R.string.mobile_rewards_on_cooldown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                        if (reachedLimit) Text(stringResource(R.string.mobile_rewards_limit_reached), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // History tab
+                        if (myRedemptions.isEmpty()) {
+                            item { Text(stringResource(R.string.mobile_rewards_history_empty), style = MaterialTheme.typography.bodyMedium) }
+                        } else {
+                            items(myRedemptions.sortedByDescending { it.requestedAtUtc }) { r ->
+                                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(r.rewardTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                            Text(r.status, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        Text("−${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // ── Parent / Admin: Approval Queue ──────────────────────
+                    if (pendingRedemptions.isEmpty()) {
+                        item { Text(stringResource(R.string.mobile_rewards_no_pending), style = MaterialTheme.typography.bodyMedium) }
+                    } else {
+                        items(pendingRedemptions) { r ->
+                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(r.requestedByName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(r.rewardTitle, style = MaterialTheme.typography.titleSmall)
+                                        }
+                                        Text("${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = { onResolveRedemption(r.id, true, null) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                        ) { Text(stringResource(R.string.mobile_rewards_approve)) }
+                                        OutlinedButton(
+                                            onClick = { rejectRedemptionId = r.id; rejectRedemptionNote = "" },
+                                            modifier = Modifier.weight(1f)
+                                        ) { Text(stringResource(R.string.mobile_rewards_reject)) }
+                                    }
                                 }
                             }
                         }
@@ -4999,6 +5281,7 @@ private fun MobileTabButton(
     @DrawableRes iconRes: Int,
     showLabel: Boolean = false,
     enabled: Boolean = true,
+    badge: Int = 0,
     onClick: () -> Unit
 ) {
     val iconTint = when {
@@ -5024,20 +5307,37 @@ private fun MobileTabButton(
         colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .background(chipColor, CircleShape)
-                    .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
-                contentAlignment = Alignment.Center
-            ) {
-                Image(
-                    painter = painterResource(id = iconRes),
-                    contentDescription = null,
+            Box(contentAlignment = Alignment.TopEnd) {
+                Box(
                     modifier = Modifier
-                        .size(32.dp)
-                        .alpha(if (enabled) 1f else 0.45f)
-                )
+                        .size(48.dp)
+                        .background(chipColor, CircleShape)
+                        .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Image(
+                        painter = painterResource(id = iconRes),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(32.dp)
+                            .alpha(if (enabled) 1f else 0.45f)
+                    )
+                }
+                if (badge > 0) {
+                    Box(
+                        modifier = Modifier
+                            .size(16.dp)
+                            .background(Color(0xFFFF6B6B), CircleShape),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = badge.coerceAtMost(99).toString(),
+                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                            color = Color.White,
+                            maxLines = 1
+                        )
+                    }
+                }
             }
             if (showLabel) {
                 Text(
@@ -8756,6 +9056,15 @@ private fun choreSectionRank(section: MobileChoreSection): Int = when (section) 
 }
 
 private fun parseInstantForSort(value: String): Instant = runCatching { Instant.parse(value) }.getOrDefault(Instant.MAX)
+
+private fun rewardCategoryEmoji(category: String): String = when (category) {
+    "SCREEN_TIME" -> "📱"
+    "ALLOWANCE"   -> "💰"
+    "TREAT"       -> "🍬"
+    "ACTIVITY"    -> "🎉"
+    "PRIVILEGE"   -> "⭐"
+    else          -> "🎁"
+}
 
 @Composable
 private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?): String = when (resolveChoreSection(chore, currentUserId)) {

@@ -856,5 +856,65 @@
   "achievement.points_1000.description": "Verdiene insgesamt 1.000 Punkte.",
   "achievement.hard_chore_5.description": "Schliesse 5 schwere Aufgaben ab.",
   "achievement.hard_chore_25.description": "Schliesse 25 schwere Aufgaben ab.",
-  "achievement.multi_group_helper.description": "Erledige Aufgaben aus 3 oder mehr verschiedenen Aufgabengruppen."
+  "achievement.multi_group_helper.description": "Erledige Aufgaben aus 3 oder mehr verschiedenen Aufgabengruppen.",
+
+  "nav.rewards": "Belohnungen",
+  "page.rewards_description": "Belohnungen ansehen und einlösen oder den Belohnungskatalog verwalten.",
+  "user.points_short": "Pkt.",
+
+  "rewards.shop.title": "Belohnungsshop",
+  "rewards.shop.empty": "Noch keine Belohnungen verfügbar. Bitte einen Elternteil, welche zu aktivieren!",
+  "rewards.tab.shop": "Shop",
+  "rewards.tab.history": "Meine Einlösungen",
+  "rewards.redeem": "Einlösen",
+  "rewards.pending": "Ausstehend…",
+  "rewards.on_cooldown": "In Abklingzeit",
+  "rewards.limit_reached": "Limit erreicht",
+  "rewards.history.empty": "Du hast noch keine Belohnungen eingelöst.",
+
+  "rewards.confirm_dialog.title": "Einlösung bestätigen",
+  "rewards.confirm_dialog.cost": "Kosten",
+  "rewards.confirm_dialog.balance_after": "Guthaben danach",
+  "rewards.confirm_dialog.confirm": "Einlösen",
+
+  "rewards.manager.title": "Belohnungsverwaltung",
+  "rewards.manager.tab.catalogue": "Katalog",
+  "rewards.manager.tab.approvals": "Genehmigungen",
+  "rewards.manager.add_custom": "Benutzerdefinierte Belohnung hinzufügen",
+  "rewards.operator_managed": "Vom Operator verwaltet",
+  "rewards.operator_managed_notice": "Diese Belohnung wird vom Operator verwaltet und kann nicht bearbeitet werden.",
+  "rewards.approvals.empty": "Keine ausstehenden Einlösungen.",
+  "rewards.editor.select_or_create": "Belohnung auswählen oder neu erstellen.",
+
+  "rewards.reject_dialog.title": "Einlösung ablehnen",
+  "rewards.reject_dialog.note": "Anmerkung (optional)",
+
+  "redemption.status.pending": "Ausstehend",
+  "redemption.status.approved": "Genehmigt",
+  "redemption.status.rejected": "Abgelehnt",
+  "redemption.status.cancelled": "Abgebrochen",
+
+  "reward.field.title": "Titel",
+  "reward.field.description": "Beschreibung",
+  "reward.field.category": "Kategorie",
+  "reward.field.eligibility": "Verfügbar für",
+  "reward.field.point_cost": "Punktekosten",
+  "reward.field.max_redemptions": "Max. Einlösungen pro Kind",
+  "reward.field.cooldown_days": "Abklingzeit (Tage)",
+  "reward.unlimited": "Unbegrenzt",
+  "reward.no_cooldown": "Keine Abklingzeit",
+
+  "reward.eligibility.child_only": "Nur Kinder",
+  "reward.eligibility.all": "Alle",
+  "reward.eligibility.adult_only": "Nur Erwachsene",
+
+  "reward.category.screen_time": "Bildschirmzeit",
+  "reward.category.allowance": "Taschengeld",
+  "reward.category.treat": "Leckerei",
+  "reward.category.activity": "Aktivität",
+  "reward.category.privilege": "Privileg",
+  "reward.category.custom": "Benutzerdefiniert",
+
+  "rewards.manager.tab.my_shop": "Mein Shop",
+  "settings.require_reward_approval": "Genehmigung für Belohnungseinlösungen erforderlich"
 }
