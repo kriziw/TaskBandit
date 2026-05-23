@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.73.0](https://github.com/kriziw/TaskBandit/compare/v0.72.0...v0.73.0) (2026-05-23)
+
+
+### Features
+
+* **web,android:** reward eligibility — child only, everyone, adults only ([#490](https://github.com/kriziw/TaskBandit/issues/490)) ([a46c46a](https://github.com/kriziw/TaskBandit/commit/a46c46a20ad8c1db01b2625a30e8048608d102f9))
+
 ## [0.72.0](https://github.com/kriziw/TaskBandit/compare/v0.71.0...v0.72.0) (2026-05-23)
 
 
