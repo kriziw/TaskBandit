@@ -42,6 +42,7 @@ import type {
   PointsLedgerEntry,
   Reward,
   RewardCategory,
+  RewardEligibility,
   RewardRedemption,
   ReleaseInfo,
   RecurrenceType,
@@ -1252,17 +1253,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
   const [selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup] = useState("");
   const [rewardsTab, setRewardsTab] = useState<"shop" | "history">("shop");
-  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals">("catalogue");
+  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("catalogue");
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [isCreatingNewReward, setIsCreatingNewReward] = useState(false);
   const [rewardForm, setRewardForm] = useState<{
     title: string;
     description: string;
     category: RewardCategory;
+    eligibility: RewardEligibility;
     pointCost: number;
     maxRedemptionsPerChild: string;
     cooldownDays: string;
-  }>({ title: "", description: "", category: "CUSTOM", pointCost: 50, maxRedemptionsPerChild: "", cooldownDays: "" });
+  }>({ title: "", description: "", category: "CUSTOM", eligibility: "ALL", pointCost: 50, maxRedemptionsPerChild: "", cooldownDays: "" });
   const [redeemDialogRewardId, setRedeemDialogRewardId] = useState<string | null>(null);
   const [rejectDialogRedemptionId, setRejectDialogRedemptionId] = useState<string | null>(null);
   const [rejectDialogNote, setRejectDialogNote] = useState("");
@@ -2055,10 +2057,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   const isParentOrAdmin = payload?.currentUser.role !== "child";
 
-  const enabledRewards = useMemo(
-    () => payload?.rewards.filter((r) => r.isEnabled) ?? [],
-    [payload?.rewards]
-  );
+  const enabledRewards = useMemo(() => {
+    const all = payload?.rewards ?? [];
+    if (isParentOrAdmin) {
+      return all.filter((r) => r.isEnabled && (r.eligibility === "ALL" || r.eligibility === "ADULT_ONLY"));
+    }
+    return all.filter((r) => r.isEnabled && (r.eligibility === "ALL" || r.eligibility === "CHILD_ONLY"));
+  }, [payload?.rewards, isParentOrAdmin]);
   const pendingRedemptions = useMemo(
     () => payload?.redemptions.filter((r) => r.status === "PENDING") ?? [],
     [payload?.redemptions]
@@ -2114,7 +2119,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   function openNewRewardForm() {
     setSelectedRewardId(null);
     setIsCreatingNewReward(true);
-    setRewardForm({ title: "", description: "", category: "CUSTOM", pointCost: 50, maxRedemptionsPerChild: "", cooldownDays: "" });
+    setRewardForm({ title: "", description: "", category: "CUSTOM", eligibility: "ALL", pointCost: 50, maxRedemptionsPerChild: "", cooldownDays: "" });
   }
 
   function selectRewardForEdit(reward: Reward) {
@@ -2124,6 +2129,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       title: reward.title,
       description: reward.description ?? "",
       category: reward.category,
+      eligibility: reward.eligibility,
       pointCost: reward.pointCost,
       maxRedemptionsPerChild: reward.maxRedemptionsPerChild != null ? String(reward.maxRedemptionsPerChild) : "",
       cooldownDays: reward.cooldownDays != null ? String(reward.cooldownDays) : ""
@@ -2137,6 +2143,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       title: rewardForm.title.trim(),
       description: rewardForm.description.trim() || undefined,
       category: rewardForm.category,
+      eligibility: rewardForm.eligibility,
       pointCost: rewardForm.pointCost,
       maxRedemptionsPerChild: rewardForm.maxRedemptionsPerChild ? Number(rewardForm.maxRedemptionsPerChild) : undefined,
       cooldownDays: rewardForm.cooldownDays ? Number(rewardForm.cooldownDays) : undefined
@@ -10267,6 +10274,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         {t("rewards.manager.tab.approvals")}
                         {pendingRedemptions.length > 0 && <span className="inline-badge">{pendingRedemptions.length}</span>}
                       </button>
+                      <button
+                        type="button"
+                        className={rewardsManagerTab === "my_shop" ? "active" : ""}
+                        onClick={() => setRewardsManagerTab("my_shop")}
+                      >{t("rewards.manager.tab.my_shop")}</button>
                     </div>
 
                     {rewardsManagerTab === "catalogue" && (
@@ -10295,6 +10307,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                       {reward.isOperatorManaged && <span className="lock-icon" title={t("rewards.operator_managed")} aria-label={t("rewards.operator_managed")}>🔒</span>}
                                       <span className="template-browser-card-title">{reward.title}</span>
                                       <span className="section-kicker">{reward.pointCost} {t("user.points_short")}</span>
+                                      {reward.eligibility !== "ALL" && (
+                                        <span className={`inline-badge eligibility-badge eligibility-${reward.eligibility.toLowerCase()}`}>
+                                          {reward.eligibility === "CHILD_ONLY" ? t("reward.eligibility.child_only") : t("reward.eligibility.adult_only")}
+                                        </span>
+                                      )}
                                     </div>
                                     <label className="toggle-row" onClick={(e) => e.stopPropagation()}>
                                       <input
@@ -10341,6 +10358,34 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         )}
                       </div>
                     )}
+
+                    {rewardsManagerTab === "my_shop" && (
+                      <div>
+                        <p className="section-kicker">{payload.currentUser.points} {t("user.points_short")}</p>
+                        {enabledRewards.length === 0 ? (
+                          <p className="inline-message">{t("rewards.shop.empty")}</p>
+                        ) : (
+                          <div className="rewards-grid">
+                            {enabledRewards.map((reward) => (
+                              <div key={reward.id} className={`reward-card category-${reward.category.toLowerCase()}`}>
+                                <span className="reward-category-icon">{categoryEmoji(reward.category)}</span>
+                                <h3 className="reward-title">{reward.title}</h3>
+                                {reward.description && <p className="reward-description">{reward.description}</p>}
+                                <div className="reward-footer">
+                                  <span className="reward-cost-badge">{reward.pointCost} {t("user.points_short")}</span>
+                                  <button
+                                    type="button"
+                                    className="primary-button"
+                                    disabled={payload.currentUser.points < reward.pointCost}
+                                    onClick={() => setRedeemDialogRewardId(reward.id)}
+                                  >{t("rewards.redeem")}</button>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
 
                   {/* Right: reward editor */}
@@ -10375,6 +10420,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               {(["SCREEN_TIME","ALLOWANCE","TREAT","ACTIVITY","PRIVILEGE","CUSTOM"] as RewardCategory[]).map((cat) => (
                                 <option key={cat} value={cat}>{categoryLabel(cat)}</option>
                               ))}
+                            </select>
+                          </label>
+                          <label>
+                            <span>{t("reward.field.eligibility")}</span>
+                            <select
+                              value={rewardForm.eligibility}
+                              onChange={(e) => setRewardForm((c) => ({ ...c, eligibility: e.target.value as RewardEligibility }))}
+                            >
+                              <option value="CHILD_ONLY">{t("reward.eligibility.child_only")}</option>
+                              <option value="ALL">{t("reward.eligibility.all")}</option>
+                              <option value="ADULT_ONLY">{t("reward.eligibility.adult_only")}</option>
                             </select>
                           </label>
                           <label>

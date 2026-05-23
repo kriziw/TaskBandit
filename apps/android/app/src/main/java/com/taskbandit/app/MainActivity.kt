@@ -2977,7 +2977,16 @@ private fun DashboardScreen(
     val members = dashboard?.members.orEmpty()
     val leaderboardEntries = dashboard?.leaderboard.orEmpty()
     val allRewards = dashboard?.rewards.orEmpty()
-    val enabledRewards = remember(allRewards) { allRewards.filter { it.isEnabled } }
+    val enabledRewards = remember(allRewards, currentUserRole) {
+        allRewards.filter { reward ->
+            if (!reward.isEnabled) return@filter false
+            if (currentUserRole == "child") {
+                reward.eligibility == "CHILD_ONLY" || reward.eligibility == "ALL"
+            } else {
+                reward.eligibility == "ADULT_ONLY" || reward.eligibility == "ALL"
+            }
+        }
+    }
     val allRedemptions = dashboard?.redemptions.orEmpty()
     val pendingRedemptions = remember(allRedemptions) { allRedemptions.filter { it.status == "PENDING" } }
     val myRedemptions = remember(allRedemptions, currentUserId) {
