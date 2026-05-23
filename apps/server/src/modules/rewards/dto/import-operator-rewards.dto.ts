@@ -1,4 +1,4 @@
-import { RewardCategory } from "@prisma/client";
+import { RewardCategory, RewardEligibility } from "@prisma/client";
 import { Type } from "class-transformer";
 import {
   ArrayMaxSize,
@@ -56,6 +56,10 @@ export class OperatorRewardDto {
 
   @IsEnum(RewardCategory)
   category!: RewardCategory;
+
+  @IsOptional()
+  @IsEnum(RewardEligibility)
+  eligibility?: RewardEligibility;
 
   @IsInt()
   @Min(1)

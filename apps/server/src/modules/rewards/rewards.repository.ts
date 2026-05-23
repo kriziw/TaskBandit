@@ -13,9 +13,19 @@ export class RewardsRepository {
 
   // ── Reward CRUD ─────────────────────────────────────────────────────────────
 
-  async getRewardsForHousehold(householdId: string, enabledOnly: boolean) {
+  async getRewardsForHousehold(householdId: string, enabledOnly: boolean, role?: string) {
+    const eligibilityFilter =
+      role === "child"
+        ? { eligibility: { in: ["CHILD_ONLY" as const, "ALL" as const] } }
+        : role !== "child" && enabledOnly
+          ? { eligibility: { in: ["ALL" as const, "ADULT_ONLY" as const] } }
+          : {};
     return this.prisma.reward.findMany({
-      where: { householdId, ...(enabledOnly ? { isEnabled: true } : {}) },
+      where: {
+        householdId,
+        ...(enabledOnly ? { isEnabled: true } : {}),
+        ...eligibilityFilter
+      },
       orderBy: [{ category: "asc" }, { pointCost: "asc" }]
     });
   }
@@ -31,6 +41,7 @@ export class RewardsRepository {
         title: dto.title,
         description: dto.description ?? null,
         category: dto.category,
+        eligibility: dto.eligibility ?? "ALL",
         icon: dto.icon ?? null,
         pointCost: dto.pointCost,
         maxRedemptionsPerChild: dto.maxRedemptionsPerChild ?? null,
@@ -49,6 +60,7 @@ export class RewardsRepository {
         ...(dto.category !== undefined && { category: dto.category }),
         ...(dto.icon !== undefined && { icon: dto.icon }),
         ...(dto.pointCost !== undefined && { pointCost: dto.pointCost }),
+        ...(dto.eligibility !== undefined && { eligibility: dto.eligibility }),
         ...(dto.maxRedemptionsPerChild !== undefined && { maxRedemptionsPerChild: dto.maxRedemptionsPerChild }),
         ...(dto.cooldownDays !== undefined && { cooldownDays: dto.cooldownDays })
       }
@@ -322,6 +334,7 @@ export class RewardsRepository {
           description: dto.description ? (dto.description[locale] ?? dto.description.en ?? null) : null,
           descriptionTranslations: dto.description ? (dto.description as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
           category: dto.category,
+          eligibility: dto.eligibility ?? "ALL",
           icon: dto.icon ?? null,
           pointCost: dto.pointCost,
           maxRedemptionsPerChild: dto.maxRedemptionsPerChild ?? null,
@@ -334,6 +347,7 @@ export class RewardsRepository {
           description: dto.description ? (dto.description[locale] ?? dto.description.en ?? null) : null,
           descriptionTranslations: dto.description ? (dto.description as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
           category: dto.category,
+          eligibility: dto.eligibility ?? "ALL",
           icon: dto.icon ?? null,
           pointCost: dto.pointCost,
           maxRedemptionsPerChild: dto.maxRedemptionsPerChild ?? null,

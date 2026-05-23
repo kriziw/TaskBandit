@@ -4,6 +4,7 @@ import {
   Injectable,
   NotFoundException
 } from "@nestjs/common";
+import { RewardEligibility } from "@prisma/client";
 import { NotificationType, RewardRedemptionStatus } from "@prisma/client";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
 import { SupportedLanguage } from "../../common/i18n/supported-languages";
@@ -22,7 +23,7 @@ export class RewardsService {
 
   async getRewards(user: AuthenticatedUser) {
     const enabledOnly = user.role === "child";
-    return this.repository.getRewardsForHousehold(user.householdId, enabledOnly);
+    return this.repository.getRewardsForHousehold(user.householdId, enabledOnly, user.role);
   }
 
   async createReward(dto: CreateRewardDto, user: AuthenticatedUser) {
@@ -75,6 +76,15 @@ export class RewardsService {
     if (!reward.isEnabled) {
       throw new BadRequestException({ code: "reward_not_enabled", message: "This reward is not currently available." });
     }
+
+    const isAdult = user.role !== "child";
+    if (reward.eligibility === RewardEligibility.ADULT_ONLY && !isAdult) {
+      throw new ForbiddenException({ code: "reward_adults_only", message: "This reward is only available to parents and admins." });
+    }
+    if (reward.eligibility === RewardEligibility.CHILD_ONLY && isAdult) {
+      throw new ForbiddenException({ code: "reward_children_only", message: "This reward is only available to children." });
+    }
+
     if (user.points < reward.pointCost) {
       throw new BadRequestException({
         code: "insufficient_points",

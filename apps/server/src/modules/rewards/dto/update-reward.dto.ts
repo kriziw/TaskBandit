@@ -1,4 +1,4 @@
-import { RewardCategory } from "@prisma/client";
+import { RewardCategory, RewardEligibility } from "@prisma/client";
 import {
   IsEnum,
   IsInt,
@@ -25,6 +25,10 @@ export class UpdateRewardDto {
   @IsOptional()
   @IsEnum(RewardCategory)
   category?: RewardCategory;
+
+  @IsOptional()
+  @IsEnum(RewardEligibility)
+  eligibility?: RewardEligibility;
 
   @IsOptional()
   @IsString()
