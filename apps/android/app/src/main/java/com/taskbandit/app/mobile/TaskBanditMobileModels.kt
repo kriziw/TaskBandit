@@ -330,5 +330,34 @@ data class MobileDashboard(
     val quickLogPointsDefault: Int? = null,
     val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility(),
     val achievements: List<MobileAchievement> = emptyList(),
-    val enableAchievements: Boolean = true
+    val enableAchievements: Boolean = true,
+    val rewards: List<MobileReward> = emptyList(),
+    val redemptions: List<MobileRedemption> = emptyList()
+)
+
+data class MobileReward(
+    val id: String,
+    val catalogKey: String?,
+    val isOperatorManaged: Boolean,
+    val isEnabled: Boolean,
+    val title: String,
+    val description: String?,
+    val category: String,
+    val icon: String?,
+    val pointCost: Int,
+    val maxRedemptionsPerChild: Int?,
+    val cooldownDays: Int?
+)
+
+data class MobileRedemption(
+    val id: String,
+    val rewardId: String,
+    val rewardTitle: String,
+    val requestedById: String,
+    val requestedByName: String,
+    val status: String,
+    val requestedAtUtc: String,
+    val resolvedAtUtc: String?,
+    val adminNote: String?,
+    val pointsDeducted: Int
 )

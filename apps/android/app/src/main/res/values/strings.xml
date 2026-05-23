@@ -487,5 +487,27 @@
     <string name="mobile_complete_external_success">Chore marked as completed externally.</string>
     <string name="mobile_complete_external_failed">Could not mark the chore as completed externally.</string>
     <string name="mobile_feature_external_completion_disabled">External completion is not available in your current package.</string>
+
+    <string name="mobile_tab_rewards">Rewards</string>
+    <string name="mobile_rewards_shop_hint">You have %1$d points. Browse and redeem rewards below.</string>
+    <string name="mobile_rewards_manager_hint">Review and approve pending reward redemptions.</string>
+    <string name="mobile_rewards_tab_shop">Shop</string>
+    <string name="mobile_rewards_tab_history">My Redemptions</string>
+    <string name="mobile_rewards_pts">pts</string>
+    <string name="mobile_rewards_redeem">Redeem</string>
+    <string name="mobile_rewards_pending">Pending…</string>
+    <string name="mobile_rewards_on_cooldown">On cooldown</string>
+    <string name="mobile_rewards_limit_reached">Limit reached</string>
+    <string name="mobile_rewards_shop_empty">No rewards available yet. Ask a parent to enable some!</string>
+    <string name="mobile_rewards_history_empty">No redemptions yet.</string>
+    <string name="mobile_rewards_no_pending">No pending redemptions.</string>
+    <string name="mobile_rewards_approve">Approve</string>
+    <string name="mobile_rewards_reject">Reject</string>
+    <string name="mobile_rewards_confirm_title">Confirm Redemption</string>
+    <string name="mobile_rewards_confirm_cost">Cost: %1$d pts</string>
+    <string name="mobile_rewards_confirm_balance_after">Balance after: %1$d pts</string>
+    <string name="mobile_rewards_reject_title">Reject Redemption</string>
+    <string name="mobile_rewards_reject_note">Note (optional)</string>
+    <string name="mobile_common_cancel">Cancel</string>
 </resources>
 

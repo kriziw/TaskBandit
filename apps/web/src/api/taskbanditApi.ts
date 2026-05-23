@@ -28,6 +28,9 @@ import type {
   NotificationPreferences,
   NotificationEntry,
   PointsLedgerEntry,
+  Reward,
+  RewardCategory,
+  RewardRedemption,
   RuntimeLogEntry,
   SignupInput,
   ReleaseInfo,
@@ -41,7 +44,7 @@ import type { AppLanguage } from "../i18n/I18nProvider";
 import { resolveApiBaseUrl } from "../runtimeConfig";
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "DELETE";
+  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   token?: string | null;
   language: AppLanguage;
   body?: unknown;
@@ -819,6 +822,44 @@ export const taskBanditApi = {
       token,
       language,
       body: { note }
+    });
+  },
+  getRewards(token: string, language: AppLanguage) {
+    return request<Reward[]>("/api/rewards", { token, language });
+  },
+  createReward(
+    token: string,
+    language: AppLanguage,
+    payload: { title: string; description?: string; category: RewardCategory; pointCost: number; maxRedemptionsPerChild?: number; cooldownDays?: number }
+  ) {
+    return request<Reward>("/api/rewards", { method: "POST", token, language, body: payload });
+  },
+  updateReward(
+    token: string,
+    language: AppLanguage,
+    rewardId: string,
+    payload: { title?: string; description?: string; category?: RewardCategory; pointCost?: number; maxRedemptionsPerChild?: number | null; cooldownDays?: number | null }
+  ) {
+    return request<Reward>(`/api/rewards/${rewardId}`, { method: "PUT", token, language, body: payload });
+  },
+  toggleReward(token: string, language: AppLanguage, rewardId: string) {
+    return request<Reward>(`/api/rewards/${rewardId}/toggle`, { method: "PATCH", token, language });
+  },
+  deleteReward(token: string, language: AppLanguage, rewardId: string) {
+    return request<void>(`/api/rewards/${rewardId}`, { method: "DELETE", token, language });
+  },
+  redeemReward(token: string, language: AppLanguage, rewardId: string, note?: string) {
+    return request<RewardRedemption>(`/api/rewards/${rewardId}/redeem`, { method: "POST", token, language, body: { note } });
+  },
+  getRedemptions(token: string, language: AppLanguage) {
+    return request<RewardRedemption[]>("/api/rewards/redemptions", { token, language });
+  },
+  resolveRedemption(token: string, language: AppLanguage, redemptionId: string, approved: boolean, note?: string) {
+    return request<RewardRedemption>(`/api/rewards/redemptions/${redemptionId}/resolve`, {
+      method: "POST",
+      token,
+      language,
+      body: { approved, note }
     });
   }
 };
