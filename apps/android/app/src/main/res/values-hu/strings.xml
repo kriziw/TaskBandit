@@ -408,6 +408,107 @@
     <string name="mobile_complete_external_success">A feladat külső teljesítésként lett jelölve.</string>
     <string name="mobile_complete_external_failed">Nem sikerült a feladatot külső teljesítésként jelölni.</string>
     <string name="mobile_feature_external_completion_disabled">A külső teljesítés nem érhető el a jelenlegi csomagodban.</string>
+
+    <!-- Továbbiak lap és másodlagos menü -->
+    <string name="mobile_tab_more">Több</string>
+    <string name="mobile_more_templates">Sablonok</string>
+    <string name="mobile_more_rewards_manager">Jutalom-kezelő</string>
+
+    <!-- Sablon-kezelő -->
+    <string name="mobile_template_manager_title">Sablon-kezelő</string>
+    <string name="mobile_template_manager_hint">Hozz létre és szerkessz feladatsablonokat a háztartásodnak.</string>
+    <string name="mobile_template_new">Új sablon</string>
+    <string name="mobile_template_reset_to_defaults">Visszaállítás alapértékekre</string>
+    <string name="mobile_template_reset_confirm">Visszaállítod az összes sablont az alapértékekre? Az egyéni sablonok törlődnek. Ez nem vonható vissza.</string>
+    <string name="mobile_template_search">Sablonok keresése…</string>
+    <string name="mobile_template_empty">Még nincsenek sablonok. Koppints az „Új sablon" gombra.</string>
+    <string name="mobile_template_delete_confirm">Törli ezt a sablont? A tervezett feladatok megmaradnak, de újak nem jönnek létre.</string>
+    <string name="mobile_template_save">Sablon mentése</string>
+    <string name="mobile_template_editor_new">Új sablon</string>
+    <string name="mobile_template_field_group">Csoport</string>
+    <string name="mobile_template_field_title">Cím</string>
+    <string name="mobile_template_field_description">Leírás</string>
+    <string name="mobile_template_field_difficulty">Nehézség</string>
+    <string name="mobile_template_field_assignment">Kiosztási stratégia</string>
+    <string name="mobile_template_field_default_locale">Alapértelmezett nyelv</string>
+    <string name="mobile_template_section_recurrence">Ismétlődés</string>
+    <string name="mobile_template_field_recurrence_type">Ismétlődés típusa</string>
+    <string name="mobile_template_field_recurrence_interval">Intervallum (napok)</string>
+    <string name="mobile_template_field_recurrence_weekdays">Hétköznapok</string>
+    <string name="mobile_template_field_recurrence_start">Ismétlődés kezdete</string>
+    <string name="mobile_template_field_photo_proof">Fényképes bizonyíték szükséges</string>
+    <string name="mobile_template_field_sticky_assignee">Ugyanaz a felelős a következő feladatnál</string>
+    <string name="mobile_template_section_checklist">Ellenőrzőlista</string>
+    <string name="mobile_template_add_checklist_item">+ Elem hozzáadása</string>
+    <string name="mobile_template_checklist_item_label">Elem neve</string>
+    <string name="mobile_template_checklist_required">Kötelező</string>
+    <string name="mobile_template_section_variants">Változatok / Altípusok</string>
+    <string name="mobile_template_add_variant">+ Változat hozzáadása</string>
+    <string name="mobile_template_variant_label">Változat megnevezése</string>
+    <string name="mobile_template_section_followups">Követő függőségek</string>
+    <string name="mobile_template_add_followup">+ Követő feladat hozzáadása</string>
+    <string name="mobile_template_followup_template">Követő feladat sablonja</string>
+    <string name="mobile_template_followup_delay_value">Késleltetés</string>
+    <string name="mobile_template_followup_delay_unit">Egység</string>
+    <string name="mobile_template_steps">%1$d lépés</string>
+    <string name="mobile_template_difficulty_easy">Könnyű</string>
+    <string name="mobile_template_difficulty_medium">Közepes</string>
+    <string name="mobile_template_difficulty_hard">Nehéz</string>
+    <string name="mobile_template_recurrence_none">Nem ismétlődő</string>
+    <string name="mobile_template_recurrence_daily">Naponta</string>
+    <string name="mobile_template_recurrence_weekly">Hetente</string>
+    <string name="mobile_template_recurrence_every_x_days">Minden X. napon</string>
+    <string name="mobile_template_recurrence_custom_weekly">Egyéni hétköznapok</string>
+    <string name="mobile_template_recurrence_start_due_at">Határidő alapján</string>
+    <string name="mobile_template_recurrence_start_completed_at">Teljesítési dátum alapján</string>
+    <string name="mobile_template_strategy_round_robin">Körkörösen</string>
+    <string name="mobile_template_strategy_least_completed">Legkevésbé elvégzett</string>
+    <string name="mobile_template_strategy_highest_streak">Leghosszabb sorozat</string>
+    <string name="mobile_template_delay_hours">Óra</string>
+    <string name="mobile_template_delay_days">Nap</string>
+    <string name="mobile_template_loading">Sablonok betöltése…</string>
+    <string name="mobile_template_all_groups">Összes</string>
+
+    <!-- Jutalom-kezelő (admin) -->
+    <string name="mobile_rewards_manager_title">Jutalom-kezelő</string>
+    <string name="mobile_rewards_manager_catalogue_tab">Katalógus</string>
+    <string name="mobile_rewards_manager_approvals_tab">Jóváhagyások</string>
+    <string name="mobile_rewards_add_custom">+ Egyéni jutalom hozzáadása</string>
+    <string name="mobile_rewards_edit_title">Jutalom szerkesztése</string>
+    <string name="mobile_rewards_new_title">Új jutalom</string>
+    <string name="mobile_rewards_field_title">Cím</string>
+    <string name="mobile_rewards_field_description">Leírás (opcionális)</string>
+    <string name="mobile_rewards_field_category">Kategória</string>
+    <string name="mobile_rewards_field_icon">Ikon (emoji, opcionális)</string>
+    <string name="mobile_rewards_field_cost">Pontköltség</string>
+    <string name="mobile_rewards_field_eligibility">Jogosultság</string>
+    <string name="mobile_rewards_field_max_per_child">Max. beváltás gyermekenként (0 = korlátlan)</string>
+    <string name="mobile_rewards_field_cooldown">Várakozási idő (napok)</string>
+    <string name="mobile_rewards_operator_managed">Ezt a jutalmat az üzemeltető kezeli, nem szerkeszthető.</string>
+    <string name="mobile_rewards_delete_confirm">Törli ezt a jutalmat? Ez nem vonható vissza.</string>
+    <string name="mobile_rewards_delete">Jutalom törlése</string>
+    <string name="mobile_rewards_save">Mentés</string>
+    <string name="mobile_rewards_category_screen_time">Képernyőidő</string>
+    <string name="mobile_rewards_category_allowance">Zsebpénz</string>
+    <string name="mobile_rewards_category_treat">Finomság</string>
+    <string name="mobile_rewards_category_activity">Tevékenység</string>
+    <string name="mobile_rewards_category_privilege">Kiváltság</string>
+    <string name="mobile_rewards_category_custom">Egyéni</string>
+    <string name="mobile_rewards_eligibility_all">Mindenki</string>
+    <string name="mobile_rewards_eligibility_child">Csak gyerekek</string>
+    <string name="mobile_rewards_eligibility_adult">Csak felnőttek</string>
+    <string name="mobile_rewards_reject_note_hint">Ok (opcionális)</string>
+    <string name="mobile_rewards_reject_confirm">Elutasítás</string>
+    <string name="mobile_rewards_catalogue_empty">Még nincsenek jutalmak. Koppints az „Egyéni jutalom hozzáadása" gombra.</string>
+    <string name="mobile_rewards_manager_hint">Tekintsd át és hagyd jóvá a függőben lévő jutalombeváltásokat.</string>
+    <string name="mobile_rewards_approve">Jóváhagyás</string>
+    <string name="mobile_rewards_reject">Elutasítás</string>
+    <string name="mobile_rewards_no_pending">Nincs függőben lévő beváltás.</string>
+    <string name="mobile_rewards_reject_title">Beváltás elutasítása</string>
+    <string name="mobile_rewards_reject_note">Megjegyzés (opcionális)</string>
+    <string name="mobile_common_cancel">Mégse</string>
+    <string name="mobile_common_delete">Törlés</string>
+    <string name="mobile_back_label">Vissza</string>
 </resources>
 
 

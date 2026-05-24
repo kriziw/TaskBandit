@@ -408,6 +408,107 @@
     <string name="mobile_complete_external_success">Aufgabe wurde als extern erledigt markiert.</string>
     <string name="mobile_complete_external_failed">Die Aufgabe konnte nicht als extern erledigt markiert werden.</string>
     <string name="mobile_feature_external_completion_disabled">Externe Erledigung ist in deinem aktuellen Paket nicht verfügbar.</string>
+
+    <!-- Mehr-Tab und Sekundärmenü -->
+    <string name="mobile_tab_more">Mehr</string>
+    <string name="mobile_more_templates">Vorlagen</string>
+    <string name="mobile_more_rewards_manager">Belohnungs-Manager</string>
+
+    <!-- Vorlagen-Manager -->
+    <string name="mobile_template_manager_title">Vorlagen-Manager</string>
+    <string name="mobile_template_manager_hint">Erstelle und bearbeite Aufgabenvorlagen für deinen Haushalt.</string>
+    <string name="mobile_template_new">Neue Vorlage</string>
+    <string name="mobile_template_reset_to_defaults">Auf Standardvorlagen zurücksetzen</string>
+    <string name="mobile_template_reset_confirm">Alle Vorlagen auf Standardwerte zurücksetzen? Eigene Vorlagen werden entfernt. Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="mobile_template_search">Vorlagen suchen…</string>
+    <string name="mobile_template_empty">Noch keine Vorlagen. Tippe auf „Neue Vorlage", um eine zu erstellen.</string>
+    <string name="mobile_template_delete_confirm">Diese Vorlage löschen? Geplante Aufgaben, die sie verwenden, bleiben erhalten, aber es werden keine neuen erstellt.</string>
+    <string name="mobile_template_save">Vorlage speichern</string>
+    <string name="mobile_template_editor_new">Neue Vorlage</string>
+    <string name="mobile_template_field_group">Gruppe</string>
+    <string name="mobile_template_field_title">Titel</string>
+    <string name="mobile_template_field_description">Beschreibung</string>
+    <string name="mobile_template_field_difficulty">Schwierigkeit</string>
+    <string name="mobile_template_field_assignment">Zuteilungsstrategie</string>
+    <string name="mobile_template_field_default_locale">Standardsprache</string>
+    <string name="mobile_template_section_recurrence">Wiederholung</string>
+    <string name="mobile_template_field_recurrence_type">Wiederholungstyp</string>
+    <string name="mobile_template_field_recurrence_interval">Intervall (Tage)</string>
+    <string name="mobile_template_field_recurrence_weekdays">Wochentage</string>
+    <string name="mobile_template_field_recurrence_start">Wiederholungsstart</string>
+    <string name="mobile_template_field_photo_proof">Foto-Nachweis erforderlich</string>
+    <string name="mobile_template_field_sticky_assignee">Folgezuteilung beibehalten</string>
+    <string name="mobile_template_section_checklist">Checkliste</string>
+    <string name="mobile_template_add_checklist_item">+ Punkt hinzufügen</string>
+    <string name="mobile_template_checklist_item_label">Punkttitel</string>
+    <string name="mobile_template_checklist_required">Pflichtfeld</string>
+    <string name="mobile_template_section_variants">Varianten / Untertypen</string>
+    <string name="mobile_template_add_variant">+ Variante hinzufügen</string>
+    <string name="mobile_template_variant_label">Variantenbezeichnung</string>
+    <string name="mobile_template_section_followups">Folgeabhängigkeiten</string>
+    <string name="mobile_template_add_followup">+ Folgeaufgabe hinzufügen</string>
+    <string name="mobile_template_followup_template">Folgeaufgabenvorlage</string>
+    <string name="mobile_template_followup_delay_value">Verzögerung</string>
+    <string name="mobile_template_followup_delay_unit">Einheit</string>
+    <string name="mobile_template_steps">%1$d Schritte</string>
+    <string name="mobile_template_difficulty_easy">Einfach</string>
+    <string name="mobile_template_difficulty_medium">Mittel</string>
+    <string name="mobile_template_difficulty_hard">Schwer</string>
+    <string name="mobile_template_recurrence_none">Keine Wiederholung</string>
+    <string name="mobile_template_recurrence_daily">Täglich</string>
+    <string name="mobile_template_recurrence_weekly">Wöchentlich</string>
+    <string name="mobile_template_recurrence_every_x_days">Alle X Tage</string>
+    <string name="mobile_template_recurrence_custom_weekly">Benutzerdefinierte Wochentage</string>
+    <string name="mobile_template_recurrence_start_due_at">Basierend auf Fälligkeitsdatum</string>
+    <string name="mobile_template_recurrence_start_completed_at">Basierend auf Abschlussdatum</string>
+    <string name="mobile_template_strategy_round_robin">Rundum-Zuteilung</string>
+    <string name="mobile_template_strategy_least_completed">Zuletzt am wenigsten erledigt</string>
+    <string name="mobile_template_strategy_highest_streak">Höchste Serie</string>
+    <string name="mobile_template_delay_hours">Stunden</string>
+    <string name="mobile_template_delay_days">Tage</string>
+    <string name="mobile_template_loading">Vorlagen werden geladen…</string>
+    <string name="mobile_template_all_groups">Alle</string>
+
+    <!-- Belohnungs-Manager (Admin) -->
+    <string name="mobile_rewards_manager_title">Belohnungs-Manager</string>
+    <string name="mobile_rewards_manager_catalogue_tab">Katalog</string>
+    <string name="mobile_rewards_manager_approvals_tab">Freigaben</string>
+    <string name="mobile_rewards_add_custom">+ Eigene Belohnung hinzufügen</string>
+    <string name="mobile_rewards_edit_title">Belohnung bearbeiten</string>
+    <string name="mobile_rewards_new_title">Neue Belohnung</string>
+    <string name="mobile_rewards_field_title">Titel</string>
+    <string name="mobile_rewards_field_description">Beschreibung (optional)</string>
+    <string name="mobile_rewards_field_category">Kategorie</string>
+    <string name="mobile_rewards_field_icon">Symbol (Emoji, optional)</string>
+    <string name="mobile_rewards_field_cost">Punktekosten</string>
+    <string name="mobile_rewards_field_eligibility">Berechtigung</string>
+    <string name="mobile_rewards_field_max_per_child">Max. Einlösungen pro Kind (0 = unbegrenzt)</string>
+    <string name="mobile_rewards_field_cooldown">Wartezeit (Tage)</string>
+    <string name="mobile_rewards_operator_managed">Diese Belohnung wird vom Betreiber verwaltet und kann nicht bearbeitet werden.</string>
+    <string name="mobile_rewards_delete_confirm">Diese Belohnung löschen? Dies kann nicht rückgängig gemacht werden.</string>
+    <string name="mobile_rewards_delete">Belohnung löschen</string>
+    <string name="mobile_rewards_save">Speichern</string>
+    <string name="mobile_rewards_category_screen_time">Bildschirmzeit</string>
+    <string name="mobile_rewards_category_allowance">Taschengeld</string>
+    <string name="mobile_rewards_category_treat">Leckerei</string>
+    <string name="mobile_rewards_category_activity">Aktivität</string>
+    <string name="mobile_rewards_category_privilege">Privileg</string>
+    <string name="mobile_rewards_category_custom">Benutzerdefiniert</string>
+    <string name="mobile_rewards_eligibility_all">Alle</string>
+    <string name="mobile_rewards_eligibility_child">Nur Kinder</string>
+    <string name="mobile_rewards_eligibility_adult">Nur Erwachsene</string>
+    <string name="mobile_rewards_reject_note_hint">Grund (optional)</string>
+    <string name="mobile_rewards_reject_confirm">Ablehnen</string>
+    <string name="mobile_rewards_catalogue_empty">Noch keine Belohnungen. Tippe auf „Eigene Belohnung hinzufügen".</string>
+    <string name="mobile_rewards_manager_hint">Ausstehende Belohnungseinlösungen prüfen und genehmigen.</string>
+    <string name="mobile_rewards_approve">Genehmigen</string>
+    <string name="mobile_rewards_reject">Ablehnen</string>
+    <string name="mobile_rewards_no_pending">Keine ausstehenden Einlösungen.</string>
+    <string name="mobile_rewards_reject_title">Einlösung ablehnen</string>
+    <string name="mobile_rewards_reject_note">Notiz (optional)</string>
+    <string name="mobile_common_cancel">Abbrechen</string>
+    <string name="mobile_common_delete">Löschen</string>
+    <string name="mobile_back_label">Zurück</string>
 </resources>
 
 

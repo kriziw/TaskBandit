@@ -509,5 +509,99 @@
     <string name="mobile_rewards_reject_title">Reject Redemption</string>
     <string name="mobile_rewards_reject_note">Note (optional)</string>
     <string name="mobile_common_cancel">Cancel</string>
+    <string name="mobile_common_delete">Delete</string>
+    <string name="mobile_back_label">Back</string>
+
+    <!-- More tab & secondary menu -->
+    <string name="mobile_tab_more">More</string>
+    <string name="mobile_more_templates">Templates</string>
+    <string name="mobile_more_rewards_manager">Reward Manager</string>
+
+    <!-- Template Manager -->
+    <string name="mobile_template_manager_title">Template Manager</string>
+    <string name="mobile_template_manager_hint">Create and edit chore templates for your household.</string>
+    <string name="mobile_template_new">New Template</string>
+    <string name="mobile_template_reset_to_defaults">Reset to Defaults</string>
+    <string name="mobile_template_reset_confirm">Reset all templates to factory defaults? Custom templates will be removed. This cannot be undone.</string>
+    <string name="mobile_template_search">Search templates…</string>
+    <string name="mobile_template_empty">No templates yet. Tap "New Template" to create one.</string>
+    <string name="mobile_template_delete_confirm">Delete this template? Scheduled chores using it will remain but no new ones will be created.</string>
+    <string name="mobile_template_save">Save Template</string>
+    <string name="mobile_template_editor_new">New Template</string>
+    <string name="mobile_template_field_group">Group</string>
+    <string name="mobile_template_field_title">Title</string>
+    <string name="mobile_template_field_description">Description</string>
+    <string name="mobile_template_field_difficulty">Difficulty</string>
+    <string name="mobile_template_field_assignment">Assignment strategy</string>
+    <string name="mobile_template_field_default_locale">Default locale</string>
+    <string name="mobile_template_section_recurrence">Recurrence</string>
+    <string name="mobile_template_field_recurrence_type">Recurrence type</string>
+    <string name="mobile_template_field_recurrence_interval">Interval (days)</string>
+    <string name="mobile_template_field_recurrence_weekdays">Weekdays</string>
+    <string name="mobile_template_field_recurrence_start">Recurrence start</string>
+    <string name="mobile_template_field_photo_proof">Require photo proof</string>
+    <string name="mobile_template_field_sticky_assignee">Sticky follow-up assignee</string>
+    <string name="mobile_template_section_checklist">Checklist</string>
+    <string name="mobile_template_add_checklist_item">+ Add item</string>
+    <string name="mobile_template_checklist_item_label">Item title</string>
+    <string name="mobile_template_checklist_required">Required</string>
+    <string name="mobile_template_section_variants">Variants / Subtypes</string>
+    <string name="mobile_template_add_variant">+ Add variant</string>
+    <string name="mobile_template_variant_label">Variant label</string>
+    <string name="mobile_template_section_followups">Follow-up dependencies</string>
+    <string name="mobile_template_add_followup">+ Add follow-up</string>
+    <string name="mobile_template_followup_template">Follow-up template</string>
+    <string name="mobile_template_followup_delay_value">Delay</string>
+    <string name="mobile_template_followup_delay_unit">Unit</string>
+    <string name="mobile_template_steps">%1$d steps</string>
+    <string name="mobile_template_difficulty_easy">Easy</string>
+    <string name="mobile_template_difficulty_medium">Medium</string>
+    <string name="mobile_template_difficulty_hard">Hard</string>
+    <string name="mobile_template_recurrence_none">No recurrence</string>
+    <string name="mobile_template_recurrence_daily">Daily</string>
+    <string name="mobile_template_recurrence_weekly">Weekly</string>
+    <string name="mobile_template_recurrence_every_x_days">Every X days</string>
+    <string name="mobile_template_recurrence_custom_weekly">Custom weekdays</string>
+    <string name="mobile_template_recurrence_start_due_at">Based on due date</string>
+    <string name="mobile_template_recurrence_start_completed_at">Based on completion date</string>
+    <string name="mobile_template_strategy_round_robin">Round robin</string>
+    <string name="mobile_template_strategy_least_completed">Least completed recently</string>
+    <string name="mobile_template_strategy_highest_streak">Highest streak</string>
+    <string name="mobile_template_delay_hours">Hours</string>
+    <string name="mobile_template_delay_days">Days</string>
+    <string name="mobile_template_loading">Loading templates…</string>
+    <string name="mobile_template_all_groups">All</string>
+
+    <!-- Rewards Manager (admin) -->
+    <string name="mobile_rewards_manager_title">Reward Manager</string>
+    <string name="mobile_rewards_manager_catalogue_tab">Catalogue</string>
+    <string name="mobile_rewards_manager_approvals_tab">Approvals</string>
+    <string name="mobile_rewards_add_custom">+ Add custom reward</string>
+    <string name="mobile_rewards_edit_title">Edit Reward</string>
+    <string name="mobile_rewards_new_title">New Reward</string>
+    <string name="mobile_rewards_field_title">Title</string>
+    <string name="mobile_rewards_field_description">Description (optional)</string>
+    <string name="mobile_rewards_field_category">Category</string>
+    <string name="mobile_rewards_field_icon">Icon (emoji, optional)</string>
+    <string name="mobile_rewards_field_cost">Point cost</string>
+    <string name="mobile_rewards_field_eligibility">Eligibility</string>
+    <string name="mobile_rewards_field_max_per_child">Max redemptions per child (0 = unlimited)</string>
+    <string name="mobile_rewards_field_cooldown">Cooldown (days)</string>
+    <string name="mobile_rewards_operator_managed">This reward is managed by the operator and cannot be edited.</string>
+    <string name="mobile_rewards_delete_confirm">Delete this reward? This cannot be undone.</string>
+    <string name="mobile_rewards_delete">Delete Reward</string>
+    <string name="mobile_rewards_save">Save</string>
+    <string name="mobile_rewards_category_screen_time">Screen time</string>
+    <string name="mobile_rewards_category_allowance">Allowance</string>
+    <string name="mobile_rewards_category_treat">Treat</string>
+    <string name="mobile_rewards_category_activity">Activity</string>
+    <string name="mobile_rewards_category_privilege">Privilege</string>
+    <string name="mobile_rewards_category_custom">Custom</string>
+    <string name="mobile_rewards_eligibility_all">Everyone</string>
+    <string name="mobile_rewards_eligibility_child">Children only</string>
+    <string name="mobile_rewards_eligibility_adult">Adults only</string>
+    <string name="mobile_rewards_reject_note_hint">Reason (optional)</string>
+    <string name="mobile_rewards_reject_confirm">Reject</string>
+    <string name="mobile_rewards_catalogue_empty">No rewards yet. Tap "Add custom reward" to create one.</string>
 </resources>
 

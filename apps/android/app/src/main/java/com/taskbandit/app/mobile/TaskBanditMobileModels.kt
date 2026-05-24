@@ -275,9 +275,34 @@ data class MobileTemplateRecurrence(
     val weekdays: List<String>
 )
 
+data class MobileVariantLabelTranslation(
+    val locale: String,
+    val label: String? = null
+)
+
 data class MobileTemplateVariant(
     val id: String,
-    val label: String
+    val label: String,
+    val translations: List<MobileVariantLabelTranslation> = emptyList()
+)
+
+data class MobileTemplateChecklistItem(
+    val id: String,
+    val title: String,
+    val required: Boolean
+)
+
+data class MobileTemplateTranslation(
+    val locale: String,
+    val groupTitle: String? = null,
+    val title: String? = null,
+    val description: String? = null
+)
+
+data class MobileTemplateDependencyRule(
+    val templateId: String,
+    val delayValue: Int,
+    val delayUnit: String
 )
 
 data class MobileChoreTemplate(
@@ -285,12 +310,71 @@ data class MobileChoreTemplate(
     val groupTitle: String,
     val title: String,
     val description: String,
+    val difficulty: String = "medium",
+    val basePoints: Int = 0,
     val assignmentStrategy: String,
     val recurrence: MobileTemplateRecurrence,
     val requirePhotoProof: Boolean,
     val stickyFollowUpAssignee: Boolean = false,
     val recurrenceStartStrategy: String = "due_at",
-    val variants: List<MobileTemplateVariant> = emptyList()
+    val defaultLocale: String = "en",
+    val variants: List<MobileTemplateVariant> = emptyList(),
+    val checklist: List<MobileTemplateChecklistItem> = emptyList(),
+    val translations: List<MobileTemplateTranslation> = emptyList(),
+    val dependencyRules: List<MobileTemplateDependencyRule> = emptyList()
+)
+
+data class CreateTemplateChecklistItemInput(
+    val title: String,
+    val required: Boolean
+)
+
+data class CreateTemplateVariantInput(
+    val id: String? = null,
+    val label: String,
+    val translations: List<MobileVariantLabelTranslation> = emptyList()
+)
+
+data class CreateChoreTemplateInput(
+    val groupTitle: String,
+    val title: String,
+    val description: String,
+    val difficulty: String,
+    val assignmentStrategy: String,
+    val recurrenceType: String,
+    val recurrenceIntervalDays: Int? = null,
+    val recurrenceWeekdays: List<String> = emptyList(),
+    val requirePhotoProof: Boolean,
+    val stickyFollowUpAssignee: Boolean = false,
+    val recurrenceStartStrategy: String = "due_at",
+    val defaultLocale: String = "en",
+    val translations: List<MobileTemplateTranslation> = emptyList(),
+    val checklist: List<CreateTemplateChecklistItemInput> = emptyList(),
+    val variants: List<CreateTemplateVariantInput> = emptyList(),
+    val dependencyRules: List<MobileTemplateDependencyRule> = emptyList()
+)
+
+data class CreateRewardInput(
+    val title: String,
+    val description: String?,
+    val category: String,
+    val icon: String?,
+    val pointCost: Int,
+    val maxRedemptionsPerChild: Int?,
+    val cooldownDays: Int?,
+    val isEnabled: Boolean,
+    val eligibility: String = "ALL"
+)
+
+data class UpdateRewardInput(
+    val title: String,
+    val description: String?,
+    val category: String,
+    val icon: String?,
+    val pointCost: Int,
+    val maxRedemptionsPerChild: Int?,
+    val cooldownDays: Int?,
+    val eligibility: String = "ALL"
 )
 
 data class MobileAchievement(
