@@ -859,6 +859,10 @@
   "achievement.multi_group_helper.description": "Complete chores across 3 or more different chore groups.",
 
   "nav.rewards": "Rewards",
+  "nav.more": "More",
+  "mobile.more.settings": "Settings",
+  "mobile.more.templates": "Templates",
+  "mobile.more.rewards_manager": "Rewards Manager",
   "page.rewards_description": "Browse and redeem rewards, or manage the rewards catalogue.",
   "user.points_short": "pts",
 

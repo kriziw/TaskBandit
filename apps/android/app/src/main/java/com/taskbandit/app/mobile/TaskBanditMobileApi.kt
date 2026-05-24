@@ -1044,6 +1044,7 @@ class TaskBanditMobileApi {
         when (method) {
             "POST" -> requestBuilder.post(requestBody ?: ByteArray(0).toRequestBody(null))
             "PUT" -> requestBuilder.put(requestBody ?: ByteArray(0).toRequestBody(null))
+            "PATCH" -> requestBuilder.patch(requestBody ?: ByteArray(0).toRequestBody(null))
             "DELETE" -> requestBuilder.delete(requestBody ?: ByteArray(0).toRequestBody(null))
             else -> requestBuilder.get()
         }
@@ -1322,6 +1323,221 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun getChoreTemplates(baseUrl: String, token: String): List<MobileChoreTemplate> {
+        val arr = requestJsonArray(baseUrl, "/api/chores/templates", token = token)
+        return parseFullTemplates(arr)
+    }
+
+    fun createChoreTemplate(baseUrl: String, token: String, input: CreateChoreTemplateInput): MobileChoreTemplate {
+        val json = requestJson(baseUrl, "/api/chores/templates", token = token, method = "POST", body = buildTemplatePayload(input))
+        return parseFullTemplate(json)
+    }
+
+    fun updateChoreTemplate(baseUrl: String, token: String, templateId: String, input: CreateChoreTemplateInput): MobileChoreTemplate {
+        val json = requestJson(baseUrl, "/api/chores/templates/$templateId", token = token, method = "PUT", body = buildTemplatePayload(input))
+        return parseFullTemplate(json)
+    }
+
+    fun deleteChoreTemplate(baseUrl: String, token: String, templateId: String) {
+        executeRequest(baseUrl, "/api/chores/templates/$templateId", token, "DELETE", null)
+    }
+
+    fun resetTemplatesToDefaults(baseUrl: String, token: String): JSONObject {
+        return requestJson(baseUrl, "/api/chores/templates/reset-to-defaults", token = token, method = "POST", body = JSONObject())
+    }
+
+    fun createReward(baseUrl: String, token: String, input: CreateRewardInput): MobileReward {
+        val json = requestJson(baseUrl, "/api/rewards", token = token, method = "POST", body = buildRewardPayload(
+            input.title, input.description, input.category, input.icon,
+            input.pointCost, input.maxRedemptionsPerChild, input.cooldownDays,
+            input.isEnabled, input.eligibility
+        ))
+        return parseReward(json)
+    }
+
+    fun updateReward(baseUrl: String, token: String, rewardId: String, input: UpdateRewardInput): MobileReward {
+        val json = requestJson(baseUrl, "/api/rewards/$rewardId", token = token, method = "PUT", body = buildRewardPayload(
+            input.title, input.description, input.category, input.icon,
+            input.pointCost, input.maxRedemptionsPerChild, input.cooldownDays,
+            true, input.eligibility
+        ))
+        return parseReward(json)
+    }
+
+    fun deleteReward(baseUrl: String, token: String, rewardId: String) {
+        executeRequest(baseUrl, "/api/rewards/$rewardId", token, "DELETE", null)
+    }
+
+    fun toggleRewardEnabled(baseUrl: String, token: String, rewardId: String): MobileReward {
+        val json = requestJson(baseUrl, "/api/rewards/$rewardId/toggle", token = token, method = "PATCH")
+        return parseReward(json)
+    }
+
+    private fun buildTemplatePayload(input: CreateChoreTemplateInput): JSONObject {
+        val payload = JSONObject()
+            .put("groupTitle", input.groupTitle)
+            .put("title", input.title)
+            .put("description", input.description)
+            .put("difficulty", input.difficulty)
+            .put("assignmentStrategy", input.assignmentStrategy)
+            .put("recurrenceType", input.recurrenceType)
+            .put("requirePhotoProof", input.requirePhotoProof)
+            .put("stickyFollowUpAssignee", input.stickyFollowUpAssignee)
+            .put("recurrenceStartStrategy", input.recurrenceStartStrategy)
+            .put("defaultLocale", input.defaultLocale)
+        input.recurrenceIntervalDays?.let { payload.put("recurrenceIntervalDays", it) }
+        if (input.recurrenceWeekdays.isNotEmpty()) {
+            payload.put("recurrenceWeekdays", JSONArray(input.recurrenceWeekdays))
+        }
+        val translationsArr = JSONArray()
+        input.translations.forEach { t ->
+            translationsArr.put(JSONObject()
+                .put("locale", t.locale)
+                .also { obj -> t.groupTitle?.let { obj.put("groupTitle", it) } }
+                .also { obj -> t.title?.let { obj.put("title", it) } }
+                .also { obj -> t.description?.let { obj.put("description", it) } })
+        }
+        payload.put("translations", translationsArr)
+        val checklistArr = JSONArray()
+        input.checklist.forEach { item ->
+            checklistArr.put(JSONObject().put("title", item.title).put("required", item.required))
+        }
+        payload.put("checklist", checklistArr)
+        val variantsArr = JSONArray()
+        input.variants.forEach { v ->
+            val vObj = JSONObject().put("label", v.label)
+            v.id?.let { vObj.put("id", it) }
+            val vtArr = JSONArray()
+            v.translations.forEach { vt ->
+                vtArr.put(JSONObject().put("locale", vt.locale).also { obj -> vt.label?.let { obj.put("label", it) } })
+            }
+            vObj.put("translations", vtArr)
+            variantsArr.put(vObj)
+        }
+        payload.put("variants", variantsArr)
+        val depsArr = JSONArray()
+        input.dependencyRules.forEach { d ->
+            depsArr.put(JSONObject().put("templateId", d.templateId).put("delayValue", d.delayValue).put("delayUnit", d.delayUnit))
+        }
+        payload.put("dependencyRules", depsArr)
+        return payload
+    }
+
+    private fun buildRewardPayload(
+        title: String, description: String?, category: String, icon: String?,
+        pointCost: Int, maxRedemptionsPerChild: Int?, cooldownDays: Int?,
+        isEnabled: Boolean, eligibility: String
+    ): JSONObject {
+        val payload = JSONObject()
+            .put("title", title)
+            .put("category", category)
+            .put("pointCost", pointCost)
+            .put("isEnabled", isEnabled)
+            .put("eligibility", eligibility)
+        description?.let { payload.put("description", it) }
+        icon?.let { payload.put("icon", it) }
+        if (maxRedemptionsPerChild != null) payload.put("maxRedemptionsPerChild", maxRedemptionsPerChild)
+        if (cooldownDays != null) payload.put("cooldownDays", cooldownDays)
+        return payload
+    }
+
+    private fun parseReward(json: JSONObject): MobileReward {
+        return MobileReward(
+            id = json.optString("id"),
+            catalogKey = json.optString("catalogKey").ifBlank { null },
+            isOperatorManaged = json.optBoolean("isOperatorManaged"),
+            isEnabled = json.optBoolean("isEnabled"),
+            title = json.optString("title"),
+            description = json.optString("description").ifBlank { null },
+            category = json.optString("category"),
+            icon = json.optString("icon").ifBlank { null },
+            pointCost = json.optInt("pointCost"),
+            maxRedemptionsPerChild = json.optInt("maxRedemptionsPerChild").takeIf { json.has("maxRedemptionsPerChild") && !json.isNull("maxRedemptionsPerChild") },
+            cooldownDays = json.optInt("cooldownDays").takeIf { json.has("cooldownDays") && !json.isNull("cooldownDays") },
+            eligibility = json.optString("eligibility").ifBlank { "ALL" }
+        )
+    }
+
+    private fun parseFullTemplates(entries: JSONArray?): List<MobileChoreTemplate> {
+        if (entries == null) return emptyList()
+        return buildList {
+            for (i in 0 until entries.length()) {
+                val item = entries.optJSONObject(i) ?: continue
+                if (item.optString("id").isBlank() || item.optString("title").isBlank()) continue
+                add(parseFullTemplate(item))
+            }
+        }
+    }
+
+    private fun parseFullTemplate(item: JSONObject): MobileChoreTemplate {
+        val recurrence = item.optJSONObject("recurrence") ?: JSONObject()
+        return MobileChoreTemplate(
+            id = item.optString("id"),
+            groupTitle = item.optString("groupTitle").ifBlank { "General" },
+            title = item.optString("title"),
+            description = item.optString("description"),
+            difficulty = item.optString("difficulty").ifBlank { "medium" },
+            basePoints = item.optInt("basePoints"),
+            assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },
+            recurrence = MobileTemplateRecurrence(
+                type = recurrence.optString("type").ifBlank { "none" },
+                intervalDays = if (!recurrence.isNull("intervalDays")) recurrence.optInt("intervalDays") else null,
+                weekdays = parseStringList(recurrence.optJSONArray("weekdays"))
+            ),
+            requirePhotoProof = item.optBoolean("requirePhotoProof"),
+            stickyFollowUpAssignee = item.optBoolean("stickyFollowUpAssignee"),
+            recurrenceStartStrategy = item.optString("recurrenceStartStrategy").ifBlank { "due_at" },
+            defaultLocale = item.optString("defaultLocale").ifBlank { "en" },
+            variants = parseVariants(item.optJSONArray("variants")),
+            checklist = parseTemplateChecklist(item.optJSONArray("checklist")),
+            translations = parseTemplateTranslations(item.optJSONArray("translations")),
+            dependencyRules = parseTemplateDependencyRules(item.optJSONArray("dependencyRules"))
+        )
+    }
+
+    private fun parseTemplateChecklist(entries: JSONArray?): List<MobileTemplateChecklistItem> {
+        if (entries == null) return emptyList()
+        return buildList {
+            for (i in 0 until entries.length()) {
+                val item = entries.optJSONObject(i) ?: continue
+                add(MobileTemplateChecklistItem(
+                    id = item.optString("id"),
+                    title = item.optString("title"),
+                    required = item.optBoolean("required")
+                ))
+            }
+        }
+    }
+
+    private fun parseTemplateTranslations(entries: JSONArray?): List<MobileTemplateTranslation> {
+        if (entries == null) return emptyList()
+        return buildList {
+            for (i in 0 until entries.length()) {
+                val item = entries.optJSONObject(i) ?: continue
+                add(MobileTemplateTranslation(
+                    locale = item.optString("locale").ifBlank { "en" },
+                    groupTitle = item.optString("groupTitle").ifBlank { null },
+                    title = item.optString("title").ifBlank { null },
+                    description = item.optString("description").ifBlank { null }
+                ))
+            }
+        }
+    }
+
+    private fun parseTemplateDependencyRules(entries: JSONArray?): List<MobileTemplateDependencyRule> {
+        if (entries == null) return emptyList()
+        return buildList {
+            for (i in 0 until entries.length()) {
+                val item = entries.optJSONObject(i) ?: continue
+                add(MobileTemplateDependencyRule(
+                    templateId = item.optString("templateId"),
+                    delayValue = item.optInt("delayValue", 1),
+                    delayUnit = item.optString("delayUnit").ifBlank { "days" }
+                ))
+            }
+        }
+    }
+
     private fun parseStringList(entries: JSONArray?): List<String> {
         if (entries == null) {
             return emptyList()
@@ -1348,7 +1564,17 @@ class TaskBanditMobileApi {
                     .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
                     ?: continue
                 if (id.isBlank()) continue
-                add(MobileTemplateVariant(id = id, label = label))
+                val vtArr = item.optJSONArray("translations")
+                val vtList = buildList {
+                    for (j in 0 until (vtArr?.length() ?: 0)) {
+                        val vt = vtArr?.optJSONObject(j) ?: continue
+                        add(MobileVariantLabelTranslation(
+                            locale = vt.optString("locale").ifBlank { "en" },
+                            label = vt.optString("label").ifBlank { null }
+                        ))
+                    }
+                }
+                add(MobileTemplateVariant(id = id, label = label, translations = vtList))
             }
         }
     }

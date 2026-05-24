@@ -859,6 +859,10 @@
   "achievement.multi_group_helper.description": "Erledige Aufgaben aus 3 oder mehr verschiedenen Aufgabengruppen.",
 
   "nav.rewards": "Belohnungen",
+  "nav.more": "Mehr",
+  "mobile.more.settings": "Einstellungen",
+  "mobile.more.templates": "Vorlagen",
+  "mobile.more.rewards_manager": "Belohnungs-Manager",
   "page.rewards_description": "Belohnungen ansehen und einlösen oder den Belohnungskatalog verwalten.",
   "user.points_short": "Pkt.",
 
