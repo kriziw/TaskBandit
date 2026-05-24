@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.74.0](https://github.com/kriziw/TaskBandit/compare/v0.73.0...v0.74.0) (2026-05-24)
+
+
+### Features
+
+* **web,android:** admin mobile — Template Manager + Rewards Manager + More tab ([#493](https://github.com/kriziw/TaskBandit/issues/493)) ([e238466](https://github.com/kriziw/TaskBandit/commit/e238466d51d243ddd0afd276615fffa9743db563))
+
 ## [0.73.0](https://github.com/kriziw/TaskBandit/compare/v0.72.0...v0.73.0) (2026-05-23)
 
 
