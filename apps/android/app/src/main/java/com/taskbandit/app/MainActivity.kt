@@ -10068,9 +10068,9 @@ private fun TemplateCard(
     onClick: () -> Unit
 ) {
     val difficultyColor = when (template.difficulty) {
-        "easy" -> Gold
-        "hard" -> Ink
-        else -> Coral
+        "easy" -> Color(0xFFFFC94A)
+        "hard" -> Color(0xFFE53935)
+        else   -> Color(0xFFFF7A6B)
     }
     Card(
         onClick = onClick,
@@ -10663,15 +10663,6 @@ private fun TemplateEditorSection(
 // ═══════════════════════════════════════════════════════════════════════════
 // REWARDS MANAGER
 // ═══════════════════════════════════════════════════════════════════════════
-
-private fun rewardCategoryEmoji(category: String): String = when (category.uppercase()) {
-    "SCREEN_TIME" -> "📱"
-    "ALLOWANCE"   -> "💰"
-    "TREAT"       -> "🍫"
-    "ACTIVITY"    -> "🏃"
-    "PRIVILEGE"   -> "⭐"
-    else          -> "🎁"
-}
 
 @Composable
 private fun RewardCategorySection(
