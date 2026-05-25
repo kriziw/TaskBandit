@@ -603,5 +603,6 @@
     <string name="mobile_rewards_reject_note_hint">Reason (optional)</string>
     <string name="mobile_rewards_reject_confirm">Reject</string>
     <string name="mobile_rewards_catalogue_empty">No rewards yet. Tap "Add custom reward" to create one.</string>
+    <string name="mobile_rewards_icon_none">None</string>
 </resources>
 

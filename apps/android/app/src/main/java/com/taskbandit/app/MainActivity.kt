@@ -32,6 +32,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -5333,38 +5334,42 @@ private fun DashboardScreen(
                 }
             }
 
-            if (activeTab == MobileDashboardTab.TEMPLATE_MANAGER) {
-                item {
-                    TemplateManagerScreen(
-                        templates = templateManagerTemplates,
-                        isLoading = templateManagerLoading,
-                        error = templateManagerError,
-                        allTemplates = templateManagerTemplates,
-                        onRefresh = onLoadTemplatesForManager,
-                        onCreateTemplate = onCreateTemplate,
-                        onUpdateTemplate = onUpdateTemplate,
-                        onDeleteTemplate = onDeleteTemplate,
-                        onResetToDefaults = onResetTemplatesToDefaults,
-                        canManageTemplates = canManageTemplates,
-                        isAdmin = currentUserRole == "admin"
-                    )
                 }
-            }
 
-            if (activeTab == MobileDashboardTab.REWARDS_MANAGER) {
-                item {
-                    RewardsManagerScreen(
-                        allRewards = dashboard?.rewards.orEmpty(),
-                        pendingRedemptions = dashboard?.redemptions.orEmpty().filter { it.status == "PENDING" },
-                        onCreateReward = onCreateReward,
-                        onUpdateReward = onUpdateReward,
-                        onDeleteReward = onDeleteReward,
-                        onToggleReward = onToggleReward,
-                        onApproveRedemption = { id -> onResolveRedemption(id, true, null) },
-                        onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) }
-                    )
+                // ── Full-screen overlays for virtual tabs ─────────────────────────────
+                // Rendered OUTSIDE the LazyColumn so they get proper bounded constraints
+                // (Scaffold and nested LazyColumn both require bounded height).
+                if (activeTab == MobileDashboardTab.TEMPLATE_MANAGER) {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        TemplateManagerScreen(
+                            templates = templateManagerTemplates,
+                            isLoading = templateManagerLoading,
+                            error = templateManagerError,
+                            allTemplates = templateManagerTemplates,
+                            onRefresh = onLoadTemplatesForManager,
+                            onCreateTemplate = onCreateTemplate,
+                            onUpdateTemplate = onUpdateTemplate,
+                            onDeleteTemplate = onDeleteTemplate,
+                            onResetToDefaults = onResetTemplatesToDefaults,
+                            canManageTemplates = canManageTemplates,
+                            isAdmin = currentUserRole == "admin"
+                        )
+                    }
                 }
-            }
+
+                if (activeTab == MobileDashboardTab.REWARDS_MANAGER) {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        RewardsManagerScreen(
+                            allRewards = dashboard?.rewards.orEmpty(),
+                            pendingRedemptions = dashboard?.redemptions.orEmpty().filter { it.status == "PENDING" },
+                            onCreateReward = onCreateReward,
+                            onUpdateReward = onUpdateReward,
+                            onDeleteReward = onDeleteReward,
+                            onToggleReward = onToggleReward,
+                            onApproveRedemption = { id -> onResolveRedemption(id, true, null) },
+                            onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) }
+                        )
+                    }
                 }
 
                 if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice && hasSyncFailureContext) {
@@ -5556,62 +5561,65 @@ private fun MobileTabButton(
     } else {
         MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
     }
-    TextButton(
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
-        onClick = onClick,
-        enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 1.dp, vertical = 2.dp),
-        colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
+    // Use Column+clickable instead of TextButton so Compose doesn't clip
+    // the label text to the TextButton's pill/stadium shape. "Leaderboard"
+    // (the longest label) was being cut off at the circle icon edges.
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 1.dp, vertical = 2.dp)
+            .semantics(mergeDescendants = true) { contentDescription = label },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Box(contentAlignment = Alignment.TopEnd) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(chipColor, CircleShape)
+                    .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .alpha(if (enabled) 1f else 0.45f)
+                )
+            }
+            if (badge > 0) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(chipColor, CircleShape)
-                        .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                        .size(16.dp)
+                        .background(Color(0xFFFF6B6B), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .alpha(if (enabled) 1f else 0.45f)
+                    Text(
+                        text = badge.coerceAtMost(99).toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = Color.White,
+                        maxLines = 1
                     )
                 }
-                if (badge > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(Color(0xFFFF6B6B), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = badge.coerceAtMost(99).toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                            color = Color.White,
-                            maxLines = 1
-                        )
-                    }
-                }
             }
-            if (showLabel) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.04f),
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 14.dp, height = 3.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
-                )
-            }
+        }
+        if (showLabel) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.04f),
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(width = 14.dp, height = 3.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+            )
         }
     }
 }
@@ -11010,14 +11018,40 @@ private fun RewardEditorSheet(
                 }
             }
 
-            OutlinedTextField(
-                value = editIcon,
-                onValueChange = { if (!isOperatorManaged) editIcon = it },
-                label = { Text(stringResource(R.string.mobile_rewards_field_icon)) },
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                enabled = !isOperatorManaged
-            )
+            // Icon emoji selector
+            if (!isOperatorManaged) {
+                val iconOptions = listOf(
+                    "📱", "💰", "🍫", "🍕", "🍦", "🍬", "🎮", "🎬",
+                    "🏃", "🎨", "📚", "⭐", "🌟", "👑", "🏆", "🎁", "🎉", "🚀"
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(R.string.mobile_rewards_field_icon),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // "None" chip
+                        FilterChip(
+                            selected = editIcon.isBlank(),
+                            onClick = { editIcon = "" },
+                            label = { Text(stringResource(R.string.mobile_rewards_icon_none)) }
+                        )
+                        iconOptions.forEach { emoji ->
+                            FilterChip(
+                                selected = editIcon == emoji,
+                                onClick = { editIcon = emoji },
+                                label = { Text(emoji, style = MaterialTheme.typography.titleMedium) }
+                            )
+                        }
+                    }
+                }
+            }
             OutlinedTextField(
                 value = editPointCost,
                 onValueChange = { if (!isOperatorManaged) editPointCost = it },
