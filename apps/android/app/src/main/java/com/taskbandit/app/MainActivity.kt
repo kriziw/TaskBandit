@@ -52,6 +52,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -3102,6 +3103,8 @@ private fun DashboardScreen(
     var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
     var showMoreSheet by rememberSaveable { mutableStateOf(false) }
+    val dashboardListState = rememberLazyListState()
+    var shouldScrollToUpdate by remember { mutableStateOf(false) }
     var rewardsShopTab by rememberSaveable { mutableStateOf("shop") }
     var redeemConfirmRewardId by rememberSaveable { mutableStateOf<String?>(null) }
     var rejectRedemptionId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -4231,6 +4234,16 @@ private fun DashboardScreen(
         }
     }
 
+    // Scroll to the release/update card when the banner is tapped on the home screen.
+    // The release card index depends on whether the hosted-plan card is visible.
+    LaunchedEffect(activeTab, shouldScrollToUpdate) {
+        if (shouldScrollToUpdate && activeTab == MobileDashboardTab.MORE) {
+            val releaseItemIndex = if (hostedSubscription.hostedMode && isCreatorRole) 4 else 3
+            dashboardListState.animateScrollToItem(releaseItemIndex)
+            shouldScrollToUpdate = false
+        }
+    }
+
     BackHandler(
         enabled = showMoreSheet || showSpeedDial || showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
     ) {
@@ -4521,6 +4534,7 @@ private fun DashboardScreen(
             val isTablet = isTabletWidth(maxWidth)
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
+                    state = dashboardListState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = if (isTablet) 28.dp else if (isNewMobileUi) 6.dp else 20.dp, vertical = 16.dp)
@@ -5395,12 +5409,19 @@ private fun DashboardScreen(
                     exit = fadeOut(animationSpec = tween(200)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        // Leave extra room on the right so the dismiss ✕ button is not
+                        // hidden behind the circular create FAB (60dp + 16dp margin + 8dp gap).
+                        .padding(
+                            start = 16.dp,
+                            end = if (isNewMobileUi && canManageChores && !isTablet) 92.dp else 16.dp,
+                            top = 16.dp,
+                            bottom = 16.dp
+                        )
                         .then(if (isTablet) Modifier.widthIn(max = 480.dp) else Modifier)
                 ) {
                     visibleGithubUpdate?.let { update ->
                         Card(
-                            onClick = { openTab(MobileDashboardTab.MORE) },
+                            onClick = { openTab(MobileDashboardTab.MORE); shouldScrollToUpdate = true },
                             shape = RoundedCornerShape(20.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                             colors = CardDefaults.cardColors(
