@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.74.1](https://github.com/kriziw/TaskBandit/compare/v0.74.0...v0.74.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **android:** bugfixes for admin mobile — data loading, nav label clip, icon selector ([#495](https://github.com/kriziw/TaskBandit/issues/495)) ([37a848a](https://github.com/kriziw/TaskBandit/commit/37a848abd5b0ff0ae730cc200649f0c279260723))
+
 ## [0.74.0](https://github.com/kriziw/TaskBandit/compare/v0.73.0...v0.74.0) (2026-05-24)
 
 
