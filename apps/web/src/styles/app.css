@@ -2265,6 +2265,18 @@ h4,
   min-height: 72px;
 }
 
+/* Fieldset used as a disabled-group wrapper inside login-form-styled editors.
+   Strip all browser default chrome (border, padding, legend indent) so the
+   fieldset is invisible and the labels/inputs appear as a normal grid. */
+.login-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
 .template-advanced-panel {
   border: 1px solid rgba(36, 48, 67, 0.08);
   border-radius: 18px;

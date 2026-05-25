@@ -5376,12 +5376,14 @@ private fun DashboardScreen(
                         RewardsManagerScreen(
                             allRewards = dashboard?.rewards.orEmpty(),
                             pendingRedemptions = dashboard?.redemptions.orEmpty().filter { it.status == "PENDING" },
+                            currentUserPoints = currentUserPoints,
                             onCreateReward = onCreateReward,
                             onUpdateReward = onUpdateReward,
                             onDeleteReward = onDeleteReward,
                             onToggleReward = onToggleReward,
                             onApproveRedemption = { id -> onResolveRedemption(id, true, null) },
-                            onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) }
+                            onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) },
+                            onRedeemReward = { redeemConfirmRewardId = it }
                         )
                     }
                 }
@@ -10757,14 +10759,16 @@ private fun RewardCategorySection(
 private fun RewardsManagerScreen(
     allRewards: List<MobileReward>,
     pendingRedemptions: List<MobileRedemption>,
+    currentUserPoints: Int,
     onCreateReward: (CreateRewardInput) -> Unit,
     onUpdateReward: (String, UpdateRewardInput) -> Unit,
     onDeleteReward: (String) -> Unit,
     onToggleReward: (String) -> Unit,
     onApproveRedemption: (String) -> Unit,
-    onRejectRedemption: (String, String?) -> Unit
+    onRejectRedemption: (String, String?) -> Unit,
+    onRedeemReward: (String) -> Unit
 ) {
-    var activeTab by rememberSaveable { mutableStateOf("catalogue") }
+    var activeTab by rememberSaveable { mutableStateOf("shop") }
     var selectedReward by remember { mutableStateOf<MobileReward?>(null) }
     var showRewardEditor by rememberSaveable { mutableStateOf(false) }
     var rejectRedemptionId by remember { mutableStateOf<String?>(null) }
@@ -10787,11 +10791,20 @@ private fun RewardsManagerScreen(
             compact = true
         )
 
-        // Tab row
+        // Tab row — Shop | Catalogue | Approvals
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
+            if (activeTab == "shop") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                }
+            } else {
+                OutlinedButton(onClick = { activeTab = "shop" }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                }
+            }
             if (activeTab == "catalogue") {
                 Button(onClick = {}, modifier = Modifier.weight(1f)) {
                     Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
@@ -10808,6 +10821,58 @@ private fun RewardsManagerScreen(
                 Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(approvalsText) }
             } else {
                 OutlinedButton(onClick = { activeTab = "approvals" }, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+            }
+        }
+
+        if (activeTab == "shop") {
+            val shopRewards = remember(allRewards) {
+                allRewards.filter { it.isEnabled && (it.eligibility == "ALL" || it.eligibility == "ADULT_ONLY") }
+            }
+            Text(
+                text = stringResource(R.string.mobile_rewards_your_balance, currentUserPoints),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            if (shopRewards.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_manager_shop_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    shopRewards.forEach { reward ->
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (!reward.icon.isNullOrBlank()) {
+                                    Text(reward.icon, style = MaterialTheme.typography.headlineSmall)
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(reward.title, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Button(
+                                    onClick = { onRedeemReward(reward.id) },
+                                    enabled = currentUserPoints >= reward.pointCost
+                                ) {
+                                    Text(stringResource(R.string.mobile_rewards_redeem))
+                                }
+                            }
+                        }
+                    }
+                }
             }
         }
 

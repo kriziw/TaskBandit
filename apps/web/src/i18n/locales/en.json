@@ -920,5 +920,6 @@
   "reward.category.custom": "Custom",
 
   "rewards.manager.tab.my_shop": "My Shop",
+  "rewards.manager.shop.empty_for_admin": "No rewards are enabled yet. Go to Catalogue to enable rewards for your household.",
   "settings.require_reward_approval": "Require approval for reward redemptions"
 }

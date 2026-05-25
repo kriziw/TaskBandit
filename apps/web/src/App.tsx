@@ -1255,7 +1255,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
   const [selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup] = useState("");
   const [rewardsTab, setRewardsTab] = useState<"shop" | "history">("shop");
-  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("catalogue");
+  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("my_shop");
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [isCreatingNewReward, setIsCreatingNewReward] = useState(false);
   const [rewardForm, setRewardForm] = useState<{
@@ -10289,6 +10289,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <div className="segmented-toggle">
                       <button
                         type="button"
+                        className={rewardsManagerTab === "my_shop" ? "active" : ""}
+                        onClick={() => setRewardsManagerTab("my_shop")}
+                      >{t("rewards.manager.tab.my_shop")}</button>
+                      <button
+                        type="button"
                         className={rewardsManagerTab === "catalogue" ? "active" : ""}
                         onClick={() => setRewardsManagerTab("catalogue")}
                       >{t("rewards.manager.tab.catalogue")}</button>
@@ -10300,11 +10305,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         {t("rewards.manager.tab.approvals")}
                         {pendingRedemptions.length > 0 && <span className="inline-badge">{pendingRedemptions.length}</span>}
                       </button>
-                      <button
-                        type="button"
-                        className={rewardsManagerTab === "my_shop" ? "active" : ""}
-                        onClick={() => setRewardsManagerTab("my_shop")}
-                      >{t("rewards.manager.tab.my_shop")}</button>
                     </div>
 
                     {rewardsManagerTab === "catalogue" && (
@@ -10389,7 +10389,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       <div>
                         <p className="section-kicker">{payload.currentUser.points} {t("user.points_short")}</p>
                         {enabledRewards.length === 0 ? (
-                          <p className="inline-message">{t("rewards.shop.empty")}</p>
+                          <p className="inline-message">{t("rewards.manager.shop.empty_for_admin")}</p>
                         ) : (
                           <div className="rewards-grid">
                             {enabledRewards.map((reward) => (
@@ -10426,7 +10426,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       </button>
                     ) : null}
                     {(selectedReward || isCreatingNewReward) ? (
-                      <form onSubmit={(e) => void handleSaveReward(e)}>
+                      <form className="login-form member-form template-editor-panel" onSubmit={(e) => void handleSaveReward(e)}>
                         {selectedReward?.isOperatorManaged && (
                           <p className="inline-message">{t("rewards.operator_managed_notice")}</p>
                         )}
