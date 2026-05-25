@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.74.2](https://github.com/kriziw/TaskBandit/compare/v0.74.1...v0.74.2) (2026-05-25)
+
+
+### Bug Fixes
+
+* **android:** update banner — deep-link to update card, dismiss button clears FAB ([#497](https://github.com/kriziw/TaskBandit/issues/497)) ([7d79daa](https://github.com/kriziw/TaskBandit/commit/7d79daa26ba9659deba2b7e07b124f6bbc23a5e5))
+
 ## [0.74.1](https://github.com/kriziw/TaskBandit/compare/v0.74.0...v0.74.1) (2026-05-25)
 
 
