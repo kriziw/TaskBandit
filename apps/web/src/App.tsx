@@ -18,6 +18,13 @@ import {
   type TemplateFormState,
 } from "./stores/templateStore";
 import { useRewardStore } from "./stores/rewardStore";
+import {
+  useSettingsStore,
+  createEmptyMemberForm,
+  createEmptyMemberEditForm,
+  type MemberFormState,
+  type MemberEditFormState,
+} from "./stores/settingsStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
@@ -95,8 +102,6 @@ type ReadinessChecklistItem = {
   detail: string;
 };
 
-type MemberFormState = CreateHouseholdMemberInput;
-type MemberEditFormState = UpdateHouseholdMemberInput;
 type BootstrapFormState = BootstrapHouseholdInput;
 type OnboardingStep = string;
 type OnboardingTourMode = "admin" | "client" | "client-mobile";
@@ -430,67 +435,6 @@ function hasTemplateTranslationCoverage(template: ChoreTemplate, locale: Templat
   return Boolean(translation?.groupTitle?.trim() && translation?.title?.trim());
 }
 
-function createTemporaryPassword(length = 16) {
-  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lowercase = "abcdefghijkmnopqrstuvwxyz";
-  const digits = "23456789";
-  const symbols = "!@#$%*-_?";
-  const allCharacters = uppercase + lowercase + digits + symbols;
-  const randomValues = new Uint32Array(length);
-  const cryptoProvider = globalThis.crypto;
-
-  if (cryptoProvider?.getRandomValues) {
-    cryptoProvider.getRandomValues(randomValues);
-  } else {
-    for (let index = 0; index < length; index += 1) {
-      randomValues[index] = Math.floor(Math.random() * 0xffffffff);
-    }
-  }
-
-  const requiredCharacters = [
-    uppercase[randomValues[0] % uppercase.length],
-    lowercase[randomValues[1] % lowercase.length],
-    digits[randomValues[2] % digits.length],
-    symbols[randomValues[3] % symbols.length]
-  ];
-
-  const generatedCharacters = [
-    ...requiredCharacters,
-    ...Array.from({ length: Math.max(length - requiredCharacters.length, 0) }, (_, index) => {
-      const randomValue = randomValues[index + requiredCharacters.length];
-      return allCharacters[randomValue % allCharacters.length];
-    })
-  ];
-
-  for (let index = generatedCharacters.length - 1; index > 0; index -= 1) {
-    const swapIndex = randomValues[index] % (index + 1);
-    [generatedCharacters[index], generatedCharacters[swapIndex]] = [
-      generatedCharacters[swapIndex],
-      generatedCharacters[index]
-    ];
-  }
-
-  return generatedCharacters.join("");
-}
-
-function createEmptyMemberForm(): MemberFormState {
-  return {
-    displayName: "",
-    role: "child",
-    email: "",
-    password: createTemporaryPassword(),
-    sendInviteEmail: false
-  };
-}
-
-function createEmptyMemberEditForm(): MemberEditFormState {
-  return {
-    displayName: "",
-    role: "child",
-    email: "",
-    password: ""
-  };
-}
 
 function getSmtpTestSettings(
   settings: Pick<
@@ -1085,10 +1029,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setIsLoading,
     clearDashboard,
   } = useDashboardStore();
-  const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
-  const [smtpVerifiedFingerprint, setSmtpVerifiedFingerprint] = useState<string | null>(null);
-  const [notificationPreferencesDraft, setNotificationPreferencesDraft] =
-    useState<NotificationPreferences | null>(null);
+  const {
+    settingsDraft, setSettingsDraft,
+    smtpVerifiedFingerprint, setSmtpVerifiedFingerprint,
+    notificationPreferencesDraft, setNotificationPreferencesDraft,
+    memberForm, setMemberForm,
+    memberEditForm, setMemberEditForm,
+    editingMemberId, setEditingMemberId,
+    expandedDeviceDetailsById, setExpandedDeviceDetailsById,
+  } = useSettingsStore();
   const {
     submitSelections, setSubmitSelections,
     selectedProofFiles, setSelectedProofFiles,
@@ -1128,9 +1077,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     closeQuickLog,
     clearInstanceEdit,
   } = useChoreStore();
-  const [memberForm, setMemberForm] = useState<MemberFormState>(createEmptyMemberForm);
-  const [memberEditForm, setMemberEditForm] = useState<MemberEditFormState>(createEmptyMemberEditForm);
-  const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const {
     templateForm, setTemplateForm,
     editingTemplateId, setEditingTemplateId,
@@ -1155,7 +1101,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       typeof window !== "undefined" &&
       window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
   );
-  const [expandedDeviceDetailsById, setExpandedDeviceDetailsById] = useState<Record<string, boolean>>({});
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [isMobileMoreSheetOpen, setIsMobileMoreSheetOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
