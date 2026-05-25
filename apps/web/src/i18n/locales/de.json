@@ -920,5 +920,6 @@
   "reward.category.custom": "Benutzerdefiniert",
 
   "rewards.manager.tab.my_shop": "Mein Shop",
+  "rewards.manager.shop.empty_for_admin": "Noch keine Belohnungen aktiviert. Gehe zum Katalog, um Belohnungen für deinen Haushalt zu aktivieren.",
   "settings.require_reward_approval": "Genehmigung für Belohnungseinlösungen erforderlich"
 }

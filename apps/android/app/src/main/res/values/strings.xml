@@ -574,6 +574,9 @@
 
     <!-- Rewards Manager (admin) -->
     <string name="mobile_rewards_manager_title">Reward Manager</string>
+    <string name="mobile_rewards_manager_shop_tab">Shop</string>
+    <string name="mobile_rewards_manager_shop_empty">No rewards are enabled yet. Go to Catalogue to enable rewards for your household.</string>
+    <string name="mobile_rewards_your_balance">Your balance: %1$d pts</string>
     <string name="mobile_rewards_manager_catalogue_tab">Catalogue</string>
     <string name="mobile_rewards_manager_approvals_tab">Approvals</string>
     <string name="mobile_rewards_add_custom">+ Add custom reward</string>
