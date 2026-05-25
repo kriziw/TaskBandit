@@ -137,6 +137,12 @@ enum RewardCategory {
   CUSTOM
 }
 
+enum RewardEligibility {
+  ALL
+  CHILD_ONLY
+  ADULT_ONLY
+}
+
 enum RewardRedemptionStatus {
   PENDING
   APPROVED
@@ -591,6 +597,7 @@ model Reward {
   description            String?        @db.VarChar(2000)
   descriptionTranslations Json?
   category               RewardCategory @default(CUSTOM)
+  eligibility            RewardEligibility @default(ALL)
   icon                   String?
   pointCost              Int
   maxRedemptionsPerChild Int?

@@ -32,6 +32,7 @@ import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -51,6 +52,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
@@ -110,6 +112,20 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TopAppBar
+import com.taskbandit.app.mobile.MobileReward
+import com.taskbandit.app.mobile.MobileRedemption
+import com.taskbandit.app.mobile.CreateRewardInput
+import com.taskbandit.app.mobile.UpdateRewardInput
+import com.taskbandit.app.mobile.CreateChoreTemplateInput
+import com.taskbandit.app.mobile.CreateTemplateChecklistItemInput
+import com.taskbandit.app.mobile.CreateTemplateVariantInput
+import com.taskbandit.app.mobile.MobileVariantLabelTranslation
+import com.taskbandit.app.mobile.MobileTemplateDependencyRule
+import com.taskbandit.app.mobile.MobileTemplateTranslation
+import com.taskbandit.app.mobile.MobileTemplateChecklistItem
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
@@ -238,7 +254,9 @@ private enum class MobileDashboardTab {
     LEADERBOARD,
     REWARDS,
     CREATE,
-    SETTINGS
+    MORE,
+    TEMPLATE_MANAGER,
+    REWARDS_MANAGER
 }
 
 private enum class MobileChoreSection {
@@ -1764,6 +1782,162 @@ private fun TaskBanditApp(
         }
     }
 
+    // ── Template Manager state & functions ──────────────────────────────────
+    var templateManagerTemplates by remember { mutableStateOf<List<MobileChoreTemplate>>(emptyList()) }
+    var templateManagerLoading by remember { mutableStateOf(false) }
+    var templateManagerError by remember { mutableStateOf<String?>(null) }
+
+    fun loadTemplatesForManager() {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        templateManagerLoading = true
+        templateManagerError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.getChoreTemplates(baseUrl, token) }
+            }.onSuccess { result ->
+                templateManagerTemplates = result
+                templateManagerLoading = false
+            }.onFailure { throwable ->
+                templateManagerLoading = false
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else templateManagerError = throwable.message
+            }
+        }
+    }
+
+    fun createTemplate(input: CreateChoreTemplateInput) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        templateManagerError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.createChoreTemplate(baseUrl, token, input) }
+            }.onSuccess { created ->
+                templateManagerTemplates = templateManagerTemplates + created
+                dashboard = dashboard?.copy(templates = dashboard?.templates.orEmpty() + created)
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else templateManagerError = throwable.message
+            }
+        }
+    }
+
+    fun updateTemplate(templateId: String, input: CreateChoreTemplateInput) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        templateManagerError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.updateChoreTemplate(baseUrl, token, templateId, input) }
+            }.onSuccess { updated ->
+                templateManagerTemplates = templateManagerTemplates.map { if (it.id == updated.id) updated else it }
+                dashboard = dashboard?.copy(templates = dashboard?.templates.orEmpty().map { if (it.id == updated.id) updated else it })
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else templateManagerError = throwable.message
+            }
+        }
+    }
+
+    fun deleteTemplate(templateId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        templateManagerError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.deleteChoreTemplate(baseUrl, token, templateId) }
+            }.onSuccess {
+                templateManagerTemplates = templateManagerTemplates.filter { it.id != templateId }
+                dashboard = dashboard?.copy(templates = dashboard?.templates.orEmpty().filter { it.id != templateId })
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else templateManagerError = throwable.message
+            }
+        }
+    }
+
+    fun resetTemplatesToDefaults() {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        templateManagerError = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.resetTemplatesToDefaults(baseUrl, token) }
+            }.onSuccess {
+                loadTemplatesForManager()
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else templateManagerError = throwable.message
+            }
+        }
+    }
+
+    // ── Rewards Manager state & functions ───────────────────────────────────
+    fun createReward(input: CreateRewardInput) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        errorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.createReward(baseUrl, token, input) }
+            }.onSuccess { created ->
+                dashboard = dashboard?.copy(rewards = dashboard?.rewards.orEmpty() + created)
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else errorMessage = throwable.message
+            }
+        }
+    }
+
+    fun updateReward(rewardId: String, input: UpdateRewardInput) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        errorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.updateReward(baseUrl, token, rewardId, input) }
+            }.onSuccess { updated ->
+                dashboard = dashboard?.copy(rewards = dashboard?.rewards.orEmpty().map { if (it.id == updated.id) updated else it })
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else errorMessage = throwable.message
+            }
+        }
+    }
+
+    fun deleteReward(rewardId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        errorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.deleteReward(baseUrl, token, rewardId) }
+            }.onSuccess {
+                dashboard = dashboard?.copy(rewards = dashboard?.rewards.orEmpty().filter { it.id != rewardId })
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else errorMessage = throwable.message
+            }
+        }
+    }
+
+    fun toggleReward(rewardId: String) {
+        val token = session.token ?: return
+        val baseUrl = normalizedServerUrl()
+        errorMessage = null
+        coroutineScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.toggleRewardEnabled(baseUrl, token, rewardId) }
+            }.onSuccess { updated ->
+                dashboard = dashboard?.copy(rewards = dashboard?.rewards.orEmpty().map { if (it.id == updated.id) updated else it })
+            }.onFailure { throwable ->
+                if (throwable is TaskBanditUnauthorizedException) logout()
+                else errorMessage = throwable.message
+            }
+        }
+    }
+
     fun updateThemeMode(nextThemeMode: MobileThemeMode) {
         appPreferencesStore.saveThemeMode(nextThemeMode)
         themeMode = nextThemeMode
@@ -2244,7 +2418,19 @@ private fun TaskBanditApp(
                         }
                     },
                     onRedeemReward = ::redeemReward,
-                    onResolveRedemption = ::resolveRedemption
+                    onResolveRedemption = ::resolveRedemption,
+                    templateManagerTemplates = templateManagerTemplates,
+                    templateManagerLoading = templateManagerLoading,
+                    templateManagerError = templateManagerError,
+                    onLoadTemplatesForManager = ::loadTemplatesForManager,
+                    onCreateTemplate = ::createTemplate,
+                    onUpdateTemplate = ::updateTemplate,
+                    onDeleteTemplate = ::deleteTemplate,
+                    onResetTemplatesToDefaults = ::resetTemplatesToDefaults,
+                    onCreateReward = ::createReward,
+                    onUpdateReward = ::updateReward,
+                    onDeleteReward = ::deleteReward,
+                    onToggleReward = ::toggleReward
                 )
             }
         }
@@ -2857,13 +3043,26 @@ private fun DashboardScreen(
     onAvatarUpload: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
     onRedeemReward: (String) -> Unit,
-    onResolveRedemption: (String, Boolean, String?) -> Unit
+    onResolveRedemption: (String, Boolean, String?) -> Unit,
+    templateManagerTemplates: List<MobileChoreTemplate>,
+    templateManagerLoading: Boolean,
+    templateManagerError: String?,
+    onLoadTemplatesForManager: () -> Unit,
+    onCreateTemplate: (CreateChoreTemplateInput) -> Unit,
+    onUpdateTemplate: (String, CreateChoreTemplateInput) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onResetTemplatesToDefaults: () -> Unit,
+    onCreateReward: (CreateRewardInput) -> Unit,
+    onUpdateReward: (String, UpdateRewardInput) -> Unit,
+    onDeleteReward: (String) -> Unit,
+    onToggleReward: (String) -> Unit
 ) {
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
     val featureAccess = dashboard?.user?.featureAccess ?: MobileFeatureAccess()
     val templateCreateCapabilities = resolveTemplateCreateCapabilities(featureAccess, hostedSubscription.featureAccess)
     val canManageChores = templateCreateCapabilities.canOpenCreateTab
+    val canManageTemplates = templateCreateCapabilities.canEditTemplates
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val canUseQuickLog = isCreatorRole && featureAccess.quickLog
@@ -2903,6 +3102,9 @@ private fun DashboardScreen(
     var showProfileDialog by rememberSaveable { mutableStateOf(false) }
     var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
     var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
+    var showMoreSheet by rememberSaveable { mutableStateOf(false) }
+    val dashboardListState = rememberLazyListState()
+    var shouldScrollToUpdate by remember { mutableStateOf(false) }
     var rewardsShopTab by rememberSaveable { mutableStateOf("shop") }
     var redeemConfirmRewardId by rememberSaveable { mutableStateOf<String?>(null) }
     var rejectRedemptionId by rememberSaveable { mutableStateOf<String?>(null) }
@@ -4008,10 +4210,46 @@ private fun DashboardScreen(
         }
     }
 
+    if (showMoreSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showMoreSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            MoreMenuSheet(
+                isCreatorRole = isCreatorRole,
+                canManageTemplates = canManageTemplates,
+                onNavigateSettings = {
+                    showMoreSheet = false
+                    openTab(MobileDashboardTab.MORE)
+                },
+                onNavigateTemplates = {
+                    showMoreSheet = false
+                    openTab(MobileDashboardTab.TEMPLATE_MANAGER)
+                },
+                onNavigateRewardsManager = {
+                    showMoreSheet = false
+                    openTab(MobileDashboardTab.REWARDS_MANAGER)
+                }
+            )
+        }
+    }
+
+    // Scroll to the release/update card when the banner is tapped on the home screen.
+    // The release card index depends on whether the hosted-plan card is visible.
+    LaunchedEffect(activeTab, shouldScrollToUpdate) {
+        if (shouldScrollToUpdate && activeTab == MobileDashboardTab.MORE) {
+            val releaseItemIndex = if (hostedSubscription.hostedMode && isCreatorRole) 4 else 3
+            dashboardListState.animateScrollToItem(releaseItemIndex)
+            shouldScrollToUpdate = false
+        }
+    }
+
     BackHandler(
-        enabled = showSpeedDial || showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
+        enabled = showMoreSheet || showSpeedDial || showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
     ) {
-        if (showSpeedDial) { showSpeedDial = false } else backWithinDashboard()
+        if (showMoreSheet) { showMoreSheet = false }
+        else if (showSpeedDial) { showSpeedDial = false }
+        else backWithinDashboard()
     }
 
     CompositionLocalProvider(
@@ -4210,11 +4448,11 @@ private fun DashboardScreen(
                         )
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.SETTINGS,
-                            label = stringResource(R.string.mobile_tab_settings),
-                            iconRes = R.drawable.mobile_nav_settings,
+                            selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || activeTab == MobileDashboardTab.REWARDS_MANAGER || showMoreSheet,
+                            label = stringResource(R.string.mobile_tab_more),
+                            iconRes = R.drawable.mobile_nav_more,
                             showLabel = isNewMobileUi,
-                            onClick = { openTab(MobileDashboardTab.SETTINGS) }
+                            onClick = { showMoreSheet = true }
                         )
                     }
                 }
@@ -4268,11 +4506,11 @@ private fun DashboardScreen(
                             )
                             MobileTabButton(
                                 modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.SETTINGS,
-                                label = stringResource(R.string.mobile_tab_settings),
-                                iconRes = R.drawable.mobile_nav_settings,
+                                selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || activeTab == MobileDashboardTab.REWARDS_MANAGER || showMoreSheet,
+                                label = stringResource(R.string.mobile_tab_more),
+                                iconRes = R.drawable.mobile_nav_more,
                                 showLabel = isNewMobileUi,
-                                onClick = { openTab(MobileDashboardTab.SETTINGS) }
+                                onClick = { showMoreSheet = true }
                             )
                         }
                     }
@@ -4296,6 +4534,7 @@ private fun DashboardScreen(
             val isTablet = isTabletWidth(maxWidth)
             Box(modifier = Modifier.fillMaxSize()) {
                 LazyColumn(
+                    state = dashboardListState,
                     modifier = Modifier
                         .fillMaxSize()
                         .padding(horizontal = if (isTablet) 28.dp else if (isNewMobileUi) 6.dp else 20.dp, vertical = 16.dp)
@@ -5062,7 +5301,7 @@ private fun DashboardScreen(
                 }
             }
 
-            if (activeTab == MobileDashboardTab.SETTINGS) {
+            if (activeTab == MobileDashboardTab.MORE) {
                 item {
                     SectionIntro(
                         title = stringResource(R.string.mobile_settings_title),
@@ -5108,6 +5347,45 @@ private fun DashboardScreen(
                     }
                 }
             }
+
+                }
+
+                // ── Full-screen overlays for virtual tabs ─────────────────────────────
+                // Rendered OUTSIDE the LazyColumn so they get proper bounded constraints
+                // (Scaffold and nested LazyColumn both require bounded height).
+                if (activeTab == MobileDashboardTab.TEMPLATE_MANAGER) {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        TemplateManagerScreen(
+                            templates = templateManagerTemplates,
+                            isLoading = templateManagerLoading,
+                            error = templateManagerError,
+                            allTemplates = templateManagerTemplates,
+                            onRefresh = onLoadTemplatesForManager,
+                            onCreateTemplate = onCreateTemplate,
+                            onUpdateTemplate = onUpdateTemplate,
+                            onDeleteTemplate = onDeleteTemplate,
+                            onResetToDefaults = onResetTemplatesToDefaults,
+                            canManageTemplates = canManageTemplates,
+                            isAdmin = currentUserRole == "admin"
+                        )
+                    }
+                }
+
+                if (activeTab == MobileDashboardTab.REWARDS_MANAGER) {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        RewardsManagerScreen(
+                            allRewards = dashboard?.rewards.orEmpty(),
+                            pendingRedemptions = dashboard?.redemptions.orEmpty().filter { it.status == "PENDING" },
+                            currentUserPoints = currentUserPoints,
+                            onCreateReward = onCreateReward,
+                            onUpdateReward = onUpdateReward,
+                            onDeleteReward = onDeleteReward,
+                            onToggleReward = onToggleReward,
+                            onApproveRedemption = { id -> onResolveRedemption(id, true, null) },
+                            onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) },
+                            onRedeemReward = { redeemConfirmRewardId = it }
+                        )
+                    }
                 }
 
                 if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice && hasSyncFailureContext) {
@@ -5133,12 +5411,19 @@ private fun DashboardScreen(
                     exit = fadeOut(animationSpec = tween(200)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        .padding(horizontal = 16.dp, vertical = 16.dp)
+                        // Leave extra room on the right so the dismiss ✕ button is not
+                        // hidden behind the circular create FAB (60dp + 16dp margin + 8dp gap).
+                        .padding(
+                            start = 16.dp,
+                            end = if (isNewMobileUi && canManageChores && !isTablet) 92.dp else 16.dp,
+                            top = 16.dp,
+                            bottom = 16.dp
+                        )
                         .then(if (isTablet) Modifier.widthIn(max = 480.dp) else Modifier)
                 ) {
                     visibleGithubUpdate?.let { update ->
                         Card(
-                            onClick = { openTab(MobileDashboardTab.SETTINGS) },
+                            onClick = { openTab(MobileDashboardTab.MORE); shouldScrollToUpdate = true },
                             shape = RoundedCornerShape(20.dp),
                             elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
                             colors = CardDefaults.cardColors(
@@ -5299,62 +5584,65 @@ private fun MobileTabButton(
     } else {
         MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
     }
-    TextButton(
-        modifier = modifier.semantics(mergeDescendants = true) { contentDescription = label },
-        onClick = onClick,
-        enabled = enabled,
-        contentPadding = PaddingValues(horizontal = 1.dp, vertical = 2.dp),
-        colors = ButtonDefaults.textButtonColors(contentColor = iconTint)
+    // Use Column+clickable instead of TextButton so Compose doesn't clip
+    // the label text to the TextButton's pill/stadium shape. "Leaderboard"
+    // (the longest label) was being cut off at the circle icon edges.
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 1.dp, vertical = 2.dp)
+            .semantics(mergeDescendants = true) { contentDescription = label },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
     ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Box(contentAlignment = Alignment.TopEnd) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(chipColor, CircleShape)
+                    .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .alpha(if (enabled) 1f else 0.45f)
+                )
+            }
+            if (badge > 0) {
                 Box(
                     modifier = Modifier
-                        .size(48.dp)
-                        .background(chipColor, CircleShape)
-                        .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                        .size(16.dp)
+                        .background(Color(0xFFFF6B6B), CircleShape),
                     contentAlignment = Alignment.Center
                 ) {
-                    Image(
-                        painter = painterResource(id = iconRes),
-                        contentDescription = null,
-                        modifier = Modifier
-                            .size(32.dp)
-                            .alpha(if (enabled) 1f else 0.45f)
+                    Text(
+                        text = badge.coerceAtMost(99).toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = Color.White,
+                        maxLines = 1
                     )
                 }
-                if (badge > 0) {
-                    Box(
-                        modifier = Modifier
-                            .size(16.dp)
-                            .background(Color(0xFFFF6B6B), CircleShape),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = badge.coerceAtMost(99).toString(),
-                            style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
-                            color = Color.White,
-                            maxLines = 1
-                        )
-                    }
-                }
             }
-            if (showLabel) {
-                Text(
-                    text = label,
-                    style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.04f),
-                    color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
-            }
-            if (selected) {
-                Box(
-                    modifier = Modifier
-                        .size(width = 14.dp, height = 3.dp)
-                        .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
-                )
-            }
+        }
+        if (showLabel) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.04f),
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(width = 14.dp, height = 3.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+            )
         }
     }
 }
@@ -9600,5 +9888,1448 @@ private fun downloadAndInstallApk(
         context.startActivity(installIntent)
     } catch (_: Exception) {
         mainHandler.post { onError() }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// TEMPLATE MANAGER
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun TemplateManagerScreen(
+    templates: List<MobileChoreTemplate>,
+    isLoading: Boolean,
+    error: String?,
+    allTemplates: List<MobileChoreTemplate>,
+    onRefresh: () -> Unit,
+    onCreateTemplate: (CreateChoreTemplateInput) -> Unit,
+    onUpdateTemplate: (String, CreateChoreTemplateInput) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onResetToDefaults: () -> Unit,
+    canManageTemplates: Boolean,
+    isAdmin: Boolean
+) {
+    LaunchedEffect(Unit) { onRefresh() }
+
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingTemplate by remember { mutableStateOf<MobileChoreTemplate?>(null) }
+    var showEditor by rememberSaveable { mutableStateOf(false) }
+    var deleteConfirmTemplate by remember { mutableStateOf<MobileChoreTemplate?>(null) }
+    var showResetConfirm by rememberSaveable { mutableStateOf(false) }
+
+    val allGroups = remember(templates) { templates.map { it.groupTitle }.distinct().sorted() }
+    val filteredTemplates = remember(templates, searchQuery, selectedGroup) {
+        templates.filter { t ->
+            (searchQuery.isBlank() || t.title.contains(searchQuery, ignoreCase = true) || t.groupTitle.contains(searchQuery, ignoreCase = true)) &&
+            (selectedGroup == null || t.groupTitle == selectedGroup)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            SectionIntro(
+                title = stringResource(R.string.mobile_template_manager_title),
+                body = stringResource(R.string.mobile_template_manager_hint),
+                compact = true
+            )
+
+            // Search + New Template row
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(stringResource(R.string.mobile_template_search), style = MaterialTheme.typography.bodyMedium) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp)
+                )
+                if (canManageTemplates) {
+                    OutlinedButton(onClick = { editingTemplate = null; showEditor = true }) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // Group filter chips
+            if (allGroups.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedGroup == null,
+                        onClick = { selectedGroup = null },
+                        label = { Text(stringResource(R.string.mobile_template_all_groups)) }
+                    )
+                    allGroups.forEach { group ->
+                        FilterChip(
+                            selected = selectedGroup == group,
+                            onClick = { selectedGroup = if (selectedGroup == group) null else group },
+                            label = { Text(group) }
+                        )
+                    }
+                }
+            }
+
+            // Loading / Error / List
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                error != null -> {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                filteredTemplates.isEmpty() -> {
+                    Text(
+                        text = stringResource(R.string.mobile_template_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(24.dp)
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredTemplates, key = { it.id }) { template ->
+                            TemplateCard(
+                                template = template,
+                                onClick = { editingTemplate = template; showEditor = true }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Reset to defaults (admin only)
+            if (isAdmin && canManageTemplates) {
+                TextButton(
+                    onClick = { showResetConfirm = true },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Text(stringResource(R.string.mobile_template_reset_to_defaults), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
+        // Editor overlay
+        AnimatedVisibility(
+            visible = showEditor,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                TemplateEditorScreen(
+                    template = editingTemplate,
+                    allTemplates = allTemplates,
+                    onSave = { input ->
+                        val id = editingTemplate?.id
+                        if (id != null) onUpdateTemplate(id, input) else onCreateTemplate(input)
+                        showEditor = false
+                    },
+                    onDelete = { deleteConfirmTemplate = editingTemplate; showEditor = false },
+                    onBack = { showEditor = false }
+                )
+            }
+        }
+    }
+
+    // Delete confirmation
+    deleteConfirmTemplate?.let { toDelete ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmTemplate = null },
+            title = { Text(toDelete.title) },
+            text = { Text(stringResource(R.string.mobile_template_delete_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = { onDeleteTemplate(toDelete.id); deleteConfirmTemplate = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_common_delete)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { deleteConfirmTemplate = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+
+    // Reset confirmation
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text(stringResource(R.string.mobile_template_reset_to_defaults)) },
+            text = { Text(stringResource(R.string.mobile_template_reset_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = { onResetToDefaults(); showResetConfirm = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_template_reset_to_defaults)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showResetConfirm = false }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TemplateCard(
+    template: MobileChoreTemplate,
+    onClick: () -> Unit
+) {
+    val difficultyColor = when (template.difficulty) {
+        "easy" -> Color(0xFFFFC94A)
+        "hard" -> Color(0xFFE53935)
+        else   -> Color(0xFFFF7A6B)
+    }
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(template.title, style = MaterialTheme.typography.titleMedium)
+                Text(template.groupTitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (template.checklist.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.mobile_template_steps, template.checklist.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Difficulty badge
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = difficultyColor.copy(alpha = 0.18f)
+                ) {
+                    Text(
+                        text = when (template.difficulty) {
+                            "easy" -> stringResource(R.string.mobile_template_difficulty_easy)
+                            "hard" -> stringResource(R.string.mobile_template_difficulty_hard)
+                            else -> stringResource(R.string.mobile_template_difficulty_medium)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = difficultyColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+                // Locale indicators
+                val locales = template.translations.map { it.locale }.filter { it != template.defaultLocale }
+                if (locales.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        locales.forEach { locale ->
+                            Text(
+                                text = locale.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateEditorScreen(
+    template: MobileChoreTemplate?,
+    allTemplates: List<MobileChoreTemplate>,
+    onSave: (CreateChoreTemplateInput) -> Unit,
+    onDelete: () -> Unit,
+    onBack: () -> Unit
+) {
+    // ── Locale tab state ──
+    var editingLocale by rememberSaveable { mutableStateOf("en") }
+
+    // ── Core fields ──
+    var editGroupTitle by rememberSaveable { mutableStateOf(template?.groupTitle ?: "") }
+    var editTitle by rememberSaveable { mutableStateOf(template?.title ?: "") }
+    var editDescription by rememberSaveable { mutableStateOf(template?.description ?: "") }
+    var editDifficulty by rememberSaveable { mutableStateOf(template?.difficulty ?: "medium") }
+    var editAssignmentStrategy by rememberSaveable { mutableStateOf(template?.assignmentStrategy ?: "round_robin") }
+    var editDefaultLocale by rememberSaveable { mutableStateOf(template?.defaultLocale ?: "en") }
+    var editRecurrenceType by rememberSaveable { mutableStateOf(template?.recurrence?.type ?: "none") }
+    var editRecurrenceIntervalDays by rememberSaveable { mutableStateOf(template?.recurrence?.intervalDays?.toString() ?: "") }
+    var editRecurrenceWeekdays by rememberSaveable { mutableStateOf(template?.recurrence?.weekdays ?: emptyList()) }
+    var editRequirePhotoProof by rememberSaveable { mutableStateOf(template?.requirePhotoProof ?: false) }
+    var editStickyFollowUpAssignee by rememberSaveable { mutableStateOf(template?.stickyFollowUpAssignee ?: false) }
+    var editRecurrenceStartStrategy by rememberSaveable { mutableStateOf(template?.recurrenceStartStrategy ?: "due_at") }
+
+    // ── Translations ──
+    var editTranslations by remember { mutableStateOf(template?.translations ?: emptyList()) }
+
+    // ── Checklist ──
+    var editChecklist by remember { mutableStateOf(
+        template?.checklist?.map { CreateTemplateChecklistItemInput(it.title, it.required) } ?: emptyList()
+    ) }
+
+    // ── Variants ──
+    var editVariants by remember { mutableStateOf(
+        template?.variants?.map { CreateTemplateVariantInput(it.id, it.label, it.translations) } ?: emptyList()
+    ) }
+
+    // ── Dependency rules ──
+    var editDependencyRules by remember { mutableStateOf(template?.dependencyRules ?: emptyList()) }
+
+    // ── Section expansion state ──
+    var recurrenceExpanded by rememberSaveable { mutableStateOf(false) }
+    var checklistExpanded by rememberSaveable { mutableStateOf(false) }
+    var variantsExpanded by rememberSaveable { mutableStateOf(false) }
+    var followupsExpanded by rememberSaveable { mutableStateOf(false) }
+
+    // ── Dropdown expansion state ──
+    var difficultyExpanded by remember { mutableStateOf(false) }
+    var strategyExpanded by remember { mutableStateOf(false) }
+    var defaultLocaleExpanded by remember { mutableStateOf(false) }
+    var recurrenceTypeExpanded by remember { mutableStateOf(false) }
+    var recurrenceStartExpanded by remember { mutableStateOf(false) }
+
+    // ── Locale helpers ──
+    fun getLocaleText(field: String): String {
+        if (editingLocale == "en") return when (field) {
+            "groupTitle" -> editGroupTitle; "title" -> editTitle; else -> editDescription
+        }
+        val t = editTranslations.firstOrNull { it.locale == editingLocale }
+        return when (field) {
+            "groupTitle" -> t?.groupTitle ?: ""; "title" -> t?.title ?: ""; else -> t?.description ?: ""
+        }
+    }
+    fun setLocaleText(field: String, value: String) {
+        if (editingLocale == "en") {
+            when (field) { "groupTitle" -> editGroupTitle = value; "title" -> editTitle = value; else -> editDescription = value }
+            return
+        }
+        val updated = editTranslations.toMutableList()
+        val idx = updated.indexOfFirst { it.locale == editingLocale }
+        val existing = if (idx >= 0) updated[idx] else MobileTemplateTranslation(locale = editingLocale)
+        val next = when (field) {
+            "groupTitle" -> existing.copy(groupTitle = value)
+            "title" -> existing.copy(title = value)
+            else -> existing.copy(description = value)
+        }
+        if (idx >= 0) updated[idx] = next else updated.add(next)
+        editTranslations = updated
+    }
+
+    fun buildInput() = CreateChoreTemplateInput(
+        groupTitle = editGroupTitle,
+        title = editTitle,
+        description = editDescription,
+        difficulty = editDifficulty,
+        assignmentStrategy = editAssignmentStrategy,
+        recurrenceType = editRecurrenceType,
+        recurrenceIntervalDays = editRecurrenceIntervalDays.toIntOrNull(),
+        recurrenceWeekdays = editRecurrenceWeekdays,
+        requirePhotoProof = editRequirePhotoProof,
+        stickyFollowUpAssignee = editStickyFollowUpAssignee,
+        recurrenceStartStrategy = editRecurrenceStartStrategy,
+        defaultLocale = editDefaultLocale,
+        translations = editTranslations,
+        checklist = editChecklist,
+        variants = editVariants,
+        dependencyRules = editDependencyRules
+    )
+
+    val weekdayKeys = listOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+    val weekdayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (template == null) stringResource(R.string.mobile_template_editor_new) else template.title) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = stringResource(R.string.mobile_back_label))
+                    }
+                },
+                actions = {
+                    if (template != null) {
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // ── Locale tab row ──
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("en", "de", "hu").forEach { locale ->
+                        val isSelected = editingLocale == locale
+                        if (isSelected) {
+                            Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(locale.uppercase()) }
+                        } else {
+                            OutlinedButton(onClick = { editingLocale = locale }, modifier = Modifier.weight(1f)) { Text(locale.uppercase()) }
+                        }
+                    }
+                }
+            }
+
+            // ── Section 1: Core fields ──
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = getLocaleText("groupTitle"),
+                            onValueChange = { setLocaleText("groupTitle", it) },
+                            label = { Text(stringResource(R.string.mobile_template_field_group)) },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = getLocaleText("title"),
+                            onValueChange = { setLocaleText("title", it) },
+                            label = { Text(stringResource(R.string.mobile_template_field_title)) },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = getLocaleText("description"),
+                            onValueChange = { setLocaleText("description", it) },
+                            label = { Text(stringResource(R.string.mobile_template_field_description)) },
+                            modifier = Modifier.fillMaxWidth(), maxLines = 4
+                        )
+                        // Difficulty dropdown
+                        ExposedDropdownMenuBox(expanded = difficultyExpanded, onExpandedChange = { difficultyExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editDifficulty) {
+                                    "easy" -> stringResource(R.string.mobile_template_difficulty_easy)
+                                    "hard" -> stringResource(R.string.mobile_template_difficulty_hard)
+                                    else -> stringResource(R.string.mobile_template_difficulty_medium)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_difficulty)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = difficultyExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = difficultyExpanded, onDismissRequest = { difficultyExpanded = false }) {
+                                listOf("easy" to R.string.mobile_template_difficulty_easy,
+                                    "medium" to R.string.mobile_template_difficulty_medium,
+                                    "hard" to R.string.mobile_template_difficulty_hard).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editDifficulty = key; difficultyExpanded = false })
+                                }
+                            }
+                        }
+                        // Assignment strategy dropdown
+                        ExposedDropdownMenuBox(expanded = strategyExpanded, onExpandedChange = { strategyExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editAssignmentStrategy) {
+                                    "least_completed_recently" -> stringResource(R.string.mobile_template_strategy_least_completed)
+                                    "highest_streak" -> stringResource(R.string.mobile_template_strategy_highest_streak)
+                                    else -> stringResource(R.string.mobile_template_strategy_round_robin)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_assignment)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = strategyExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
+                                listOf("round_robin" to R.string.mobile_template_strategy_round_robin,
+                                    "least_completed_recently" to R.string.mobile_template_strategy_least_completed,
+                                    "highest_streak" to R.string.mobile_template_strategy_highest_streak).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editAssignmentStrategy = key; strategyExpanded = false })
+                                }
+                            }
+                        }
+                        // Default locale dropdown
+                        ExposedDropdownMenuBox(expanded = defaultLocaleExpanded, onExpandedChange = { defaultLocaleExpanded = it }) {
+                            OutlinedTextField(
+                                value = editDefaultLocale.uppercase(),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_default_locale)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = defaultLocaleExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = defaultLocaleExpanded, onDismissRequest = { defaultLocaleExpanded = false }) {
+                                listOf("en", "de", "hu").forEach { locale ->
+                                    DropdownMenuItem(text = { Text(locale.uppercase()) }, onClick = { editDefaultLocale = locale; defaultLocaleExpanded = false })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // ── Section 2: Recurrence (collapsible) ──
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_recurrence),
+                    expanded = recurrenceExpanded,
+                    onToggle = { recurrenceExpanded = !recurrenceExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ExposedDropdownMenuBox(expanded = recurrenceTypeExpanded, onExpandedChange = { recurrenceTypeExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editRecurrenceType) {
+                                    "daily" -> stringResource(R.string.mobile_template_recurrence_daily)
+                                    "weekly" -> stringResource(R.string.mobile_template_recurrence_weekly)
+                                    "every_x_days" -> stringResource(R.string.mobile_template_recurrence_every_x_days)
+                                    "custom_weekly" -> stringResource(R.string.mobile_template_recurrence_custom_weekly)
+                                    else -> stringResource(R.string.mobile_template_recurrence_none)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_recurrence_type)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceTypeExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = recurrenceTypeExpanded, onDismissRequest = { recurrenceTypeExpanded = false }) {
+                                listOf("none" to R.string.mobile_template_recurrence_none,
+                                    "daily" to R.string.mobile_template_recurrence_daily,
+                                    "weekly" to R.string.mobile_template_recurrence_weekly,
+                                    "every_x_days" to R.string.mobile_template_recurrence_every_x_days,
+                                    "custom_weekly" to R.string.mobile_template_recurrence_custom_weekly).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editRecurrenceType = key; recurrenceTypeExpanded = false })
+                                }
+                            }
+                        }
+                        if (editRecurrenceType == "every_x_days") {
+                            OutlinedTextField(
+                                value = editRecurrenceIntervalDays,
+                                onValueChange = { editRecurrenceIntervalDays = it },
+                                label = { Text(stringResource(R.string.mobile_template_field_recurrence_interval)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true
+                            )
+                        }
+                        if (editRecurrenceType == "weekly" || editRecurrenceType == "custom_weekly") {
+                            Text(stringResource(R.string.mobile_template_field_recurrence_weekdays), style = MaterialTheme.typography.labelMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                weekdayKeys.forEachIndexed { index, key ->
+                                    val selected = editRecurrenceWeekdays.contains(key)
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = {
+                                            editRecurrenceWeekdays = if (selected)
+                                                editRecurrenceWeekdays.filter { it != key }
+                                            else editRecurrenceWeekdays + key
+                                        },
+                                        label = { Text(weekdayLabels[index]) }
+                                    )
+                                }
+                            }
+                        }
+                        ExposedDropdownMenuBox(expanded = recurrenceStartExpanded, onExpandedChange = { recurrenceStartExpanded = it }) {
+                            OutlinedTextField(
+                                value = if (editRecurrenceStartStrategy == "completed_at")
+                                    stringResource(R.string.mobile_template_recurrence_start_completed_at)
+                                else stringResource(R.string.mobile_template_recurrence_start_due_at),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_recurrence_start)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceStartExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = recurrenceStartExpanded, onDismissRequest = { recurrenceStartExpanded = false }) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_recurrence_start_due_at)) }, onClick = { editRecurrenceStartStrategy = "due_at"; recurrenceStartExpanded = false })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_recurrence_start_completed_at)) }, onClick = { editRecurrenceStartStrategy = "completed_at"; recurrenceStartExpanded = false })
+                            }
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.mobile_template_field_photo_proof), style = MaterialTheme.typography.bodyMedium)
+                            Switch(checked = editRequirePhotoProof, onCheckedChange = { editRequirePhotoProof = it })
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.mobile_template_field_sticky_assignee), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            Switch(checked = editStickyFollowUpAssignee, onCheckedChange = { editStickyFollowUpAssignee = it })
+                        }
+                    }
+                }
+            }
+
+            // ── Section 3: Checklist (collapsible) ──
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_checklist),
+                    expanded = checklistExpanded,
+                    onToggle = { checklistExpanded = !checklistExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editChecklist.forEachIndexed { index, item ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = item.title,
+                                    onValueChange = { newTitle ->
+                                        val updated = editChecklist.toMutableList()
+                                        updated[index] = item.copy(title = newTitle)
+                                        editChecklist = updated
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text(stringResource(R.string.mobile_template_checklist_item_label)) },
+                                    singleLine = true
+                                )
+                                Checkbox(
+                                    checked = item.required,
+                                    onCheckedChange = { checked ->
+                                        val updated = editChecklist.toMutableList()
+                                        updated[index] = item.copy(required = checked)
+                                        editChecklist = updated
+                                    }
+                                )
+                                IconButton(onClick = { editChecklist = editChecklist.filterIndexed { i, _ -> i != index } }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                        TextButton(onClick = { editChecklist = editChecklist + CreateTemplateChecklistItemInput("", false) }) {
+                            Text(stringResource(R.string.mobile_template_add_checklist_item))
+                        }
+                    }
+                }
+            }
+
+            // ── Section 4: Variants (collapsible, collapsed by default) ──
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_variants),
+                    expanded = variantsExpanded,
+                    onToggle = { variantsExpanded = !variantsExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editVariants.forEachIndexed { index, variant ->
+                            val localeLabel = if (editingLocale == "en") variant.label
+                            else variant.translations.firstOrNull { it.locale == editingLocale }?.label ?: ""
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = localeLabel,
+                                    onValueChange = { newLabel ->
+                                        val updated = editVariants.toMutableList()
+                                        if (editingLocale == "en") {
+                                            updated[index] = variant.copy(label = newLabel)
+                                        } else {
+                                            val translations = variant.translations.toMutableList()
+                                            val tIdx = translations.indexOfFirst { it.locale == editingLocale }
+                                            if (tIdx >= 0) translations[tIdx] = translations[tIdx].copy(label = newLabel)
+                                            else translations.add(MobileVariantLabelTranslation(editingLocale, newLabel))
+                                            updated[index] = variant.copy(translations = translations)
+                                        }
+                                        editVariants = updated
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text(stringResource(R.string.mobile_template_variant_label)) },
+                                    singleLine = true
+                                )
+                                IconButton(onClick = { editVariants = editVariants.filterIndexed { i, _ -> i != index } }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                        TextButton(onClick = { editVariants = editVariants + CreateTemplateVariantInput(label = "") }) {
+                            Text(stringResource(R.string.mobile_template_add_variant))
+                        }
+                    }
+                }
+            }
+
+            // ── Section 5: Follow-up dependencies (collapsible, collapsed by default) ──
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_followups),
+                    expanded = followupsExpanded,
+                    onToggle = { followupsExpanded = !followupsExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editDependencyRules.forEachIndexed { index, rule ->
+                            var delayUnitExpanded by remember { mutableStateOf(false) }
+                            var followupTemplateExpanded by remember { mutableStateOf(false) }
+                            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(stringResource(R.string.mobile_template_followup_template), style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = { editDependencyRules = editDependencyRules.filterIndexed { i, _ -> i != index } }) {
+                                            Icon(Icons.Rounded.Close, null, tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                    ExposedDropdownMenuBox(expanded = followupTemplateExpanded, onExpandedChange = { followupTemplateExpanded = it }) {
+                                        OutlinedTextField(
+                                            value = allTemplates.firstOrNull { it.id == rule.templateId }?.title ?: rule.templateId,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = followupTemplateExpanded) },
+                                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                            singleLine = true
+                                        )
+                                        ExposedDropdownMenu(expanded = followupTemplateExpanded, onDismissRequest = { followupTemplateExpanded = false }) {
+                                            allTemplates.filter { it.id != template?.id }.forEach { t ->
+                                                DropdownMenuItem(text = { Text(t.title) }, onClick = {
+                                                    val updated = editDependencyRules.toMutableList()
+                                                    updated[index] = rule.copy(templateId = t.id)
+                                                    editDependencyRules = updated
+                                                    followupTemplateExpanded = false
+                                                })
+                                            }
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedTextField(
+                                            value = rule.delayValue.toString(),
+                                            onValueChange = { v ->
+                                                val updated = editDependencyRules.toMutableList()
+                                                updated[index] = rule.copy(delayValue = v.toIntOrNull() ?: 1)
+                                                editDependencyRules = updated
+                                            },
+                                            label = { Text(stringResource(R.string.mobile_template_followup_delay_value)) },
+                                            modifier = Modifier.weight(1f),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            singleLine = true
+                                        )
+                                        ExposedDropdownMenuBox(expanded = delayUnitExpanded, onExpandedChange = { delayUnitExpanded = it }, modifier = Modifier.weight(1f)) {
+                                            OutlinedTextField(
+                                                value = if (rule.delayUnit == "hours") stringResource(R.string.mobile_template_delay_hours) else stringResource(R.string.mobile_template_delay_days),
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text(stringResource(R.string.mobile_template_followup_delay_unit)) },
+                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = delayUnitExpanded) },
+                                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                                            )
+                                            ExposedDropdownMenu(expanded = delayUnitExpanded, onDismissRequest = { delayUnitExpanded = false }) {
+                                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_delay_hours)) }, onClick = {
+                                                    val updated = editDependencyRules.toMutableList(); updated[index] = rule.copy(delayUnit = "hours"); editDependencyRules = updated; delayUnitExpanded = false
+                                                })
+                                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_delay_days)) }, onClick = {
+                                                    val updated = editDependencyRules.toMutableList(); updated[index] = rule.copy(delayUnit = "days"); editDependencyRules = updated; delayUnitExpanded = false
+                                                })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        TextButton(onClick = {
+                            val firstOtherId = allTemplates.firstOrNull { it.id != template?.id }?.id ?: ""
+                            editDependencyRules = editDependencyRules + MobileTemplateDependencyRule(firstOtherId, 1, "days")
+                        }) {
+                            Text(stringResource(R.string.mobile_template_add_followup))
+                        }
+                    }
+                }
+            }
+
+            // ── Save button ──
+            item {
+                Button(
+                    onClick = {
+                        if (editTitle.isNotBlank() && editGroupTitle.isNotBlank()) {
+                            onSave(buildInput())
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = editTitle.isNotBlank() && editGroupTitle.isNotBlank()
+                ) {
+                    Text(stringResource(R.string.mobile_template_save))
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateEditorSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { onToggle() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = null
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 12.dp)) { content() }
+            }
+        }
+    }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// REWARDS MANAGER
+// ═══════════════════════════════════════════════════════════════════════════
+
+@Composable
+private fun RewardCategorySection(
+    category: String,
+    rewards: List<MobileReward>,
+    onEditReward: (MobileReward) -> Unit,
+    onToggleReward: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+    val catLabel = when (category.uppercase()) {
+        "SCREEN_TIME" -> stringResource(R.string.mobile_rewards_category_screen_time)
+        "ALLOWANCE"   -> stringResource(R.string.mobile_rewards_category_allowance)
+        "TREAT"       -> stringResource(R.string.mobile_rewards_category_treat)
+        "ACTIVITY"    -> stringResource(R.string.mobile_rewards_category_activity)
+        "PRIVILEGE"   -> stringResource(R.string.mobile_rewards_category_privilege)
+        else          -> stringResource(R.string.mobile_rewards_category_custom)
+    }
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(rewardCategoryEmoji(category), style = MaterialTheme.typography.titleMedium)
+                Text(catLabel, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider()
+                    rewards.forEach { reward ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = reward.icon ?: rewardCategoryEmoji(reward.category),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(reward.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text("${reward.pointCost} pts", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = reward.isEnabled,
+                                onCheckedChange = { onToggleReward(reward.id) },
+                                enabled = !reward.isOperatorManaged
+                            )
+                            IconButton(onClick = { onEditReward(reward) }) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RewardsManagerScreen(
+    allRewards: List<MobileReward>,
+    pendingRedemptions: List<MobileRedemption>,
+    currentUserPoints: Int,
+    onCreateReward: (CreateRewardInput) -> Unit,
+    onUpdateReward: (String, UpdateRewardInput) -> Unit,
+    onDeleteReward: (String) -> Unit,
+    onToggleReward: (String) -> Unit,
+    onApproveRedemption: (String) -> Unit,
+    onRejectRedemption: (String, String?) -> Unit,
+    onRedeemReward: (String) -> Unit
+) {
+    var activeTab by rememberSaveable { mutableStateOf("shop") }
+    var selectedReward by remember { mutableStateOf<MobileReward?>(null) }
+    var showRewardEditor by rememberSaveable { mutableStateOf(false) }
+    var rejectRedemptionId by remember { mutableStateOf<String?>(null) }
+    var deleteConfirmReward by remember { mutableStateOf<MobileReward?>(null) }
+
+    val categoryOrder = listOf("SCREEN_TIME", "ALLOWANCE", "TREAT", "ACTIVITY", "PRIVILEGE", "CUSTOM")
+    val groupedRewards = remember(allRewards) { allRewards.groupBy { it.category.uppercase() } }
+    val sortedCategories = remember(groupedRewards) {
+        categoryOrder.filter { groupedRewards.containsKey(it) } +
+            groupedRewards.keys.filter { it !in categoryOrder }
+    }
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())
+    ) {
+        SectionIntro(
+            title = stringResource(R.string.mobile_rewards_manager_title),
+            body = stringResource(R.string.mobile_rewards_manager_hint),
+            compact = true
+        )
+
+        // Tab row — Shop | Catalogue | Approvals
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (activeTab == "shop") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                }
+            } else {
+                OutlinedButton(onClick = { activeTab = "shop" }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                }
+            }
+            if (activeTab == "catalogue") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
+                }
+            } else {
+                OutlinedButton(onClick = { activeTab = "catalogue" }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
+                }
+            }
+            val approvalsText = if (pendingRedemptions.isNotEmpty())
+                "${stringResource(R.string.mobile_rewards_manager_approvals_tab)} (${pendingRedemptions.size})"
+            else stringResource(R.string.mobile_rewards_manager_approvals_tab)
+            if (activeTab == "approvals") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+            } else {
+                OutlinedButton(onClick = { activeTab = "approvals" }, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+            }
+        }
+
+        if (activeTab == "shop") {
+            val shopRewards = remember(allRewards) {
+                allRewards.filter { it.isEnabled && (it.eligibility == "ALL" || it.eligibility == "ADULT_ONLY") }
+            }
+            Text(
+                text = stringResource(R.string.mobile_rewards_your_balance, currentUserPoints),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            if (shopRewards.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_manager_shop_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    shopRewards.forEach { reward ->
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (!reward.icon.isNullOrBlank()) {
+                                    Text(reward.icon, style = MaterialTheme.typography.headlineSmall)
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(reward.title, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Button(
+                                    onClick = { onRedeemReward(reward.id) },
+                                    enabled = currentUserPoints >= reward.pointCost
+                                ) {
+                                    Text(stringResource(R.string.mobile_rewards_redeem))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (activeTab == "catalogue") {
+            OutlinedButton(
+                onClick = { selectedReward = null; showRewardEditor = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            ) { Text(stringResource(R.string.mobile_rewards_add_custom)) }
+
+            if (allRewards.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_catalogue_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    sortedCategories.forEach { category ->
+                        val rewards = groupedRewards[category] ?: return@forEach
+                        RewardCategorySection(
+                            category = category,
+                            rewards = rewards,
+                            onEditReward = { reward -> selectedReward = reward; showRewardEditor = true },
+                            onToggleReward = onToggleReward
+                        )
+                    }
+                }
+            }
+        } else {
+            // Approvals tab
+            if (pendingRedemptions.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_no_pending),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    pendingRedemptions.forEach { redemption ->
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(redemption.rewardTitle, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    text = "${redemption.requestedByName} · ${redemption.pointsDeducted} pts",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { onApproveRedemption(redemption.id) },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text(stringResource(R.string.mobile_rewards_approve)) }
+                                    OutlinedButton(
+                                        onClick = { rejectRedemptionId = redemption.id },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    ) { Text(stringResource(R.string.mobile_rewards_reject)) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Reward editor sheet
+    if (showRewardEditor) {
+        RewardEditorSheet(
+            reward = selectedReward,
+            onSave = { input ->
+                val id = selectedReward?.id
+                if (id != null) {
+                    onUpdateReward(id, UpdateRewardInput(
+                        title = input.title,
+                        description = input.description,
+                        category = input.category,
+                        icon = input.icon,
+                        pointCost = input.pointCost,
+                        maxRedemptionsPerChild = input.maxRedemptionsPerChild,
+                        cooldownDays = input.cooldownDays,
+                        eligibility = input.eligibility
+                    ))
+                } else {
+                    onCreateReward(input)
+                }
+                showRewardEditor = false
+            },
+            onDelete = { deleteConfirmReward = selectedReward; showRewardEditor = false },
+            onDismiss = { showRewardEditor = false }
+        )
+    }
+
+    // Reject dialog
+    rejectRedemptionId?.let { rid ->
+        RejectRedemptionDialog(
+            onConfirm = { note -> onRejectRedemption(rid, note.ifBlank { null }); rejectRedemptionId = null },
+            onDismiss = { rejectRedemptionId = null }
+        )
+    }
+
+    // Delete reward confirmation
+    deleteConfirmReward?.let { reward ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmReward = null },
+            title = { Text(reward.title) },
+            text = { Text(stringResource(R.string.mobile_rewards_delete_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = { onDeleteReward(reward.id); deleteConfirmReward = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_rewards_delete)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { deleteConfirmReward = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun RewardEditorSheet(
+    reward: MobileReward?,
+    onSave: (CreateRewardInput) -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var editTitle by rememberSaveable { mutableStateOf(reward?.title ?: "") }
+    var editDescription by rememberSaveable { mutableStateOf(reward?.description ?: "") }
+    var editCategory by rememberSaveable { mutableStateOf(reward?.category?.uppercase() ?: "CUSTOM") }
+    var editIcon by rememberSaveable { mutableStateOf(reward?.icon ?: "") }
+    var editPointCost by rememberSaveable { mutableStateOf(reward?.pointCost?.toString() ?: "") }
+    var editEligibility by rememberSaveable { mutableStateOf(reward?.eligibility ?: "ALL") }
+    var editMaxPerChild by rememberSaveable { mutableStateOf(reward?.maxRedemptionsPerChild?.toString() ?: "") }
+    var editCooldownDays by rememberSaveable { mutableStateOf(reward?.cooldownDays?.toString() ?: "") }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    val isOperatorManaged = reward?.isOperatorManaged == true
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = if (reward == null) stringResource(R.string.mobile_rewards_new_title)
+                       else stringResource(R.string.mobile_rewards_edit_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            if (isOperatorManaged) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_rewards_operator_managed),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = editTitle,
+                onValueChange = { if (!isOperatorManaged) editTitle = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_title)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !isOperatorManaged
+            )
+            OutlinedTextField(
+                value = editDescription,
+                onValueChange = { if (!isOperatorManaged) editDescription = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_description)) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+                enabled = !isOperatorManaged
+            )
+
+            // Category dropdown
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { if (!isOperatorManaged) categoryExpanded = it }
+            ) {
+                val catLabel = when (editCategory.uppercase()) {
+                    "SCREEN_TIME" -> stringResource(R.string.mobile_rewards_category_screen_time)
+                    "ALLOWANCE"   -> stringResource(R.string.mobile_rewards_category_allowance)
+                    "TREAT"       -> stringResource(R.string.mobile_rewards_category_treat)
+                    "ACTIVITY"    -> stringResource(R.string.mobile_rewards_category_activity)
+                    "PRIVILEGE"   -> stringResource(R.string.mobile_rewards_category_privilege)
+                    else          -> stringResource(R.string.mobile_rewards_category_custom)
+                }
+                OutlinedTextField(
+                    value = catLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.mobile_rewards_field_category)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    enabled = !isOperatorManaged
+                )
+                ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
+                    listOf(
+                        "SCREEN_TIME" to R.string.mobile_rewards_category_screen_time,
+                        "ALLOWANCE"   to R.string.mobile_rewards_category_allowance,
+                        "TREAT"       to R.string.mobile_rewards_category_treat,
+                        "ACTIVITY"    to R.string.mobile_rewards_category_activity,
+                        "PRIVILEGE"   to R.string.mobile_rewards_category_privilege,
+                        "CUSTOM"      to R.string.mobile_rewards_category_custom
+                    ).forEach { (cat, labelRes) ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(labelRes)) },
+                            onClick = { editCategory = cat; categoryExpanded = false }
+                        )
+                    }
+                }
+            }
+
+            // Icon emoji selector
+            if (!isOperatorManaged) {
+                val iconOptions = listOf(
+                    "📱", "💰", "🍫", "🍕", "🍦", "🍬", "🎮", "🎬",
+                    "🏃", "🎨", "📚", "⭐", "🌟", "👑", "🏆", "🎁", "🎉", "🚀"
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(R.string.mobile_rewards_field_icon),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // "None" chip
+                        FilterChip(
+                            selected = editIcon.isBlank(),
+                            onClick = { editIcon = "" },
+                            label = { Text(stringResource(R.string.mobile_rewards_icon_none)) }
+                        )
+                        iconOptions.forEach { emoji ->
+                            FilterChip(
+                                selected = editIcon == emoji,
+                                onClick = { editIcon = emoji },
+                                label = { Text(emoji, style = MaterialTheme.typography.titleMedium) }
+                            )
+                        }
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = editPointCost,
+                onValueChange = { if (!isOperatorManaged) editPointCost = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_cost)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                enabled = !isOperatorManaged
+            )
+
+            // Eligibility segmented buttons
+            Text(stringResource(R.string.mobile_rewards_field_eligibility), style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "ALL"        to R.string.mobile_rewards_eligibility_all,
+                    "CHILD_ONLY" to R.string.mobile_rewards_eligibility_child,
+                    "ADULT_ONLY" to R.string.mobile_rewards_eligibility_adult
+                ).forEach { (key, labelRes) ->
+                    if (editEligibility == key) {
+                        Button(onClick = {}, modifier = Modifier.weight(1f), enabled = !isOperatorManaged) {
+                            Text(stringResource(labelRes), maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { if (!isOperatorManaged) editEligibility = key },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isOperatorManaged
+                        ) {
+                            Text(stringResource(labelRes), maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = editMaxPerChild,
+                onValueChange = { editMaxPerChild = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_max_per_child)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = editCooldownDays,
+                onValueChange = { editCooldownDays = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_cooldown)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            if (!isOperatorManaged) {
+                Button(
+                    onClick = {
+                        if (editTitle.isNotBlank()) {
+                            onSave(CreateRewardInput(
+                                title = editTitle,
+                                description = editDescription.ifBlank { null },
+                                category = editCategory,
+                                icon = editIcon.ifBlank { null },
+                                pointCost = editPointCost.toIntOrNull() ?: 0,
+                                maxRedemptionsPerChild = editMaxPerChild.toIntOrNull(),
+                                cooldownDays = editCooldownDays.toIntOrNull(),
+                                isEnabled = reward?.isEnabled ?: true,
+                                eligibility = editEligibility
+                            ))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = editTitle.isNotBlank()
+                ) { Text(stringResource(R.string.mobile_rewards_save)) }
+
+                if (reward != null) {
+                    OutlinedButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text(stringResource(R.string.mobile_rewards_delete)) }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun RejectRedemptionDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var note by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.mobile_rewards_reject_title)) },
+        text = {
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text(stringResource(R.string.mobile_rewards_reject_note_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(note) },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) { Text(stringResource(R.string.mobile_rewards_reject_confirm)) }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.mobile_common_cancel)) }
+        }
+    )
+}
+
+@Composable
+private fun MoreMenuSheet(
+    isCreatorRole: Boolean,
+    canManageTemplates: Boolean,
+    onNavigateSettings: () -> Unit,
+    onNavigateTemplates: () -> Unit,
+    onNavigateRewardsManager: () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 24.dp)) {
+        Text(
+            text = stringResource(R.string.mobile_tab_more),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        MoreMenuSheetItem(
+            icon = Icons.Rounded.Tune,
+            label = stringResource(R.string.mobile_tab_settings),
+            onClick = onNavigateSettings
+        )
+        if (isCreatorRole && canManageTemplates) {
+            Spacer(modifier = Modifier.height(8.dp))
+            MoreMenuSheetItem(
+                icon = Icons.Rounded.AssignmentTurnedIn,
+                label = stringResource(R.string.mobile_more_templates),
+                onClick = onNavigateTemplates
+            )
+        }
+        if (isCreatorRole) {
+            Spacer(modifier = Modifier.height(8.dp))
+            MoreMenuSheetItem(
+                icon = Icons.Rounded.EmojiEvents,
+                label = stringResource(R.string.mobile_more_rewards_manager),
+                onClick = onNavigateRewardsManager
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun MoreMenuSheetItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(26.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
     }
 }

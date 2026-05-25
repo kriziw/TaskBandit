@@ -2,6 +2,41 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.74.4](https://github.com/kriziw/TaskBandit/compare/v0.74.3...v0.74.4) (2026-05-25)
+
+
+### Bug Fixes
+
+* **web,android:** reward editor styling + admin shop tab ([#502](https://github.com/kriziw/TaskBandit/issues/502)) ([37dc310](https://github.com/kriziw/TaskBandit/commit/37dc310d1bac5d6a38984bd80b539a0fadc6a684))
+
+## [0.74.3](https://github.com/kriziw/TaskBandit/compare/v0.74.2...v0.74.3) (2026-05-25)
+
+
+### Bug Fixes
+
+* **web,server:** fix blank-page crash after rewards feature launch ([#499](https://github.com/kriziw/TaskBandit/issues/499)) ([9c3f0f3](https://github.com/kriziw/TaskBandit/commit/9c3f0f395bc17c591914d8123b1bb1db41fa5958))
+
+## [0.74.2](https://github.com/kriziw/TaskBandit/compare/v0.74.1...v0.74.2) (2026-05-25)
+
+
+### Bug Fixes
+
+* **android:** update banner — deep-link to update card, dismiss button clears FAB ([#497](https://github.com/kriziw/TaskBandit/issues/497)) ([7d79daa](https://github.com/kriziw/TaskBandit/commit/7d79daa26ba9659deba2b7e07b124f6bbc23a5e5))
+
+## [0.74.1](https://github.com/kriziw/TaskBandit/compare/v0.74.0...v0.74.1) (2026-05-25)
+
+
+### Bug Fixes
+
+* **android:** bugfixes for admin mobile — data loading, nav label clip, icon selector ([#495](https://github.com/kriziw/TaskBandit/issues/495)) ([37a848a](https://github.com/kriziw/TaskBandit/commit/37a848abd5b0ff0ae730cc200649f0c279260723))
+
+## [0.74.0](https://github.com/kriziw/TaskBandit/compare/v0.73.0...v0.74.0) (2026-05-24)
+
+
+### Features
+
+* **web,android:** admin mobile — Template Manager + Rewards Manager + More tab ([#493](https://github.com/kriziw/TaskBandit/issues/493)) ([e238466](https://github.com/kriziw/TaskBandit/commit/e238466d51d243ddd0afd276615fffa9743db563))
+
 ## [0.73.0](https://github.com/kriziw/TaskBandit/compare/v0.72.0...v0.73.0) (2026-05-23)
 
 

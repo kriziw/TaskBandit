@@ -151,11 +151,12 @@ type WorkspacePage =
   | "logs";
 type WorkspaceRoute = "home" | "plan" | "household" | "settings" | "ops";
 
-const mobileNavIconByPage: Partial<Record<WorkspacePage, string>> = {
+const mobileNavIconByPage: Record<string, string> = {
   chores: "/mobile-icons/chores.png",
   leaderboard: "/mobile-icons/leaderboard.png",
   rewards: "/mobile-icons/rewards.png",
-  settings: "/mobile-icons/settings.png"
+  settings: "/mobile-icons/settings.png",
+  more: "/mobile-icons/more.png"
 };
 type WorkspaceSectionLink = {
   key: string;
@@ -765,6 +766,7 @@ function resolveWorkspaceRouteFromPage(page: WorkspacePage): WorkspaceRoute {
       return "home";
     case "chores":
     case "templates":
+    case "rewards":
       return "plan";
     case "household":
       return "household";
@@ -1253,7 +1255,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
   const [selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup] = useState("");
   const [rewardsTab, setRewardsTab] = useState<"shop" | "history">("shop");
-  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("catalogue");
+  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("my_shop");
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
   const [isCreatingNewReward, setIsCreatingNewReward] = useState(false);
   const [rewardForm, setRewardForm] = useState<{
@@ -1302,6 +1304,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [showMobileCompletedChores, setShowMobileCompletedChores] = useState(false);
   const [showDesktopChoreHistory, setShowDesktopChoreHistory] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
+  const [isMobileMoreSheetOpen, setIsMobileMoreSheetOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
     () => readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset
   );
@@ -2060,9 +2063,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const enabledRewards = useMemo(() => {
     const all = payload?.rewards ?? [];
     if (isParentOrAdmin) {
-      return all.filter((r) => r.isEnabled && (r.eligibility === "ALL" || r.eligibility === "ADULT_ONLY"));
+      return all.filter((r) => {
+        const elig = r.eligibility ?? "ALL";
+        return r.isEnabled && (elig === "ALL" || elig === "ADULT_ONLY");
+      });
     }
-    return all.filter((r) => r.isEnabled && (r.eligibility === "ALL" || r.eligibility === "CHILD_ONLY"));
+    return all.filter((r) => {
+      const elig = r.eligibility ?? "ALL";
+      return r.isEnabled && (elig === "ALL" || elig === "CHILD_ONLY");
+    });
   }, [payload?.rewards, isParentOrAdmin]);
   const pendingRedemptions = useMemo(
     () => payload?.redemptions.filter((r) => r.status === "PENDING") ?? [],
@@ -2129,7 +2138,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       title: reward.title,
       description: reward.description ?? "",
       category: reward.category,
-      eligibility: reward.eligibility,
+      eligibility: reward.eligibility ?? "ALL",
       pointCost: reward.pointCost,
       maxRedemptionsPerChild: reward.maxRedemptionsPerChild != null ? String(reward.maxRedemptionsPerChild) : "",
       cooldownDays: reward.cooldownDays != null ? String(reward.cooldownDays) : ""
@@ -2558,12 +2567,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
     return pages;
   }, [isClientMobileViewport, payload, showAdminOps, showTemplateManager, t]);
-  const mobileBottomNavPages = useMemo(
-    () =>
-      availablePages.filter((page) =>
-        ["chores", "leaderboard", "rewards", "settings"].includes(page.key)
-      ),
-    [availablePages]
+  const mobileBottomNavPages = useMemo<Array<{ key: string; label: string }>>(
+    () => [
+      { key: "chores",      label: t("nav.chores") },
+      { key: "leaderboard", label: t("nav.leaderboard") },
+      { key: "rewards",     label: t("nav.rewards") },
+      { key: "more",        label: t("nav.more") }
+    ],
+    [t]
   );
 
   useEffect(() => {
@@ -9519,7 +9530,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <h2>{t("panel.chore_templates")}</h2>
                     <span className="section-kicker">{payload.templates.length}</span>
                   </div>
-                  <div className="template-admin-layout">
+                  <div
+                    className="template-admin-layout"
+                    data-has-selection={editingTemplateId !== null ? "true" : "false"}
+                  >
                     <div className="stack-list template-browser-panel">
                       <div className="template-browser-toolbar">
                         <label className="template-search-field">
@@ -9657,6 +9671,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       )}
                     </div>
                   <form className="login-form member-form template-editor-panel" onSubmit={handleCreateTemplate}>
+                    {showClientMobileShell && editingTemplateId ? (
+                      <button
+                        className="mobile-editor-back-button"
+                        type="button"
+                        onClick={() => setEditingTemplateId(null)}
+                      >
+                        ← {t("common.back")}
+                      </button>
+                    ) : null}
                     {!hasFeature("templates_manage") ? (
                       <p className="inline-message">{t("feature.templates_manage_disabled")}</p>
                     ) : null}
@@ -10251,7 +10274,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ) : (
               /* Parent / Admin view: Reward Manager */
               <article className="panel panel-wide page-panel page-rewards">
-                <div className="template-admin-layout">
+                <div
+                  className="template-admin-layout"
+                  data-has-selection={(selectedReward || isCreatingNewReward) ? "true" : "false"}
+                >
                   {/* Left: catalogue + approvals */}
                   <div className="stack-list template-browser-panel">
                     <div className="section-heading">
@@ -10261,6 +10287,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       )}
                     </div>
                     <div className="segmented-toggle">
+                      <button
+                        type="button"
+                        className={rewardsManagerTab === "my_shop" ? "active" : ""}
+                        onClick={() => setRewardsManagerTab("my_shop")}
+                      >{t("rewards.manager.tab.my_shop")}</button>
                       <button
                         type="button"
                         className={rewardsManagerTab === "catalogue" ? "active" : ""}
@@ -10274,11 +10305,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         {t("rewards.manager.tab.approvals")}
                         {pendingRedemptions.length > 0 && <span className="inline-badge">{pendingRedemptions.length}</span>}
                       </button>
-                      <button
-                        type="button"
-                        className={rewardsManagerTab === "my_shop" ? "active" : ""}
-                        onClick={() => setRewardsManagerTab("my_shop")}
-                      >{t("rewards.manager.tab.my_shop")}</button>
                     </div>
 
                     {rewardsManagerTab === "catalogue" && (
@@ -10307,7 +10333,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                       {reward.isOperatorManaged && <span className="lock-icon" title={t("rewards.operator_managed")} aria-label={t("rewards.operator_managed")}>🔒</span>}
                                       <span className="template-browser-card-title">{reward.title}</span>
                                       <span className="section-kicker">{reward.pointCost} {t("user.points_short")}</span>
-                                      {reward.eligibility !== "ALL" && (
+                                      {reward.eligibility != null && reward.eligibility !== "ALL" && (
                                         <span className={`inline-badge eligibility-badge eligibility-${reward.eligibility.toLowerCase()}`}>
                                           {reward.eligibility === "CHILD_ONLY" ? t("reward.eligibility.child_only") : t("reward.eligibility.adult_only")}
                                         </span>
@@ -10363,7 +10389,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       <div>
                         <p className="section-kicker">{payload.currentUser.points} {t("user.points_short")}</p>
                         {enabledRewards.length === 0 ? (
-                          <p className="inline-message">{t("rewards.shop.empty")}</p>
+                          <p className="inline-message">{t("rewards.manager.shop.empty_for_admin")}</p>
                         ) : (
                           <div className="rewards-grid">
                             {enabledRewards.map((reward) => (
@@ -10390,8 +10416,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
                   {/* Right: reward editor */}
                   <div className="template-editor-panel">
+                    {showClientMobileShell && (selectedReward || isCreatingNewReward) ? (
+                      <button
+                        className="mobile-editor-back-button"
+                        type="button"
+                        onClick={() => { setSelectedRewardId(null); setIsCreatingNewReward(false); }}
+                      >
+                        ← {t("common.back")}
+                      </button>
+                    ) : null}
                     {(selectedReward || isCreatingNewReward) ? (
-                      <form onSubmit={(e) => void handleSaveReward(e)}>
+                      <form className="login-form member-form template-editor-panel" onSubmit={(e) => void handleSaveReward(e)}>
                         {selectedReward?.isOperatorManaged && (
                           <p className="inline-message">{t("rewards.operator_managed_notice")}</p>
                         )}
@@ -10956,28 +10991,77 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               } as CSSProperties
             }
           >
-            {mobileBottomNavPages.map((page) => (
-              <button
-                key={page.key}
-                className={`mobile-bottom-nav-button ${page.key === activePage ? "active" : ""}`}
-                type="button"
-                onClick={() => openWorkspacePage(page.key)}
-                aria-label={page.label}
-                title={page.label}
-              >
-                {mobileNavIconByPage[page.key] ? (
-                  <img
-                    className="mobile-bottom-nav-icon"
-                    src={mobileNavIconByPage[page.key]}
-                    alt=""
-                    aria-hidden="true"
-                  />
-                ) : null}
-                <span className="mobile-bottom-nav-label">{page.label}</span>
-              </button>
-            ))}
+            {mobileBottomNavPages.map((page) => {
+              const isMoreTab = page.key === "more";
+              const isActive = isMoreTab
+                ? isMobileMoreSheetOpen || activePage === "settings" || activePage === "templates"
+                : page.key === activePage;
+              return (
+                <button
+                  key={page.key}
+                  className={`mobile-bottom-nav-button ${isActive ? "active" : ""}`}
+                  type="button"
+                  onClick={isMoreTab
+                    ? () => setIsMobileMoreSheetOpen(true)
+                    : () => openWorkspacePage(page.key as WorkspacePage)}
+                  aria-label={page.label}
+                  title={page.label}
+                >
+                  {mobileNavIconByPage[page.key] ? (
+                    <img
+                      className="mobile-bottom-nav-icon"
+                      src={mobileNavIconByPage[page.key]}
+                      alt=""
+                      aria-hidden="true"
+                    />
+                  ) : null}
+                  <span className="mobile-bottom-nav-label">{page.label}</span>
+                </button>
+              );
+            })}
           </div>
         </nav>
+      ) : null}
+      {showClientMobileShell && isMobileMoreSheetOpen ? (
+        <div
+          className="mobile-more-sheet-backdrop"
+          onClick={() => setIsMobileMoreSheetOpen(false)}
+          role="presentation"
+        >
+          <div className="mobile-more-sheet" onClick={(e) => e.stopPropagation()}>
+            <div className="mobile-more-sheet-handle" />
+            <nav className="mobile-more-sheet-nav">
+              <button
+                className="mobile-more-nav-item"
+                type="button"
+                onClick={() => { setIsMobileMoreSheetOpen(false); openWorkspacePage("settings"); }}
+              >
+                <img className="mobile-more-nav-icon" src="/mobile-icons/settings.png" alt="" aria-hidden="true" />
+                {t("mobile.more.settings")}
+              </button>
+              {showTemplateManager ? (
+                <button
+                  className="mobile-more-nav-item"
+                  type="button"
+                  onClick={() => { setIsMobileMoreSheetOpen(false); openWorkspacePage("templates"); }}
+                >
+                  <img className="mobile-more-nav-icon" src="/mobile-icons/more.png" alt="" aria-hidden="true" />
+                  {t("mobile.more.templates")}
+                </button>
+              ) : null}
+              {isParentOrAdmin ? (
+                <button
+                  className="mobile-more-nav-item"
+                  type="button"
+                  onClick={() => { setIsMobileMoreSheetOpen(false); openWorkspacePage("rewards"); }}
+                >
+                  <img className="mobile-more-nav-icon" src="/mobile-icons/rewards.png" alt="" aria-hidden="true" />
+                  {t("mobile.more.rewards_manager")}
+                </button>
+              ) : null}
+            </nav>
+          </div>
+        </div>
       ) : null}
       <footer className="app-release-footer">
         <div className="app-release-footer-inner">

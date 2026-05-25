@@ -2265,6 +2265,18 @@ h4,
   min-height: 72px;
 }
 
+/* Fieldset used as a disabled-group wrapper inside login-form-styled editors.
+   Strip all browser default chrome (border, padding, legend indent) so the
+   fieldset is invisible and the labels/inputs appear as a normal grid. */
+.login-form fieldset {
+  border: 0;
+  padding: 0;
+  margin: 0;
+  min-width: 0;
+  display: grid;
+  gap: 10px;
+}
+
 .template-advanced-panel {
   border: 1px solid rgba(36, 48, 67, 0.08);
   border-radius: 18px;
@@ -3834,6 +3846,120 @@ h4,
 
 @media (max-width: 600px) {
   .rewards-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* ── Mobile More Sheet ──────────────────────────────────────────────────── */
+
+.mobile-more-sheet-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(36, 48, 67, 0.4);
+  z-index: 200;
+  display: flex;
+  align-items: flex-end;
+}
+
+.mobile-more-sheet {
+  width: 100%;
+  background: var(--cream);
+  border-radius: 24px 24px 0 0;
+  padding: 12px 16px 32px;
+  animation: mobileSheetSlideIn 220ms ease-out;
+}
+
+@keyframes mobileSheetSlideIn {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+
+.mobile-more-sheet-handle {
+  width: 40px;
+  height: 4px;
+  border-radius: 2px;
+  background: rgba(36, 48, 67, 0.2);
+  margin: 0 auto 20px;
+}
+
+.mobile-more-sheet-nav {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.mobile-more-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px;
+  border-radius: 16px;
+  background: #fff;
+  border: 1px solid rgba(36, 48, 67, 0.12);
+  font: inherit;
+  font-size: 1rem;
+  font-weight: 700;
+  color: var(--ink);
+  text-align: left;
+  cursor: pointer;
+  min-height: 64px;
+}
+
+.mobile-more-nav-icon {
+  width: 32px;
+  height: 32px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+/* ── Mobile panel swap (Template Manager + Rewards Manager) ─────────────── */
+
+.mobile-editor-back-button {
+  display: none;
+}
+
+@media (max-width: 820px) {
+  .app-shell.variant-client .template-editor-panel {
+    display: none;
+  }
+
+  .app-shell.variant-client
+    .template-admin-layout[data-has-selection="true"] .template-browser-panel {
+    display: none;
+  }
+
+  .app-shell.variant-client
+    .template-admin-layout[data-has-selection="true"] .template-editor-panel {
+    display: block;
+  }
+
+  .app-shell.variant-client .mobile-editor-back-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 16px;
+    background: none;
+    border: none;
+    font: inherit;
+    font-weight: 700;
+    color: var(--ink);
+    cursor: pointer;
+    padding: 0;
+  }
+
+  .app-shell.variant-client .segmented-toggle {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-wrap: nowrap;
+  }
+
+  .app-shell.variant-client .segmented-toggle button {
+    flex-shrink: 0;
+    white-space: nowrap;
+  }
+
+  .app-shell.variant-client .rewards-grid {
     grid-template-columns: 1fr;
   }
 }
