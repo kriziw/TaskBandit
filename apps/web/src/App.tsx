@@ -4,6 +4,7 @@ import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
 import { AuthPanel } from "./features/auth/AuthPanel";
 import { useAuthStore } from "./stores/authStore";
+import { useDashboardStore } from "./stores/dashboardStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
@@ -29,6 +30,7 @@ import type {
   CreateChoreInstanceInput,
   CreateChoreTemplateInput,
   CreateHouseholdMemberInput,
+  DashboardPayload,
   DashboardSummary,
   Household,
   HouseholdNotificationHealthEntry,
@@ -62,28 +64,6 @@ const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
 const mobileAvatarStorageKey = "taskbandit-mobile-avatar";
 type WorkspaceVariant = "admin" | "client";
 
-type DashboardPayload = {
-  currentUser: AuthenticatedUser;
-  dashboard: DashboardSummary;
-  household: Household;
-  auditLog: AuditLogEntry[];
-  notifications: NotificationEntry[];
-  notificationDevices: NotificationDevice[];
-  householdNotificationHealth: HouseholdNotificationHealthEntry[];
-  notificationRecovery: NotificationRecovery | null;
-  systemStatus: AdminSystemStatus | null;
-  backupReadiness: BackupReadiness | null;
-  notificationPreferences: NotificationPreferences;
-  pointsLedger: PointsLedgerEntry[];
-  templates: ChoreTemplate[];
-  instances: ChoreInstance[];
-  takeoverRequests: TakeoverRequestEntry[];
-  hostedSubscription: HostedSubscriptionOverview;
-  compatibility: ServerCompatibility;
-  achievements: Achievement[];
-  rewards: Reward[];
-  redemptions: RewardRedemption[];
-};
 
 type CompletionCelebration = {
   points: number;
@@ -1110,8 +1090,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [bootstrapSetupStep, setBootstrapSetupStep] =
     useState<"account" | "templates" | "review">("account");
   const [selectedBootstrapStarterGroup, setSelectedBootstrapStarterGroup] = useState("");
-  const [payload, setPayload] = useState<DashboardPayload | null>(null);
-  const [runtimeLogs, setRuntimeLogs] = useState<RuntimeLogEntry[]>([]);
+  const {
+    payload,
+    runtimeLogs,
+    isLoading,
+    setPayload,
+    updatePayload,
+    setRuntimeLogs,
+    setIsLoading,
+    clearDashboard,
+  } = useDashboardStore();
   const [settingsDraft, setSettingsDraft] = useState<HouseholdSettings | null>(null);
   const [smtpVerifiedFingerprint, setSmtpVerifiedFingerprint] = useState<string | null>(null);
   const [notificationPreferencesDraft, setNotificationPreferencesDraft] =
@@ -1275,7 +1263,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [notice, setNotice] = useState<string | null>(null);
   const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
   const [lastCompletionCelebrationPhraseKey, setLastCompletionCelebrationPhraseKey] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [showAllPointsLedger, setShowAllPointsLedger] = useState(false);
   const [clientWebPushStatus, setClientWebPushStatus] = useState<ClientWebPushStatus>(
@@ -1327,12 +1314,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   useEffect(() => {
     if (!token) {
-      setPayload(null);
-      setRuntimeLogs([]);
+      clearDashboard();
       setSettingsDraft(null);
       setNotificationPreferencesDraft(null);
       setSelectedTemplateGroup("");
-      setIsLoading(false);
       return;
     }
 
@@ -1974,12 +1959,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       let updated: Reward;
       if (isCreatingNewReward) {
         updated = await taskBanditApi.createReward(token, language, body);
-        setPayload((c) => c ? { ...c, rewards: [...c.rewards, updated] } : c);
+        updatePayload((c) => ({ ...c, rewards: [...c.rewards, updated] }));
         setIsCreatingNewReward(false);
         setSelectedRewardId(updated.id);
       } else if (selectedRewardId) {
         updated = await taskBanditApi.updateReward(token, language, selectedRewardId, body);
-        setPayload((c) => c ? { ...c, rewards: c.rewards.map((r) => r.id === updated.id ? updated : r) } : c);
+        updatePayload((c) => ({ ...c, rewards: c.rewards.map((r) => r.id === updated.id ? updated : r) }));
       }
     } catch (err) {
       setPageError(readErrorMessage(err, t("error.generic")));
@@ -1990,7 +1975,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (!token) return;
     try {
       const updated = await taskBanditApi.toggleReward(token, language, rewardId);
-      setPayload((c) => c ? { ...c, rewards: c.rewards.map((r) => r.id === updated.id ? updated : r) } : c);
+      updatePayload((c) => ({ ...c, rewards: c.rewards.map((r) => r.id === updated.id ? updated : r) }));
     } catch (err) {
       setPageError(readErrorMessage(err, t("error.generic")));
     }
@@ -2000,7 +1985,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (!token || !selectedRewardId) return;
     try {
       await taskBanditApi.deleteReward(token, language, selectedRewardId);
-      setPayload((c) => c ? { ...c, rewards: c.rewards.filter((r) => r.id !== selectedRewardId) } : c);
+      updatePayload((c) => ({ ...c, rewards: c.rewards.filter((r) => r.id !== selectedRewardId) }));
       setSelectedRewardId(null);
     } catch (err) {
       setPageError(readErrorMessage(err, t("error.generic")));
@@ -2011,9 +1996,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (!token || !redeemDialogRewardId) return;
     try {
       const redemption = await taskBanditApi.redeemReward(token, language, redeemDialogRewardId);
-      setPayload((c) => c ? { ...c, redemptions: [...c.redemptions, redemption] } : c);
+      updatePayload((c) => ({ ...c, redemptions: [...c.redemptions, redemption] }));
       if (redemption.status === "APPROVED") {
-        setPayload((c) => c ? { ...c, currentUser: { ...c.currentUser, points: c.currentUser.points - redemption.pointsDeducted } } : c);
+        updatePayload((c) => ({ ...c, currentUser: { ...c.currentUser, points: c.currentUser.points - redemption.pointsDeducted } }));
       }
       setRedeemDialogRewardId(null);
     } catch (err) {
@@ -2025,7 +2010,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (!token) return;
     try {
       const updated = await taskBanditApi.resolveRedemption(token, language, redemptionId, true);
-      setPayload((c) => c ? { ...c, redemptions: c.redemptions.map((r) => r.id === updated.id ? updated : r) } : c);
+      updatePayload((c) => ({ ...c, redemptions: c.redemptions.map((r) => r.id === updated.id ? updated : r) }));
     } catch (err) {
       setPageError(readErrorMessage(err, t("error.generic")));
     }
@@ -2035,7 +2020,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (!token || !rejectDialogRedemptionId) return;
     try {
       const updated = await taskBanditApi.resolveRedemption(token, language, rejectDialogRedemptionId, false, rejectDialogNote.trim() || undefined);
-      setPayload((c) => c ? { ...c, redemptions: c.redemptions.map((r) => r.id === updated.id ? updated : r) } : c);
+      updatePayload((c) => ({ ...c, redemptions: c.redemptions.map((r) => r.id === updated.id ? updated : r) }));
       setRejectDialogRedemptionId(null);
       setRejectDialogNote("");
     } catch (err) {
@@ -3028,18 +3013,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   async function refreshSystemStatus(accessToken: string, options: { reportErrors: boolean }) {
     try {
       const nextSystemStatus = await taskBanditApi.getSystemStatus(accessToken, language);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              systemStatus: nextSystemStatus,
-              compatibility: {
-                ...current.compatibility,
-                systemStatus: true
-              }
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        systemStatus: nextSystemStatus,
+        compatibility: { ...current.compatibility, systemStatus: true },
+      }));
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
         handleLogout(t("auth.session_expired"));
@@ -3047,18 +3025,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }
 
       if (isOptionalFeatureUnavailable(error)) {
-        setPayload((current) =>
-          current
-            ? {
-                ...current,
-                systemStatus: null,
-                compatibility: {
-                  ...current.compatibility,
-                  systemStatus: false
-                }
-              }
-            : current
-        );
+        updatePayload((current) => ({
+          ...current,
+          systemStatus: null,
+          compatibility: { ...current.compatibility, systemStatus: false },
+        }));
         return;
       }
 
@@ -3071,18 +3042,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   async function refreshBackupReadiness(accessToken: string, options: { reportErrors: boolean }) {
     try {
       const nextBackupReadiness = await taskBanditApi.getBackupReadiness(accessToken, language);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              backupReadiness: nextBackupReadiness,
-              compatibility: {
-                ...current.compatibility,
-                backupReadiness: true
-              }
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        backupReadiness: nextBackupReadiness,
+        compatibility: { ...current.compatibility, backupReadiness: true },
+      }));
     } catch (error) {
       if (error instanceof TaskBanditApiError && error.status === 401) {
         handleLogout(t("auth.session_expired"));
@@ -3090,18 +3054,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }
 
       if (isOptionalFeatureUnavailable(error)) {
-        setPayload((current) =>
-          current
-            ? {
-                ...current,
-                backupReadiness: null,
-                compatibility: {
-                  ...current.compatibility,
-                  backupReadiness: false
-                }
-              }
-            : current
-        );
+        updatePayload((current) => ({
+          ...current,
+          backupReadiness: null,
+          compatibility: { ...current.compatibility, backupReadiness: false },
+        }));
         return;
       }
 
@@ -3730,8 +3687,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   function handleLogout(message?: string) {
     authLogout(workspaceVariant, message);
-    setPayload(null);
-    setRuntimeLogs([]);
+    clearDashboard();
     setSettingsDraft(null);
     setNotificationPreferencesDraft(null);
     setNotice(null);
@@ -4071,7 +4027,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       const household = await taskBanditApi.updateHousehold(token, language, settingsDraft);
       const nextProviders = await taskBanditApi.getProviders(language);
-      setPayload((current) => (current ? { ...current, household } : current));
+      updatePayload((current) => ({ ...current, household }));
       authSetProviders(nextProviders);
       setNotice(t("settings.saved"));
       setPageError(null);
@@ -4094,9 +4050,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         language,
         notificationPreferencesDraft
       );
-      setPayload((current) =>
-        current ? { ...current, notificationPreferences: nextPreferences } : current
-      );
+      updatePayload((current) => ({ ...current, notificationPreferences: nextPreferences }));
       setNotificationPreferencesDraft(nextPreferences);
       setNotice(t("settings.notification_preferences_saved"));
       setPageError(null);
@@ -4129,7 +4083,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         const household = await taskBanditApi.updateHousehold(token, language, {
           onboardingCompleted: true
         });
-        setPayload((current) => (current ? { ...current, household } : current));
+        updatePayload((current) => ({ ...current, household }));
         setSettingsDraft(household.settings);
       }
 
@@ -4297,7 +4251,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction(`delete-device:${deviceId}`);
     try {
       const nextDevices = await taskBanditApi.deleteNotificationDevice(token, language, deviceId);
-      setPayload((current) => (current ? { ...current, notificationDevices: nextDevices } : current));
+      updatePayload((current) => ({ ...current, notificationDevices: nextDevices }));
       setNotice(t("settings.notification_device_removed"));
       setPageError(null);
     } catch (error) {
@@ -4315,10 +4269,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction(`notification-read:${notificationId}`);
     try {
       const notifications = await taskBanditApi.markNotificationRead(token, language, notificationId);
-      setPayload({
-        ...payload,
-        notifications
-      });
+      updatePayload((current) => ({ ...current, notifications }));
     } catch (error) {
       setPageError(readErrorMessage(error, t("notifications.mark_failed")));
     } finally {
@@ -4334,10 +4285,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction("notification-read-all");
     try {
       const notifications = await taskBanditApi.markAllNotificationsRead(token, language);
-      setPayload({
-        ...payload,
-        notifications
-      });
+      updatePayload((current) => ({ ...current, notifications }));
     } catch (error) {
       setPageError(readErrorMessage(error, t("notifications.mark_failed")));
     } finally {
@@ -4354,7 +4302,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction("create-member");
     try {
       const result = await taskBanditApi.createHouseholdMember(token, language, memberForm);
-      setPayload((current) => (current ? { ...current, household: result.household } : current));
+      updatePayload((current) => ({ ...current, household: result.household }));
       setMemberForm(createEmptyMemberForm());
       setNotice(result.inviteEmailSent ? t("members.created_invited") : t("members.created"));
       setPageError(null);
@@ -4474,22 +4422,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const savedTemplate = editingTemplateId
         ? await taskBanditApi.updateTemplate(token, language, editingTemplateId, templatePayload)
         : await taskBanditApi.createTemplate(token, language, templatePayload);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              templates: editingTemplateId
-                ? current.templates
-                    .map((template) => (template.id === editingTemplateId ? savedTemplate : template))
-                    .sort((left, right) =>
-                      left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title)
-                    )
-                : [...current.templates, savedTemplate].sort((left, right) =>
-                    left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title)
-                  )
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        templates: editingTemplateId
+          ? current.templates
+              .map((template) => (template.id === editingTemplateId ? savedTemplate : template))
+              .sort((left, right) =>
+                left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title)
+              )
+          : [...current.templates, savedTemplate].sort((left, right) =>
+              left.groupTitle.localeCompare(right.groupTitle) || left.title.localeCompare(right.title)
+            ),
+      }));
       resetTemplateForm();
       setNotice(editingTemplateId ? t("templates.updated") : t("templates.created"));
       setPageError(null);
@@ -4557,20 +4501,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const savedInstance = editingInstanceId
         ? await taskBanditApi.updateInstance(token, language, editingInstanceId, instancePayload)
         : await taskBanditApi.createInstance(token, language, instancePayload);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              instances: editingInstanceId
-                ? current.instances
-                    .map((instance) => (instance.id === editingInstanceId ? savedInstance : instance))
-                    .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime())
-                : [...current.instances, savedInstance].sort(
-                    (left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()
-                  )
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        instances: editingInstanceId
+          ? current.instances
+              .map((instance) => (instance.id === editingInstanceId ? savedInstance : instance))
+              .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime())
+          : [...current.instances, savedInstance].sort(
+              (left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()
+            ),
+      }));
       resetInstanceForm();
       setIsClientComposerOpen(false);
       setNotice(editingInstanceId ? t("instances.updated") : t("instances.created"));
@@ -4818,16 +4758,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction(`cancel:${instanceId}`);
     try {
       const cancelledInstance = await taskBanditApi.cancelInstance(token, language, instanceId);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              instances: current.instances.map((instance) =>
-                instance.id === instanceId ? cancelledInstance : instance
-              )
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        instances: current.instances.map((instance) =>
+          instance.id === instanceId ? cancelledInstance : instance
+        ),
+      }));
       setNotice(t("instances.cancelled"));
       setPageError(null);
     } catch (error) {
@@ -4845,16 +4781,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction(`start:${instanceId}`);
     try {
       const startedInstance = await taskBanditApi.startInstance(token, language, instanceId);
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              instances: current.instances.map((instance) =>
-                instance.id === instanceId ? startedInstance : instance
-              )
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        instances: current.instances.map((instance) =>
+          instance.id === instanceId ? startedInstance : instance
+        ),
+      }));
       setNotice(t("instances.started"));
       setPageError(null);
     } catch (error) {
@@ -5262,17 +5194,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setBusyAction(`delete-template:${templateId}`);
     try {
       await taskBanditApi.deleteTemplate(token, language, templateId);
-      setPayload((current) => {
-        if (!current) {
-          return current;
-        }
-
-        const nextTemplates = current.templates.filter((template) => template.id !== templateId);
-        return {
-          ...current,
-          templates: nextTemplates
-        };
-      });
+      updatePayload((current) => ({
+        ...current,
+        templates: current.templates.filter((template) => template.id !== templateId),
+      }));
 
       if (editingTemplateId === templateId) {
         resetTemplateForm();
@@ -5303,7 +5228,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       const result = await taskBanditApi.resetTemplatesToDefaults(token, language);
       const freshTemplates = await taskBanditApi.getTemplates(token, language);
-      setPayload((current) => (current ? { ...current, templates: freshTemplates } : current));
+      updatePayload((current) => ({ ...current, templates: freshTemplates }));
       resetTemplateForm();
       setNotice(t("templates.reset_to_defaults_done").replace("{count}", String(result.templateCount)));
       setPageError(null);
@@ -5385,18 +5310,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             ? mobileDueEditorInstance.recurrenceEndsAt
             : undefined
       });
-      setPayload((current) =>
-        current
-          ? {
-              ...current,
-              instances: current.instances
-                .map((instance) =>
-                  instance.id === mobileDueEditorInstance.id ? updatedInstance : instance
-                )
-                .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime())
-            }
-          : current
-      );
+      updatePayload((current) => ({
+        ...current,
+        instances: current.instances
+          .map((instance) =>
+            instance.id === mobileDueEditorInstance.id ? updatedInstance : instance
+          )
+          .sort((left, right) => new Date(left.dueAt).getTime() - new Date(right.dueAt).getTime()),
+      }));
       setNotice(t("instances.updated"));
       setPageError(null);
       closeMobileDueEditor();
