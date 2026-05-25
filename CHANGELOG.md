@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.74.4](https://github.com/kriziw/TaskBandit/compare/v0.74.3...v0.74.4) (2026-05-25)
+
+
+### Bug Fixes
+
+* **web,android:** reward editor styling + admin shop tab ([#502](https://github.com/kriziw/TaskBandit/issues/502)) ([37dc310](https://github.com/kriziw/TaskBandit/commit/37dc310d1bac5d6a38984bd80b539a0fadc6a684))
+
 ## [0.74.3](https://github.com/kriziw/TaskBandit/compare/v0.74.2...v0.74.3) (2026-05-25)
 
 
