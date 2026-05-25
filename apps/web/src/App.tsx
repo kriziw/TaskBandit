@@ -17,6 +17,7 @@ import {
   createEmptyTemplateForm,
   type TemplateFormState,
 } from "./stores/templateStore";
+import { useRewardStore } from "./stores/rewardStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
@@ -1138,22 +1139,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     selectedTemplateGroup, setSelectedTemplateGroup,
     selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup,
   } = useTemplateStore();
-  const [rewardsTab, setRewardsTab] = useState<"shop" | "history">("shop");
-  const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("my_shop");
-  const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
-  const [isCreatingNewReward, setIsCreatingNewReward] = useState(false);
-  const [rewardForm, setRewardForm] = useState<{
-    title: string;
-    description: string;
-    category: RewardCategory;
-    eligibility: RewardEligibility;
-    pointCost: number;
-    maxRedemptionsPerChild: string;
-    cooldownDays: string;
-  }>({ title: "", description: "", category: "CUSTOM", eligibility: "ALL", pointCost: 50, maxRedemptionsPerChild: "", cooldownDays: "" });
-  const [redeemDialogRewardId, setRedeemDialogRewardId] = useState<string | null>(null);
-  const [rejectDialogRedemptionId, setRejectDialogRedemptionId] = useState<string | null>(null);
-  const [rejectDialogNote, setRejectDialogNote] = useState("");
+  const {
+    rewardsTab, setRewardsTab,
+    rewardsManagerTab, setRewardsManagerTab,
+    selectedRewardId, setSelectedRewardId,
+    isCreatingNewReward, setIsCreatingNewReward,
+    rewardForm, setRewardForm,
+    redeemDialogRewardId, setRedeemDialogRewardId,
+    rejectDialogRedemptionId, setRejectDialogRedemptionId,
+    rejectDialogNote, setRejectDialogNote,
+    showAllPointsLedger, setShowAllPointsLedger,
+  } = useRewardStore();
   const [isClientMobileViewport, setIsClientMobileViewport] = useState(
     () =>
       typeof window !== "undefined" &&
@@ -1247,7 +1243,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
   const [lastCompletionCelebrationPhraseKey, setLastCompletionCelebrationPhraseKey] = useState<string | null>(null);
   const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [showAllPointsLedger, setShowAllPointsLedger] = useState(false);
   const [clientWebPushStatus, setClientWebPushStatus] = useState<ClientWebPushStatus>(
     getInitialClientWebPushStatus
   );
@@ -6886,7 +6881,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <button
                       className="ghost-button"
                       type="button"
-                      onClick={() => setShowAllPointsLedger((c) => !c)}
+                      onClick={() => setShowAllPointsLedger(!showAllPointsLedger)}
                     >
                       {showAllPointsLedger ? t("common.hide") : t("common.show")}
                     </button>
