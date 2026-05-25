@@ -12,6 +12,11 @@ import {
   type ChoreExportStatusFilter,
   type InstanceFormState,
 } from "./stores/choreStore";
+import {
+  useTemplateStore,
+  createEmptyTemplateForm,
+  type TemplateFormState,
+} from "./stores/templateStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
@@ -91,7 +96,6 @@ type ReadinessChecklistItem = {
 
 type MemberFormState = CreateHouseholdMemberInput;
 type MemberEditFormState = UpdateHouseholdMemberInput;
-type TemplateFormState = CreateChoreTemplateInput;
 type BootstrapFormState = BootstrapHouseholdInput;
 type OnboardingStep = string;
 type OnboardingTourMode = "admin" | "client" | "client-mobile";
@@ -381,27 +385,6 @@ async function convertImageFileToAvatarDataUrl(file: File) {
   }
 }
 
-function createEmptyTemplateForm(defaultLocale: TemplateTranslationLocale): TemplateFormState {
-  return {
-    defaultLocale,
-    groupTitle: "",
-    title: "",
-    description: "",
-    translations: [],
-    difficulty: "easy",
-    assignmentStrategy: "round_robin",
-    recurrenceType: "none",
-    recurrenceIntervalDays: 2,
-    recurrenceWeekdays: [],
-    requirePhotoProof: false,
-    stickyFollowUpAssignee: false,
-    recurrenceStartStrategy: "due_at",
-    variants: [],
-    dependencyTemplateIds: [],
-    dependencyRules: [],
-    checklist: []
-  };
-}
 
 function normalizeTemplateDependencyRules(
   dependencyRules?: ChoreTemplateDependencyRule[],
@@ -1147,12 +1130,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [memberForm, setMemberForm] = useState<MemberFormState>(createEmptyMemberForm);
   const [memberEditForm, setMemberEditForm] = useState<MemberEditFormState>(createEmptyMemberEditForm);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
-  const [templateForm, setTemplateForm] = useState<TemplateFormState>(() => createEmptyTemplateForm("en"));
-  const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [templateSearch, setTemplateSearch] = useState("");
-  const [templateEditorLocale, setTemplateEditorLocale] = useState<TemplateTranslationLocale>("en");
-  const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
-  const [selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup] = useState("");
+  const {
+    templateForm, setTemplateForm,
+    editingTemplateId, setEditingTemplateId,
+    templateSearch, setTemplateSearch,
+    templateEditorLocale, setTemplateEditorLocale,
+    selectedTemplateGroup, setSelectedTemplateGroup,
+    selectedTemplateBrowserGroup, setSelectedTemplateBrowserGroup,
+  } = useTemplateStore();
   const [rewardsTab, setRewardsTab] = useState<"shop" | "history">("shop");
   const [rewardsManagerTab, setRewardsManagerTab] = useState<"catalogue" | "approvals" | "my_shop">("my_shop");
   const [selectedRewardId, setSelectedRewardId] = useState<string | null>(null);
@@ -1485,7 +1470,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
 
     const firstGroupTitle = payload.templates[0].groupTitle;
-    setSelectedTemplateGroup((current) => current || firstGroupTitle);
+    setSelectedTemplateGroup(selectedTemplateGroup || firstGroupTitle);
 
     setInstanceForm((current) =>
       current.templateId
