@@ -1,7 +1,9 @@
-﻿import { FormEvent, useEffect, useMemo, useRef, useState } from "react";
+﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from "react";
 import type { CSSProperties, ReactNode, RefObject } from "react";
 import { taskBanditApi, TaskBanditApiError } from "./api/taskbanditApi";
 import { DashboardCard } from "./components/DashboardCard";
+import { AuthPanel } from "./features/auth/AuthPanel";
+import { useAuthStore } from "./stores/authStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
@@ -17,7 +19,6 @@ import type {
   BackupReadiness,
   BootstrapStarterTemplateOption,
   ChoreAttachment,
-  AuthProviders,
   AuthenticatedUser,
   BootstrapHouseholdInput,
   BootstrapStatus,
@@ -49,14 +50,12 @@ import type {
   FollowUpDelayUnit,
   RuntimeLogEntry,
   ServerCompatibility,
-  SignupInput,
   TakeoverRequestEntry,
   TemplateTranslationLocale,
   UnlockedAchievement,
   UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
-const legacyTokenStorageKey = "taskbandit-access-token";
 const workspacePageStorageKey = "taskbandit-active-page";
 const dismissedUpdateStorageKey = "taskbandit-dismissed-update";
 const dismissedPwaInstallKey = "taskbandit-dismissed-pwa-install";
@@ -102,27 +101,6 @@ type ReadinessChecklistItem = {
   title: string;
   detail: string;
 };
-
-type AuthEntryState = {
-  providers: AuthProviders | null;
-  bootstrapStatus: BootstrapStatus | null;
-  starterTemplates: BootstrapStarterTemplateOption[];
-  errorMessage: string | null;
-  hasFatalError: boolean;
-};
-
-type LoginFormState = {
-  email: string;
-  password: string;
-};
-type SignupFormState = SignupInput;
-type PasswordResetRequestFormState = {
-  email: string;
-};
-type PasswordResetCompleteFormState = {
-  password: string;
-};
-type AuthPanelMode = "sign_in" | "password_reset_request" | "sign_up";
 
 type MemberFormState = CreateHouseholdMemberInput;
 type MemberEditFormState = UpdateHouseholdMemberInput;
@@ -587,14 +565,6 @@ function getSmtpSettingsFingerprint(
   return JSON.stringify(settings);
 }
 
-function getTokenStorageKey(variant: WorkspaceVariant) {
-  return `${legacyTokenStorageKey}-${variant}`;
-}
-
-function getTokenMigrationKey(variant: WorkspaceVariant) {
-  return `${getTokenStorageKey(variant)}-migrated`;
-}
-
 function getOnboardingTourStorageKey(mode: OnboardingTourMode) {
   return `taskbandit-onboarding-tour-${mode}`;
 }
@@ -610,36 +580,7 @@ function getOnboardingTourMode(
   return variant;
 }
 
-function getTokenStorage(variant: WorkspaceVariant) {
-  if (variant === "admin") {
-    return window.sessionStorage;
-  }
 
-  return window.localStorage;
-}
-
-function readStoredToken(variant: WorkspaceVariant) {
-  const storage = getTokenStorage(variant);
-  const storageKey = getTokenStorageKey(variant);
-  const directValue = storage.getItem(storageKey);
-  if (directValue) {
-    return directValue;
-  }
-
-  const migrationKey = getTokenMigrationKey(variant);
-  if (window.localStorage.getItem(migrationKey) === "true") {
-    return null;
-  }
-
-  const legacyValue = window.localStorage.getItem(legacyTokenStorageKey);
-  if (legacyValue) {
-    storage.setItem(storageKey, legacyValue);
-    window.localStorage.setItem(migrationKey, "true");
-    return legacyValue;
-  }
-
-  return null;
-}
 
 function readStoredOnboardingTourCompletion(mode: OnboardingTourMode) {
   return window.localStorage.getItem(getOnboardingTourStorageKey(mode)) === "true";
@@ -698,18 +639,6 @@ function getClientOnboardingStepForMode(
     default:
       return "welcome";
   }
-}
-
-function writeStoredToken(variant: WorkspaceVariant, token: string) {
-  const storage = getTokenStorage(variant);
-  storage.setItem(getTokenStorageKey(variant), token);
-  window.localStorage.setItem(getTokenMigrationKey(variant), "true");
-}
-
-function clearStoredToken(variant: WorkspaceVariant) {
-  const storage = getTokenStorage(variant);
-  storage.removeItem(getTokenStorageKey(variant));
-  window.localStorage.setItem(getTokenMigrationKey(variant), "true");
 }
 
 function getDismissedUpdateStorageKey(variant: WorkspaceVariant) {
@@ -798,11 +727,6 @@ function readStoredWorkspacePage(variant: WorkspaceVariant) {
   }
 
   return getDefaultWorkspacePage(variant);
-}
-
-function readLoginEmailFromRoute() {
-  const loginEmail = new URL(window.location.href).searchParams.get("loginEmail");
-  return loginEmail ? loginEmail.trim() : "";
 }
 
 function formatNumber(value: number) {
@@ -972,32 +896,6 @@ function getInitialClientWebPushStatus(): ClientWebPushStatus {
     permission: Notification.permission,
     needsPrompt: Notification.permission === "default"
   };
-}
-
-async function fetchAuthEntryState(language: AppLanguage) {
-  const [providersResult, bootstrapStatusResult, starterTemplatesResult] = await Promise.allSettled([
-    taskBanditApi.getProviders(language),
-    taskBanditApi.getBootstrapStatus(language),
-    taskBanditApi.getBootstrapStarterTemplates(language)
-  ]);
-  const providers = providersResult.status === "fulfilled" ? providersResult.value : null;
-  const bootstrapStatus =
-    bootstrapStatusResult.status === "fulfilled" ? bootstrapStatusResult.value : null;
-  const starterTemplates =
-    starterTemplatesResult.status === "fulfilled" ? starterTemplatesResult.value : [];
-
-  const firstError =
-    (providersResult.status === "rejected" ? providersResult.reason : null) ??
-    (bootstrapStatusResult.status === "rejected" ? bootstrapStatusResult.reason : null) ??
-    (starterTemplatesResult.status === "rejected" ? starterTemplatesResult.reason : null);
-
-  return {
-    providers,
-    bootstrapStatus,
-    starterTemplates,
-    errorMessage: firstError ? readErrorMessage(firstError, "Request failed.") : null,
-    hasFatalError: providers === null && bootstrapStatus === null
-  } satisfies AuthEntryState;
 }
 
 function sortByLabel<T>(items: T[], getLabel: (item: T) => string) {
@@ -1180,7 +1078,19 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const brandIconAssetPath = "/brand/logo-dark.png";
   const mascotLoginAssetPath = "/brand/mascot-login.png";
   const mascotCelebrationAssetPath = "/brand/mascot-success.png";
-  const [token, setToken] = useState<string | null>(() => readStoredToken(workspaceVariant));
+  const {
+    token,
+    bootstrapStatus,
+    bootstrapStarterTemplates,
+    logout: authLogout,
+    setBootstrapStatus: authSetBootstrapStatus,
+    setProviders: authSetProviders,
+    setLoginError: authSetLoginError,
+    initToken: authInitToken,
+    login: authLogin,
+  } = useAuthStore();
+  // Hydrate token from storage once on mount
+  useState(() => authInitToken(workspaceVariant));
   const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
   const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
     window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant))
@@ -1189,30 +1099,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [installPromptDismissed, setInstallPromptDismissed] = useState<boolean>(() =>
     window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
   );
-  const [providers, setProviders] = useState<AuthProviders | null>(null);
-  const [bootstrapStatus, setBootstrapStatus] = useState<BootstrapStatus | null>(null);
-  const [bootstrapStarterTemplates, setBootstrapStarterTemplates] = useState<BootstrapStarterTemplateOption[]>([]);
-  const [isAuthEntryLoading, setIsAuthEntryLoading] = useState<boolean>(() => !readStoredToken(workspaceVariant));
-  const [authEntryError, setAuthEntryError] = useState<string | null>(null);
-  const [loginForm, setLoginForm] = useState<LoginFormState>({
-    email: readLoginEmailFromRoute(),
-    password: ""
-  });
-  const [signupForm, setSignupForm] = useState<SignupFormState>({
-    displayName: "",
-    email: "",
-    password: ""
-  });
-  const [passwordResetRequestForm, setPasswordResetRequestForm] =
-    useState<PasswordResetRequestFormState>({
-      email: ""
-    });
-  const [passwordResetCompleteForm, setPasswordResetCompleteForm] =
-    useState<PasswordResetCompleteFormState>({
-      password: ""
-    });
-  const [passwordResetToken, setPasswordResetToken] = useState<string | null>(null);
-  const [authPanelMode, setAuthPanelMode] = useState<AuthPanelMode>("sign_in");
   const [bootstrapForm, setBootstrapForm] = useState<BootstrapFormState>({
     householdName: "",
     ownerDisplayName: "",
@@ -1385,12 +1271,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       )
     )
   );
-  const [loginError, setLoginError] = useState<string | null>(null);
   const [pageError, setPageError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
   const [lastCompletionCelebrationPhraseKey, setLastCompletionCelebrationPhraseKey] = useState<string | null>(null);
-  const [isAuthenticating, setIsAuthenticating] = useState(false);
   const [isLoading, setIsLoading] = useState(Boolean(token));
   const [busyAction, setBusyAction] = useState<string | null>(null);
   const [showAllPointsLedger, setShowAllPointsLedger] = useState(false);
@@ -1440,72 +1324,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     { code: "de", label: t("language.german") },
     { code: "hu", label: t("language.hungarian") }
   ];
-
-  useEffect(() => {
-    const currentUrl = new URL(window.location.href);
-    const oidcToken = currentUrl.searchParams.get("oidcToken");
-    const oidcError = currentUrl.searchParams.get("oidcError");
-    const resetToken = currentUrl.searchParams.get("resetToken");
-
-    if (!oidcToken && !oidcError && !resetToken) {
-      return;
-    }
-
-    if (resetToken) {
-      setPasswordResetToken(resetToken);
-      setAuthPanelMode("sign_in");
-      setLoginError(null);
-      setNotice(t("auth.password_reset_token_ready"));
-    }
-
-    if (oidcToken) {
-      writeStoredToken(workspaceVariant, oidcToken);
-      setToken(oidcToken);
-      setLoginError(null);
-      setNotice(t("auth.oidc_success"));
-    } else if (oidcError) {
-      setLoginError(oidcError);
-      setNotice(null);
-    }
-
-    currentUrl.searchParams.delete("oidcToken");
-    currentUrl.searchParams.delete("oidcError");
-    currentUrl.searchParams.delete("resetToken");
-    window.history.replaceState({}, document.title, currentUrl.toString());
-  }, [t]);
-
-  useEffect(() => {
-    if (token) {
-      setIsAuthEntryLoading(false);
-      setAuthEntryError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setIsAuthEntryLoading(true);
-    setAuthEntryError(null);
-
-    void fetchAuthEntryState(language)
-      .then((response) => {
-        if (cancelled) {
-          return;
-        }
-
-        setProviders(response.providers);
-        setBootstrapStatus(response.bootstrapStatus);
-        setBootstrapStarterTemplates(response.starterTemplates);
-        setAuthEntryError(response.hasFatalError ? response.errorMessage : null);
-      })
-      .finally(() => {
-        if (!cancelled) {
-          setIsAuthEntryLoading(false);
-        }
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [token, language]);
 
   useEffect(() => {
     if (!token) {
@@ -1890,11 +1708,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   ];
   const activeBootstrapStepIndex = bootstrapStepItems.findIndex((step) => step.key === bootstrapSetupStep);
-  const noAuthProvidersAvailable = !providers?.local.enabled && !providers?.oidc.enabled;
-  const allowCredentialLogin = providers?.local.enabled || noAuthProvidersAvailable;
-  const authUnavailableNoticeKey = noAuthProvidersAvailable && providers?.local.householdId
-    ? "auth.local_disabled_notice"
-    : null;
 
   const templateGroups = useMemo(() => {
     const grouped = new Map<string, ChoreTemplate[]>();
@@ -2657,7 +2470,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }, [isClientVariant, t]);
 
   useEffect(() => {
-    setToken(readStoredToken(workspaceVariant));
+    authInitToken(workspaceVariant);
     setDismissedUpdateKey(window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant)));
     setInstallPromptDismissed(
       window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
@@ -3916,134 +3729,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   }
 
   function handleLogout(message?: string) {
-    clearStoredToken(workspaceVariant);
-    setApiBaseUrlOverride(null);
-    setToken(null);
+    authLogout(workspaceVariant, message);
     setPayload(null);
     setRuntimeLogs([]);
     setSettingsDraft(null);
     setNotificationPreferencesDraft(null);
-    setLoginError(message ?? null);
     setNotice(null);
     setCompletionCelebration(null);
     setIsClientComposerOpen(false);
-  }
-
-  async function handleLoginSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsAuthenticating(true);
-    setLoginError(null);
-
-    try {
-      const response = await taskBanditApi.login(loginForm.email, loginForm.password, language);
-      if (response.tenantContext?.hostedMode && response.tenantContext.canonicalApiBaseUrl) {
-        setApiBaseUrlOverride(response.tenantContext.canonicalApiBaseUrl);
-      } else {
-        setApiBaseUrlOverride(null);
-      }
-      writeStoredToken(workspaceVariant, response.accessToken);
-      setToken(response.accessToken);
-      setNotice(t("auth.login_success"));
-    } catch (error) {
-      setLoginError(readErrorMessage(error, t("auth.login_failed")));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
-
-  async function handleRetryAuthEntryState() {
-    if (token) {
-      return;
-    }
-
-    setLoginError(null);
-    setIsAuthEntryLoading(true);
-    setAuthEntryError(null);
-
-    try {
-      const response = await fetchAuthEntryState(language);
-      setProviders(response.providers);
-      setBootstrapStatus(response.bootstrapStatus);
-      setBootstrapStarterTemplates(response.starterTemplates);
-      setAuthEntryError(response.hasFatalError ? response.errorMessage : null);
-    } finally {
-      setIsAuthEntryLoading(false);
-    }
-  }
-
-  async function handleSignupSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsAuthenticating(true);
-    setLoginError(null);
-
-    try {
-      const response = await taskBanditApi.signup(signupForm, language);
-      if (response.tenantContext?.hostedMode && response.tenantContext.canonicalApiBaseUrl) {
-        setApiBaseUrlOverride(response.tenantContext.canonicalApiBaseUrl);
-      } else {
-        setApiBaseUrlOverride(null);
-      }
-      writeStoredToken(workspaceVariant, response.accessToken);
-      setToken(response.accessToken);
-      setSignupForm({
-        displayName: "",
-        email: "",
-        password: ""
-      });
-      setNotice(t("auth.signup_success"));
-    } catch (error) {
-      setLoginError(readErrorMessage(error, t("auth.signup_failed")));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
-
-  async function handlePasswordResetRequestSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    setIsAuthenticating(true);
-    setLoginError(null);
-
-    try {
-      const response = await taskBanditApi.requestPasswordReset(passwordResetRequestForm.email, language);
-      setPasswordResetRequestForm({ email: "" });
-      setNotice(response.message);
-    } catch (error) {
-      setLoginError(readErrorMessage(error, t("auth.password_reset_request_failed")));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
-
-  async function handlePasswordResetCompleteSubmit(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    if (!passwordResetToken) {
-      return;
-    }
-
-    setIsAuthenticating(true);
-    setLoginError(null);
-
-    try {
-      const response = await taskBanditApi.completePasswordReset(
-        passwordResetToken,
-        passwordResetCompleteForm.password,
-        language
-      );
-      setPasswordResetCompleteForm({ password: "" });
-      setPasswordResetToken(null);
-      setNotice(response.message);
-    } catch (error) {
-      setLoginError(readErrorMessage(error, t("auth.password_reset_complete_failed")));
-    } finally {
-      setIsAuthenticating(false);
-    }
-  }
-
-  function handleOidcSignIn() {
-    setIsAuthenticating(true);
-    setLoginError(null);
-    setNotice(t("auth.oidc_redirecting"));
-    window.location.assign(taskBanditApi.getOidcStartUrl(language, window.location.href));
   }
 
   async function handleBootstrapSubmit(event: FormEvent<HTMLFormElement>) {
@@ -4053,22 +3746,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     try {
       await taskBanditApi.bootstrapHousehold(language, bootstrapForm);
-      const authResponse = await taskBanditApi.login(
-        bootstrapForm.ownerEmail,
-        bootstrapForm.ownerPassword,
-        language
-      );
-      if (authResponse.tenantContext?.hostedMode && authResponse.tenantContext.canonicalApiBaseUrl) {
-        setApiBaseUrlOverride(authResponse.tenantContext.canonicalApiBaseUrl);
-      } else {
-        setApiBaseUrlOverride(null);
-      }
-      writeStoredToken(workspaceVariant, authResponse.accessToken);
-      setToken(authResponse.accessToken);
-      setBootstrapStatus({
-        isBootstrapped: true,
-        householdCount: 1
-      });
+      await authLogin(bootstrapForm.ownerEmail, bootstrapForm.ownerPassword, language, workspaceVariant);
+      authSetBootstrapStatus({ isBootstrapped: true, householdCount: 1 });
       setNotice(t("bootstrap.created"));
     } catch (error) {
       setPageError(readErrorMessage(error, t("bootstrap.create_failed")));
@@ -4393,7 +4072,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const household = await taskBanditApi.updateHousehold(token, language, settingsDraft);
       const nextProviders = await taskBanditApi.getProviders(language);
       setPayload((current) => (current ? { ...current, household } : current));
-      setProviders(nextProviders);
+      authSetProviders(nextProviders);
       setNotice(t("settings.saved"));
       setPageError(null);
     } catch (error) {
@@ -6598,28 +6277,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             bootstrapStatus?.isBootstrapped === false ? "bootstrap-grid" : ""
           }`}
         >
-          {isAuthEntryLoading ? (
-            <article className="panel login-panel">
-              <div className="section-heading">
-                <h2>{t("auth.sign_in")}</h2>
-                <span className="section-kicker">{t("auth.setup_loading")}</span>
-              </div>
-              <p className="inline-message">{t("auth.setup_loading")}</p>
-            </article>
-          ) : authEntryError ? (
-            <article className="panel login-panel">
-              <div className="section-heading">
-                <h2>{t("auth.sign_in")}</h2>
-                <span className="section-kicker">{t("auth.setup_retry")}</span>
-              </div>
-              <p className="inline-message error-text">{authEntryError}</p>
-              <div className="button-row">
-                <button className="secondary-button" type="button" onClick={() => void handleRetryAuthEntryState()}>
-                  {t("common.retry")}
-                </button>
-              </div>
-            </article>
-          ) : bootstrapStatus?.isBootstrapped === false ? (
+          {bootstrapStatus?.isBootstrapped === false ? (
             <article className="panel login-panel bootstrap-panel">
               <div className="section-heading">
                 <h2>{t("bootstrap.title")}</h2>
@@ -6888,229 +6546,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </form>
             </article>
           ) : (
-            <article className="panel login-panel">
-              <div className="section-heading">
-                <h2>
-                  {passwordResetToken
-                    ? t("auth.password_reset_complete_title")
-                    : authPanelMode === "password_reset_request"
-                      ? t("auth.password_reset_request_title")
-                      : authPanelMode === "sign_up"
-                        ? t("auth.sign_up")
-                        : t("auth.sign_in")}
-                </h2>
-                {passwordResetToken ? (
-                  <span className="section-kicker">{t("auth.password_reset_complete_kicker")}</span>
-                ) : authPanelMode === "password_reset_request" ? (
-                  <span className="section-kicker">{t("auth.password_reset_request_kicker")}</span>
-                ) : authPanelMode === "sign_up" ? (
-                  <span className="section-kicker">{t("auth.sign_up_kicker")}</span>
-                ) : null}
-              </div>
-              {passwordResetToken ? (
-                <form className="login-form" onSubmit={handlePasswordResetCompleteSubmit}>
-                  <label>
-                    <span>{t("auth.password")}</span>
-                    <input
-                      type="password"
-                      value={passwordResetCompleteForm.password}
-                      onChange={(event) =>
-                        setPasswordResetCompleteForm({ password: event.target.value })
-                      }
-                      autoComplete="new-password"
-                    />
-                  </label>
-                  {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
-                  <div className="button-row">
-                    <button className="primary-button" type="submit" disabled={isAuthenticating}>
-                      {isAuthenticating
-                        ? t("auth.password_reset_completing")
-                        : t("auth.password_reset_complete_action")}
-                    </button>
-                    <button
-                      className="ghost-button"
-                      type="button"
-                      disabled={isAuthenticating}
-                      onClick={() => {
-                        setPasswordResetToken(null);
-                        setPasswordResetCompleteForm({ password: "" });
-                        setAuthPanelMode("sign_in");
-                      }}
-                    >
-                      {t("common.cancel")}
-                    </button>
-                  </div>
-                </form>
-              ) : authPanelMode === "password_reset_request" ? (
-                <form className="login-form" onSubmit={handlePasswordResetRequestSubmit}>
-                  <label>
-                    <span>{t("auth.email")}</span>
-                    <input
-                      type="email"
-                      value={passwordResetRequestForm.email}
-                      onChange={(event) =>
-                        setPasswordResetRequestForm({ email: event.target.value })
-                      }
-                      autoComplete="email"
-                    />
-                  </label>
-                  <p className="inline-message">{t("auth.password_reset_request_hint")}</p>
-                  {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
-                  <div className="button-row">
-                    <button className="secondary-button" type="submit" disabled={isAuthenticating}>
-                      {isAuthenticating
-                        ? t("auth.password_reset_requesting")
-                        : t("auth.password_reset_request_action")}
-                    </button>
-                    <button
-                      className="ghost-button"
-                      type="button"
-                      disabled={isAuthenticating}
-                      onClick={() => {
-                        setAuthPanelMode("sign_in");
-                        setLoginError(null);
-                      }}
-                    >
-                      {t("common.cancel")}
-                    </button>
-                  </div>
-                </form>
-              ) : authPanelMode === "sign_up" ? (
-                <form className="login-form" onSubmit={handleSignupSubmit}>
-                  <label>
-                    <span>{t("auth.display_name")}</span>
-                    <input
-                      type="text"
-                      value={signupForm.displayName}
-                      onChange={(event) =>
-                        setSignupForm((current) => ({ ...current, displayName: event.target.value }))
-                      }
-                      autoComplete="name"
-                    />
-                  </label>
-                  <label>
-                    <span>{t("auth.email")}</span>
-                    <input
-                      type="email"
-                      value={signupForm.email}
-                      onChange={(event) =>
-                        setSignupForm((current) => ({ ...current, email: event.target.value }))
-                      }
-                      autoComplete="email"
-                    />
-                  </label>
-                  <label>
-                    <span>{t("auth.password")}</span>
-                    <input
-                      type="password"
-                      value={signupForm.password}
-                      onChange={(event) =>
-                        setSignupForm((current) => ({ ...current, password: event.target.value }))
-                      }
-                      autoComplete="new-password"
-                    />
-                  </label>
-                  {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
-                  <div className="button-row">
-                    <button className="primary-button" type="submit" disabled={isAuthenticating}>
-                      {isAuthenticating ? t("auth.signing_up") : t("auth.sign_up")}
-                    </button>
-                    <button
-                      className="ghost-button"
-                      type="button"
-                      disabled={isAuthenticating}
-                      onClick={() => {
-                        setAuthPanelMode("sign_in");
-                        setLoginError(null);
-                      }}
-                    >
-                      {t("common.cancel")}
-                    </button>
-                  </div>
-                </form>
-              ) : (
-                <form className="login-form" onSubmit={handleLoginSubmit}>
-                  {allowCredentialLogin ? (
-                    <>
-                      <label>
-                        <span>{t("auth.email")}</span>
-                        <input
-                          type="email"
-                          value={loginForm.email}
-                          onChange={(event) =>
-                            setLoginForm((current) => ({ ...current, email: event.target.value }))
-                          }
-                          autoComplete="email"
-                        />
-                      </label>
-                      <label>
-                        <span>{t("auth.password")}</span>
-                        <input
-                          type="password"
-                          value={loginForm.password}
-                          onChange={(event) =>
-                            setLoginForm((current) => ({ ...current, password: event.target.value }))
-                          }
-                          autoComplete="current-password"
-                        />
-                      </label>
-                    </>
-                  ) : null}
-                  {authUnavailableNoticeKey ? (
-                    <p className="inline-message">{t(authUnavailableNoticeKey)}</p>
-                  ) : null}
-                  {loginError ? <p className="inline-message error-text">{loginError}</p> : null}
-                  <div className="button-row">
-                    {allowCredentialLogin ? (
-                      <button className="primary-button" type="submit" disabled={isAuthenticating}>
-                        {isAuthenticating ? t("auth.signing_in") : t("auth.sign_in")}
-                      </button>
-                    ) : null}
-                    {providers?.oidc.enabled ? (
-                      <button
-                        className={providers?.local.enabled ? "secondary-button" : "primary-button"}
-                        type="button"
-                        disabled={isAuthenticating}
-                        onClick={handleOidcSignIn}
-                      >
-                        {t("auth.oidc_sign_in")}
-                      </button>
-                    ) : null}
-                  </div>
-                  <div className="button-row">
-                    {allowCredentialLogin ? (
-                      <button
-                        className="ghost-button"
-                        type="button"
-                        disabled={isAuthenticating}
-                        onClick={() => {
-                          setPasswordResetRequestForm({
-                            email: passwordResetRequestForm.email || loginForm.email
-                          });
-                          setAuthPanelMode("password_reset_request");
-                          setLoginError(null);
-                        }}
-                      >
-                        {t("auth.forgot_password")}
-                      </button>
-                    ) : null}
-                    {providers?.local.enabled && providers.local.selfSignupEnabled ? (
-                      <button
-                        className="ghost-button"
-                        type="button"
-                        disabled={isAuthenticating}
-                        onClick={() => {
-                          setAuthPanelMode("sign_up");
-                          setLoginError(null);
-                        }}
-                      >
-                        {t("auth.sign_up")}
-                      </button>
-                    ) : null}
-                  </div>
-                </form>
-              )}
-            </article>
+            <AuthPanel workspaceVariant={workspaceVariant} onNotice={setNotice} />
           )}
         </section>
       ) : (

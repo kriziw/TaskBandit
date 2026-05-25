@@ -2,6 +2,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+/// <reference types="vitest" />
 
 const repositoryVersionPath = path.resolve(__dirname, "..", "..", "version.txt");
 const releaseVersion =
@@ -43,6 +44,11 @@ export default defineConfig(({ mode }) => {
       rollupOptions: {
         input: buildInput
       }
-    }
+    },
+    test: {
+      environment: 'jsdom',
+      globals: true,
+      setupFiles: ['./src/test/setup.ts'],
+    },
   };
 });
