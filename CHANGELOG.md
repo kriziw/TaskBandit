@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [0.74.3](https://github.com/kriziw/TaskBandit/compare/v0.74.2...v0.74.3) (2026-05-25)
+
+
+### Bug Fixes
+
+* **web,server:** fix blank-page crash after rewards feature launch ([#499](https://github.com/kriziw/TaskBandit/issues/499)) ([9c3f0f3](https://github.com/kriziw/TaskBandit/commit/9c3f0f395bc17c591914d8123b1bb1db41fa5958))
+
 ## [0.74.2](https://github.com/kriziw/TaskBandit/compare/v0.74.1...v0.74.2) (2026-05-25)
 
 
