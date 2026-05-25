@@ -10777,7 +10777,10 @@ private fun RewardsManagerScreen(
             groupedRewards.keys.filter { it !in categoryOrder }
     }
 
-    Column(modifier = Modifier.fillMaxWidth()) {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())
+    ) {
         SectionIntro(
             title = stringResource(R.string.mobile_rewards_manager_title),
             body = stringResource(R.string.mobile_rewards_manager_hint),
