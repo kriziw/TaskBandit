@@ -236,6 +236,8 @@ model User {
   userAchievements UserAchievement[]
   redemptionsRequested RewardRedemption[] @relation("RedemptionRequester")
   redemptionsResolved  RewardRedemption[] @relation("RedemptionResolver")
+
+  @@index([householdId])
 }
 
 model AuthIdentity {
@@ -252,6 +254,7 @@ model AuthIdentity {
 
   @@unique([provider, providerSubject])
   @@unique([email], map: "auth_identity_email_unique")
+  @@index([userId])
 }
 
 model PasswordResetToken {
@@ -295,6 +298,7 @@ model ChoreTemplate {
   variants           ChoreTemplateVariant[]
 
   @@unique([householdId, catalogKey])
+  @@index([householdId])
 }
 
 model ChoreTemplateChecklistItem {
@@ -370,6 +374,7 @@ model ChoreInstance {
 
   @@index([householdId, cycleId, state], map: "chore_instance_household_cycle_state_idx")
   @@index([householdId, occurrenceRootId, state], map: "chore_instance_household_occurrence_root_state_idx")
+  @@index([assigneeId])
 }
 
 model ChoreTakeoverRequest {
