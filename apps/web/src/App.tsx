@@ -766,6 +766,7 @@ function resolveWorkspaceRouteFromPage(page: WorkspacePage): WorkspaceRoute {
       return "home";
     case "chores":
     case "templates":
+    case "rewards":
       return "plan";
     case "household":
       return "household";
@@ -2062,9 +2063,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const enabledRewards = useMemo(() => {
     const all = payload?.rewards ?? [];
     if (isParentOrAdmin) {
-      return all.filter((r) => r.isEnabled && (r.eligibility === "ALL" || r.eligibility === "ADULT_ONLY"));
+      return all.filter((r) => {
+        const elig = r.eligibility ?? "ALL";
+        return r.isEnabled && (elig === "ALL" || elig === "ADULT_ONLY");
+      });
     }
-    return all.filter((r) => r.isEnabled && (r.eligibility === "ALL" || r.eligibility === "CHILD_ONLY"));
+    return all.filter((r) => {
+      const elig = r.eligibility ?? "ALL";
+      return r.isEnabled && (elig === "ALL" || elig === "CHILD_ONLY");
+    });
   }, [payload?.rewards, isParentOrAdmin]);
   const pendingRedemptions = useMemo(
     () => payload?.redemptions.filter((r) => r.status === "PENDING") ?? [],
@@ -2131,7 +2138,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       title: reward.title,
       description: reward.description ?? "",
       category: reward.category,
-      eligibility: reward.eligibility,
+      eligibility: reward.eligibility ?? "ALL",
       pointCost: reward.pointCost,
       maxRedemptionsPerChild: reward.maxRedemptionsPerChild != null ? String(reward.maxRedemptionsPerChild) : "",
       cooldownDays: reward.cooldownDays != null ? String(reward.cooldownDays) : ""
@@ -10326,7 +10333,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                       {reward.isOperatorManaged && <span className="lock-icon" title={t("rewards.operator_managed")} aria-label={t("rewards.operator_managed")}>🔒</span>}
                                       <span className="template-browser-card-title">{reward.title}</span>
                                       <span className="section-kicker">{reward.pointCost} {t("user.points_short")}</span>
-                                      {reward.eligibility !== "ALL" && (
+                                      {reward.eligibility != null && reward.eligibility !== "ALL" && (
                                         <span className={`inline-badge eligibility-badge eligibility-${reward.eligibility.toLowerCase()}`}>
                                           {reward.eligibility === "CHILD_ONLY" ? t("reward.eligibility.child_only") : t("reward.eligibility.adult_only")}
                                         </span>
