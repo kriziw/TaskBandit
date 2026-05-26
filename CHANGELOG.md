@@ -2,6 +2,10 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.0.0](https://github.com/kriziw/TaskBandit/compare/v0.74.4...v1.0.0) (2026-05-26)
+
+Initial stable release. TaskBandit is production-ready with a full feature set including chore management, recurring schedules, household leaderboards, rewards, achievements, multi-tenant hosting, and native Android + PWA clients.
+
 ## [0.74.4](https://github.com/kriziw/TaskBandit/compare/v0.74.3...v0.74.4) (2026-05-25)
 
 
