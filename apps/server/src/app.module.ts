@@ -12,6 +12,7 @@ import { ChoresModule } from "./modules/chores/chores.module";
 import { DashboardModule } from "./modules/dashboard/dashboard.module";
 import { GamificationModule } from "./modules/gamification/gamification.module";
 import { AchievementsModule } from "./modules/achievements/achievements.module";
+import { HouseholdModule } from "./modules/household/household.module";
 import { SettingsModule } from "./modules/settings/settings.module";
 import { RewardsModule } from "./modules/rewards/rewards.module";
 
@@ -28,6 +29,7 @@ import { RewardsModule } from "./modules/rewards/rewards.module";
     AuthModule,
     BootstrapModule,
     DashboardModule,
+    HouseholdModule,
     SettingsModule,
     ChoresModule,
     GamificationModule,
