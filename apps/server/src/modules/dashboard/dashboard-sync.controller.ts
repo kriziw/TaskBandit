@@ -1,7 +1,6 @@
 import { Controller, Header, Headers, MessageEvent, Query, Req, Sse, UnauthorizedException } from "@nestjs/common";
 import { ApiTags } from "@nestjs/swagger";
 import type { Request } from "express";
-import { buildTenantRequestContext } from "../../common/http/request-url.util";
 import { Observable } from "rxjs";
 import { I18nService } from "../../common/i18n/i18n.service";
 import { AuthService } from "../auth/auth.service";
@@ -35,7 +34,7 @@ export class DashboardSyncController {
     const user = await this.authService.getCurrentUserFromDashboardSyncToken(
       token,
       language,
-      buildTenantRequestContext(request)
+      request.tenantContext
     );
     return this.dashboardSyncService.streamForHousehold(user.householdId);
   }

@@ -14,7 +14,6 @@ import type { Request, Response } from "express";
 import { AppConfigService } from "../../common/config/app-config.service";
 import {
   buildRequestOrigin,
-  buildTenantRequestContext,
   resolveMountedAppPath
 } from "../../common/http/request-url.util";
 import { I18nService } from "../../common/i18n/i18n.service";
@@ -35,7 +34,7 @@ export class AuthController {
 
   @Get("providers")
   providers(@Req() request: Request) {
-    return this.authService.getProviders(buildTenantRequestContext(request));
+    return this.authService.getProviders(request.tenantContext);
   }
 
   @Get("oidc/start")
@@ -54,7 +53,7 @@ export class AuthController {
       const authorizationUrl = await this.authService.buildOidcAuthorizationUrl(
         callbackUrl,
         state,
-        buildTenantRequestContext(request)
+        request.tenantContext
       );
       response.redirect(authorizationUrl);
     } catch (error) {
@@ -99,7 +98,7 @@ export class AuthController {
         code,
         callbackUrl,
         parsedState.language,
-        buildTenantRequestContext(request)
+        request.tenantContext
       );
 
       response.redirect(
@@ -119,13 +118,13 @@ export class AuthController {
   @Post("login")
   login(@Body() dto: LoginDto, @Req() request: Request, @Headers("accept-language") acceptLanguage?: string) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.login(dto, language, buildTenantRequestContext(request));
+    return this.authService.login(dto, language, request.tenantContext);
   }
 
   @Post("signup")
   signup(@Body() dto: SignupDto, @Req() request: Request, @Headers("accept-language") acceptLanguage?: string) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.signup(dto, language, buildTenantRequestContext(request));
+    return this.authService.signup(dto, language, request.tenantContext);
   }
 
   @Post("password-reset/request")
@@ -139,7 +138,7 @@ export class AuthController {
       dto,
       this.buildPasswordResetUrl(request),
       language,
-      buildTenantRequestContext(request)
+      request.tenantContext
     );
   }
 
@@ -150,7 +149,7 @@ export class AuthController {
     @Headers("accept-language") acceptLanguage?: string
   ) {
     const language = this.i18nService.resolveLanguage(acceptLanguage);
-    return this.authService.completePasswordReset(dto, language, buildTenantRequestContext(request));
+    return this.authService.completePasswordReset(dto, language, request.tenantContext);
   }
 
   @Get("me")
@@ -163,7 +162,7 @@ export class AuthController {
     return this.authService.getCurrentUser(
       authorizationHeader,
       language,
-      buildTenantRequestContext(request)
+      request.tenantContext
     );
   }
 
