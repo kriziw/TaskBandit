@@ -7,7 +7,6 @@ import { useAuthStore } from "./stores/authStore";
 import { useDashboardStore } from "./stores/dashboardStore";
 import {
   useChoreStore,
-  type HouseholdChoreViewMode,
   type HouseholdChoreStateFilter,
   type ChoreExportStatusFilter,
   type InstanceFormState,
@@ -22,60 +21,48 @@ import {
   useSettingsStore,
   createEmptyMemberForm,
   createEmptyMemberEditForm,
-  type MemberFormState,
-  type MemberEditFormState,
 } from "./stores/settingsStore";
+import {
+  useUiStore,
+  type WorkspacePage,
+  type OnboardingStep,
+  type OnboardingTourMode,
+  type CompletionCelebration,
+  type ClientWebPushStatus,
+} from "./stores/uiStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
   getClientWebPushSupportStatus,
   syncClientWebPushRegistration,
-  type ClientWebPushStatus
 } from "./pwa/clientPush";
 import { resolveApiBaseUrl, setApiBaseUrlOverride } from "./runtimeConfig";
 import type {
   Achievement,
   AdminSystemStatus,
-  AuditLogEntry,
   BackupReadiness,
   BootstrapStarterTemplateOption,
   ChoreAttachment,
   AuthenticatedUser,
-  BootstrapHouseholdInput,
-  BootstrapStatus,
   ChoreInstance,
   ChoreState,
   ChoreTemplate,
   ChoreTemplateDependencyRule,
-  CreateChoreInstanceInput,
-  CreateChoreTemplateInput,
-  CreateHouseholdMemberInput,
-  DashboardPayload,
-  DashboardSummary,
   Household,
   HouseholdNotificationHealthEntry,
   HostedSubscriptionOverview,
   HouseholdSettings,
   LocalizedTemplateTranslation,
   NotificationDevice,
-  NotificationDeviceProvider,
   NotificationRecovery,
-  NotificationPreferences,
-  NotificationEntry,
-  PointsLedgerEntry,
   Reward,
   RewardCategory,
   RewardEligibility,
-  RewardRedemption,
   ReleaseInfo,
   RecurrenceType,
   FollowUpDelayUnit,
-  RuntimeLogEntry,
-  ServerCompatibility,
   TakeoverRequestEntry,
   TemplateTranslationLocale,
-  UnlockedAchievement,
-  UpdateHouseholdMemberInput
 } from "./types/taskbandit";
 
 const workspacePageStorageKey = "taskbandit-active-page";
@@ -85,16 +72,6 @@ const mobileAvatarStorageKey = "taskbandit-mobile-avatar";
 type WorkspaceVariant = "admin" | "client";
 
 
-type CompletionCelebration = {
-  points: number;
-  choreTitle: string;
-  titleKey: string;
-  eyebrowKey: string;
-  phraseKey: string;
-  variant: "standard" | "rare" | "chore" | "perfect" | "achievement";
-  unlockedAchievement?: UnlockedAchievement;
-};
-
 type ReadinessChecklistItem = {
   key: string;
   status: "ready" | "warning";
@@ -102,22 +79,8 @@ type ReadinessChecklistItem = {
   detail: string;
 };
 
-type BootstrapFormState = BootstrapHouseholdInput;
-type OnboardingStep = string;
-type OnboardingTourMode = "admin" | "client" | "client-mobile";
 type ClientMobileChoreSection = "mine" | "unassigned" | "others";
 type ClientMobileDueBucket = "today" | "this_week" | "later";
-type WorkspacePage =
-  | "overview"
-  | "chores"
-  | "leaderboard"
-  | "rewards"
-  | "templates"
-  | "household"
-  | "notifications"
-  | "settings"
-  | "admin"
-  | "logs";
 type WorkspaceRoute = "home" | "plan" | "household" | "settings" | "ops";
 
 const mobileNavIconByPage: Record<string, string> = {
@@ -994,31 +957,35 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     logout: authLogout,
     setBootstrapStatus: authSetBootstrapStatus,
     setProviders: authSetProviders,
-    setLoginError: authSetLoginError,
     initToken: authInitToken,
     login: authLogin,
   } = useAuthStore();
   // Hydrate token from storage once on mount
   useState(() => authInitToken(workspaceVariant));
-  const [serverReleaseInfo, setServerReleaseInfo] = useState<ReleaseInfo | null>(null);
-  const [dismissedUpdateKey, setDismissedUpdateKey] = useState<string | null>(() =>
-    window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant))
-  );
-  const [installPromptEvent, setInstallPromptEvent] = useState<BeforeInstallPromptEvent | null>(null);
-  const [installPromptDismissed, setInstallPromptDismissed] = useState<boolean>(() =>
-    window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
-  );
-  const [bootstrapForm, setBootstrapForm] = useState<BootstrapFormState>({
-    householdName: "",
-    ownerDisplayName: "",
-    ownerEmail: "",
-    ownerPassword: "",
-    selfSignupEnabled: false,
-    starterTemplateKeys: []
-  });
-  const [bootstrapSetupStep, setBootstrapSetupStep] =
-    useState<"account" | "templates" | "review">("account");
-  const [selectedBootstrapStarterGroup, setSelectedBootstrapStarterGroup] = useState("");
+  const {
+    activePage, setActivePage,
+    isMobileProfileOpen, setIsMobileProfileOpen,
+    isMobileMoreSheetOpen, setIsMobileMoreSheetOpen,
+    isClientMobileViewport, setIsClientMobileViewport,
+    mobileProfileAvatar, setMobileProfileAvatar,
+    pageError, setPageError,
+    notice, setNotice,
+    busyAction, setBusyAction,
+    completionCelebration, setCompletionCelebration,
+    lastCompletionCelebrationPhraseKey, setLastCompletionCelebrationPhraseKey,
+    serverReleaseInfo, setServerReleaseInfo,
+    dismissedUpdateKey, setDismissedUpdateKey,
+    installPromptEvent, setInstallPromptEvent,
+    setInstallPromptDismissed,
+    clientWebPushStatus, setClientWebPushStatus,
+    bootstrapForm, setBootstrapForm,
+    bootstrapSetupStep, setBootstrapSetupStep,
+    selectedBootstrapStarterGroup, setSelectedBootstrapStarterGroup,
+    onboardingStep, setOnboardingStep,
+    onboardingDismissed, setOnboardingDismissed,
+    onboardingManuallyOpened, setOnboardingManuallyOpened,
+    onboardingTourCompleted, setOnboardingTourCompleted,
+  } = useUiStore();
   const {
     payload,
     runtimeLogs,
@@ -1075,7 +1042,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     clearSubmitState,
     closeMobileDueEditor: choreCloseMobileDueEditor,
     closeQuickLog,
-    clearInstanceEdit,
   } = useChoreStore();
   const {
     templateForm, setTemplateForm,
@@ -1096,19 +1062,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     rejectDialogNote, setRejectDialogNote,
     showAllPointsLedger, setShowAllPointsLedger,
   } = useRewardStore();
-  const [isClientMobileViewport, setIsClientMobileViewport] = useState(
-    () =>
-      typeof window !== "undefined" &&
-      window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
-  );
-  const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
-  const [isMobileMoreSheetOpen, setIsMobileMoreSheetOpen] = useState(false);
-  const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
-    () => readStoredMobileAvatar(workspaceVariant) ?? defaultMobileAvatarAsset
-  );
-  const [activePage, setActivePage] = useState<WorkspacePage>(() =>
-    readStoredWorkspacePage(workspaceVariant)
-  );
   const mobileDueEditorInstance =
     payload?.instances.find((instance) => instance.id === mobileDueEditorInstanceId) ?? null;
   const mobileChoreDialogInstance =
@@ -1171,26 +1124,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     return [...instanceMatches, ...templateMatches].slice(0, 8);
   }, [formatDate, payload, quickLogQuery]);
   const onboardingTourMode = getOnboardingTourMode(workspaceVariant, isClientMobileViewport);
-  const [onboardingStep, setOnboardingStep] = useState<OnboardingStep>("welcome");
-  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
-  const [onboardingManuallyOpened, setOnboardingManuallyOpened] = useState(false);
-  const [onboardingTourCompleted, setOnboardingTourCompleted] = useState(() =>
-    readStoredOnboardingTourCompletion(
-      getOnboardingTourMode(
-        workspaceVariant,
-        typeof window !== "undefined" &&
-          window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
-      )
-    )
-  );
-  const [pageError, setPageError] = useState<string | null>(null);
-  const [notice, setNotice] = useState<string | null>(null);
-  const [completionCelebration, setCompletionCelebration] = useState<CompletionCelebration | null>(null);
-  const [lastCompletionCelebrationPhraseKey, setLastCompletionCelebrationPhraseKey] = useState<string | null>(null);
-  const [busyAction, setBusyAction] = useState<string | null>(null);
-  const [clientWebPushStatus, setClientWebPushStatus] = useState<ClientWebPushStatus>(
-    getInitialClientWebPushStatus
-  );
   const householdSettingsRef = useRef<HTMLElement | null>(null);
   const membersRef = useRef<HTMLElement | null>(null);
   const memberCreateRef = useRef<HTMLElement | null>(null);
@@ -1573,9 +1506,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return;
     }
 
-    setSelectedBootstrapStarterGroup((current) =>
-      starterTemplatesByGroup.some((group) => group.groupTitle === current)
-        ? current
+    setSelectedBootstrapStarterGroup(
+      starterTemplatesByGroup.some((group) => group.groupTitle === selectedBootstrapStarterGroup)
+        ? selectedBootstrapStarterGroup
         : starterTemplatesByGroup[0].groupTitle
     );
   }, [starterTemplatesByGroup]);
@@ -2379,6 +2312,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   useEffect(() => {
     authInitToken(workspaceVariant);
+    setActivePage(readStoredWorkspacePage(workspaceVariant));
     setDismissedUpdateKey(window.localStorage.getItem(getDismissedUpdateStorageKey(workspaceVariant)));
     setInstallPromptDismissed(
       window.localStorage.getItem(getDismissedPwaInstallStorageKey(workspaceVariant)) === "true"
@@ -2418,13 +2352,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
     setOnboardingTourCompleted(readStoredOnboardingTourCompletion(onboardingTourMode));
     setOnboardingDismissed(false);
-    setOnboardingStep((current) =>
-      getClientOnboardingStepForMode(
-        current,
-        onboardingTourMode,
-        payload?.currentUser.role === "child"
-      )
-    );
+    setOnboardingStep(getClientOnboardingStepForMode(
+      onboardingStep,
+      onboardingTourMode,
+      payload?.currentUser.role === "child"
+    ));
   }, [onboardingTourMode, payload?.currentUser.role, workspaceVariant]);
 
   const onboardingSteps = useMemo<Array<OnboardingStepDefinition>>(() => {
