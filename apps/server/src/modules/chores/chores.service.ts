@@ -43,7 +43,7 @@ export class ChoresService {
   }
 
   async createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "templates_manage");
+    // templates_manage enforced by FeatureGuard at the controller level
     if (this.hasFollowUpAutomation(dto)) {
       await this.requireFeature(user, "follow_up_automation");
     }
@@ -58,7 +58,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "templates_manage");
+    // templates_manage enforced by FeatureGuard at the controller level
     if (this.hasFollowUpAutomation(dto)) {
       await this.requireFeature(user, "follow_up_automation");
     }
@@ -85,7 +85,6 @@ export class ChoresService {
   }
 
   async deleteTemplate(templateId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "templates_manage");
     const template = await this.repository.getTemplateForHousehold(templateId, user.householdId, language);
     if (!template) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
@@ -103,14 +102,13 @@ export class ChoresService {
   }
 
   async resetTemplatesToDefaults(user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "templates_manage");
     const result = await this.repository.resetDefaultTemplatesForHousehold(user.householdId, language);
     this.publishSyncEvent(user, "templates.reset", "template");
     return result;
   }
 
   async createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "chores_manage");
+    // chores_manage enforced by FeatureGuard at the controller level
     if (dto.assigneeId) {
       await this.requireFeature(user, "reassignment");
     }
@@ -120,8 +118,6 @@ export class ChoresService {
   }
 
   async quickLog(dto: QuickLogChoreDto, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "quick_log");
-
     if (!dto.instanceId && !dto.templateId && !dto.title?.trim()) {
       throw new BadRequestException({
         message: "Quick log needs an existing chore/template selection or free-text title."
@@ -167,7 +163,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "chores_manage");
+    // chores_manage enforced by FeatureGuard at the controller level
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -195,7 +191,6 @@ export class ChoresService {
   }
 
   async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "chores_manage");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -218,7 +213,6 @@ export class ChoresService {
   }
 
   async cancelOccurrence(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "chores_manage");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -255,7 +249,6 @@ export class ChoresService {
   }
 
   async closeCycle(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "chores_manage");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -314,7 +307,6 @@ export class ChoresService {
   }
 
   async takeOverInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "takeover_direct");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -347,7 +339,6 @@ export class ChoresService {
   }
 
   async getTakeoverRequests(user: AuthenticatedUser, language: SupportedLanguage) {
-    await this.requireFeature(user, "takeover_requests");
     return this.repository.getPendingTakeoverRequests(user.householdId, user.id, language);
   }
 
@@ -357,7 +348,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "takeover_requests");
+    // takeover_requests enforced by FeatureGuard at the controller level
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -401,7 +392,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "takeover_requests");
     const updatedInstance = await this.repository.approveTakeoverRequest({
       requestId,
       householdId: user.householdId,
@@ -422,7 +412,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "takeover_requests");
     const takeoverRequest = await this.repository.declineTakeoverRequest({
       requestId,
       householdId: user.householdId,
@@ -450,7 +439,7 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "proof_uploads");
+    // proof_uploads enforced by FeatureGuard at the controller level (uploadProof route)
     await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "proof_upload");
     const currentUsageBytes = await this.repository.getProofStorageUsage(user.tenantId, user.householdId);
     await this.tenantRuntimePolicyService.assertStorageBytesLimit(
@@ -591,7 +580,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "external_completion");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -635,7 +623,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "approvals");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -689,7 +676,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "approvals");
     const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
     if (!instance) {
       return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
@@ -720,7 +706,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "deferred_follow_up_control");
     const releasedInstance = await this.repository.releaseDeferredFollowUp({
       instanceId,
       actingUserId: user.id,
@@ -738,7 +723,6 @@ export class ChoresService {
     user: AuthenticatedUser,
     language: SupportedLanguage
   ) {
-    await this.requireFeature(user, "deferred_follow_up_control");
     const snoozedInstance = await this.repository.snoozeDeferredFollowUp({
       instanceId,
       actingUserId: user.id,
