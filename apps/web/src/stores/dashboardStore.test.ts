@@ -4,9 +4,9 @@ import type { DashboardPayload, RuntimeLogEntry } from '../types/taskbandit';
 
 const makePayload = (overrides: Partial<DashboardPayload> = {}): DashboardPayload =>
   ({
-    currentUser: { id: 'u1', displayName: 'Alice', role: 'admin', email: 'a@test.com', points: 100, pointsThisMonth: 10, authProviders: ['local'] },
+    currentUser: { id: 'u1', displayName: 'Alice', role: 'admin', email: 'a@test.com', points: 100, authProviders: ['local'] } as DashboardPayload['currentUser'],
     dashboard: {} as DashboardPayload['dashboard'],
-    household: { id: 'h1', name: 'Home', settings: {} as DashboardPayload['household']['settings'], members: [] } as DashboardPayload['household'],
+    household: { householdId: 'h1', name: 'Home', settings: {} as DashboardPayload['household']['settings'], members: [] } as DashboardPayload['household'],
     auditLog: [],
     notifications: [],
     notificationDevices: [],
