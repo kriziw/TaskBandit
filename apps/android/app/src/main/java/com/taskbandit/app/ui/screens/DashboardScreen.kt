@@ -1,0 +1,8701 @@
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+
+package com.taskbandit.app.ui.screens
+
+import android.app.DatePickerDialog
+import android.app.TimePickerDialog
+import android.content.ContentResolver
+import android.content.Context
+import android.content.Intent
+import android.graphics.BitmapFactory
+import android.graphics.ImageDecoder
+import android.net.Uri
+import android.os.Build
+import android.provider.OpenableColumns
+import androidx.annotation.DrawableRes
+import androidx.activity.compose.BackHandler
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.core.os.LocaleListCompat
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.ui.draw.clip
+import androidx.compose.foundation.layout.BoxWithConstraints
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.border
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.LazyListScope
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AddCircle
+import androidx.compose.material.icons.rounded.Bolt
+import androidx.compose.material.icons.rounded.Close
+import androidx.compose.material.icons.rounded.AssignmentTurnedIn
+import androidx.compose.material.icons.rounded.CalendarMonth
+import androidx.compose.material.icons.rounded.DarkMode
+import androidx.compose.material.icons.rounded.EmojiEvents
+import androidx.compose.material.icons.rounded.EventBusy
+import androidx.compose.material.icons.rounded.ExpandLess
+import androidx.compose.material.icons.rounded.ExpandMore
+import androidx.compose.material.icons.rounded.HowToReg
+import androidx.compose.material.icons.rounded.Link
+import androidx.compose.material.icons.automirrored.rounded.Logout
+import androidx.compose.material.icons.rounded.Language
+import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.MoreVert
+import androidx.compose.material.icons.rounded.NotificationsActive
+import androidx.compose.material.icons.rounded.ChevronRight
+import androidx.compose.material.icons.rounded.PeopleAlt
+import androidx.compose.material.icons.rounded.SystemUpdate
+import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.SwapHoriz
+import androidx.compose.material.icons.rounded.Tune
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.ExposedDropdownMenuBox
+import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.MenuAnchorType
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.FilterChip
+import androidx.compose.material3.Switch
+import androidx.compose.material3.TopAppBar
+import com.taskbandit.app.mobile.MobileReward
+import com.taskbandit.app.mobile.MobileRedemption
+import com.taskbandit.app.mobile.CreateRewardInput
+import com.taskbandit.app.mobile.UpdateRewardInput
+import com.taskbandit.app.mobile.CreateChoreTemplateInput
+import com.taskbandit.app.mobile.CreateTemplateChecklistItemInput
+import com.taskbandit.app.mobile.CreateTemplateVariantInput
+import com.taskbandit.app.mobile.MobileVariantLabelTranslation
+import com.taskbandit.app.mobile.MobileTemplateDependencyRule
+import com.taskbandit.app.mobile.MobileTemplateTranslation
+import com.taskbandit.app.mobile.MobileTemplateChecklistItem
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.compositionLocalOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
+import com.taskbandit.app.mobile.MobileDashboard
+import com.taskbandit.app.mobile.MobileDashboardSyncSignal
+import com.taskbandit.app.mobile.MobileChore
+import com.taskbandit.app.mobile.MobileAuthProviders
+import com.taskbandit.app.mobile.MobileChoreTemplate
+import com.taskbandit.app.mobile.MobileFeatureAccess
+import com.taskbandit.app.mobile.MobileNotificationDevice
+import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
+import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
+import com.taskbandit.app.mobile.MobileLeaderboardEntry
+import com.taskbandit.app.mobile.MobileTakeoverRequest
+import com.taskbandit.app.mobile.MobileTemplateRecurrence
+import com.taskbandit.app.mobile.MobileThemeMode
+import com.taskbandit.app.mobile.MobileReleaseInfo
+import com.taskbandit.app.mobile.MobileUploadedProof
+import com.taskbandit.app.mobile.TaskBanditMobileApi
+import com.taskbandit.app.mobile.TaskBanditOutboxStore
+import com.taskbandit.app.mobile.TaskBanditUnauthorizedException
+import com.taskbandit.app.BuildConfig
+import com.taskbandit.app.R
+import com.taskbandit.app.TemplateCreateCapabilities
+import com.taskbandit.app.compareReleaseVersions
+import com.taskbandit.app.formatReleaseLabel
+import com.taskbandit.app.resolveTemplateCreateCapabilities
+import com.taskbandit.app.viewmodels.GitHubReleaseInfo
+import com.taskbandit.app.viewmodels.MobileCompletionCelebration
+import com.taskbandit.app.viewmodels.MobileCompletionCelebrationVariant
+import com.taskbandit.app.viewmodels.buildMobileCompletionCelebration
+import com.taskbandit.app.viewmodels.createProofCaptureFile
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import androidx.compose.ui.unit.sp
+import java.text.NumberFormat
+import java.time.Instant
+import java.time.DayOfWeek
+import java.time.LocalDate
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.time.temporal.ChronoUnit
+import java.io.File
+import java.util.Locale
+import java.util.UUID
+import kotlin.random.Random
+import androidx.core.content.FileProvider
+
+// â”€â”€ Shared composition locals (used throughout the dashboard composable tree) â”€
+
+private val LocalMobileFeatureAccess = compositionLocalOf { MobileFeatureAccess() }
+private val LocalIsNewMobileUi = compositionLocalOf { true }
+
+// â”€â”€ Private types used only within DashboardScreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+
+private enum class MobileDashboardTab {
+    CHORES,
+    LEADERBOARD,
+    REWARDS,
+    CREATE,
+    MORE,
+    TEMPLATE_MANAGER,
+    REWARDS_MANAGER
+}
+
+private enum class MobileChoreSection {
+    MINE,
+    UNASSIGNED,
+    OTHERS
+}
+
+private enum class MobileChoreSectionTone {
+    OVERDUE,
+    MINE,
+    UNASSIGNED,
+    OTHERS,
+    HISTORIC
+}
+
+private data class MobileChoiceOption(
+    val label: String,
+    val selected: Boolean,
+    val onClick: () -> Unit
+)
+
+private data class MobileQuickLogCandidate(
+    val kind: String,
+    val id: String,
+    val title: String,
+    val subtitle: String? = null
+)
+
+private data class MobileAvatarPreset(
+    val key: String,
+    @DrawableRes val drawableRes: Int
+)
+
+private val mobileAvatarPresets = listOf(
+    MobileAvatarPreset("preset:mascot_avatar_01", R.drawable.mascot_avatar_01),
+    MobileAvatarPreset("preset:mascot_avatar_02", R.drawable.mascot_avatar_02),
+    MobileAvatarPreset("preset:mascot_avatar_03", R.drawable.mascot_avatar_03),
+    MobileAvatarPreset("preset:mascot_avatar_04", R.drawable.mascot_avatar_04),
+    MobileAvatarPreset("preset:mascot_avatar_05", R.drawable.mascot_avatar_05),
+    MobileAvatarPreset("preset:mascot_avatar_06", R.drawable.mascot_avatar_06),
+    MobileAvatarPreset("preset:mascot_avatar_07", R.drawable.mascot_avatar_07),
+    MobileAvatarPreset("preset:mascot_avatar_08", R.drawable.mascot_avatar_08),
+    MobileAvatarPreset("preset:mascot_avatar_09", R.drawable.mascot_avatar_09),
+    MobileAvatarPreset("preset:mascot_avatar_10", R.drawable.mascot_avatar_10),
+    MobileAvatarPreset("preset:mascot_avatar_11", R.drawable.mascot_avatar_11),
+    MobileAvatarPreset("preset:mascot_avatar_12", R.drawable.mascot_avatar_12),
+    MobileAvatarPreset("preset:mascot_avatar_13", R.drawable.mascot_avatar_13),
+    MobileAvatarPreset("preset:mascot_avatar_14", R.drawable.mascot_avatar_14),
+    MobileAvatarPreset("preset:mascot_avatar_15", R.drawable.mascot_avatar_15),
+    MobileAvatarPreset("preset:mascot_avatar_16", R.drawable.mascot_avatar_16),
+    MobileAvatarPreset("preset:mascot_avatar_17", R.drawable.mascot_avatar_17),
+    MobileAvatarPreset("preset:mascot_avatar_18", R.drawable.mascot_avatar_18),
+    MobileAvatarPreset("preset:mascot_avatar_19", R.drawable.mascot_avatar_19),
+    MobileAvatarPreset("preset:mascot_avatar_20", R.drawable.mascot_avatar_20)
+)
+
+private val quickLogIconCheck = "âœ…"
+private val quickLogIconBroom = String(Character.toChars(0x1F9F9))
+private val quickLogIconBasket = String(Character.toChars(0x1F9FA))
+private val quickLogIconTrash = String(Character.toChars(0x1F5D1))
+private val quickLogIconPlate = String(Character.toChars(0x1F37D))
+private val quickLogIconBath = String(Character.toChars(0x1F6C1))
+private val quickLogIconTeddy = String(Character.toChars(0x1F9F8))
+private val quickLogIconCart = String(Character.toChars(0x1F6D2))
+private val quickLogIconBox = String(Character.toChars(0x1F4E6))
+private val quickLogIconSparkle = "âœ¨"
+private val quickLogLegacyMojibakePrefix = Regex("^[\\u00C3\\u00E2\\u00F0]")
+private val quickLogDrawableIconIds = listOf(
+    "take_out_trash", "recycle_sorting", "feed_pets", "wash_dishes_sink",
+    "make_bed", "change_bed_sheets", "do_laundry", "vacuum_floor",
+    "water_plants", "clean_toilet", "clean_mirror_sink", "wipe_counter",
+    "dishwasher", "grocery_shopping", "sort_mail"
+)
+private val quickLogIconOptions = listOf(
+    quickLogIconCheck,
+    quickLogIconBroom,
+    quickLogIconBasket,
+    quickLogIconTrash,
+    quickLogIconPlate,
+    quickLogIconBath,
+    quickLogIconTeddy,
+    quickLogIconCart,
+    quickLogIconBox,
+    quickLogIconSparkle
+)
+
+private val recurrenceWeekdayOrder = listOf(
+    "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"
+)
+
+private val historicChoreStates = setOf("completed", "approved", "rejected", "cancelled")
+private val numberFormatter: NumberFormat = NumberFormat.getIntegerInstance()
+
+private fun isTabletWidth(maxWidth: Dp): Boolean = maxWidth >= 840.dp
+
+@Composable
+internal fun DashboardScreen(
+    dashboard: MobileDashboard?,
+    hostedSubscription: MobileHostedSubscriptionOverview,
+    serverUrl: String,
+    currentReleaseLabel: String,
+    serverReleaseLabel: String?,
+    availableUpdate: MobileReleaseInfo?,
+    notificationDevices: List<MobileNotificationDevice>,
+    installationId: String,
+    languageTag: String,
+    themeMode: MobileThemeMode,
+    mobileAvatarKey: String,
+    notificationsPermissionGranted: Boolean,
+    isBusy: Boolean,
+    showDashboardSyncNotice: Boolean,
+    isSyncingQueue: Boolean,
+    activeReviewAction: String?,
+    activeStartAction: String?,
+    activeSubmitAction: String?,
+    activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
+    activeExternalCompleteAction: String?,
+    activeDueAtAction: String?,
+    activeTakeoverRequestAction: String?,
+    activeCreateAction: String?,
+    activeQuickLogAction: String?,
+    createSuccessCounter: Int,
+    activeDeviceAction: String?,
+    errorMessage: String?,
+    noticeMessage: String?,
+    pendingReconnectActionLabel: String?,
+    validationDialogMessage: String?,
+    completionCelebration: MobileCompletionCelebration?,
+    queuedSubmissionCount: Int,
+    onDismissValidationDialog: () -> Unit,
+    onDismissCompletionCelebration: () -> Unit,
+    onDismissUpdate: () -> Unit,
+    visibleGithubUpdate: GitHubReleaseInfo?,
+    githubCheckDone: Boolean,
+    githubCheckError: Boolean,
+    githubLatestVersion: String?,
+    isDownloadingUpdate: Boolean,
+    downloadProgress: Float,
+    downloadError: Boolean,
+    onCheckForUpdates: () -> Unit,
+    onDismissGithubUpdate: () -> Unit,
+    onDownloadAndInstall: (GitHubReleaseInfo) -> Unit,
+    onRefresh: () -> Unit,
+    onDownloadSettingsLogs: () -> Unit,
+    onLogout: () -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit,
+    submitSelections: Map<String, Set<String>>,
+    selectedProofUris: Map<String, List<String>>,
+    onPickProofs: (String) -> Unit,
+    onTakeProofPhoto: (String) -> Unit,
+    onStartChore: (String) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
+    onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
+    onCompleteExternalChore: (String, String) -> Unit,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    onTakeOverChore: (String) -> Unit,
+    onRequestTakeover: (String, String) -> Unit,
+    onRespondToTakeoverRequest: (String, Boolean) -> Unit,
+    onSubmitChore: (String) -> Unit,
+    onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit,
+    onQuickLog: (String?, String?, String?, String?, Boolean, Int?) -> Unit,
+    onRemoveNotificationDevice: (String) -> Unit,
+    onThemeModeChange: (MobileThemeMode) -> Unit,
+    onLanguageTagChange: (String) -> Unit,
+    onAvatarPresetSelect: (String) -> Unit,
+    onAvatarUpload: () -> Unit,
+    onRequestNotificationPermission: () -> Unit,
+    onRedeemReward: (String) -> Unit,
+    onResolveRedemption: (String, Boolean, String?) -> Unit,
+    templateManagerTemplates: List<MobileChoreTemplate>,
+    templateManagerLoading: Boolean,
+    templateManagerError: String?,
+    onLoadTemplatesForManager: () -> Unit,
+    onCreateTemplate: (CreateChoreTemplateInput) -> Unit,
+    onUpdateTemplate: (String, CreateChoreTemplateInput) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onResetTemplatesToDefaults: () -> Unit,
+    onCreateReward: (CreateRewardInput) -> Unit,
+    onUpdateReward: (String, UpdateRewardInput) -> Unit,
+    onDeleteReward: (String) -> Unit,
+    onToggleReward: (String) -> Unit
+) {
+    val context = LocalContext.current
+    val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
+    val featureAccess = dashboard?.user?.featureAccess ?: MobileFeatureAccess()
+    val templateCreateCapabilities = resolveTemplateCreateCapabilities(featureAccess, hostedSubscription.featureAccess)
+    val canManageChores = templateCreateCapabilities.canOpenCreateTab
+    val canManageTemplates = templateCreateCapabilities.canEditTemplates
+    val canUseReassignment = featureAccess.reassignment
+    val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
+    val canUseQuickLog = isCreatorRole && featureAccess.quickLog
+    val isNewMobileUi = true
+    val currentUserId = dashboard?.user?.id
+    val currentUserRole = dashboard?.user?.role
+    var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
+    val tabHistory = remember { mutableStateListOf<MobileDashboardTab>() }
+    var selectedTemplateId by rememberSaveable { mutableStateOf<String?>(null) }
+    var selectedTemplateGroupTitle by rememberSaveable { mutableStateOf<String?>(null) }
+    var createDueAtMillis by rememberSaveable { mutableStateOf(defaultCreateDueAtMillis()) }
+    var createAssignmentStrategy by rememberSaveable { mutableStateOf("round_robin") }
+    var createAssigneeId by rememberSaveable { mutableStateOf<String?>(null) }
+    var createRecurrenceType by rememberSaveable { mutableStateOf("template") }
+    var createRecurrenceIntervalInput by rememberSaveable { mutableStateOf("7") }
+    var createRecurrenceWeekdays by rememberSaveable { mutableStateOf(listOf<String>()) }
+    var createRecurrenceEndMode by rememberSaveable { mutableStateOf("never") }
+    var createRecurrenceOccurrencesInput by rememberSaveable { mutableStateOf("3") }
+    var createRecurrenceEndsAtMillis by rememberSaveable { mutableLongStateOf(defaultCreateRecurrenceEndsAtMillis()) }
+    var expandedChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var expandedHistoricChoreIds by remember { mutableStateOf<Set<String>>(emptySet()) }
+    var templateGroupDropdownExpanded by remember { mutableStateOf(false) }
+    var templateDropdownExpanded by remember { mutableStateOf(false) }
+    var recurrenceTypeDropdownExpanded by remember { mutableStateOf(false) }
+    var assignmentStrategyDropdownExpanded by remember { mutableStateOf(false) }
+    var assigneeDropdownExpanded by remember { mutableStateOf(false) }
+    var createVariantId by rememberSaveable { mutableStateOf<String?>(null) }
+    var variantDropdownExpanded by remember { mutableStateOf(false) }
+    var showCreateSuccessDialog by remember { mutableStateOf(false) }
+    var startConfirmationChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var takeoverConfirmationChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var submitConfirmationChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var requestTakeoverChoreId by rememberSaveable { mutableStateOf<String?>(null) }
+    var requestTakeoverMemberId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showQuickLogDialog by rememberSaveable { mutableStateOf(false) }
+    var showSpeedDial by rememberSaveable { mutableStateOf(false) }
+    var showProfileDialog by rememberSaveable { mutableStateOf(false) }
+    var activeNewUiChoreDialogId by rememberSaveable { mutableStateOf<String?>(null) }
+    var showCompletedChoresSection by rememberSaveable { mutableStateOf(false) }
+    var showMoreSheet by rememberSaveable { mutableStateOf(false) }
+    val dashboardListState = rememberLazyListState()
+    var shouldScrollToUpdate by remember { mutableStateOf(false) }
+    var rewardsShopTab by rememberSaveable { mutableStateOf("shop") }
+    var redeemConfirmRewardId by rememberSaveable { mutableStateOf<String?>(null) }
+    var rejectRedemptionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var rejectRedemptionNote by rememberSaveable { mutableStateOf("") }
+    var quickLogQuery by rememberSaveable { mutableStateOf("") }
+    var quickLogNote by rememberSaveable { mutableStateOf("") }
+    var quickLogSelectedKind by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickLogSelectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickLogIcon by rememberSaveable { mutableStateOf<String?>(null) }
+    var quickLogCreateTemplate by rememberSaveable { mutableStateOf(false) }
+    var quickLogUsePointsOverride by rememberSaveable { mutableStateOf(false) }
+    var quickLogPointsOverrideInput by rememberSaveable { mutableStateOf("") }
+    val selectedAvatarPreset = remember(mobileAvatarKey) {
+        mobileAvatarPresets.firstOrNull { it.key == mobileAvatarKey }
+    }
+    val selectedAvatarUploadUri = remember(mobileAvatarKey) {
+        mobileAvatarKey.removePrefix("upload:").takeIf { mobileAvatarKey.startsWith("upload:") }
+    }
+    val selectedAvatarUploadImageBitmap = remember(selectedAvatarUploadUri) {
+        loadImageBitmapFromUri(context, selectedAvatarUploadUri)
+    }
+    val currentDevice = notificationDevices.firstOrNull { it.installationId == installationId }
+    fun openTab(tab: MobileDashboardTab) {
+        if (activeTab != tab) {
+            tabHistory.add(activeTab)
+            activeTab = tab
+        }
+    }
+    fun backWithinDashboard(): Boolean {
+        if (showProfileDialog) {
+            showProfileDialog = false
+            return true
+        }
+        if (showQuickLogDialog) {
+            showQuickLogDialog = false
+            return true
+        }
+        if (activeNewUiChoreDialogId != null) {
+            activeNewUiChoreDialogId = null
+            return true
+        }
+        if (activeTab != MobileDashboardTab.CHORES) {
+            val previousTab = tabHistory.lastOrNull()
+            if (previousTab != null) {
+                tabHistory.removeAt(tabHistory.lastIndex)
+                activeTab = previousTab
+            } else {
+                activeTab = MobileDashboardTab.CHORES
+            }
+            return true
+        }
+        return false
+    }
+    val templates = dashboard?.templates.orEmpty()
+    val templateVariantsByTemplateId =
+        remember(templates) { templates.associate { template -> template.id to template.variants } }
+    val templateGroups = remember(templates) {
+        templates.map { it.groupTitle }.distinct().sorted()
+    }
+    val visibleTemplateGroupTitle = remember(templateGroups, templates, selectedTemplateId, selectedTemplateGroupTitle) {
+        selectedTemplateGroupTitle
+            ?: templates.firstOrNull { it.id == selectedTemplateId }?.groupTitle
+            ?: templateGroups.firstOrNull()
+    }
+    val visibleTemplates = remember(templates, visibleTemplateGroupTitle) {
+        if (visibleTemplateGroupTitle.isNullOrBlank()) {
+            templates
+        } else {
+            templates.filter { it.groupTitle == visibleTemplateGroupTitle }
+        }
+    }
+    val members = dashboard?.members.orEmpty()
+    val leaderboardEntries = dashboard?.leaderboard.orEmpty()
+    val allRewards = dashboard?.rewards.orEmpty()
+    val enabledRewards = remember(allRewards, currentUserRole) {
+        allRewards.filter { reward ->
+            if (!reward.isEnabled) return@filter false
+            if (currentUserRole == "child") {
+                reward.eligibility == "CHILD_ONLY" || reward.eligibility == "ALL"
+            } else {
+                reward.eligibility == "ADULT_ONLY" || reward.eligibility == "ALL"
+            }
+        }
+    }
+    val allRedemptions = dashboard?.redemptions.orEmpty()
+    val pendingRedemptions = remember(allRedemptions) { allRedemptions.filter { it.status == "PENDING" } }
+    val myRedemptions = remember(allRedemptions, currentUserId) {
+        allRedemptions.filter { it.requestedById == currentUserId }
+    }
+    val isParentOrAdmin = currentUserRole != null && currentUserRole != "child"
+    val currentUserPoints = dashboard?.user?.points ?: 0
+    val pendingTakeoverRequests = dashboard?.takeoverRequests.orEmpty()
+    val supportsTakeoverRequests = dashboard?.compatibility?.takeoverRequestsSupported ?: true
+    val canUseTakeoverRequests = supportsTakeoverRequests && canUseTakeoverRequestsFeature
+    val incomingTakeoverRequests = remember(pendingTakeoverRequests, currentUserId, canUseTakeoverRequests) {
+        if (!canUseTakeoverRequests) {
+            emptyList()
+        } else {
+            pendingTakeoverRequests.filter { it.status == "PENDING" && it.requested.id == currentUserId }
+        }
+    }
+    val outgoingTakeoverRequestsByChoreId = remember(pendingTakeoverRequests, currentUserId, canUseTakeoverRequests) {
+        if (!canUseTakeoverRequests) {
+            emptyMap()
+        } else {
+            pendingTakeoverRequests
+                .filter { it.status == "PENDING" && it.requester.id == currentUserId }
+                .associateBy { it.choreId }
+        }
+    }
+    val selectedTemplate = remember(visibleTemplates, templates, selectedTemplateId) {
+        visibleTemplates.firstOrNull { it.id == selectedTemplateId }
+            ?: templates.firstOrNull { it.id == selectedTemplateId }
+            ?: visibleTemplates.firstOrNull()
+            ?: templates.firstOrNull()
+    }
+    val eligibleTakeoverMembers = remember(members, currentUserId) {
+        members.filter { it.id != currentUserId }
+    }
+    val assignableMembers = remember(members, canUseReassignment) {
+        if (canUseReassignment) members else emptyList()
+    }
+    val sortedChores = remember(dashboard?.chores, currentUserId) {
+        dashboard?.chores.orEmpty()
+            .filter { it.state !in historicChoreStates }
+            .sortedWith(compareBy({ choreSectionRank(resolveChoreSection(it, currentUserId)) }, { parseInstantForSort(it.dueAt) }, { it.title.lowercase(Locale.getDefault()) }))
+    }
+    val historicChores = remember(dashboard?.chores) {
+        dashboard?.chores.orEmpty()
+            .filter { it.state in historicChoreStates }
+            .sortedByDescending { parseInstantForSort(it.dueAt) }
+    }
+    val myChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.MINE } }
+    val myChoresOverdue = remember(myChores, languageTag) {
+        myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.OVERDUE }
+    }
+    val myChoresDueToday = remember(myChores, languageTag) {
+        myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
+    }
+    val myChoresDueThisWeek = remember(myChores, languageTag) {
+        myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.THIS_WEEK }
+    }
+    val myChoresDueLater = remember(myChores, languageTag) {
+        myChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.LATER }
+    }
+    val choresOverdue = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.OVERDUE }
+    }
+    val choresDueToday = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.TODAY }
+    }
+    val choresDueThisWeek = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.THIS_WEEK }
+    }
+    val choresDueLater = remember(sortedChores, languageTag) {
+        sortedChores.filter { resolveMyChoreDueBucket(it) == MobileMyChoreDueBucket.LATER }
+    }
+    val unassignedChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.UNASSIGNED } }
+    val otherChores = remember(sortedChores, currentUserId) { sortedChores.filter { resolveChoreSection(it, currentUserId) == MobileChoreSection.OTHERS } }
+    val quickLogCandidates = remember(sortedChores, templates) {
+        buildList {
+            sortedChores.forEach { chore ->
+                add(
+                    MobileQuickLogCandidate(
+                        kind = "instance",
+                        id = chore.id,
+                        title = chore.title,
+                        subtitle = chore.groupTitle
+                    )
+                )
+            }
+            templates.forEach { template ->
+                add(
+                    MobileQuickLogCandidate(
+                        kind = "template",
+                        id = template.id,
+                        title = template.title,
+                        subtitle = template.groupTitle
+                    )
+                )
+            }
+        }
+    }
+    val filteredQuickLogCandidates = remember(quickLogCandidates, quickLogQuery) {
+        val normalized = quickLogQuery.trim().lowercase(Locale.getDefault())
+        if (normalized.isBlank()) {
+            quickLogCandidates.take(8)
+        } else {
+            quickLogCandidates.filter { candidate ->
+                candidate.title.lowercase(Locale.getDefault()).contains(normalized) ||
+                    (candidate.subtitle?.lowercase(Locale.getDefault())?.contains(normalized) == true)
+            }.take(8)
+        }
+    }
+    val selectedQuickLogCandidate = remember(quickLogCandidates, quickLogSelectedKind, quickLogSelectedId) {
+        quickLogCandidates.firstOrNull { candidate ->
+            candidate.kind == quickLogSelectedKind && candidate.id == quickLogSelectedId
+        }
+    }
+    val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
+    val choresOverdueLabel = stringResource(R.string.mobile_chores_overdue)
+    val overdueHeaderColor = MaterialTheme.colorScheme.error
+    val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)
+    val choresDueThisWeekLabel = stringResource(R.string.mobile_chores_due_this_week)
+    val choresDueLaterLabel = stringResource(R.string.mobile_chores_due_later)
+    val choresUnassignedLabel = stringResource(R.string.mobile_chores_unassigned)
+    val choresOthersLabel = stringResource(R.string.mobile_chores_others)
+    val choresHistoryLabel = stringResource(R.string.mobile_chores_history)
+    val completedChoresLabel = stringResource(R.string.mobile_completed_chores)
+    val showCompletedLabel = stringResource(R.string.mobile_show_completed_chores)
+    val hideCompletedLabel = stringResource(R.string.mobile_hide_completed_chores)
+    val noChoresLabel = stringResource(R.string.mobile_no_chores)
+    val actionRequiredTitle = stringResource(R.string.mobile_action_required_title)
+    val recurrenceIntervalInvalidMessage = stringResource(R.string.mobile_create_interval_days_invalid)
+    val recurrenceWeekdaysInvalidMessage = stringResource(R.string.mobile_create_weekdays_required)
+    val recurrenceOccurrencesInvalidMessage = stringResource(R.string.mobile_create_occurrences_invalid)
+    val recurrenceEndDateRequiredMessage = stringResource(R.string.mobile_create_end_date_required)
+    val effectiveCreateRecurrenceType = resolveEffectiveCreateRecurrenceType(selectedTemplate, createRecurrenceType)
+    val parsedCreateRecurrenceInterval = createRecurrenceIntervalInput.trim().toIntOrNull()
+    val createRecurrenceIntervalError =
+        if (createRecurrenceType == "every_x_days" &&
+            (createRecurrenceIntervalInput.isBlank() || parsedCreateRecurrenceInterval == null || parsedCreateRecurrenceInterval <= 0)
+        ) {
+            recurrenceIntervalInvalidMessage
+        } else {
+            null
+        }
+    val createRecurrenceWeekdaysError =
+        if (effectiveCreateRecurrenceType == "custom_weekly" && createRecurrenceWeekdays.isEmpty()) {
+            recurrenceWeekdaysInvalidMessage
+        } else {
+            null
+        }
+    val parsedCreateRecurrenceOccurrences = createRecurrenceOccurrencesInput.trim().toIntOrNull()
+    val createRecurrenceOccurrencesError =
+        if (effectiveCreateRecurrenceType != "none" && createRecurrenceEndMode == "after_occurrences" &&
+            (createRecurrenceOccurrencesInput.isBlank() || parsedCreateRecurrenceOccurrences == null || parsedCreateRecurrenceOccurrences <= 0)
+        ) {
+            recurrenceOccurrencesInvalidMessage
+        } else {
+            null
+        }
+    val createRecurrenceEndDateError =
+        if (effectiveCreateRecurrenceType != "none" && createRecurrenceEndMode == "on_date" && createRecurrenceEndsAtMillis <= createDueAtMillis) {
+            recurrenceEndDateRequiredMessage
+        } else {
+            null
+        }
+    val hasSyncFailureContext =
+        !pendingReconnectActionLabel.isNullOrBlank() || queuedSubmissionCount > 0
+    val showStatusCard =
+        !pendingReconnectActionLabel.isNullOrBlank() ||
+            queuedSubmissionCount > 0 ||
+            isSyncingQueue ||
+            !noticeMessage.isNullOrBlank() ||
+            !errorMessage.isNullOrBlank()
+
+    LaunchedEffect(templateGroups, visibleTemplates, selectedTemplateId) {
+        if (!visibleTemplateGroupTitle.isNullOrBlank() && selectedTemplateGroupTitle != visibleTemplateGroupTitle) {
+            selectedTemplateGroupTitle = visibleTemplateGroupTitle
+        }
+
+        if (visibleTemplates.isNotEmpty() && visibleTemplates.none { it.id == selectedTemplateId }) {
+            selectedTemplateId = visibleTemplates.first().id
+        }
+    }
+
+    LaunchedEffect(selectedTemplate?.id) {
+        val template = selectedTemplate ?: return@LaunchedEffect
+        createAssignmentStrategy = template.assignmentStrategy
+        val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
+        createRecurrenceType = defaultType
+        createRecurrenceIntervalInput = defaultInterval.toString()
+        createRecurrenceWeekdays = templateRecurrenceWeekdayDefaults(template.recurrence)
+        createRecurrenceEndMode = "never"
+        createRecurrenceOccurrencesInput = "3"
+        createRecurrenceEndsAtMillis = defaultCreateRecurrenceEndsAtMillis(createDueAtMillis)
+        createAssigneeId = null
+        createVariantId = null
+    }
+
+    fun resetCreateForm() {
+        createDueAtMillis = defaultCreateDueAtMillis()
+        val template = selectedTemplate
+        if (template != null) {
+            createAssignmentStrategy = template.assignmentStrategy
+            val (defaultType, defaultInterval) = templateRecurrenceDefaults(template.recurrence)
+            createRecurrenceType = defaultType
+            createRecurrenceIntervalInput = defaultInterval.toString()
+            createRecurrenceWeekdays = templateRecurrenceWeekdayDefaults(template.recurrence)
+        } else {
+            createAssignmentStrategy = "round_robin"
+            createRecurrenceType = "template"
+            createRecurrenceIntervalInput = "7"
+            createRecurrenceWeekdays = emptyList()
+        }
+        createRecurrenceEndMode = "never"
+        createRecurrenceOccurrencesInput = "3"
+        createRecurrenceEndsAtMillis = defaultCreateRecurrenceEndsAtMillis(createDueAtMillis)
+        createAssigneeId = null
+        createVariantId = null
+        templateGroupDropdownExpanded = false
+        templateDropdownExpanded = false
+        recurrenceTypeDropdownExpanded = false
+        assignmentStrategyDropdownExpanded = false
+        assigneeDropdownExpanded = false
+        variantDropdownExpanded = false
+    }
+
+    LaunchedEffect(createSuccessCounter) {
+        if (createSuccessCounter > 0) {
+            showCreateSuccessDialog = true
+        }
+    }
+
+    val datePickerDialog = remember(context, createDueAtMillis) {
+        val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val current = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+                createDueAtMillis = current
+                    .withYear(year)
+                    .withMonth(month + 1)
+                    .withDayOfMonth(dayOfMonth)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.year,
+            zoned.monthValue - 1,
+            zoned.dayOfMonth
+        )
+    }
+
+    val timePickerDialog = remember(context, createDueAtMillis) {
+        val zoned = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val current = Instant.ofEpochMilli(createDueAtMillis).atZone(ZoneId.systemDefault())
+                createDueAtMillis = current
+                    .withHour(hourOfDay)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .withNano(0)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.hour,
+            zoned.minute,
+            true
+        )
+    }
+
+    val recurrenceEndDatePickerDialog = remember(context, createRecurrenceEndsAtMillis) {
+        val zoned = Instant.ofEpochMilli(createRecurrenceEndsAtMillis).atZone(ZoneId.systemDefault())
+        DatePickerDialog(
+            context,
+            { _, year, month, dayOfMonth ->
+                val current = Instant.ofEpochMilli(createRecurrenceEndsAtMillis).atZone(ZoneId.systemDefault())
+                createRecurrenceEndsAtMillis = current
+                    .withYear(year)
+                    .withMonth(month + 1)
+                    .withDayOfMonth(dayOfMonth)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.year,
+            zoned.monthValue - 1,
+            zoned.dayOfMonth
+        )
+    }
+
+    val recurrenceEndTimePickerDialog = remember(context, createRecurrenceEndsAtMillis) {
+        val zoned = Instant.ofEpochMilli(createRecurrenceEndsAtMillis).atZone(ZoneId.systemDefault())
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val current = Instant.ofEpochMilli(createRecurrenceEndsAtMillis).atZone(ZoneId.systemDefault())
+                createRecurrenceEndsAtMillis = current
+                    .withHour(hourOfDay)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .withNano(0)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            zoned.hour,
+            zoned.minute,
+            true
+        )
+    }
+
+    val redeemConfirmReward = allRewards.firstOrNull { it.id == redeemConfirmRewardId }
+    if (redeemConfirmReward != null) {
+        AlertDialog(
+            onDismissRequest = { redeemConfirmRewardId = null },
+            title = { Text(stringResource(R.string.mobile_rewards_confirm_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(redeemConfirmReward.title, style = MaterialTheme.typography.titleSmall)
+                    Text(stringResource(R.string.mobile_rewards_confirm_cost, redeemConfirmReward.pointCost))
+                    Text(stringResource(R.string.mobile_rewards_confirm_balance_after, currentUserPoints - redeemConfirmReward.pointCost))
+                }
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val id = redeemConfirmReward.id
+                    redeemConfirmRewardId = null
+                    onRedeemReward(id)
+                }) {
+                    Text(stringResource(R.string.mobile_rewards_redeem))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { redeemConfirmRewardId = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+
+    if (rejectRedemptionId != null) {
+        AlertDialog(
+            onDismissRequest = { rejectRedemptionId = null },
+            title = { Text(stringResource(R.string.mobile_rewards_reject_title)) },
+            text = {
+                OutlinedTextField(
+                    value = rejectRedemptionNote,
+                    onValueChange = { rejectRedemptionNote = it },
+                    label = { Text(stringResource(R.string.mobile_rewards_reject_note)) },
+                    modifier = Modifier.fillMaxWidth()
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = rejectRedemptionId!!
+                        val note = rejectRedemptionNote.ifBlank { null }
+                        rejectRedemptionId = null
+                        rejectRedemptionNote = ""
+                        onResolveRedemption(id, false, note)
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_rewards_reject)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { rejectRedemptionId = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+
+    if (showCreateSuccessDialog) {
+        AlertDialog(
+            onDismissRequest = {
+                showCreateSuccessDialog = false
+                activeTab = MobileDashboardTab.CHORES
+            },
+            title = { Text(stringResource(R.string.mobile_create_success_title)) },
+            text = { Text(stringResource(R.string.mobile_create_success_body)) },
+            confirmButton = {
+                Button(onClick = {
+                    showCreateSuccessDialog = false
+                    activeTab = MobileDashboardTab.CHORES
+                }) {
+                    Text(stringResource(R.string.mobile_create_success_done))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    showCreateSuccessDialog = false
+                    activeTab = MobileDashboardTab.CREATE
+                    resetCreateForm()
+                }) {
+                    Text(stringResource(R.string.mobile_create_success_create_another))
+                }
+            }
+        )
+    }
+
+    fun resetQuickLogForm() {
+        showQuickLogDialog = false
+        quickLogQuery = ""
+        quickLogNote = ""
+        quickLogSelectedKind = null
+        quickLogSelectedId = null
+        quickLogIcon = null
+        quickLogCreateTemplate = false
+        quickLogUsePointsOverride = false
+        quickLogPointsOverrideInput = ""
+    }
+
+    if (showQuickLogDialog && canUseQuickLog) {
+        val parsedOverridePoints = quickLogPointsOverrideInput.trim().toIntOrNull()
+        val quickLogCanSubmit =
+            activeQuickLogAction == null &&
+                (
+                    !quickLogSelectedId.isNullOrBlank() ||
+                        quickLogQuery.trim().isNotBlank()
+                    ) &&
+                (!quickLogUsePointsOverride || (parsedOverridePoints != null && parsedOverridePoints >= 0))
+        val previewInstanceCandidate =
+            selectedQuickLogCandidate?.takeIf { it.kind == "instance" }
+                ?: filteredQuickLogCandidates.firstOrNull { it.kind == "instance" }
+        val previewTemplateCandidate =
+            selectedQuickLogCandidate?.takeIf { it.kind == "template" }
+                ?: filteredQuickLogCandidates.firstOrNull { it.kind == "template" }
+        val submitQuickLog = {
+            val selectedKind = quickLogSelectedKind
+            val selectedId = quickLogSelectedId
+            val typedTitle = quickLogQuery.trim()
+            val fallbackTitle = selectedQuickLogCandidate?.title?.trim().orEmpty()
+            val titleSource = typedTitle.ifBlank { fallbackTitle }
+            val decoratedTitle = applyChoreIconTokenToTitle(titleSource, quickLogIcon)
+            val pointsOverride =
+                if (quickLogUsePointsOverride) quickLogPointsOverrideInput.trim().toIntOrNull() else null
+            onQuickLog(
+                selectedId.takeIf { selectedKind == "instance" },
+                selectedId.takeIf { selectedKind == "template" },
+                decoratedTitle.takeIf { selectedKind != "instance" && it.isNotBlank() },
+                quickLogNote.trim().ifBlank { null },
+                quickLogCreateTemplate && selectedKind != "instance",
+                pointsOverride
+            )
+            resetQuickLogForm()
+        }
+
+        Dialog(
+            onDismissRequest = ::resetQuickLogForm,
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.78f)
+                    .widthIn(max = 560.dp)
+                    .heightIn(max = 820.dp),
+                shape = RoundedCornerShape(24.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 8.dp,
+                shadowElevation = 20.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.18f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState())
+                        .padding(26.dp),
+                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_quick_log_title),
+                        style = MaterialTheme.typography.headlineSmall,
+                        fontWeight = FontWeight.SemiBold,
+                        color = MaterialTheme.colorScheme.onSurface
+                    )
+                    OutlinedTextField(
+                        value = quickLogQuery,
+                        onValueChange = {
+                            quickLogQuery = it
+                            quickLogSelectedKind = null
+                            quickLogSelectedId = null
+                        },
+                        label = { Text(stringResource(R.string.mobile_quick_log_label)) },
+                        trailingIcon = {
+                            if (quickLogQuery.isNotBlank()) {
+                                TextButton(onClick = {
+                                    quickLogQuery = ""
+                                    quickLogSelectedKind = null
+                                    quickLogSelectedId = null
+                                }) {
+                                    Text("X")
+                                }
+                            }
+                        },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        OutlinedButton(
+                            onClick = { quickLogIcon = null },
+                            modifier = Modifier.size(52.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            border = BorderStroke(
+                                if (quickLogIcon == null) 2.dp else 1.dp,
+                                if (quickLogIcon == null) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                            ),
+                            contentPadding = PaddingValues(0.dp)
+                        ) {
+                            Text("Ã¢â‚¬â€", style = MaterialTheme.typography.titleMedium)
+                        }
+                        quickLogDrawableIconIds.forEach { iconId ->
+                            val drawable = resolveChoreIconDrawableFromToken(iconId)
+                            OutlinedButton(
+                                onClick = { quickLogIcon = iconId },
+                                modifier = Modifier.size(52.dp),
+                                shape = RoundedCornerShape(12.dp),
+                                border = BorderStroke(
+                                    if (quickLogIcon == iconId) 2.dp else 1.dp,
+                                    if (quickLogIcon == iconId) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+                                ),
+                                contentPadding = PaddingValues(4.dp)
+                            ) {
+                                if (drawable != null) {
+                                    Image(
+                                        painter = painterResource(drawable),
+                                        contentDescription = null,
+                                        contentScale = ContentScale.Fit,
+                                        modifier = Modifier.size(36.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        previewInstanceCandidate?.let { candidate ->
+                            QuickLogMatchChip(
+                                icon = quickLogIcon,
+                                label = stringResource(R.string.mobile_quick_log_match_open, candidate.subtitle ?: ""),
+                                title = candidate.title,
+                                selected = quickLogSelectedKind == candidate.kind && quickLogSelectedId == candidate.id,
+                                onClick = {
+                                    quickLogSelectedKind = candidate.kind
+                                    quickLogSelectedId = candidate.id
+                                    quickLogQuery = candidate.title
+                                    quickLogIcon = resolveChoreIconIdFromTitle(candidate.title, candidate.subtitle)
+                                    quickLogCreateTemplate = false
+                                }
+                            )
+                        }
+                        previewTemplateCandidate?.let { candidate ->
+                            QuickLogMatchChip(
+                                icon = quickLogIcon,
+                                label = stringResource(R.string.mobile_quick_log_match_template, candidate.subtitle ?: ""),
+                                title = candidate.title,
+                                selected = quickLogSelectedKind == candidate.kind && quickLogSelectedId == candidate.id,
+                                onClick = {
+                                    quickLogSelectedKind = candidate.kind
+                                    quickLogSelectedId = candidate.id
+                                    quickLogQuery = candidate.title
+                                    quickLogIcon = resolveChoreIconIdFromTitle(candidate.title, candidate.subtitle)
+                                }
+                            )
+                        }
+                    }
+                    OutlinedTextField(
+                        value = quickLogNote,
+                        onValueChange = { quickLogNote = it },
+                        label = { Text(stringResource(R.string.mobile_quick_log_note_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        minLines = 1,
+                        maxLines = 2
+                    )
+                    if (selectedQuickLogCandidate?.kind == "template" || quickLogSelectedId == null) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        ) {
+                            Checkbox(
+                                checked = quickLogCreateTemplate,
+                                onCheckedChange = { quickLogCreateTemplate = it }
+                            )
+                            Text(
+                                text = stringResource(R.string.mobile_quick_log_create_template),
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                        }
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Checkbox(
+                            checked = quickLogUsePointsOverride,
+                            onCheckedChange = { quickLogUsePointsOverride = it }
+                        )
+                        Text(
+                            text = stringResource(R.string.mobile_quick_log_override_points),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface,
+                            modifier = Modifier.weight(1f)
+                        )
+                        OutlinedTextField(
+                            value = quickLogPointsOverrideInput.ifBlank { quickLogDefaultPoints.toString() },
+                            onValueChange = { value ->
+                                if (value.all(Char::isDigit)) {
+                                    quickLogPointsOverrideInput = value
+                                }
+                            },
+                            enabled = quickLogUsePointsOverride,
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
+                            modifier = Modifier.widthIn(min = 86.dp, max = 96.dp),
+                            singleLine = true
+                        )
+                    }
+                    Text(
+                        text = stringResource(R.string.mobile_quick_log_default_points_hint, quickLogDefaultPoints),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = ::resetQuickLogForm) {
+                            Text(stringResource(R.string.mobile_request_takeover_cancel))
+                        }
+                        Spacer(modifier = Modifier.size(12.dp))
+                        Button(
+                            onClick = { submitQuickLog() },
+                            enabled = quickLogCanSubmit,
+                            shape = RoundedCornerShape(14.dp),
+                            contentPadding = PaddingValues(horizontal = 22.dp, vertical = 14.dp)
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (activeQuickLogAction == "quick-log") {
+                                        R.string.mobile_quick_log_saving
+                                    } else {
+                                        R.string.mobile_quick_log_submit
+                                    }
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    if (showProfileDialog && dashboard != null) {
+        Dialog(
+            onDismissRequest = { showProfileDialog = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false)
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth(0.82f)
+                    .widthIn(max = 480.dp),
+                shape = RoundedCornerShape(20.dp),
+                color = MaterialTheme.colorScheme.surface,
+                tonalElevation = 6.dp,
+                border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = "Profile",
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Surface(
+                        modifier = Modifier
+                            .align(Alignment.CenterHorizontally)
+                            .size(92.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer
+                    ) {
+                        when {
+                            selectedAvatarUploadImageBitmap != null -> {
+                                Image(
+                                    bitmap = selectedAvatarUploadImageBitmap,
+                                    contentDescription = dashboard.user.displayName,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            selectedAvatarPreset != null -> {
+                                Image(
+                                    painter = painterResource(selectedAvatarPreset.drawableRes),
+                                    contentDescription = dashboard.user.displayName,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+
+                            else -> {
+                                Box(
+                                    modifier = Modifier.fillMaxSize(),
+                                    contentAlignment = Alignment.Center
+                                ) {
+                                    Text(
+                                        text = initialsFromDisplayName(dashboard.user.displayName),
+                                        style = MaterialTheme.typography.titleLarge,
+                                        fontWeight = FontWeight.Bold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    SettingsValueLine(label = "Name", value = dashboard.user.displayName)
+                    SettingsValueLine(label = "Role", value = formatLeaderboardRoleLabel(dashboard.user.role))
+                    SettingsValueLine(label = "Points", value = dashboard.user.points.toString())
+                    SettingsValueLine(label = "Streak", value = dashboard.user.currentStreak.toString())
+                    Text(
+                        text = "Choose avatar",
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.Medium
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        mobileAvatarPresets.forEach { preset ->
+                            val selected = preset.key == selectedAvatarPreset?.key
+                            OutlinedButton(
+                                onClick = { onAvatarPresetSelect(preset.key) },
+                                shape = RoundedCornerShape(12.dp),
+                                contentPadding = PaddingValues(0.dp),
+                                border = BorderStroke(
+                                    if (selected) 2.dp else 1.dp,
+                                    if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
+                                ),
+                                modifier = Modifier.size(58.dp)
+                            ) {
+                                Image(
+                                    painter = painterResource(preset.drawableRes),
+                                    contentDescription = null,
+                                    contentScale = ContentScale.Crop,
+                                    modifier = Modifier.fillMaxSize()
+                                )
+                            }
+                        }
+                    }
+                    OutlinedButton(onClick = onAvatarUpload, modifier = Modifier.fillMaxWidth()) {
+                        Text("Upload photo")
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.End,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        TextButton(onClick = { showProfileDialog = false }) {
+                            Text(stringResource(R.string.mobile_request_takeover_cancel))
+                        }
+                        Spacer(modifier = Modifier.size(8.dp))
+                        Button(onClick = { showProfileDialog = false }) {
+                            Text("Save")
+                        }
+                    }
+                }
+            }
+        }
+    }
+    if (!validationDialogMessage.isNullOrBlank()) {
+        AlertDialog(
+            onDismissRequest = onDismissValidationDialog,
+            title = { Text(actionRequiredTitle) },
+            text = { Text(validationDialogMessage) },
+            confirmButton = {
+                Button(onClick = onDismissValidationDialog) {
+                    Text(stringResource(R.string.mobile_validation_confirm))
+                }
+            }
+        )
+    }
+
+    if (completionCelebration != null) {
+        CompletionCelebrationDialog(
+            celebration = completionCelebration,
+            onDismiss = onDismissCompletionCelebration
+        )
+    }
+
+    val startConfirmationChore = remember(sortedChores, startConfirmationChoreId) {
+        sortedChores.firstOrNull { it.id == startConfirmationChoreId }
+    }
+
+    if (startConfirmationChore != null) {
+        AlertDialog(
+            onDismissRequest = { startConfirmationChoreId = null },
+            title = { Text(stringResource(R.string.mobile_start_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.mobile_start_confirm_body, startConfirmationChore.title))
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val choreId = startConfirmationChore.id
+                    startConfirmationChoreId = null
+                    onStartChore(choreId)
+                }) {
+                    Text(stringResource(R.string.mobile_start_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { startConfirmationChoreId = null }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    val takeoverConfirmationChore = remember(sortedChores, takeoverConfirmationChoreId) {
+        sortedChores.firstOrNull { it.id == takeoverConfirmationChoreId }
+    }
+
+    if (takeoverConfirmationChore != null) {
+        val assigneeName = takeoverConfirmationChore.assigneeDisplayName
+            ?.let { firstNameFromDisplayName(it) ?: it }
+        AlertDialog(
+            onDismissRequest = { takeoverConfirmationChoreId = null },
+            title = { Text(stringResource(R.string.mobile_takeover_confirm_title)) },
+            text = {
+                Text(
+                    if (assigneeName != null) {
+                        stringResource(R.string.mobile_takeover_confirm_body_assigned, takeoverConfirmationChore.title, assigneeName)
+                    } else {
+                        stringResource(R.string.mobile_takeover_confirm_body, takeoverConfirmationChore.title)
+                    }
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val choreId = takeoverConfirmationChore.id
+                    takeoverConfirmationChoreId = null
+                    onTakeOverChore(choreId)
+                }) {
+                    Text(stringResource(R.string.mobile_takeover_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { takeoverConfirmationChoreId = null }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    val submitConfirmationChore = remember(sortedChores, submitConfirmationChoreId) {
+        sortedChores.firstOrNull { it.id == submitConfirmationChoreId }
+    }
+
+    if (submitConfirmationChore != null) {
+        AlertDialog(
+            onDismissRequest = {
+                submitConfirmationChoreId = null
+            },
+            title = { Text(stringResource(R.string.mobile_submit_confirm_title)) },
+            text = {
+                Text(
+                    text = stringResource(
+                        R.string.mobile_submit_confirm_body,
+                        submitConfirmationChore.title
+                    )
+                )
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val choreId = submitConfirmationChore.id
+                    submitConfirmationChoreId = null
+                    onSubmitChore(choreId)
+                }) {
+                    Text(stringResource(R.string.mobile_submit_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { submitConfirmationChoreId = null }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    val requestTakeoverChore = remember(sortedChores, requestTakeoverChoreId) {
+        sortedChores.firstOrNull { it.id == requestTakeoverChoreId }
+    }
+
+    if (requestTakeoverChore != null && canUseTakeoverRequests) {
+        AlertDialog(
+            onDismissRequest = {
+                requestTakeoverChoreId = null
+                requestTakeoverMemberId = null
+            },
+            title = { Text(stringResource(R.string.mobile_request_takeover_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = stringResource(
+                            R.string.mobile_request_takeover_dialog_body,
+                            requestTakeoverChore.title
+                        )
+                    )
+                    Text(
+                        text = stringResource(R.string.mobile_request_takeover_pick_member),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    eligibleTakeoverMembers.forEach { member ->
+                        val selected = requestTakeoverMemberId == member.id
+                        if (selected) {
+                            Button(
+                                onClick = { requestTakeoverMemberId = member.id },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(member.displayName)
+                            }
+                        } else {
+                            OutlinedButton(
+                                onClick = { requestTakeoverMemberId = member.id },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Text(member.displayName)
+                            }
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val selectedMemberId = requestTakeoverMemberId ?: return@Button
+                        onRequestTakeover(requestTakeoverChore.id, selectedMemberId)
+                        requestTakeoverChoreId = null
+                        requestTakeoverMemberId = null
+                    },
+                    enabled = requestTakeoverMemberId != null && activeTakeoverRequestAction == null
+                ) {
+                    Text(
+                        stringResource(
+                            if (activeTakeoverRequestAction?.startsWith("request:${requestTakeoverChore.id}:") == true) {
+                                R.string.mobile_request_takeover_sending
+                            } else {
+                                R.string.mobile_request_takeover_confirm
+                            }
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = {
+                        requestTakeoverChoreId = null
+                        requestTakeoverMemberId = null
+                    }
+                ) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    val activeNewUiChoreDialog = remember(sortedChores, activeNewUiChoreDialogId) {
+        sortedChores.firstOrNull { it.id == activeNewUiChoreDialogId }
+    }
+    if (activeNewUiChoreDialog != null) {
+        ModalBottomSheet(
+            onDismissRequest = { activeNewUiChoreDialogId = null },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            ChoreActionSheet(
+                chore = activeNewUiChoreDialog,
+                currentUserId = currentUserId,
+                currentUserRole = currentUserRole,
+                supportsTakeoverRequests = canUseTakeoverRequests,
+                outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[activeNewUiChoreDialog.id],
+                activeReviewAction = activeReviewAction,
+                activeStartAction = activeStartAction,
+                activeSubmitAction = activeSubmitAction,
+                activeCloseCycleAction = activeCloseCycleAction,
+                activeCancelChoreAction = activeCancelChoreAction,
+                activeTakeoverRequestAction = activeTakeoverRequestAction,
+                activeDueAtAction = activeDueAtAction,
+                activeExternalCompleteAction = activeExternalCompleteAction,
+                selectedChecklistIds = submitSelections[activeNewUiChoreDialog.id]
+                    ?: activeNewUiChoreDialog.completedChecklistIds.toSet(),
+                selectedProofCount = selectedProofUris[activeNewUiChoreDialog.id]?.size ?: 0,
+                editableVariants = activeNewUiChoreDialog.templateId
+                    ?.let { templateVariantsByTemplateId[it] }.orEmpty(),
+                onDismiss = { activeNewUiChoreDialogId = null },
+                onApprove = { choreId -> activeNewUiChoreDialogId = null; onApprove(choreId) },
+                onReject = { choreId -> activeNewUiChoreDialogId = null; onReject(choreId) },
+                onClaimChore = { choreId -> activeNewUiChoreDialogId = null; startConfirmationChoreId = choreId },
+                onTakeOverChore = { choreId -> activeNewUiChoreDialogId = null; takeoverConfirmationChoreId = choreId },
+                onRequestTakeover = { choreId ->
+                    activeNewUiChoreDialogId = null
+                    requestTakeoverChoreId = choreId
+                    requestTakeoverMemberId = null
+                },
+                onSubmitChore = { choreId -> activeNewUiChoreDialogId = null; submitConfirmationChoreId = choreId },
+                onEditChoreDueAt = { a, b, c, d -> activeNewUiChoreDialogId = null; onEditChoreDueAt(a, b, c, d) },
+                onCancelChoreOccurrence = { choreId -> activeNewUiChoreDialogId = null; onCancelChoreOccurrence(choreId) },
+                onCloseChoreCycle = { choreId -> activeNewUiChoreDialogId = null; onCloseChoreCycle(choreId) },
+                onCancelChore = { choreId -> activeNewUiChoreDialogId = null; onCancelChore(choreId) },
+                onCompleteExternalChore = { choreId, name -> activeNewUiChoreDialogId = null; onCompleteExternalChore(choreId, name) }
+            )
+        }
+    }
+
+    if (showMoreSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showMoreSheet = false },
+            sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+        ) {
+            MoreMenuSheet(
+                isCreatorRole = isCreatorRole,
+                canManageTemplates = canManageTemplates,
+                onNavigateSettings = {
+                    showMoreSheet = false
+                    openTab(MobileDashboardTab.MORE)
+                },
+                onNavigateTemplates = {
+                    showMoreSheet = false
+                    openTab(MobileDashboardTab.TEMPLATE_MANAGER)
+                },
+                onNavigateRewardsManager = {
+                    showMoreSheet = false
+                    openTab(MobileDashboardTab.REWARDS_MANAGER)
+                }
+            )
+        }
+    }
+
+    // Scroll to the release/update card when the banner is tapped on the home screen.
+    // The release card index depends on whether the hosted-plan card is visible.
+    LaunchedEffect(activeTab, shouldScrollToUpdate) {
+        if (shouldScrollToUpdate && activeTab == MobileDashboardTab.MORE) {
+            val releaseItemIndex = if (hostedSubscription.hostedMode && isCreatorRole) 4 else 3
+            dashboardListState.animateScrollToItem(releaseItemIndex)
+            shouldScrollToUpdate = false
+        }
+    }
+
+    BackHandler(
+        enabled = showMoreSheet || showSpeedDial || showProfileDialog || showQuickLogDialog || activeNewUiChoreDialogId != null || activeTab != MobileDashboardTab.CHORES
+    ) {
+        if (showMoreSheet) { showMoreSheet = false }
+        else if (showSpeedDial) { showSpeedDial = false }
+        else backWithinDashboard()
+    }
+
+    CompositionLocalProvider(
+        LocalMobileFeatureAccess provides featureAccess,
+        LocalIsNewMobileUi provides true
+    ) {
+        Scaffold(
+        topBar = {
+            if (isNewMobileUi) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            modifier = Modifier.weight(1f),
+                            horizontalArrangement = Arrangement.spacedBy(0.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Image(
+                                painter = painterResource(R.drawable.taskbandit_logo),
+                                contentDescription = stringResource(R.string.brand_mark_description),
+                                modifier = Modifier
+                                    .widthIn(max = 186.dp)
+                                    .heightIn(max = 48.dp)
+                            )
+                        }
+                        Surface(
+                            modifier = Modifier.size(46.dp),
+                            shape = CircleShape,
+                            color = MaterialTheme.colorScheme.primaryContainer,
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                        ) {
+                            IconButton(onClick = { showProfileDialog = true }) {
+                                when {
+                                    selectedAvatarUploadImageBitmap != null -> {
+                                        Image(
+                                            bitmap = selectedAvatarUploadImageBitmap,
+                                            contentDescription = dashboard?.user?.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    selectedAvatarPreset != null -> {
+                                        Image(
+                                            painter = painterResource(selectedAvatarPreset.drawableRes),
+                                            contentDescription = dashboard?.user?.displayName,
+                                            contentScale = ContentScale.Crop,
+                                            modifier = Modifier.fillMaxSize()
+                                        )
+                                    }
+
+                                    else -> {
+                                        Text(
+                                            text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
+                                            style = MaterialTheme.typography.labelLarge,
+                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                            fontWeight = FontWeight.ExtraBold
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        },
+        floatingActionButton = {
+            if (isNewMobileUi && activeTab == MobileDashboardTab.CHORES && canManageChores) {
+                if (canUseQuickLog) {
+                    // Speed dial: two actions available (Quick Log + Create Chore)
+                    Column(
+                        horizontalAlignment = Alignment.End,
+                        verticalArrangement = Arrangement.spacedBy(12.dp)
+                    ) {
+                        AnimatedVisibility(
+                            visible = showSpeedDial,
+                            enter = fadeIn(animationSpec = tween(160)) + slideInVertically(
+                                animationSpec = tween(200),
+                                initialOffsetY = { it / 2 }
+                            ),
+                            exit = fadeOut(animationSpec = tween(120)) + slideOutVertically(
+                                animationSpec = tween(160),
+                                targetOffsetY = { it / 2 }
+                            )
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.End,
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                SpeedDialAction(
+                                    label = stringResource(R.string.mobile_quick_log_card_title),
+                                    icon = Icons.Rounded.Bolt,
+                                    onClick = {
+                                        showSpeedDial = false
+                                        showQuickLogDialog = true
+                                    }
+                                )
+                                SpeedDialAction(
+                                    label = stringResource(R.string.mobile_create_action),
+                                    icon = Icons.Rounded.Add,
+                                    onClick = {
+                                        showSpeedDial = false
+                                        openTab(MobileDashboardTab.CREATE)
+                                    }
+                                )
+                            }
+                        }
+                        // Main FAB Ã¢â‚¬â€ rotates + Ã¢â€ â€™ Ãƒâ€” when expanded
+                        val fabRotation by animateFloatAsState(
+                            targetValue = if (showSpeedDial) 45f else 0f,
+                            animationSpec = tween(200),
+                            label = "fabRotation"
+                        )
+                        Button(
+                            onClick = { showSpeedDial = !showSpeedDial },
+                            shape = CircleShape,
+                            contentPadding = PaddingValues(0.dp),
+                            modifier = Modifier.size(60.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.Add,
+                                contentDescription = if (showSpeedDial) stringResource(R.string.mobile_update_dismiss) else stringResource(R.string.mobile_create_action),
+                                modifier = Modifier
+                                    .size(28.dp)
+                                    .rotate(fabRotation)
+                            )
+                        }
+                    }
+                } else {
+                    // Quick Log not available on this plan Ã¢â‚¬â€ single-tap FAB goes straight to Create
+                    Button(
+                        onClick = { openTab(MobileDashboardTab.CREATE) },
+                        shape = CircleShape,
+                        contentPadding = PaddingValues(0.dp),
+                        modifier = Modifier.size(60.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Rounded.Add,
+                            contentDescription = stringResource(R.string.mobile_create_action),
+                            modifier = Modifier.size(28.dp)
+                        )
+                    }
+                }
+            }
+        },
+        bottomBar = {
+            if (isNewMobileUi) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                    color = MaterialTheme.colorScheme.surface
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = 14.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
+                            selected = activeTab == MobileDashboardTab.CHORES,
+                            label = stringResource(R.string.mobile_tab_chores),
+                            iconRes = R.drawable.mobile_nav_chores,
+                            showLabel = isNewMobileUi,
+                            onClick = {
+                                openTab(MobileDashboardTab.CHORES)
+                                expandedChoreIds = emptySet()
+                            }
+                        )
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
+                            selected = activeTab == MobileDashboardTab.LEADERBOARD,
+                            label = stringResource(R.string.mobile_leaderboard),
+                            iconRes = R.drawable.mobile_nav_leaderboard,
+                            showLabel = isNewMobileUi,
+                            onClick = {
+                                openTab(MobileDashboardTab.LEADERBOARD)
+                                expandedChoreIds = emptySet()
+                            }
+                        )
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
+                            selected = activeTab == MobileDashboardTab.REWARDS,
+                            label = stringResource(R.string.mobile_tab_rewards),
+                            iconRes = R.drawable.mobile_nav_rewards,
+                            showLabel = isNewMobileUi,
+                            badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
+                            onClick = { openTab(MobileDashboardTab.REWARDS) }
+                        )
+                        MobileTabButton(
+                            modifier = Modifier.weight(1f),
+                            selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || activeTab == MobileDashboardTab.REWARDS_MANAGER || showMoreSheet,
+                            label = stringResource(R.string.mobile_tab_more),
+                            iconRes = R.drawable.mobile_nav_more,
+                            showLabel = isNewMobileUi,
+                            onClick = { showMoreSheet = true }
+                        )
+                    }
+                }
+            } else {
+                BoxWithConstraints(
+                    modifier = Modifier.fillMaxWidth(),
+                    contentAlignment = Alignment.Center
+                ) {
+                    val isTablet = isTabletWidth(maxWidth)
+                    Card(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (isTablet) Modifier.widthIn(max = 760.dp) else Modifier),
+                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.CHORES,
+                                label = stringResource(R.string.mobile_tab_chores),
+                                iconRes = R.drawable.mobile_nav_chores,
+                                showLabel = isNewMobileUi,
+                                onClick = {
+                                    openTab(MobileDashboardTab.CHORES)
+                                    expandedChoreIds = emptySet()
+                                }
+                            )
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.LEADERBOARD,
+                                label = stringResource(R.string.mobile_leaderboard),
+                                iconRes = R.drawable.mobile_nav_leaderboard,
+                                showLabel = isNewMobileUi,
+                                onClick = {
+                                    openTab(MobileDashboardTab.LEADERBOARD)
+                                    expandedChoreIds = emptySet()
+                                }
+                            )
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.REWARDS,
+                                label = stringResource(R.string.mobile_tab_rewards),
+                                iconRes = R.drawable.mobile_nav_rewards,
+                                showLabel = isNewMobileUi,
+                                badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
+                                onClick = { openTab(MobileDashboardTab.REWARDS) }
+                            )
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || activeTab == MobileDashboardTab.REWARDS_MANAGER || showMoreSheet,
+                                label = stringResource(R.string.mobile_tab_more),
+                                iconRes = R.drawable.mobile_nav_more,
+                                showLabel = isNewMobileUi,
+                                onClick = { showMoreSheet = true }
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    ) { padding ->
+        BoxWithConstraints(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(
+                            if (isNewMobileUi) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.background
+                        )
+                    )
+                )
+                .padding(padding)
+        ) {
+            val isTablet = isTabletWidth(maxWidth)
+            Box(modifier = Modifier.fillMaxSize()) {
+                LazyColumn(
+                    state = dashboardListState,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(horizontal = if (isTablet) 28.dp else if (isNewMobileUi) 6.dp else 20.dp, vertical = 16.dp)
+                        .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
+                    verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 10.dp else 16.dp)
+                ) {
+            if (activeTab == MobileDashboardTab.CHORES) {
+                if (sortedChores.isEmpty() && historicChores.isEmpty()) {
+                    item { Text(text = noChoresLabel, style = MaterialTheme.typography.bodyMedium) }
+                }
+                if (isNewMobileUi && !isTablet) {
+                    if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
+                        item {
+                            TakeoverRequestsPanel(
+                                requests = incomingTakeoverRequests,
+                                activeTakeoverRequestAction = activeTakeoverRequestAction,
+                                onApproveRequest = { requestId -> onRespondToTakeoverRequest(requestId, true) },
+                                onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
+                            )
+                        }
+                    }
+                    if (choresOverdue.isNotEmpty()) {
+                        mockMobileChoreSection(
+                            chores = choresOverdue,
+                            title = choresOverdueLabel,
+                            currentUserId = currentUserId,
+                            currentUserRole = currentUserRole,
+                            supportsTakeoverRequests = canUseTakeoverRequests,
+                            expandedChoreIds = expandedChoreIds,
+                            onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                            activeReviewAction = activeReviewAction,
+                            activeStartAction = activeStartAction,
+                            activeSubmitAction = activeSubmitAction,
+                            activeCloseCycleAction = activeCloseCycleAction,
+                            activeCancelChoreAction = activeCancelChoreAction,
+                            activeTakeoverRequestAction = activeTakeoverRequestAction,
+                            outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                            submitSelections = submitSelections,
+                            selectedProofUris = selectedProofUris,
+                            onApprove = onApprove,
+                            onReject = onReject,
+                            onToggleChecklistItem = onToggleChecklistItem,
+                            onPickProofs = onPickProofs,
+                            onTakeProofPhoto = onTakeProofPhoto,
+                            onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                            onCancelChoreOccurrence = onCancelChoreOccurrence,
+                            onCloseChoreCycle = onCloseChoreCycle,
+                            onCancelChore = onCancelChore,
+                            onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                            onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                            onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                            activeDueAtAction = activeDueAtAction,
+                            onEditChoreDueAt = onEditChoreDueAt,
+                            templateVariantsByTemplateId = templateVariantsByTemplateId,
+                            activeExternalCompleteAction = activeExternalCompleteAction,
+                            onCompleteExternalChore = onCompleteExternalChore,
+                            sectionTitleColor = overdueHeaderColor
+                        )
+                    }
+                    mockMobileChoreSection(
+                        chores = choresDueToday,
+                        title = choresDueTodayLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        activeExternalCompleteAction = activeExternalCompleteAction,
+                        onCompleteExternalChore = onCompleteExternalChore,
+                        emptyMessage = noChoresLabel
+                    )
+                    mockMobileChoreSection(
+                        chores = choresDueThisWeek,
+                        title = choresDueThisWeekLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        activeExternalCompleteAction = activeExternalCompleteAction,
+                        onCompleteExternalChore = onCompleteExternalChore,
+                        emptyMessage = noChoresLabel
+                    )
+                    mockMobileChoreSection(
+                        chores = choresDueLater,
+                        title = choresDueLaterLabel,
+                        currentUserId = currentUserId,
+                        currentUserRole = currentUserRole,
+                        supportsTakeoverRequests = canUseTakeoverRequests,
+                        expandedChoreIds = expandedChoreIds,
+                        onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                        activeReviewAction = activeReviewAction,
+                        activeStartAction = activeStartAction,
+                        activeSubmitAction = activeSubmitAction,
+                        activeCloseCycleAction = activeCloseCycleAction,
+                        activeCancelChoreAction = activeCancelChoreAction,
+                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                        outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId,
+                        submitSelections = submitSelections,
+                        selectedProofUris = selectedProofUris,
+                        onApprove = onApprove,
+                        onReject = onReject,
+                        onToggleChecklistItem = onToggleChecklistItem,
+                        onPickProofs = onPickProofs,
+                        onTakeProofPhoto = onTakeProofPhoto,
+                        onStartChore = { choreId -> startConfirmationChoreId = choreId },
+                        onCancelChoreOccurrence = onCancelChoreOccurrence,
+                        onCloseChoreCycle = onCloseChoreCycle,
+                        onCancelChore = onCancelChore,
+                        onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId },
+                        onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null },
+                        onSubmitChore = { choreId -> submitConfirmationChoreId = choreId },
+                        activeDueAtAction = activeDueAtAction,
+                        onEditChoreDueAt = onEditChoreDueAt,
+                        templateVariantsByTemplateId = templateVariantsByTemplateId,
+                        activeExternalCompleteAction = activeExternalCompleteAction,
+                        onCompleteExternalChore = onCompleteExternalChore,
+                        emptyMessage = noChoresLabel
+                    )
+                    item {
+                        MockMobileCompletedSectionHeader(
+                            title = completedChoresLabel,
+                            expanded = showCompletedChoresSection,
+                            expandedCount = minOf(15, historicChores.size),
+                            onToggleExpanded = { showCompletedChoresSection = !showCompletedChoresSection },
+                            showLabel = showCompletedLabel,
+                            hideLabel = hideCompletedLabel
+                        )
+                    }
+                    if (showCompletedChoresSection) {
+                        mockMobileHistoricChoreSection(
+                            chores = historicChores.take(15),
+                            expandedChoreIds = expandedHistoricChoreIds,
+                            onExpandedChange = { choreId -> activeNewUiChoreDialogId = choreId },
+                            emptyMessage = noChoresLabel
+                        )
+                    }
+                    if (showStatusCard) {
+                        item {
+                            DashboardStatusCard(
+                                isSyncingQueue = isSyncingQueue,
+                                errorMessage = errorMessage,
+                                noticeMessage = noticeMessage,
+                                pendingReconnectActionLabel = pendingReconnectActionLabel,
+                                queuedSubmissionCount = queuedSubmissionCount
+                            )
+                        }
+                    }
+                } else if (isTablet) {
+                    item {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(18.dp),
+                            verticalAlignment = Alignment.Top
+                        ) {
+                            Column(
+                                modifier = Modifier.weight(1.55f),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
+                                    TakeoverRequestsPanel(
+                                        requests = incomingTakeoverRequests,
+                                        activeTakeoverRequestAction = activeTakeoverRequestAction,
+                                        onApproveRequest = { requestId -> onRespondToTakeoverRequest(requestId, true) },
+                                        onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
+                                    )
+                                }
+                                ChoreSectionColumn(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
+                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(16.dp)
+                            ) {
+                                HistoricChoreSectionColumn(
+                                    chores = historicChores,
+                                    title = choresHistoryLabel,
+                                    expandedChoreIds = expandedHistoricChoreIds,
+                                    onExpandedChange = { choreId ->
+                                        expandedHistoricChoreIds = if (expandedHistoricChoreIds.contains(choreId))
+                                            expandedHistoricChoreIds - choreId else expandedHistoricChoreIds + choreId
+                                    }
+                                )
+                                if (showStatusCard) {
+                                    DashboardStatusCard(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        isSyncingQueue = isSyncingQueue,
+                                        errorMessage = errorMessage,
+                                        noticeMessage = noticeMessage,
+                                        pendingReconnectActionLabel = pendingReconnectActionLabel,
+                                        queuedSubmissionCount = queuedSubmissionCount
+                                    )
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
+                        item {
+                            TakeoverRequestsPanel(
+                                requests = incomingTakeoverRequests,
+                                activeTakeoverRequestAction = activeTakeoverRequestAction,
+                                onApproveRequest = { requestId -> onRespondToTakeoverRequest(requestId, true) },
+                                onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
+                            )
+                        }
+                    }
+                    choreSection(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
+                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+                    historicChoreSection(
+                        chores = historicChores,
+                        title = choresHistoryLabel,
+                        expandedChoreIds = expandedHistoricChoreIds,
+                        onExpandedChange = { choreId ->
+                            expandedHistoricChoreIds = if (expandedHistoricChoreIds.contains(choreId))
+                                expandedHistoricChoreIds - choreId else expandedHistoricChoreIds + choreId
+                        }
+                    )
+                    if (showStatusCard) {
+                        item {
+                            DashboardStatusCard(
+                                isSyncingQueue = isSyncingQueue,
+                                errorMessage = errorMessage,
+                                noticeMessage = noticeMessage,
+                                pendingReconnectActionLabel = pendingReconnectActionLabel,
+                                queuedSubmissionCount = queuedSubmissionCount
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (activeTab == MobileDashboardTab.LEADERBOARD) {
+                item {
+                    SectionIntro(
+                        title = stringResource(R.string.mobile_leaderboard),
+                        body = stringResource(R.string.mobile_leaderboard_hint)
+                    )
+                }
+                if (leaderboardEntries.isEmpty()) {
+                    item {
+                        Text(
+                            text = stringResource(R.string.mobile_leaderboard_empty),
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+                } else {
+                    item {
+                        Card(shape = RoundedCornerShape(24.dp)) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(18.dp),
+                                verticalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Image(
+                                        painter = painterResource(R.drawable.ic_taskbandit_mascot_success),
+                                        contentDescription = null,
+                                        modifier = Modifier.size(38.dp)
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_leaderboard_cheer),
+                                        style = MaterialTheme.typography.bodyMedium,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                leaderboardEntries.forEachIndexed { index, member ->
+                                    LeaderboardEntryRow(
+                                        rank = index + 1,
+                                        entry = member
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (activeTab == MobileDashboardTab.REWARDS) {
+                item {
+                    SectionIntro(
+                        title = stringResource(R.string.mobile_tab_rewards),
+                        body = if (isParentOrAdmin)
+                            stringResource(R.string.mobile_rewards_manager_hint)
+                        else
+                            stringResource(R.string.mobile_rewards_shop_hint, currentUserPoints)
+                    )
+                }
+
+                if (!isParentOrAdmin) {
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Child: Shop Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                    item {
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Button(
+                                onClick = { rewardsShopTab = "shop" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (rewardsShopTab == "shop") MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) { Text(stringResource(R.string.mobile_rewards_tab_shop)) }
+                            Button(
+                                onClick = { rewardsShopTab = "history" },
+                                colors = ButtonDefaults.buttonColors(
+                                    containerColor = if (rewardsShopTab == "history") MaterialTheme.colorScheme.primary
+                                    else MaterialTheme.colorScheme.surfaceVariant
+                                ),
+                                modifier = Modifier.weight(1f)
+                            ) { Text(stringResource(R.string.mobile_rewards_tab_history)) }
+                        }
+                    }
+                    if (rewardsShopTab == "shop") {
+                        if (enabledRewards.isEmpty()) {
+                            item { Text(stringResource(R.string.mobile_rewards_shop_empty), style = MaterialTheme.typography.bodyMedium) }
+                        } else {
+                            items(enabledRewards) { reward ->
+                                val approvedForThisReward = myRedemptions.filter { it.rewardId == reward.id && it.status == "APPROVED" }
+                                val hasPending = myRedemptions.any { it.rewardId == reward.id && it.status == "PENDING" }
+                                val reachedLimit = reward.maxRedemptionsPerChild != null && approvedForThisReward.size >= reward.maxRedemptionsPerChild
+                                val lastApprovedAt = approvedForThisReward.maxByOrNull { it.requestedAtUtc }?.requestedAtUtc
+                                val onCooldown = reward.cooldownDays != null && lastApprovedAt != null &&
+                                    (System.currentTimeMillis() - parseInstantForSort(lastApprovedAt).toEpochMilli()) < reward.cooldownDays * 86_400_000L
+                                val canAfford = currentUserPoints >= reward.pointCost
+                                Card(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    shape = RoundedCornerShape(16.dp)
+                                ) {
+                                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                            Text(rewardCategoryEmoji(reward.category), style = MaterialTheme.typography.headlineMedium)
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(reward.title, style = MaterialTheme.typography.titleMedium)
+                                                reward.description?.let { Text(it, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+                                            }
+                                        }
+                                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
+                                            Text(
+                                                text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
+                                                style = MaterialTheme.typography.labelLarge,
+                                                color = MaterialTheme.colorScheme.primary
+                                            )
+                                            Button(
+                                                onClick = { redeemConfirmRewardId = reward.id },
+                                                enabled = canAfford && !onCooldown && !hasPending && !reachedLimit
+                                            ) {
+                                                Text(
+                                                    if (hasPending) stringResource(R.string.mobile_rewards_pending)
+                                                    else stringResource(R.string.mobile_rewards_redeem)
+                                                )
+                                            }
+                                        }
+                                        if (onCooldown) Text(stringResource(R.string.mobile_rewards_on_cooldown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                        if (reachedLimit) Text(stringResource(R.string.mobile_rewards_limit_reached), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                    }
+                                }
+                            }
+                        }
+                    } else {
+                        // History tab
+                        if (myRedemptions.isEmpty()) {
+                            item { Text(stringResource(R.string.mobile_rewards_history_empty), style = MaterialTheme.typography.bodyMedium) }
+                        } else {
+                            items(myRedemptions.sortedByDescending { it.requestedAtUtc }) { r ->
+                                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(12.dp)) {
+                                    Row(
+                                        modifier = Modifier.padding(14.dp).fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.SpaceBetween,
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(r.rewardTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                            Text(r.status, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
+                                        Text("Ã¢Ë†â€™${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    // Ã¢â€â‚¬Ã¢â€â‚¬ Parent / Admin: Approval Queue Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                    if (pendingRedemptions.isEmpty()) {
+                        item { Text(stringResource(R.string.mobile_rewards_no_pending), style = MaterialTheme.typography.bodyMedium) }
+                    } else {
+                        items(pendingRedemptions) { r ->
+                            Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                                Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                        Column(modifier = Modifier.weight(1f)) {
+                                            Text(r.requestedByName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                            Text(r.rewardTitle, style = MaterialTheme.typography.titleSmall)
+                                        }
+                                        Text("${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        Button(
+                                            onClick = { onResolveRedemption(r.id, true, null) },
+                                            modifier = Modifier.weight(1f),
+                                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary)
+                                        ) { Text(stringResource(R.string.mobile_rewards_approve)) }
+                                        OutlinedButton(
+                                            onClick = { rejectRedemptionId = r.id; rejectRedemptionNote = "" },
+                                            modifier = Modifier.weight(1f)
+                                        ) { Text(stringResource(R.string.mobile_rewards_reject)) }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (activeTab == MobileDashboardTab.CREATE) {
+                if (!isCreatorRole) {
+                    item { Text(text = stringResource(R.string.mobile_create_no_permission), style = MaterialTheme.typography.bodyMedium) }
+                } else if (!canManageChores) {
+                    item { Text(text = stringResource(R.string.mobile_feature_chores_manage_disabled), style = MaterialTheme.typography.bodyMedium) }
+                } else if (templates.isEmpty()) {
+                    item { Text(text = stringResource(R.string.mobile_create_no_templates), style = MaterialTheme.typography.bodyMedium) }
+                } else {
+                    item {
+                        if (isTablet) {
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(18.dp),
+                                verticalAlignment = Alignment.Top
+                            ) {
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    CreateTemplateAndSchedulePanel(
+                                        selectedTemplateGroupTitle = visibleTemplateGroupTitle,
+                                        templateGroupDropdownExpanded = templateGroupDropdownExpanded,
+                                        onTemplateGroupDropdownExpandedChange = { templateGroupDropdownExpanded = it },
+                                        onTemplateGroupSelected = {
+                                            selectedTemplateGroupTitle = it
+                                            selectedTemplateId = templates.firstOrNull { template -> template.groupTitle == it }?.id
+                                            createVariantId = null
+                                            templateGroupDropdownExpanded = false
+                                        },
+                                        templateGroups = templateGroups,
+                                        selectedTemplate = selectedTemplate,
+                                        templateDropdownExpanded = templateDropdownExpanded,
+                                        onTemplateDropdownExpandedChange = { templateDropdownExpanded = it },
+                                        onTemplateSelected = {
+                                            selectedTemplateId = it
+                                            templateDropdownExpanded = false
+                                        },
+                                        templates = visibleTemplates,
+                                        createDueAtMillis = createDueAtMillis,
+                                        onPickDate = { datePickerDialog.show() },
+                                        onPickTime = { timePickerDialog.show() }
+                                    )
+                                    CreateRecurrencePanel(
+                                        createRecurrenceType = createRecurrenceType,
+                                        createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
+                                        recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
+                                        onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
+                                        onRecurrenceTypeSelected = {
+                                            createRecurrenceType = it
+                                            createRecurrenceWeekdays =
+                                                when (it) {
+                                                    "template" -> templateRecurrenceWeekdayDefaults(selectedTemplate?.recurrence)
+                                                    "custom_weekly" ->
+                                                        if (createRecurrenceWeekdays.isNotEmpty()) {
+                                                            createRecurrenceWeekdays
+                                                        } else {
+                                                            listOf(weekdayTokenForEpochMillis(createDueAtMillis))
+                                                        }
+                                                    else -> emptyList()
+                                                }
+                                            recurrenceTypeDropdownExpanded = false
+                                        },
+                                        onRecurrenceIntervalChange = { v ->
+                                            if (v.all(Char::isDigit)) {
+                                                createRecurrenceIntervalInput = v
+                                            }
+                                        },
+                                        onToggleRecurrenceWeekday = { weekday ->
+                                            createRecurrenceWeekdays =
+                                                if (createRecurrenceWeekdays.contains(weekday)) {
+                                                    createRecurrenceWeekdays - weekday
+                                                } else {
+                                                    createRecurrenceWeekdays + weekday
+                                                }
+                                        }
+                                    )
+                                    CreateRecurrenceEndPanel(
+                                        selectedTemplate = selectedTemplate,
+                                        createRecurrenceType = createRecurrenceType,
+                                        createRecurrenceEndMode = createRecurrenceEndMode,
+                                        createRecurrenceOccurrencesInput = createRecurrenceOccurrencesInput,
+                                        createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
+                                        createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
+                                        createRecurrenceEndDateError = createRecurrenceEndDateError,
+                                        onRecurrenceEndModeSelected = { createRecurrenceEndMode = it },
+                                        onRecurrenceOccurrencesChange = { value ->
+                                            if (value.all(Char::isDigit)) {
+                                                createRecurrenceOccurrencesInput = value
+                                            }
+                                        },
+                                        onPickEndDate = { recurrenceEndDatePickerDialog.show() },
+                                        onPickEndTime = { recurrenceEndTimePickerDialog.show() }
+                                    )
+                                }
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                                ) {
+                                    CreateAssignmentPanel(
+                                        createAssignmentStrategy = createAssignmentStrategy,
+                                        assignmentStrategyDropdownExpanded = assignmentStrategyDropdownExpanded,
+                                        onAssignmentDropdownExpandedChange = { assignmentStrategyDropdownExpanded = it },
+                                        onAssignmentStrategySelected = { strategy ->
+                                            createAssignmentStrategy = strategy
+                                            assignmentStrategyDropdownExpanded = false
+                                        },
+                                        createAssigneeId = createAssigneeId,
+                                        assigneeDropdownExpanded = assigneeDropdownExpanded,
+                                        onAssigneeDropdownExpandedChange = { assigneeDropdownExpanded = it },
+                                        onAssigneeSelected = {
+                                            createAssigneeId = it
+                                            assigneeDropdownExpanded = false
+                                        },
+                                        members = assignableMembers
+                                    )
+                                    CreateVariantPanel(
+                                        selectedTemplate = selectedTemplate,
+                                        createVariantId = createVariantId,
+                                        variantDropdownExpanded = variantDropdownExpanded,
+                                        onVariantDropdownExpandedChange = { variantDropdownExpanded = it },
+                                        onVariantSelected = {
+                                            createVariantId = it
+                                            variantDropdownExpanded = false
+                                        }
+                                    )
+                                    CreateSubmitPanel(
+                                        selectedTemplate = selectedTemplate,
+                                        createDueAtMillis = createDueAtMillis,
+                                        createAssigneeId = createAssigneeId,
+                                        createAssignmentStrategy = createAssignmentStrategy,
+                                        createRecurrenceType = createRecurrenceType,
+                                        createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                        createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                        createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                        createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
+                                        createRecurrenceEndMode = createRecurrenceEndMode,
+                                        createRecurrenceOccurrences = parsedCreateRecurrenceOccurrences,
+                                        createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
+                                        createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
+                                        createRecurrenceEndDateError = createRecurrenceEndDateError,
+                                        createVariantId = createVariantId,
+                                        activeCreateAction = activeCreateAction,
+                                        onCreateChore = onCreateChore
+                                    )
+                                }
+                            }
+                        } else {
+                            Column(
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                CreateTemplateAndSchedulePanel(
+                                    selectedTemplateGroupTitle = visibleTemplateGroupTitle,
+                                    templateGroupDropdownExpanded = templateGroupDropdownExpanded,
+                                    onTemplateGroupDropdownExpandedChange = { templateGroupDropdownExpanded = it },
+                                    onTemplateGroupSelected = {
+                                        selectedTemplateGroupTitle = it
+                                        selectedTemplateId = templates.firstOrNull { template -> template.groupTitle == it }?.id
+                                        createVariantId = null
+                                        templateGroupDropdownExpanded = false
+                                    },
+                                    templateGroups = templateGroups,
+                                    selectedTemplate = selectedTemplate,
+                                    templateDropdownExpanded = templateDropdownExpanded,
+                                    onTemplateDropdownExpandedChange = { templateDropdownExpanded = it },
+                                    onTemplateSelected = {
+                                        selectedTemplateId = it
+                                        templateDropdownExpanded = false
+                                    },
+                                    templates = visibleTemplates,
+                                    createDueAtMillis = createDueAtMillis,
+                                    onPickDate = { datePickerDialog.show() },
+                                    onPickTime = { timePickerDialog.show() },
+                                    compact = true
+                                )
+                                CreateRecurrencePanel(
+                                    createRecurrenceType = createRecurrenceType,
+                                    createRecurrenceIntervalInput = createRecurrenceIntervalInput,
+                                    createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                    createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                    createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
+                                    recurrenceTypeDropdownExpanded = recurrenceTypeDropdownExpanded,
+                                    onRecurrenceDropdownExpandedChange = { recurrenceTypeDropdownExpanded = it },
+                                    onRecurrenceTypeSelected = {
+                                        createRecurrenceType = it
+                                        createRecurrenceWeekdays =
+                                            when (it) {
+                                                "template" -> templateRecurrenceWeekdayDefaults(selectedTemplate?.recurrence)
+                                                "custom_weekly" ->
+                                                    if (createRecurrenceWeekdays.isNotEmpty()) {
+                                                        createRecurrenceWeekdays
+                                                    } else {
+                                                        listOf(weekdayTokenForEpochMillis(createDueAtMillis))
+                                                    }
+                                                else -> emptyList()
+                                            }
+                                        recurrenceTypeDropdownExpanded = false
+                                    },
+                                    onRecurrenceIntervalChange = { v ->
+                                        if (v.all(Char::isDigit)) {
+                                            createRecurrenceIntervalInput = v
+                                        }
+                                    },
+                                    onToggleRecurrenceWeekday = { weekday ->
+                                        createRecurrenceWeekdays =
+                                            if (createRecurrenceWeekdays.contains(weekday)) {
+                                                createRecurrenceWeekdays - weekday
+                                            } else {
+                                                createRecurrenceWeekdays + weekday
+                                            }
+                                    },
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateRecurrenceEndPanel(
+                                    selectedTemplate = selectedTemplate,
+                                    createRecurrenceType = createRecurrenceType,
+                                    createRecurrenceEndMode = createRecurrenceEndMode,
+                                    createRecurrenceOccurrencesInput = createRecurrenceOccurrencesInput,
+                                    createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
+                                    createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
+                                    createRecurrenceEndDateError = createRecurrenceEndDateError,
+                                    onRecurrenceEndModeSelected = { createRecurrenceEndMode = it },
+                                    onRecurrenceOccurrencesChange = { value ->
+                                        if (value.all(Char::isDigit)) {
+                                            createRecurrenceOccurrencesInput = value
+                                        }
+                                    },
+                                    onPickEndDate = { recurrenceEndDatePickerDialog.show() },
+                                    onPickEndTime = { recurrenceEndTimePickerDialog.show() },
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateAssignmentPanel(
+                                    createAssignmentStrategy = createAssignmentStrategy,
+                                    assignmentStrategyDropdownExpanded = assignmentStrategyDropdownExpanded,
+                                    onAssignmentDropdownExpandedChange = { assignmentStrategyDropdownExpanded = it },
+                                    onAssignmentStrategySelected = { strategy ->
+                                        createAssignmentStrategy = strategy
+                                        assignmentStrategyDropdownExpanded = false
+                                    },
+                                    createAssigneeId = createAssigneeId,
+                                    assigneeDropdownExpanded = assigneeDropdownExpanded,
+                                    onAssigneeDropdownExpandedChange = { assigneeDropdownExpanded = it },
+                                    onAssigneeSelected = {
+                                        createAssigneeId = it
+                                        assigneeDropdownExpanded = false
+                                    },
+                                    members = assignableMembers,
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateVariantPanel(
+                                    selectedTemplate = selectedTemplate,
+                                    createVariantId = createVariantId,
+                                    variantDropdownExpanded = variantDropdownExpanded,
+                                    onVariantDropdownExpandedChange = { variantDropdownExpanded = it },
+                                    onVariantSelected = {
+                                        createVariantId = it
+                                        variantDropdownExpanded = false
+                                    },
+                                    compact = true,
+                                    collapsedByDefault = true
+                                )
+                                CreateSubmitPanel(
+                                    selectedTemplate = selectedTemplate,
+                                    createDueAtMillis = createDueAtMillis,
+                                    createAssigneeId = createAssigneeId,
+                                    createAssignmentStrategy = createAssignmentStrategy,
+                                    createRecurrenceType = createRecurrenceType,
+                                    createRecurrenceInterval = parsedCreateRecurrenceInterval,
+                                    createRecurrenceIntervalError = createRecurrenceIntervalError,
+                                    createRecurrenceWeekdays = createRecurrenceWeekdays,
+                                    createRecurrenceWeekdaysError = createRecurrenceWeekdaysError,
+                                    createRecurrenceEndMode = createRecurrenceEndMode,
+                                    createRecurrenceOccurrences = parsedCreateRecurrenceOccurrences,
+                                    createRecurrenceOccurrencesError = createRecurrenceOccurrencesError,
+                                    createRecurrenceEndsAtMillis = createRecurrenceEndsAtMillis,
+                                    createRecurrenceEndDateError = createRecurrenceEndDateError,
+                                    createVariantId = createVariantId,
+                                    activeCreateAction = activeCreateAction,
+                                    onCreateChore = onCreateChore,
+                                    compact = true
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (activeTab == MobileDashboardTab.MORE) {
+                item {
+                    SectionIntro(
+                        title = stringResource(R.string.mobile_settings_title),
+                        body = stringResource(R.string.mobile_settings_hint),
+                        compact = true
+                    )
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Tune, title = stringResource(R.string.mobile_settings_appearance)) {
+                        SettingsAppearanceContent(
+                            themeMode = themeMode,
+                            onThemeModeChange = onThemeModeChange,
+                            languageTag = languageTag,
+                            onLanguageTagChange = onLanguageTagChange
+                        )
+                    }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Smartphone, title = stringResource(R.string.mobile_settings_device)) {
+                        SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
+                    }
+                }
+                if (hostedSubscription.hostedMode && isCreatorRole) {
+                    item {
+                        SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {
+                            SettingsPlanContent(hostedSubscription = hostedSubscription)
+                        }
+                    }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubCheckError = githubCheckError, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onCheckForUpdates = onCheckForUpdates, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
+                    }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
+                        SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
+                    }
+                }
+                item {
+                    SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.AutoMirrored.Rounded.Logout, title = stringResource(R.string.mobile_logout)) {
+                        SettingsLogoutContent(onLogout = onLogout)
+                    }
+                }
+            }
+
+                }
+
+                // Ã¢â€â‚¬Ã¢â€â‚¬ Full-screen overlays for virtual tabs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // Rendered OUTSIDE the LazyColumn so they get proper bounded constraints
+                // (Scaffold and nested LazyColumn both require bounded height).
+                if (activeTab == MobileDashboardTab.TEMPLATE_MANAGER) {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        TemplateManagerScreen(
+                            templates = templateManagerTemplates,
+                            isLoading = templateManagerLoading,
+                            error = templateManagerError,
+                            allTemplates = templateManagerTemplates,
+                            onRefresh = onLoadTemplatesForManager,
+                            onCreateTemplate = onCreateTemplate,
+                            onUpdateTemplate = onUpdateTemplate,
+                            onDeleteTemplate = onDeleteTemplate,
+                            onResetToDefaults = onResetTemplatesToDefaults,
+                            canManageTemplates = canManageTemplates,
+                            isAdmin = currentUserRole == "admin"
+                        )
+                    }
+                }
+
+                if (activeTab == MobileDashboardTab.REWARDS_MANAGER) {
+                    Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                        RewardsManagerScreen(
+                            allRewards = dashboard?.rewards.orEmpty(),
+                            pendingRedemptions = dashboard?.redemptions.orEmpty().filter { it.status == "PENDING" },
+                            currentUserPoints = currentUserPoints,
+                            onCreateReward = onCreateReward,
+                            onUpdateReward = onUpdateReward,
+                            onDeleteReward = onDeleteReward,
+                            onToggleReward = onToggleReward,
+                            onApproveRedemption = { id -> onResolveRedemption(id, true, null) },
+                            onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) },
+                            onRedeemReward = { redeemConfirmRewardId = it }
+                        )
+                    }
+                }
+
+                if (activeTab == MobileDashboardTab.CHORES && showDashboardSyncNotice && hasSyncFailureContext) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(
+                                start = if (isTablet) 28.dp else 20.dp,
+                                end = if (isTablet) 28.dp else 20.dp,
+                                top = 12.dp
+                            )
+                            .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier)
+                    ) {
+                        ChoreConnectionBanner(
+                            message = stringResource(R.string.mobile_sync_disconnected)
+                        )
+                    }
+                }
+
+                AnimatedVisibility(
+                    visible = visibleGithubUpdate != null && activeTab == MobileDashboardTab.CHORES,
+                    enter = fadeIn(animationSpec = tween(300)),
+                    exit = fadeOut(animationSpec = tween(200)),
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        // Leave extra room on the right so the dismiss Ã¢Å“â€¢ button is not
+                        // hidden behind the circular create FAB (60dp + 16dp margin + 8dp gap).
+                        .padding(
+                            start = 16.dp,
+                            end = if (isNewMobileUi && canManageChores && !isTablet) 92.dp else 16.dp,
+                            top = 16.dp,
+                            bottom = 16.dp
+                        )
+                        .then(if (isTablet) Modifier.widthIn(max = 480.dp) else Modifier)
+                ) {
+                    visibleGithubUpdate?.let { update ->
+                        Card(
+                            onClick = { openTab(MobileDashboardTab.MORE); shouldScrollToUpdate = true },
+                            shape = RoundedCornerShape(20.dp),
+                            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.primaryContainer
+                            ),
+                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.28f))
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(start = 16.dp, end = 6.dp, top = 12.dp, bottom = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(12.dp)
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Rounded.SystemUpdate,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = MaterialTheme.colorScheme.primary
+                                )
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_banner_title, "v${update.version}"),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        fontWeight = FontWeight.SemiBold,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis
+                                    )
+                                    Text(
+                                        text = stringResource(R.string.mobile_update_banner_body),
+                                        style = MaterialTheme.typography.labelSmall,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.72f)
+                                    )
+                                }
+                                IconButton(
+                                    onClick = onDismissGithubUpdate,
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Rounded.Close,
+                                        contentDescription = stringResource(R.string.mobile_update_dismiss),
+                                        modifier = Modifier.size(18.dp),
+                                        tint = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = 0.6f)
+                                    )
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+}
+@Composable
+private fun QuickLogMatchChip(
+    icon: String?,
+    label: String,
+    @Suppress("UNUSED_PARAMETER") title: String,
+    selected: Boolean,
+    onClick: () -> Unit
+) {
+    val iconDrawable = resolveChoreIconDrawableFromToken(icon)
+    OutlinedButton(
+        onClick = onClick,
+        shape = RoundedCornerShape(10.dp),
+        border = BorderStroke(
+            1.dp,
+            if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline.copy(alpha = 0.24f)
+        ),
+        colors = ButtonDefaults.outlinedButtonColors(
+            containerColor = if (selected) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.42f) else MaterialTheme.colorScheme.surface
+        ),
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            if (iconDrawable != null) {
+                Image(
+                    painter = painterResource(iconDrawable),
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.size(22.dp)
+                )
+            }
+            Text(
+                text = label,
+                style = MaterialTheme.typography.bodyMedium,
+                color = MaterialTheme.colorScheme.onSurface,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+@Composable
+private fun SpeedDialAction(
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    onClick: () -> Unit
+) {
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp)
+    ) {
+        Surface(
+            shape = RoundedCornerShape(8.dp),
+            color = MaterialTheme.colorScheme.inverseSurface,
+            tonalElevation = 2.dp
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.inverseOnSurface,
+                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
+            )
+        }
+        Button(
+            onClick = onClick,
+            shape = CircleShape,
+            contentPadding = PaddingValues(0.dp),
+            modifier = Modifier.size(46.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = label,
+                modifier = Modifier.size(22.dp)
+            )
+        }
+    }
+}
+@Composable
+private fun MobileTabButton(
+    modifier: Modifier = Modifier,
+    selected: Boolean,
+    label: String,
+    @DrawableRes iconRes: Int,
+    showLabel: Boolean = false,
+    enabled: Boolean = true,
+    badge: Int = 0,
+    onClick: () -> Unit
+) {
+    val iconTint = when {
+        !enabled -> MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f)
+        selected -> MaterialTheme.colorScheme.primary
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    val chipColor = if (selected) {
+        MaterialTheme.colorScheme.primaryContainer
+    } else {
+        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    }
+    val chipBorderColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.outline.copy(alpha = 0.32f)
+    }
+    // Use Column+clickable instead of TextButton so Compose doesn't clip
+    // the label text to the TextButton's pill/stadium shape. "Leaderboard"
+    // (the longest label) was being cut off at the circle icon edges.
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 1.dp, vertical = 2.dp)
+            .semantics(mergeDescendants = true) { contentDescription = label },
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(2.dp)
+    ) {
+        Box(contentAlignment = Alignment.TopEnd) {
+            Box(
+                modifier = Modifier
+                    .size(48.dp)
+                    .background(chipColor, CircleShape)
+                    .border(BorderStroke(if (selected) 2.dp else 1.dp, chipBorderColor), CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Image(
+                    painter = painterResource(id = iconRes),
+                    contentDescription = null,
+                    modifier = Modifier
+                        .size(32.dp)
+                        .alpha(if (enabled) 1f else 0.45f)
+                )
+            }
+            if (badge > 0) {
+                Box(
+                    modifier = Modifier
+                        .size(16.dp)
+                        .background(Color(0xFFFF6B6B), CircleShape),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = badge.coerceAtMost(99).toString(),
+                        style = MaterialTheme.typography.labelSmall.copy(fontSize = 9.sp),
+                        color = Color.White,
+                        maxLines = 1
+                    )
+                }
+            }
+        }
+        if (showLabel) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall.copy(fontSize = MaterialTheme.typography.labelSmall.fontSize * 1.04f),
+                color = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+        if (selected) {
+            Box(
+                modifier = Modifier
+                    .size(width = 14.dp, height = 3.dp)
+                    .background(MaterialTheme.colorScheme.primary, RoundedCornerShape(999.dp))
+            )
+        }
+    }
+}
+
+@Composable
+private fun MobileCenterTabButton(
+    modifier: Modifier = Modifier,
+    selected: Boolean,
+    label: String,
+    icon: ImageVector,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    val baseContainerColor = if (selected) {
+        MaterialTheme.colorScheme.primary
+    } else {
+        MaterialTheme.colorScheme.primary.copy(alpha = 0.82f)
+    }
+    val containerColor = if (enabled) baseContainerColor else baseContainerColor.copy(alpha = 0.35f)
+    val iconTint = if (enabled) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimary.copy(alpha = 0.5f)
+
+    TextButton(
+        modifier = modifier,
+        onClick = onClick,
+        enabled = enabled,
+        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 0.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(52.dp).background(containerColor, CircleShape),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    imageVector = icon,
+                    contentDescription = null,
+                    tint = iconTint,
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+            Text(
+                text = label,
+                color = if (enabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                style = MaterialTheme.typography.labelMedium,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis
+            )
+        }
+    }
+}
+
+@Composable
+private fun DashboardStatusCard(
+    modifier: Modifier = Modifier,
+    isSyncingQueue: Boolean,
+    errorMessage: String?,
+    noticeMessage: String?,
+    pendingReconnectActionLabel: String?,
+    queuedSubmissionCount: Int
+) {
+    Card(modifier = modifier, shape = RoundedCornerShape(22.dp)) {
+        Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            if (!pendingReconnectActionLabel.isNullOrBlank()) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Text(
+                        text = stringResource(
+                            R.string.mobile_sync_reconnecting_action_status,
+                            pendingReconnectActionLabel
+                        ),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+            if (queuedSubmissionCount > 0 || isSyncingQueue) {
+                Text(
+                    text = if (isSyncingQueue) {
+                        stringResource(R.string.mobile_syncing_queue)
+                    } else {
+                        stringResource(R.string.mobile_queued_submissions, queuedSubmissionCount)
+                    },
+                    style = MaterialTheme.typography.bodyMedium
+                )
+            }
+            if (!noticeMessage.isNullOrBlank()) {
+                Text(text = noticeMessage, color = MaterialTheme.colorScheme.primary)
+            }
+            if (!errorMessage.isNullOrBlank()) {
+                Text(text = errorMessage, color = MaterialTheme.colorScheme.error)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoreConnectionBanner(message: String) {
+    Surface(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.72f)
+    ) {
+        Text(
+            text = message,
+            modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun SectionIntro(title: String, body: String, compact: Boolean = false) {
+    Column(verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
+        Text(
+            text = title,
+            style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,
+            fontWeight = FontWeight.SemiBold
+        )
+        Text(text = body, style = if (compact) MaterialTheme.typography.bodySmall else MaterialTheme.typography.bodyMedium)
+    }
+}
+
+@Composable
+private fun LeaderboardEntryRow(
+    rank: Int,
+    entry: MobileLeaderboardEntry
+) {
+    val isNewMobileUi = LocalIsNewMobileUi.current
+    val trophyTint = when (rank) {
+        1 -> Color(0xFFD4AF37)
+        2 -> Color(0xFFC0C0C0)
+        3 -> Color(0xFFCD7F32)
+        else -> MaterialTheme.colorScheme.onSurfaceVariant
+    }
+    Surface(
+        shape = RoundedCornerShape(if (isNewMobileUi) 14.dp else 16.dp),
+        color = if (isNewMobileUi) {
+            MaterialTheme.colorScheme.surface
+        } else {
+            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
+        },
+        border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                modifier = Modifier.weight(1f),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.EmojiEvents,
+                    contentDescription = null,
+                    tint = trophyTint,
+                    modifier = Modifier.size(20.dp)
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = "$rank. ${entry.displayName}",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        if (entry.isExternal) {
+                            Surface(
+                                shape = RoundedCornerShape(999.dp),
+                                color = MaterialTheme.colorScheme.secondaryContainer
+                            ) {
+                                Text(
+                                    text = "ext",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
+                                )
+                            }
+                        }
+                    }
+                    Text(
+                        text = if (entry.isExternal) {
+                            "External helper"
+                        } else {
+                            "${formatLeaderboardRoleLabel(entry.role)} - ${stringResource(R.string.mobile_streak_value, entry.currentStreak)}"
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.primaryContainer
+            ) {
+                Text(
+                    text = stringResource(R.string.mobile_points_value, entry.points),
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    style = MaterialTheme.typography.labelLarge,
+                    color = MaterialTheme.colorScheme.onPrimaryContainer,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.choreSection(
+    chores: List<MobileChore>, title: String, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expandedChoreIds: Set<String>, onExpandedChange: (String) -> Unit,
+    activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeCancelChoreAction: String?, activeTakeoverRequestAction: String?, outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>, submitSelections: Map<String, Set<String>>, selectedProofUris: Map<String, List<String>>,
+    onApprove: (String) -> Unit, onReject: (String) -> Unit, onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeDueAtAction: String?, onEditChoreDueAt: (String, String, String, String?) -> Unit, templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>, activeExternalCompleteAction: String?, onCompleteExternalChore: (String, String) -> Unit,
+    toneOverride: MobileChoreSectionTone? = null
+) {
+    if (chores.isEmpty()) return
+    val tone = toneOverride ?: when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+        MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
+        MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
+        MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
+        null -> MobileChoreSectionTone.UNASSIGNED
+    }
+    item {
+        ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
+            chores.forEach { chore ->
+                ChoreCard(chore = chore, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = supportsTakeoverRequests, expanded = expandedChoreIds.contains(chore.id), activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, activeDueAtAction = activeDueAtAction, outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id], selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(), selectedProofCount = selectedProofUris[chore.id]?.size ?: 0, onExpandedChange = { onExpandedChange(chore.id) }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = onStartChore, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onEditChoreDueAt = onEditChoreDueAt, onTakeOverChore = onTakeOverChore, onRequestTakeover = onRequestTakeover, onSubmitChore = onSubmitChore, editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(), activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
+            }
+        }
+    }
+}
+
+private fun LazyListScope.mockMobileChoreSection(
+    chores: List<MobileChore>,
+    title: String,
+    currentUserId: String?,
+    currentUserRole: String?,
+    supportsTakeoverRequests: Boolean,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit,
+    activeReviewAction: String?,
+    activeStartAction: String?,
+    activeSubmitAction: String?,
+    activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
+    activeTakeoverRequestAction: String?,
+    outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>,
+    submitSelections: Map<String, Set<String>>,
+    selectedProofUris: Map<String, List<String>>,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit,
+    onPickProofs: (String) -> Unit,
+    onTakeProofPhoto: (String) -> Unit,
+    onStartChore: (String) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
+    onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
+    onTakeOverChore: (String) -> Unit,
+    onRequestTakeover: (String) -> Unit,
+    onSubmitChore: (String) -> Unit,
+    activeDueAtAction: String?,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>,
+    activeExternalCompleteAction: String?,
+    onCompleteExternalChore: (String, String) -> Unit,
+    showViewAll: Boolean = false,
+    viewAllLabel: String = "",
+    emptyMessage: String? = null,
+    sectionTitleColor: Color = Color.Unspecified
+) {
+    item {
+        MockMobileSectionHeader(title = title, showViewAll = showViewAll, viewAllLabel = viewAllLabel, titleColor = sectionTitleColor)
+    }
+    if (chores.isEmpty()) {
+        if (!emptyMessage.isNullOrBlank()) {
+            item {
+                Text(
+                    text = emptyMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+    items(chores, key = { it.id }) { chore ->
+        ChoreCard(
+            chore = chore,
+            currentUserId = currentUserId,
+            currentUserRole = currentUserRole,
+            supportsTakeoverRequests = supportsTakeoverRequests,
+            expanded = expandedChoreIds.contains(chore.id),
+            activeReviewAction = activeReviewAction,
+            activeStartAction = activeStartAction,
+            activeSubmitAction = activeSubmitAction,
+            activeCloseCycleAction = activeCloseCycleAction,
+            activeCancelChoreAction = activeCancelChoreAction,
+            activeTakeoverRequestAction = activeTakeoverRequestAction,
+            activeDueAtAction = activeDueAtAction,
+            outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id],
+            selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(),
+            selectedProofCount = selectedProofUris[chore.id]?.size ?: 0,
+            onExpandedChange = { onExpandedChange(chore.id) },
+            onApprove = onApprove,
+            onReject = onReject,
+            onToggleChecklistItem = onToggleChecklistItem,
+            onPickProofs = onPickProofs,
+            onTakeProofPhoto = onTakeProofPhoto,
+            onStartChore = onStartChore,
+            onCancelChoreOccurrence = onCancelChoreOccurrence,
+            onCloseChoreCycle = onCloseChoreCycle,
+            onCancelChore = onCancelChore,
+            onEditChoreDueAt = onEditChoreDueAt,
+            onTakeOverChore = onTakeOverChore,
+            onRequestTakeover = onRequestTakeover,
+            onSubmitChore = onSubmitChore,
+            editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
+            activeExternalCompleteAction = activeExternalCompleteAction,
+            onCompleteExternalChore = onCompleteExternalChore
+        )
+    }
+}
+
+@Composable
+private fun MockMobileSectionHeader(
+    title: String,
+    showViewAll: Boolean,
+    viewAllLabel: String,
+    titleColor: Color = Color.Unspecified
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = if (titleColor != Color.Unspecified) titleColor else MaterialTheme.colorScheme.onBackground
+        )
+        if (showViewAll) {
+            TextButton(onClick = { }) {
+                Text(
+                    text = viewAllLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun MockMobileCompletedSectionHeader(
+    title: String,
+    expanded: Boolean,
+    expandedCount: Int,
+    onToggleExpanded: () -> Unit,
+    showLabel: String,
+    hideLabel: String
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = title,
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.ExtraBold,
+            color = MaterialTheme.colorScheme.onBackground
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Surface(
+                shape = RoundedCornerShape(999.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant
+            ) {
+                Text(
+                    text = expandedCount.toString(),
+                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                    style = MaterialTheme.typography.labelSmall,
+                    fontWeight = FontWeight.SemiBold,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+            TextButton(onClick = onToggleExpanded) {
+                Text(
+                    text = if (expanded) hideLabel else showLabel,
+                    style = MaterialTheme.typography.titleSmall,
+                    fontWeight = FontWeight.Bold
+                )
+            }
+        }
+    }
+}
+
+private fun LazyListScope.mockMobileHistoricChoreSection(
+    chores: List<MobileChore>,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit,
+    emptyMessage: String? = null
+) {
+    if (chores.isEmpty()) {
+        if (!emptyMessage.isNullOrBlank()) {
+            item {
+                Text(
+                    text = emptyMessage,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+        return
+    }
+
+    items(chores, key = { it.id }) { chore ->
+        HistoricChoreCard(
+            chore = chore,
+            expanded = expandedChoreIds.contains(chore.id),
+            onExpandedChange = { onExpandedChange(chore.id) }
+        )
+    }
+}
+private fun LazyListScope.historicChoreSection(
+    chores: List<MobileChore>,
+    @Suppress("UNUSED_PARAMETER") title: String,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit
+) {
+    if (chores.isEmpty()) return
+    item {
+        ChoreSectionPanel(title = title, count = chores.size, tone = MobileChoreSectionTone.HISTORIC) {
+            chores.forEach { chore ->
+                HistoricChoreCard(
+                    chore = chore,
+                    expanded = expandedChoreIds.contains(chore.id),
+                    onExpandedChange = { onExpandedChange(chore.id) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoreSectionColumn(
+    chores: List<MobileChore>,
+    @Suppress("UNUSED_PARAMETER") title: String,
+    currentUserId: String?,
+    currentUserRole: String?,
+    supportsTakeoverRequests: Boolean,
+    expandedChoreIds: Set<String>,
+    activeReviewAction: String?,
+    activeStartAction: String?,
+    activeSubmitAction: String?,
+    activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
+    activeTakeoverRequestAction: String?,
+    outgoingTakeoverRequestsByChoreId: Map<String, MobileTakeoverRequest>,
+    submitSelections: Map<String, Set<String>>,
+    selectedProofUris: Map<String, List<String>>,
+    onExpandedChange: (String) -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit,
+    onPickProofs: (String) -> Unit,
+    onTakeProofPhoto: (String) -> Unit,
+    onStartChore: (String) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
+    onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
+    activeDueAtAction: String?,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    templateVariantsByTemplateId: Map<String, List<com.taskbandit.app.mobile.MobileTemplateVariant>>,
+    onTakeOverChore: (String) -> Unit,
+    onRequestTakeover: (String) -> Unit,
+    onSubmitChore: (String) -> Unit,
+    activeExternalCompleteAction: String?,
+    onCompleteExternalChore: (String, String) -> Unit,
+    toneOverride: MobileChoreSectionTone? = null,
+) {
+    if (chores.isEmpty()) return
+    val tone = toneOverride ?: when (chores.firstOrNull()?.let { resolveChoreSection(it, currentUserId) }) {
+        MobileChoreSection.MINE -> MobileChoreSectionTone.MINE
+        MobileChoreSection.UNASSIGNED -> MobileChoreSectionTone.UNASSIGNED
+        MobileChoreSection.OTHERS -> MobileChoreSectionTone.OTHERS
+        null -> MobileChoreSectionTone.UNASSIGNED
+    }
+    ChoreSectionPanel(title = title, count = chores.size, tone = tone) {
+        chores.forEach { chore ->
+            ChoreCard(
+                chore = chore,
+                currentUserId = currentUserId,
+                currentUserRole = currentUserRole,
+                supportsTakeoverRequests = supportsTakeoverRequests,
+                expanded = expandedChoreIds.contains(chore.id),
+                activeReviewAction = activeReviewAction,
+                activeStartAction = activeStartAction,
+                activeSubmitAction = activeSubmitAction,
+                activeCloseCycleAction = activeCloseCycleAction,
+                activeCancelChoreAction = activeCancelChoreAction,
+                activeTakeoverRequestAction = activeTakeoverRequestAction,
+                activeDueAtAction = activeDueAtAction,
+                outgoingTakeoverRequest = outgoingTakeoverRequestsByChoreId[chore.id],
+                selectedChecklistIds = submitSelections[chore.id] ?: chore.completedChecklistIds.toSet(),
+                selectedProofCount = selectedProofUris[chore.id]?.size ?: 0,
+                onExpandedChange = { onExpandedChange(chore.id) },
+                onApprove = onApprove,
+                onReject = onReject,
+                onToggleChecklistItem = onToggleChecklistItem,
+                onPickProofs = onPickProofs,
+                onTakeProofPhoto = onTakeProofPhoto,
+                onStartChore = onStartChore,
+                onCancelChoreOccurrence = onCancelChoreOccurrence,
+                onCloseChoreCycle = onCloseChoreCycle,
+                onCancelChore = onCancelChore,
+                onEditChoreDueAt = onEditChoreDueAt,
+                editableVariants = chore.templateId?.let { templateVariantsByTemplateId[it] }.orEmpty(),
+                onTakeOverChore = onTakeOverChore,
+                onRequestTakeover = onRequestTakeover,
+                onSubmitChore = onSubmitChore,
+                activeExternalCompleteAction = activeExternalCompleteAction,
+                onCompleteExternalChore = onCompleteExternalChore
+            )
+        }
+    }
+}
+
+@Composable
+private fun HistoricChoreSectionColumn(
+    chores: List<MobileChore>,
+    @Suppress("UNUSED_PARAMETER") title: String,
+    expandedChoreIds: Set<String>,
+    onExpandedChange: (String) -> Unit
+) {
+    if (chores.isEmpty()) return
+    ChoreSectionPanel(title = title, count = chores.size, tone = MobileChoreSectionTone.HISTORIC) {
+        chores.forEach { chore ->
+            HistoricChoreCard(
+                chore = chore,
+                expanded = expandedChoreIds.contains(chore.id),
+                onExpandedChange = { onExpandedChange(chore.id) }
+            )
+        }
+    }
+}
+
+@Composable
+private fun ChoreSectionPanel(
+    @Suppress("UNUSED_PARAMETER") title: String,
+    count: Int,
+    tone: MobileChoreSectionTone,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    val (containerColor, contentColor, badgeColor, badgeContentColor, borderColor) = rememberSectionToneColors(tone)
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(22.dp),
+        border = BorderStroke(1.25.dp, borderColor),
+        colors = CardDefaults.cardColors(
+            containerColor = containerColor,
+            contentColor = contentColor
+        )
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+                Surface(
+                    shape = CircleShape,
+                    color = badgeColor
+                ) {
+                    Text(
+                        text = count.toString(),
+                        modifier = Modifier.padding(horizontal = 9.dp, vertical = 3.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = badgeContentColor,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                }
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun rememberSectionToneColors(tone: MobileChoreSectionTone): SectionToneColors {
+    val isDarkTheme = MaterialTheme.colorScheme.background.luminance() < 0.5f
+
+    return if (isDarkTheme) {
+        when (tone) {
+            MobileChoreSectionTone.OVERDUE -> SectionToneColors(
+                container = Color(0xFF3B1818),
+                content = Color(0xFFFFECEC),
+                badgeContainer = Color(0xFFFF6B6B),
+                badgeContent = Color(0xFF3B0000),
+                borderColor = Color(0xFFCC3333)
+            )
+            MobileChoreSectionTone.MINE -> SectionToneColors(
+                container = Color(0xFF24354A),
+                content = Color(0xFFF7F5FF),
+                badgeContainer = Color(0xFF79B9EE),
+                badgeContent = Color(0xFF132235),
+                borderColor = Color(0xFF5C84B3)
+            )
+            MobileChoreSectionTone.UNASSIGNED -> SectionToneColors(
+                container = Color(0xFF3A3352),
+                content = Color(0xFFF7F3FF),
+                badgeContainer = Color(0xFFB8A3F0),
+                badgeContent = Color(0xFF241B3A),
+                borderColor = Color(0xFF8F7AC8)
+            )
+            MobileChoreSectionTone.OTHERS -> SectionToneColors(
+                container = Color(0xFF2E2E63),
+                content = Color(0xFFF5F3FF),
+                badgeContainer = Color(0xFF9BA7FF),
+                badgeContent = Color(0xFF1A1F48),
+                borderColor = Color(0xFF717DDB)
+            )
+            MobileChoreSectionTone.HISTORIC -> SectionToneColors(
+                container = Color(0xFF222A38),
+                content = Color(0xFFF0F3F8),
+                badgeContainer = Color(0xFF5E708D),
+                badgeContent = Color(0xFFF0F3F8),
+                borderColor = Color(0xFF4D5A73)
+            )
+        }
+    } else {
+        when (tone) {
+            MobileChoreSectionTone.OVERDUE -> SectionToneColors(
+                container = Color(0xFFFFF0F0),
+                content = Color(0xFF3D1010),
+                badgeContainer = Color(0xFFD94040),
+                badgeContent = Color(0xFFFFEEEE),
+                borderColor = Color(0xFFE08080)
+            )
+            MobileChoreSectionTone.MINE -> SectionToneColors(
+                container = Color(0xFFF0E1C5),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFD3B07B),
+                badgeContent = Color(0xFF2D2110),
+                borderColor = Color(0xFFD0B283)
+            )
+            MobileChoreSectionTone.UNASSIGNED -> SectionToneColors(
+                container = Color(0xFFF7ECD5),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFE4C78D),
+                badgeContent = Color(0xFF35270E),
+                borderColor = Color(0xFFE0C58F)
+            )
+            MobileChoreSectionTone.OTHERS -> SectionToneColors(
+                container = Color(0xFFE6D5BA),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFCFAE7A),
+                badgeContent = Color(0xFF302110),
+                borderColor = Color(0xFFC9AA78)
+            )
+            MobileChoreSectionTone.HISTORIC -> SectionToneColors(
+                container = Color(0xFFF2EADF),
+                content = MaterialTheme.colorScheme.onSurface,
+                badgeContainer = Color(0xFFD8C8B3),
+                badgeContent = MaterialTheme.colorScheme.onSurface,
+                borderColor = Color(0xFFD5C6B2)
+            )
+        }
+    }
+}
+
+private data class SectionToneColors(
+    val container: Color,
+    val content: Color,
+    val badgeContainer: Color,
+    val badgeContent: Color,
+    val borderColor: Color
+)
+
+@Composable
+private fun CompactChoreMeta(
+    dueAt: String,
+    assignmentLabel: String? = null,
+    assignmentReasonLabel: String? = null,
+    subtypeLabel: String? = null,
+    requirePhotoProof: Boolean,
+    includeWeekdayInDueDate: Boolean = true,
+    dueLabelResId: Int = R.string.mobile_due_at,
+    modifier: Modifier = Modifier
+) {
+    val contextToken = when {
+        !subtypeLabel.isNullOrBlank() -> subtypeLabel
+        !assignmentReasonLabel.isNullOrBlank() -> assignmentReasonLabel
+        !assignmentLabel.isNullOrBlank() -> assignmentLabel
+        requirePhotoProof -> stringResource(R.string.mobile_photo_required_hint)
+        else -> null
+    }
+    val dueText = stringResource(
+        dueLabelResId,
+        if (includeWeekdayInDueDate) formatDueAtForCard(dueAt) else formatDueAtForHistoricCard(dueAt)
+    )
+    Text(
+        text = if (contextToken.isNullOrBlank()) dueText else "$dueText | $contextToken",
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+        modifier = modifier
+    )
+}
+@Composable
+private fun TakeoverRequestsPanel(
+    requests: List<MobileTakeoverRequest>,
+    activeTakeoverRequestAction: String?,
+    onApproveRequest: (String) -> Unit,
+    onDeclineRequest: (String) -> Unit
+) {
+    var approveConfirmRequestId by remember { mutableStateOf<String?>(null) }
+    var declineConfirmRequestId by remember { mutableStateOf<String?>(null) }
+
+    val approveConfirmRequest = remember(requests, approveConfirmRequestId) {
+        requests.firstOrNull { it.id == approveConfirmRequestId }
+    }
+    val declineConfirmRequest = remember(requests, declineConfirmRequestId) {
+        requests.firstOrNull { it.id == declineConfirmRequestId }
+    }
+
+    if (approveConfirmRequest != null) {
+        val requesterName = firstNameFromDisplayName(approveConfirmRequest.requester.displayName)
+            ?: approveConfirmRequest.requester.displayName
+        AlertDialog(
+            onDismissRequest = { approveConfirmRequestId = null },
+            title = { Text(stringResource(R.string.mobile_takeover_request_approve_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.mobile_takeover_request_approve_confirm_body, requesterName, approveConfirmRequest.choreTitle))
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val id = approveConfirmRequest.id
+                    approveConfirmRequestId = null
+                    onApproveRequest(id)
+                }) {
+                    Text(stringResource(R.string.mobile_takeover_request_approve_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { approveConfirmRequestId = null }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    if (declineConfirmRequest != null) {
+        val requesterName = firstNameFromDisplayName(declineConfirmRequest.requester.displayName)
+            ?: declineConfirmRequest.requester.displayName
+        AlertDialog(
+            onDismissRequest = { declineConfirmRequestId = null },
+            title = { Text(stringResource(R.string.mobile_takeover_request_decline_confirm_title)) },
+            text = {
+                Text(stringResource(R.string.mobile_takeover_request_decline_confirm_body, requesterName, declineConfirmRequest.choreTitle))
+            },
+            confirmButton = {
+                Button(onClick = {
+                    val id = declineConfirmRequest.id
+                    declineConfirmRequestId = null
+                    onDeclineRequest(id)
+                }) {
+                    Text(stringResource(R.string.mobile_takeover_request_decline_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { declineConfirmRequestId = null }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    ChoreSectionPanel(
+        title = stringResource(R.string.mobile_takeover_requests_title),
+        count = requests.size,
+        tone = MobileChoreSectionTone.OTHERS
+    ) {
+        for (request in requests) {
+            Card(shape = RoundedCornerShape(20.dp)) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                ) {
+                    Text(
+                        text = request.choreTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Text(
+                        text = stringResource(
+                            R.string.mobile_takeover_request_card_body,
+                            firstNameFromDisplayName(request.requester.displayName) ?: request.requester.displayName
+                        ),
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                    Text(
+                        text = stringResource(R.string.mobile_requested_at, formatApiTimestamp(request.createdAt)),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = { approveConfirmRequestId = request.id },
+                            enabled = activeTakeoverRequestAction == null,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (activeTakeoverRequestAction == "approve:${request.id}") {
+                                        R.string.mobile_takeover_request_approving
+                                    } else {
+                                        R.string.mobile_takeover_request_approve
+                                    }
+                                )
+                            )
+                        }
+                        OutlinedButton(
+                            onClick = { declineConfirmRequestId = request.id },
+                            enabled = activeTakeoverRequestAction == null,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(
+                                stringResource(
+                                    if (activeTakeoverRequestAction == "decline:${request.id}") {
+                                        R.string.mobile_takeover_request_declining
+                                    } else {
+                                        R.string.mobile_takeover_request_decline
+                                    }
+                                )
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun HistoricChoreCard(
+    chore: MobileChore,
+    expanded: Boolean,
+    onExpandedChange: () -> Unit
+) {
+    val isNewMobileUi = LocalIsNewMobileUi.current
+    val statusLabel = chore.state.replace('_', ' ')
+    val hasHistoricDetails = chore.checklist.isNotEmpty() || chore.requirePhotoProof
+    val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
+    val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle)
+    val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
+    val historicDate = if (chore.state == "cancelled") {
+        chore.cancelledAt ?: chore.completedAt ?: chore.dueAt
+    } else {
+        chore.completedAt ?: chore.dueAt
+    }
+    val historicDateLabelResId = if (chore.state == "cancelled") {
+        R.string.mobile_cancelled_at
+    } else {
+        R.string.mobile_completed_at
+    }
+    if (isNewMobileUi) {
+        Card(
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp),
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth().heightIn(min = 104.dp).padding(horizontal = 24.dp, vertical = 12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (choreIconDrawable != null) {
+                    Box(
+                        modifier = Modifier.size(40.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(choreIconDrawable),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(36.dp)
+                        )
+                    }
+                }
+                Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = typeTitle,
+                        style = MaterialTheme.typography.bodyLarge,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    Text(
+                        text = "${stringResource(historicDateLabelResId, formatDueAtForHistoricCard(historicDate))} - ${chore.groupTitle}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Surface(shape = RoundedCornerShape(10.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+        return
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 9.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(7.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Surface(
+                    shape = CircleShape,
+                    color = MaterialTheme.colorScheme.secondaryContainer
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.AssignmentTurnedIn,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(6.dp).size(14.dp)
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Text(
+                        text = chore.groupTitle,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = typeTitle,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    CompactChoreMeta(
+                        dueAt = historicDate,
+                        subtypeLabel = subtypeLabel,
+                        assignmentLabel = stringResource(R.string.mobile_chores_history),
+                        requirePhotoProof = chore.requirePhotoProof,
+                        includeWeekdayInDueDate = false,
+                        dueLabelResId = historicDateLabelResId
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.surfaceVariant
+                ) {
+                    Text(
+                        text = statusLabel,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+
+            if (hasHistoricDetails) {
+                OutlinedButton(
+                    onClick = onExpandedChange,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                ) {
+                    Text(stringResource(if (expanded) R.string.mobile_chore_close_history else R.string.mobile_chore_open_history))
+                }
+            }
+
+            if (expanded && hasHistoricDetails) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        if (chore.checklist.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                chore.checklist.forEach { item ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Checkbox(
+                                            checked = chore.completedChecklistIds.contains(item.id),
+                                            onCheckedChange = null
+                                        )
+                                        Text(
+                                            text = item.title,
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun ChoreCard(
+    chore: MobileChore, currentUserId: String?, currentUserRole: String?, supportsTakeoverRequests: Boolean, expanded: Boolean, activeReviewAction: String?, activeStartAction: String?, activeSubmitAction: String?, activeCloseCycleAction: String?, activeCancelChoreAction: String?, activeTakeoverRequestAction: String?, activeDueAtAction: String?,
+    outgoingTakeoverRequest: MobileTakeoverRequest?,
+    selectedChecklistIds: Set<String>, selectedProofCount: Int, onExpandedChange: () -> Unit, onApprove: (String) -> Unit, onReject: (String) -> Unit,
+    onToggleChecklistItem: (String, String, List<String>) -> Unit, onPickProofs: (String) -> Unit, onTakeProofPhoto: (String) -> Unit, onStartChore: (String) -> Unit, onCancelChoreOccurrence: (String) -> Unit, onCloseChoreCycle: (String) -> Unit, onCancelChore: (String) -> Unit, onEditChoreDueAt: (String, String, String, String?) -> Unit, onTakeOverChore: (String) -> Unit, onRequestTakeover: (String) -> Unit, onSubmitChore: (String) -> Unit, activeExternalCompleteAction: String?,
+    onCompleteExternalChore: (String, String) -> Unit,
+    editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>,
+    showSectionBadge: Boolean = true,
+    @Suppress("UNUSED_PARAMETER") showTitleIcon: Boolean = true
+) {
+    val context = LocalContext.current
+    val zoneId = remember { ZoneId.systemDefault() }
+    var showApproveConfirm by remember { mutableStateOf(false) }
+    var showRejectConfirm by remember { mutableStateOf(false) }
+    var showCancelOccurrenceConfirm by remember { mutableStateOf(false) }
+    var showCloseCycleConfirm by remember { mutableStateOf(false) }
+    var showManageMenu by remember { mutableStateOf(false) }
+    var showDueAtEditor by remember { mutableStateOf(false) }
+    var showExternalCompleteDialog by remember { mutableStateOf(false) }
+    var externalCompleterNameInput by remember { mutableStateOf("") }
+    var dueAtEditorTitle by remember(chore.id, chore.title) { mutableStateOf(chore.title) }
+    var dueAtEditorVariantId by remember(chore.id, chore.variantId) { mutableStateOf(chore.variantId ?: "") }
+    var dueAtVariantDropdownExpanded by remember { mutableStateOf(false) }
+    var dueAtEditorMillis by remember(chore.id, chore.dueAt) {
+        mutableLongStateOf(
+            runCatching { Instant.parse(chore.dueAt).toEpochMilli() }.getOrElse { System.currentTimeMillis() }
+        )
+    }
+    val dueAtEditorDatePicker = remember(context, dueAtEditorMillis) {
+        val localDateTime = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+        DatePickerDialog(
+            context,
+            { _, year, month, day ->
+                val existing = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+                dueAtEditorMillis = existing
+                    .withYear(year)
+                    .withMonth(month + 1)
+                    .withDayOfMonth(day)
+                    .atZone(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            localDateTime.year,
+            localDateTime.monthValue - 1,
+            localDateTime.dayOfMonth
+        )
+    }
+    val dueAtEditorTimePicker = remember(context, dueAtEditorMillis) {
+        val localDateTime = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+        TimePickerDialog(
+            context,
+            { _, hourOfDay, minute ->
+                val existing = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+                dueAtEditorMillis = existing
+                    .withHour(hourOfDay)
+                    .withMinute(minute)
+                    .withSecond(0)
+                    .withNano(0)
+                    .atZone(zoneId)
+                    .toInstant()
+                    .toEpochMilli()
+            },
+            localDateTime.hour,
+            localDateTime.minute,
+            true
+        )
+    }
+    val activeDueAtActionKey = "update-due:${chore.id}"
+    val canEditDueAt =
+        LocalMobileFeatureAccess.current.choresManage &&
+        currentUserRole != "child" &&
+        chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+
+    if (showDueAtEditor) {
+        AlertDialog(
+            onDismissRequest = { showDueAtEditor = false },
+            title = { Text(stringResource(R.string.mobile_edit_due_at_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.mobile_edit_due_at_body, chore.title))
+                    OutlinedTextField(
+                        value = dueAtEditorTitle,
+                        onValueChange = { dueAtEditorTitle = it },
+                        label = { Text(stringResource(R.string.mobile_chore_title_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    if (editableVariants.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = dueAtVariantDropdownExpanded,
+                            onExpandedChange = { dueAtVariantDropdownExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = editableVariants.firstOrNull { it.id == dueAtEditorVariantId }?.label
+                                    ?: stringResource(R.string.mobile_create_select_variant_prompt),
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = {
+                                    ExposedDropdownMenuDefaults.TrailingIcon(expanded = dueAtVariantDropdownExpanded)
+                                },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = dueAtVariantDropdownExpanded,
+                                onDismissRequest = { dueAtVariantDropdownExpanded = false }
+                            ) {
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(R.string.mobile_create_no_subtype)) },
+                                    onClick = {
+                                        dueAtEditorVariantId = ""
+                                        dueAtVariantDropdownExpanded = false
+                                    }
+                                )
+                                editableVariants.forEach { variant ->
+                                    DropdownMenuItem(
+                                        text = { Text(variant.label) },
+                                        onClick = {
+                                            dueAtEditorVariantId = variant.id
+                                            dueAtVariantDropdownExpanded = false
+                                        }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Text(
+                        text = formatDueAtForCard(Instant.ofEpochMilli(dueAtEditorMillis).toString()),
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { dueAtEditorDatePicker.show() }) {
+                            Text(stringResource(R.string.mobile_create_pick_date))
+                        }
+                        OutlinedButton(onClick = { dueAtEditorTimePicker.show() }) {
+                            Text(stringResource(R.string.mobile_create_pick_time))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDueAtEditor = false
+                        onEditChoreDueAt(
+                            chore.id,
+                            Instant.ofEpochMilli(dueAtEditorMillis).toString(),
+                            dueAtEditorTitle.trim(),
+                            dueAtEditorVariantId.ifBlank { null }
+                        )
+                    },
+                    enabled = activeDueAtAction == null
+                ) {
+                    Text(
+                        stringResource(
+                            if (activeDueAtAction == activeDueAtActionKey) {
+                                R.string.mobile_updating_due_at
+                            } else {
+                                R.string.mobile_save_due_at
+                            }
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDueAtEditor = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    if (showApproveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showApproveConfirm = false },
+            title = { Text(stringResource(R.string.mobile_approve_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_approve_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showApproveConfirm = false; onApprove(chore.id) }) {
+                    Text(stringResource(R.string.mobile_approve_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showApproveConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    if (showRejectConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRejectConfirm = false },
+            title = { Text(stringResource(R.string.mobile_reject_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_reject_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showRejectConfirm = false; onReject(chore.id) }) {
+                    Text(stringResource(R.string.mobile_reject_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showRejectConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    if (showCancelOccurrenceConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelOccurrenceConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = {
+                    showCancelOccurrenceConfirm = false
+                    onCancelChoreOccurrence(chore.id)
+                }) {
+                    Text(stringResource(R.string.mobile_cancel_occurrence_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelOccurrenceConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    if (showCloseCycleConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCloseCycleConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_series_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_series_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = {
+                    showCloseCycleConfirm = false
+                    onCloseChoreCycle(chore.id)
+                }) {
+                    Text(stringResource(R.string.mobile_cancel_series_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCloseCycleConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    if (showExternalCompleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showExternalCompleteDialog = false; externalCompleterNameInput = "" },
+            title = { Text(stringResource(R.string.mobile_complete_external_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.mobile_complete_external_dialog_body, chore.title))
+                    OutlinedTextField(
+                        value = externalCompleterNameInput,
+                        onValueChange = { externalCompleterNameInput = it },
+                        label = { Text(stringResource(R.string.mobile_complete_external_name_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = externalCompleterNameInput.trim()
+                        showExternalCompleteDialog = false
+                        externalCompleterNameInput = ""
+                        onCompleteExternalChore(chore.id, name)
+                    },
+                    enabled = activeExternalCompleteAction == null && externalCompleterNameInput.isNotBlank()
+                ) {
+                    Text(
+                        stringResource(
+                            if (activeExternalCompleteAction == "complete-external:${chore.id}") {
+                                R.string.mobile_completing_external
+                            } else {
+                                R.string.mobile_complete_external_confirm
+                            }
+                        )
+                    )
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showExternalCompleteDialog = false; externalCompleterNameInput = "" }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    val featureAccess = LocalMobileFeatureAccess.current
+    val canManageChores = featureAccess.choresManage
+    val canApproveChores = featureAccess.approvals
+    val canUseDirectTakeover = featureAccess.takeoverDirect
+    val canUseTakeoverRequests = featureAccess.takeoverRequests && supportsTakeoverRequests
+    val canUploadProofs = featureAccess.proofUploads
+    val isPendingApproval = chore.state == "pending_approval"
+    val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+    val isAssignedToCurrentUser = chore.assigneeId != null && chore.assigneeId == currentUserId
+    val isUnassigned = chore.assigneeId == null
+    val canManageTask = canManageChores && (isUnassigned || isAssignedToCurrentUser)
+    val canSubmitCurrentUser = canManageChores && isAssignedToCurrentUser && isSubmittableState
+    val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
+    val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
+    val canCompleteExternal = featureAccess.externalCompletion && currentUserRole != "child" && isSubmittableState
+    val section = resolveChoreSection(chore, currentUserId)
+    val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
+    val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle, chore.subtypeLabel)
+    val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
+    val assignmentReasonLabel = describeAssignmentReason(chore.assignmentReason)
+    val canClaimChore =
+        canManageChores &&
+            isSubmittableState &&
+            !isAssignedToCurrentUser &&
+            (isUnassigned || canUseDirectTakeover)
+    val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
+    val canRequestTakeover = canManageChores &&
+        canUseTakeoverRequests &&
+        currentUserRole != "child" &&
+        chore.assigneeId == currentUserId &&
+        !hasPendingOutgoingTakeover
+    val hasSecondaryActions = canEditDueAt || canCancelOccurrence || canCloseCycle || canRequestTakeover || canCompleteExternal
+    val outgoingTakeoverFirstName = outgoingTakeoverRequest?.requested?.displayName?.let(::firstNameFromDisplayName)
+    val statusLabel = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else chore.state.replace('_', ' ')
+    val isNewMobileUi = LocalIsNewMobileUi.current
+    val accentContainerColor = when (section) {
+        MobileChoreSection.MINE -> MaterialTheme.colorScheme.primaryContainer
+        MobileChoreSection.UNASSIGNED -> MaterialTheme.colorScheme.tertiaryContainer
+        MobileChoreSection.OTHERS -> MaterialTheme.colorScheme.secondaryContainer
+    }
+    val accentContentColor = when (section) {
+        MobileChoreSection.MINE -> MaterialTheme.colorScheme.onPrimaryContainer
+        MobileChoreSection.UNASSIGNED -> MaterialTheme.colorScheme.onTertiaryContainer
+        MobileChoreSection.OTHERS -> MaterialTheme.colorScheme.onSecondaryContainer
+    }
+    val sectionIcon = when (section) {
+        MobileChoreSection.MINE -> Icons.Rounded.AssignmentTurnedIn
+        MobileChoreSection.UNASSIGNED -> Icons.Rounded.AddCircle
+        MobileChoreSection.OTHERS -> Icons.Rounded.NotificationsActive
+    }
+
+    if (isNewMobileUi) {
+        val isOverdueBucket = resolveMyChoreDueBucket(chore) == MobileMyChoreDueBucket.OVERDUE
+        val mockStatusLabel = when {
+            chore.state == "completed" -> "Done"
+            isOverdueBucket -> "Overdue"
+            chore.isOverdue || isDueSoonForMockCard(chore.dueAt) -> "Due soon"
+            else -> "To do"
+        }
+        val mockStatusContainer = when (mockStatusLabel) {
+            "Done" -> MaterialTheme.colorScheme.primaryContainer
+            "Overdue" -> MaterialTheme.colorScheme.errorContainer
+            "Due soon" -> MaterialTheme.colorScheme.tertiaryContainer
+            else -> MaterialTheme.colorScheme.surfaceVariant
+        }
+        val mockStatusContent = when (mockStatusLabel) {
+            "Done" -> MaterialTheme.colorScheme.onPrimaryContainer
+            "Overdue" -> MaterialTheme.colorScheme.onErrorContainer
+            "Due soon" -> MaterialTheme.colorScheme.onTertiaryContainer
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+        }
+        Card(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable { onExpandedChange() },
+            shape = RoundedCornerShape(15.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = when {
+                    isOverdueBucket -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.22f)
+                    isAssignedToCurrentUser -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                    else -> MaterialTheme.colorScheme.surface.copy(alpha = 0.94f)
+                }
+            ),
+            border = BorderStroke(
+                1.dp,
+                when {
+                    isOverdueBucket -> MaterialTheme.colorScheme.error.copy(alpha = 0.5f)
+                    isAssignedToCurrentUser -> MaterialTheme.colorScheme.primary.copy(alpha = 0.45f)
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.18f)
+                }
+            )
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(min = 78.dp)
+                    .padding(
+                        horizontal = 4.dp,
+                        vertical = if (!subtypeLabel.isNullOrBlank()) 5.dp else 8.dp
+                    ),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                if (choreIconDrawable != null) {
+                    Box(
+                        modifier = Modifier.size(42.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Image(
+                            painter = painterResource(choreIconDrawable),
+                            contentDescription = null,
+                            contentScale = ContentScale.Fit,
+                            modifier = Modifier.size(38.dp)
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(
+                        if (!subtypeLabel.isNullOrBlank()) 1.dp else 4.dp
+                    )
+                ) {
+                    Text(
+                        text = typeTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                    if (!subtypeLabel.isNullOrBlank()) {
+                        Text(
+                            text = subtypeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                    Text(
+                        text = "${formatDueAtForMockCard(chore.dueAt)} - ${chore.groupTitle.ifBlank { "Home" }}",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Surface(
+                    modifier = Modifier.widthIn(min = 58.dp, max = 84.dp).heightIn(min = 28.dp),
+                    shape = RoundedCornerShape(10.dp),
+                    color = mockStatusContainer
+                ) {
+                    Box(
+                        modifier = Modifier.padding(horizontal = 6.dp, vertical = 4.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = mockStatusLabel,
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = mockStatusContent,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
+            }
+        }
+        return
+    }
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp)
+    ) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                if (showSectionBadge) {
+                    Surface(
+                        shape = CircleShape,
+                        color = accentContainerColor
+                    ) {
+                        Icon(
+                            imageVector = sectionIcon,
+                            contentDescription = null,
+                            tint = accentContentColor,
+                            modifier = Modifier.padding(6.dp).size(14.dp)
+                        )
+                    }
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalAlignment = Alignment.Top
+                    ) {
+                        Text(
+                            text = typeTitle,
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f)
+                        )
+                        Surface(
+                            shape = RoundedCornerShape(999.dp),
+                            color = if (chore.isOverdue) {
+                                MaterialTheme.colorScheme.errorContainer
+                            } else {
+                                accentContainerColor.copy(alpha = 0.8f)
+                            }
+                        ) {
+                            Text(
+                                text = statusLabel,
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = if (chore.isOverdue) {
+                                    MaterialTheme.colorScheme.onErrorContainer
+                                } else {
+                                    accentContentColor
+                                }
+                            )
+                        }
+                    }
+                    CompactChoreMeta(
+                        dueAt = chore.dueAt,
+                        assignmentLabel = chore.groupTitle,
+                        assignmentReasonLabel = assignmentReasonLabel,
+                        subtypeLabel = subtypeLabel,
+                        requirePhotoProof = chore.requirePhotoProof
+                    )
+                }
+                if (hasSecondaryActions) {
+                    Box {
+                        IconButton(
+                            onClick = { showManageMenu = true },
+                            modifier = Modifier.size(30.dp)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.MoreVert,
+                                contentDescription = stringResource(R.string.mobile_more_actions)
+                            )
+                        }
+                        DropdownMenu(
+                            expanded = showManageMenu,
+                            onDismissRequest = { showManageMenu = false }
+                        ) {
+                            if (canRequestTakeover) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeTakeoverRequestAction?.startsWith("request:${chore.id}:") == true) {
+                                                    R.string.mobile_request_takeover_sending
+                                                } else {
+                                                    R.string.mobile_request_takeover
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeTakeoverRequestAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        onRequestTakeover(chore.id)
+                                    }
+                                )
+                            }
+                            if (canEditDueAt) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeDueAtAction == activeDueAtActionKey) {
+                                                    R.string.mobile_updating_due_at
+                                                } else {
+                                                    R.string.mobile_edit_due_at
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeDueAtAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        dueAtEditorTitle = chore.title
+                                        dueAtEditorVariantId = chore.variantId ?: ""
+                                        showDueAtEditor = true
+                                    }
+                                )
+                            }
+                            if (canCancelOccurrence) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeCloseCycleAction == "cancel-occurrence:${chore.id}") {
+                                                    R.string.mobile_cancelling_occurrence
+                                                } else {
+                                                    R.string.mobile_cancel_occurrence
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeCloseCycleAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        showCancelOccurrenceConfirm = true
+                                    }
+                                )
+                            }
+                            if (canCloseCycle) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeCloseCycleAction == "cancel-series:${chore.id}") {
+                                                    R.string.mobile_cancelling_series
+                                                } else {
+                                                    R.string.mobile_cancel_series
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeCloseCycleAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        showCloseCycleConfirm = true
+                                    }
+                                )
+                            }
+                            if (canCompleteExternal) {
+                                DropdownMenuItem(
+                                    text = {
+                                        Text(
+                                            stringResource(
+                                                if (activeExternalCompleteAction == "complete-external:${chore.id}") {
+                                                    R.string.mobile_completing_external
+                                                } else {
+                                                    R.string.mobile_complete_external
+                                                }
+                                            )
+                                        )
+                                    },
+                                    enabled = activeExternalCompleteAction == null,
+                                    onClick = {
+                                        showManageMenu = false
+                                        showExternalCompleteDialog = true
+                                    }
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+                ) {
+                    Text(
+                        text = stringResource(
+                            R.string.mobile_takeover_pending_with_name,
+                            outgoingTakeoverFirstName
+                        ),
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        fontWeight = FontWeight.Medium
+                    )
+                }
+            }
+
+            if (isPendingApproval) {
+                if (canApproveChores) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        Button(
+                            onClick = { showApproveConfirm = true },
+                            enabled = activeReviewAction == null,
+                            modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(stringResource(if (activeReviewAction == "approve:${chore.id}") R.string.mobile_approving else R.string.mobile_approve))
+                        }
+                        OutlinedButton(
+                            onClick = { showRejectConfirm = true },
+                            enabled = activeReviewAction == null,
+                            modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                        ) {
+                            Text(stringResource(if (activeReviewAction == "reject:${chore.id}") R.string.mobile_rejecting else R.string.mobile_reject))
+                        }
+                    }
+                } else {
+                    Text(
+                        text = stringResource(R.string.mobile_feature_approvals_disabled),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                return@Column
+            }
+
+            if (isSubmittableState) {
+                Button(
+                    onClick = {
+                        if (canClaimChore) {
+                            if (isUnassigned) {
+                                onStartChore(chore.id)
+                            } else {
+                                onTakeOverChore(chore.id)
+                            }
+                        } else {
+                            onExpandedChange()
+                        }
+                    },
+                    enabled = if (canClaimChore) activeStartAction == null else true,
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 38.dp),
+                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
+                ) {
+                    Text(
+                        stringResource(
+                            if (canClaimChore) {
+                                if (isUnassigned) {
+                                    if (activeStartAction == "start:${chore.id}") {
+                                        R.string.mobile_starting
+                                    } else {
+                                        R.string.mobile_claim_task
+                                    }
+                                } else {
+                                    if (activeStartAction == "takeover:${chore.id}") {
+                                        R.string.mobile_taking_over_task
+                                    } else {
+                                        R.string.mobile_take_over_task
+                                    }
+                                }
+                            } else if (!canManageTask) {
+                                R.string.mobile_view_task
+                            } else if (expanded) {
+                                R.string.mobile_hide_task_tools
+                            } else {
+                                R.string.mobile_work_task
+                            }
+                        )
+                    )
+                }
+            }
+
+            if (expanded && !canClaimChore) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    shape = RoundedCornerShape(16.dp),
+                    color = accentContainerColor.copy(alpha = 0.32f)
+                ) {
+                    Column(
+                        modifier = Modifier.fillMaxWidth().padding(10.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        if (!canManageTask) {
+                            Text(
+                                text = stringResource(R.string.mobile_chore_read_only_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        if (chore.checklist.isNotEmpty()) {
+                            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                chore.checklist.forEach { item ->
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                    ) {
+                                        Checkbox(
+                                            checked = selectedChecklistIds.contains(item.id),
+                                            onCheckedChange = { onToggleChecklistItem(chore.id, item.id, chore.completedChecklistIds) },
+                                            enabled = canManageTask && isSubmittableState
+                                        )
+                                        Text(
+                                            text = item.title,
+                                            style = MaterialTheme.typography.bodyMedium
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                        if (chore.requirePhotoProof) {
+                            if (!canUploadProofs) {
+                                Text(
+                                    text = stringResource(R.string.mobile_feature_proof_uploads_disabled),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else if (selectedProofCount > 0) {
+                                Text(
+                                    text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            } else {
+                                Text(
+                                    text = stringResource(R.string.mobile_photo_required_hint),
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                            }
+                        }
+                        if (canSubmitCurrentUser) {
+                            if (chore.requirePhotoProof) {
+                                Text(
+                                    text = stringResource(R.string.mobile_photo_step_proof),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    OutlinedButton(
+                                        onClick = { onPickProofs(chore.id) },
+                                        enabled = canUploadProofs && activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_pick_photos))
+                                    }
+                                    OutlinedButton(
+                                        onClick = { onTakeProofPhoto(chore.id) },
+                                        enabled = canUploadProofs && activeSubmitAction == null,
+                                        modifier = Modifier.weight(1f).heightIn(min = 36.dp),
+                                        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                    ) {
+                                        Text(stringResource(R.string.mobile_take_photo))
+                                    }
+                                }
+                                Button(
+                                    onClick = { onSubmitChore(chore.id) },
+                                    enabled = canUploadProofs && activeSubmitAction == null,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
+                                }
+                            } else {
+                                Button(
+                                    onClick = { onSubmitChore(chore.id) },
+                                    enabled = activeSubmitAction == null,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(stringResource(if (activeSubmitAction == "submit:${chore.id}") R.string.mobile_submitting else R.string.mobile_submit))
+                                }
+                            }
+                            if (hasPendingOutgoingTakeover && outgoingTakeoverFirstName != null) {
+                                OutlinedButton(
+                                    onClick = {},
+                                    enabled = false,
+                                    modifier = Modifier.fillMaxWidth().heightIn(min = 36.dp),
+                                    contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
+                                ) {
+                                    Text(
+                                        stringResource(
+                                            R.string.mobile_takeover_pending_short_with_name,
+                                            outgoingTakeoverFirstName
+                                        )
+                                    )
+                                }
+                            }
+                        }
+                    }
+
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CompletionCelebrationDialog(
+    celebration: MobileCompletionCelebration,
+    onDismiss: () -> Unit
+) {
+    val accentColor = when (celebration.variant) {
+        MobileCompletionCelebrationVariant.RARE -> Color(0xFFFCCC3D)
+        MobileCompletionCelebrationVariant.CHORE -> Color(0xFF73D9B3)
+        MobileCompletionCelebrationVariant.PERFECT -> Color(0xFF73D9B3)
+        MobileCompletionCelebrationVariant.STANDARD -> MaterialTheme.colorScheme.primary
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = stringResource(celebration.titleResource),
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth()
+            )
+        },
+        text = {
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(176.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CelebrationConfettiBurst(
+                        modifier = Modifier.fillMaxSize(),
+                        variant = celebration.variant
+                    )
+                    Image(
+                        painter = painterResource(R.drawable.ic_taskbandit_mascot_success),
+                        contentDescription = stringResource(R.string.brand_mark_description),
+                        modifier = Modifier.size(116.dp)
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = accentColor.copy(alpha = 0.18f)
+                ) {
+                    Text(
+                        text = stringResource(celebration.eyebrowResource),
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_celebration_points, celebration.points),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 8.dp),
+                        style = MaterialTheme.typography.titleMedium,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                Text(
+                    text = celebration.choreTitle,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center
+                )
+                Text(
+                    text = stringResource(celebration.phraseResource),
+                    style = MaterialTheme.typography.bodyLarge,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center
+                )
+            }
+        },
+        confirmButton = {
+            Button(onClick = onDismiss) {
+                Text(stringResource(R.string.mobile_celebration_close))
+            }
+        }
+    )
+}
+
+@Composable
+private fun CelebrationConfettiBurst(
+    modifier: Modifier = Modifier,
+    variant: MobileCompletionCelebrationVariant = MobileCompletionCelebrationVariant.STANDARD
+) {
+    val transition = rememberInfiniteTransition(label = "celebration-confetti")
+    val progress = transition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(durationMillis = 1500, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "celebration-confetti-progress"
+    )
+    val colors = when (variant) {
+        MobileCompletionCelebrationVariant.RARE -> listOf(
+            Color(0xFFFCCC3D),
+            Color(0xFFFFF1A8),
+            Color(0xFF73C9F4),
+            Color(0xFFFF8A5B),
+            Color(0xFFFFFFFF)
+        )
+        MobileCompletionCelebrationVariant.CHORE -> listOf(
+            Color(0xFF73D9B3),
+            Color(0xFF637052),
+            Color(0xFFD8B77E),
+            Color(0xFF9ED18B),
+            Color(0xFF73C9F4)
+        )
+        MobileCompletionCelebrationVariant.PERFECT -> listOf(
+            Color(0xFFFFFFFF),
+            Color(0xFF73D9B3),
+            Color(0xFFFCCC3D),
+            Color(0xFF9ED18B),
+            Color(0xFF73C9F4)
+        )
+        MobileCompletionCelebrationVariant.STANDARD -> listOf(
+            Color(0xFFD8B77E),
+            Color(0xFF9B5218),
+            Color(0xFF637052),
+            Color(0xFF73C9F4),
+            Color(0xFFFCCC3D)
+        )
+    }
+    val particles = listOf(
+        Triple(0.08f, 0.05f, 0.00f),
+        Triple(0.14f, 0.09f, 0.07f),
+        Triple(0.21f, 0.07f, 0.15f),
+        Triple(0.29f, 0.12f, 0.23f),
+        Triple(0.36f, 0.06f, 0.31f),
+        Triple(0.44f, 0.11f, 0.39f),
+        Triple(0.52f, 0.07f, 0.47f),
+        Triple(0.61f, 0.1f, 0.55f),
+        Triple(0.69f, 0.05f, 0.63f),
+        Triple(0.77f, 0.1f, 0.71f),
+        Triple(0.84f, 0.06f, 0.79f),
+        Triple(0.92f, 0.09f, 0.87f)
+    )
+
+    Canvas(
+        modifier = modifier
+    ) {
+        particles.forEachIndexed { index, (xFraction, driftFraction, offset) ->
+            val particleProgress = (progress.value + offset) % 1f
+            val sway = kotlin.math.sin((particleProgress * 6.28318f * 2f) + index).toFloat()
+            val centerX = size.width * (xFraction + driftFraction * sway)
+            val centerY = size.height * (-0.12f + particleProgress * 1.22f)
+            val alpha = 0.95f - (particleProgress * 0.22f)
+            val color = colors[index % colors.size].copy(alpha = alpha)
+
+            if (index % 3 == 0) {
+                drawCircle(
+                    color = color,
+                    radius = size.minDimension * 0.03f,
+                    center = androidx.compose.ui.geometry.Offset(centerX, centerY)
+                )
+            } else {
+                val width = if (index % 2 == 0) size.minDimension * 0.11f else size.minDimension * 0.075f
+                val height = if (index % 2 == 0) size.minDimension * 0.035f else size.minDimension * 0.055f
+                rotate(
+                    degrees = particleProgress * 620f + index * 24f,
+                    pivot = androidx.compose.ui.geometry.Offset(centerX, centerY)
+                ) {
+                    drawRoundRect(
+                        color = color,
+                        topLeft = androidx.compose.ui.geometry.Offset(centerX - width / 2f, centerY - height / 2f),
+                        size = androidx.compose.ui.geometry.Size(width, height),
+                        cornerRadius = androidx.compose.ui.geometry.CornerRadius(width * 0.28f, width * 0.28f)
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MobileChoiceRow(options: List<MobileChoiceOption>) {
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        options.chunked(2).forEach { rowOptions ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                rowOptions.forEach { option ->
+                    if (option.selected) {
+                        Button(
+                            modifier = Modifier.weight(1f),
+                            onClick = option.onClick,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = option.label,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    } else {
+                        OutlinedButton(
+                            modifier = Modifier.weight(1f),
+                            onClick = option.onClick,
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 10.dp)
+                        ) {
+                            Text(
+                                text = option.label,
+                                textAlign = TextAlign.Center,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                    }
+                }
+                repeat(2 - rowOptions.size) {
+                    Spacer(modifier = Modifier.weight(1f))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsSectionCard(modifier: Modifier = Modifier, icon: ImageVector, title: String, content: @Composable () -> Unit) {
+    val isNewMobileUi = LocalIsNewMobileUi.current
+    Card(
+        modifier = modifier,
+        shape = RoundedCornerShape(if (isNewMobileUi) 16.dp else 24.dp),
+        border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
+    ) {
+        Column(
+            modifier = Modifier.padding(horizontal = if (isNewMobileUi) 10.dp else 12.dp, vertical = if (isNewMobileUi) 9.dp else 10.dp),
+            verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 8.dp else 10.dp)
+        ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                Icon(imageVector = icon, contentDescription = null)
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleSmall
+                )
+            }
+            content()
+        }
+    }
+}
+
+@Composable
+private fun SettingsValueLine(label: String, value: String) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(text = label, style = MaterialTheme.typography.labelSmall)
+        Text(text = value, style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun CreatePanelCard(
+    modifier: Modifier = Modifier,
+    @Suppress("UNUSED_PARAMETER") title: String,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false,
+    content: @Composable () -> Unit
+) {
+    var expanded by rememberSaveable(title, compact) { mutableStateOf(!collapsedByDefault) }
+    val sectionSpacing = if (compact) 10.dp else 16.dp
+    val sectionPadding = if (compact) 12.dp else 18.dp
+    val shape = if (compact) RoundedCornerShape(20.dp) else RoundedCornerShape(24.dp)
+
+    Card(modifier = modifier, shape = shape) {
+        Column(
+            modifier = Modifier.fillMaxWidth().padding(sectionPadding),
+            verticalArrangement = Arrangement.spacedBy(sectionSpacing)
+        ) {
+            if (compact) {
+                TextButton(
+                    onClick = { expanded = !expanded },
+                    modifier = Modifier.fillMaxWidth(),
+                    contentPadding = PaddingValues(0.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Text(
+                            text = title,
+                            style = MaterialTheme.typography.titleSmall,
+                            fontWeight = FontWeight.SemiBold
+                        )
+                        Text(
+                            text = if (expanded) "-" else "+",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+            } else {
+                Text(
+                    text = title,
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.SemiBold
+                )
+            }
+
+            if (!compact || expanded) {
+                content()
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateTemplateAndSchedulePanel(
+    selectedTemplateGroupTitle: String?,
+    templateGroupDropdownExpanded: Boolean,
+    onTemplateGroupDropdownExpandedChange: (Boolean) -> Unit,
+    onTemplateGroupSelected: (String) -> Unit,
+    templateGroups: List<String>,
+    selectedTemplate: com.taskbandit.app.mobile.MobileChoreTemplate?,
+    templateDropdownExpanded: Boolean,
+    onTemplateDropdownExpandedChange: (Boolean) -> Unit,
+    onTemplateSelected: (String) -> Unit,
+    templates: List<com.taskbandit.app.mobile.MobileChoreTemplate>,
+    createDueAtMillis: Long,
+    onPickDate: () -> Unit,
+    onPickTime: () -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
+) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_title),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
+        Text(text = stringResource(R.string.mobile_create_group), style = MaterialTheme.typography.titleSmall)
+        ExposedDropdownMenuBox(
+            expanded = templateGroupDropdownExpanded,
+            onExpandedChange = onTemplateGroupDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = selectedTemplateGroupTitle ?: stringResource(R.string.mobile_create_select_group_prompt),
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = templateGroupDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = templateGroupDropdownExpanded,
+                onDismissRequest = { onTemplateGroupDropdownExpandedChange(false) }
+            ) {
+                templateGroups.forEach { groupTitle ->
+                    DropdownMenuItem(
+                        text = { Text(groupTitle) },
+                        onClick = { onTemplateGroupSelected(groupTitle) }
+                    )
+                }
+            }
+        }
+
+        Text(text = stringResource(R.string.mobile_create_template), style = MaterialTheme.typography.titleSmall)
+        ExposedDropdownMenuBox(
+            expanded = templateDropdownExpanded,
+            onExpandedChange = onTemplateDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = selectedTemplate?.title ?: stringResource(R.string.mobile_create_select_template_prompt),
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = templateDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = templateDropdownExpanded,
+                onDismissRequest = { onTemplateDropdownExpandedChange(false) }
+            ) {
+                templates.forEach { template ->
+                    DropdownMenuItem(
+                        text = { Text(template.title) },
+                        onClick = { onTemplateSelected(template.id) }
+                    )
+                }
+            }
+        }
+
+        Text(text = stringResource(R.string.mobile_create_when), style = MaterialTheme.typography.titleSmall)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            Button(onClick = onPickDate, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.mobile_create_pick_date))
+            }
+            OutlinedButton(onClick = onPickTime, modifier = Modifier.weight(1f)) {
+                Text(stringResource(R.string.mobile_create_pick_time))
+            }
+        }
+        Text(
+            text = formatEpochMillisForDisplay(createDueAtMillis),
+            style = MaterialTheme.typography.bodyMedium
+        )
+    }
+}
+
+@Composable
+private fun CreateRecurrencePanel(
+    createRecurrenceType: String,
+    createRecurrenceIntervalInput: String,
+    createRecurrenceIntervalError: String?,
+    createRecurrenceWeekdays: List<String>,
+    createRecurrenceWeekdaysError: String?,
+    recurrenceTypeDropdownExpanded: Boolean,
+    onRecurrenceDropdownExpandedChange: (Boolean) -> Unit,
+    onRecurrenceTypeSelected: (String) -> Unit,
+    onRecurrenceIntervalChange: (String) -> Unit,
+    onToggleRecurrenceWeekday: (String) -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
+) {
+    val recurrenceLabel = recurrenceTypeLabel(createRecurrenceType)
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_repeat),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
+        ExposedDropdownMenuBox(
+            expanded = recurrenceTypeDropdownExpanded,
+            onExpandedChange = onRecurrenceDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = recurrenceLabel,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceTypeDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = recurrenceTypeDropdownExpanded,
+                onDismissRequest = { onRecurrenceDropdownExpandedChange(false) }
+            ) {
+                listOf("none", "daily", "weekly", "custom_weekly", "every_x_days", "monthly", "template").forEach { type ->
+                    DropdownMenuItem(
+                        text = { Text(recurrenceTypeLabel(type)) },
+                        onClick = { onRecurrenceTypeSelected(type) }
+                    )
+                }
+            }
+        }
+        if (createRecurrenceType == "every_x_days") {
+            OutlinedTextField(
+                value = createRecurrenceIntervalInput,
+                onValueChange = onRecurrenceIntervalChange,
+                label = { Text(stringResource(R.string.mobile_create_interval_days_label)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                isError = createRecurrenceIntervalError != null,
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (!createRecurrenceIntervalError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceIntervalError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+        if (createRecurrenceType == "custom_weekly") {
+            Text(
+                text = stringResource(R.string.mobile_create_weekdays_label),
+                style = MaterialTheme.typography.titleSmall
+            )
+            MobileChoiceRow(
+                options = recurrenceWeekdayOrder.map { weekday ->
+                    MobileChoiceOption(
+                        label = weekdayShortLabel(weekday),
+                        selected = createRecurrenceWeekdays.contains(weekday),
+                        onClick = { onToggleRecurrenceWeekday(weekday) }
+                    )
+                }
+            )
+            if (!createRecurrenceWeekdaysError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceWeekdaysError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateRecurrenceEndPanel(
+    selectedTemplate: com.taskbandit.app.mobile.MobileChoreTemplate?,
+    createRecurrenceType: String,
+    createRecurrenceEndMode: String,
+    createRecurrenceOccurrencesInput: String,
+    createRecurrenceOccurrencesError: String?,
+    createRecurrenceEndsAtMillis: Long,
+    createRecurrenceEndDateError: String?,
+    onRecurrenceEndModeSelected: (String) -> Unit,
+    onRecurrenceOccurrencesChange: (String) -> Unit,
+    onPickEndDate: () -> Unit,
+    onPickEndTime: () -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
+) {
+    val effectiveRecurrenceType = resolveEffectiveCreateRecurrenceType(selectedTemplate, createRecurrenceType)
+    if (effectiveRecurrenceType == "none") {
+        return
+    }
+
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_repeat_duration),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
+        MobileChoiceRow(options = listOf(
+            MobileChoiceOption(
+                label = stringResource(R.string.mobile_create_repeat_forever),
+                selected = createRecurrenceEndMode == "never",
+                onClick = { onRecurrenceEndModeSelected("never") }
+            ),
+            MobileChoiceOption(
+                label = stringResource(R.string.mobile_create_repeat_after_occurrences),
+                selected = createRecurrenceEndMode == "after_occurrences",
+                onClick = { onRecurrenceEndModeSelected("after_occurrences") }
+            ),
+            MobileChoiceOption(
+                label = stringResource(R.string.mobile_create_repeat_until_date),
+                selected = createRecurrenceEndMode == "on_date",
+                onClick = { onRecurrenceEndModeSelected("on_date") }
+            )
+        ))
+
+        if (createRecurrenceEndMode == "after_occurrences") {
+            OutlinedTextField(
+                value = createRecurrenceOccurrencesInput,
+                onValueChange = onRecurrenceOccurrencesChange,
+                label = { Text(stringResource(R.string.mobile_create_repeat_occurrence_count)) },
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                isError = createRecurrenceOccurrencesError != null,
+                modifier = Modifier.fillMaxWidth()
+            )
+            if (!createRecurrenceOccurrencesError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceOccurrencesError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+
+        if (createRecurrenceEndMode == "on_date") {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp)
+            ) {
+                OutlinedButton(onClick = onPickEndDate, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_create_end_date_pick))
+                }
+                OutlinedButton(onClick = onPickEndTime, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_create_end_time_pick))
+                }
+            }
+            Text(
+                text = formatEpochMillisForDisplay(createRecurrenceEndsAtMillis),
+                style = MaterialTheme.typography.bodyMedium
+            )
+            if (!createRecurrenceEndDateError.isNullOrBlank()) {
+                Text(
+                    text = createRecurrenceEndDateError,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateAssignmentPanel(
+    createAssignmentStrategy: String,
+    assignmentStrategyDropdownExpanded: Boolean,
+    onAssignmentDropdownExpandedChange: (Boolean) -> Unit,
+    onAssignmentStrategySelected: (String) -> Unit,
+    createAssigneeId: String?,
+    assigneeDropdownExpanded: Boolean,
+    onAssigneeDropdownExpandedChange: (Boolean) -> Unit,
+    onAssigneeSelected: (String?) -> Unit,
+    members: List<com.taskbandit.app.mobile.MobileHouseholdMember>,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
+) {
+    val strategyLabel = assignmentStrategyLabel(createAssignmentStrategy)
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_assignment),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
+        ExposedDropdownMenuBox(
+            expanded = assignmentStrategyDropdownExpanded,
+            onExpandedChange = onAssignmentDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = strategyLabel,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assignmentStrategyDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = assignmentStrategyDropdownExpanded,
+                onDismissRequest = { onAssignmentDropdownExpandedChange(false) }
+            ) {
+                listOf("round_robin", "least_completed_recently", "highest_streak").forEach { strategy ->
+                    DropdownMenuItem(
+                        text = { Text(assignmentStrategyLabel(strategy)) },
+                        onClick = { onAssignmentStrategySelected(strategy) }
+                    )
+                }
+            }
+        }
+
+        Text(text = stringResource(R.string.mobile_create_assignee), style = MaterialTheme.typography.titleSmall)
+        val unassignedLabel = stringResource(R.string.mobile_create_unassigned)
+        val selectedMemberName = members.firstOrNull { it.id == createAssigneeId }?.displayName ?: unassignedLabel
+        ExposedDropdownMenuBox(
+            expanded = assigneeDropdownExpanded,
+            onExpandedChange = onAssigneeDropdownExpandedChange
+        ) {
+            OutlinedTextField(
+                value = selectedMemberName,
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = assigneeDropdownExpanded) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+            )
+            ExposedDropdownMenu(
+                expanded = assigneeDropdownExpanded,
+                onDismissRequest = { onAssigneeDropdownExpandedChange(false) }
+            ) {
+                DropdownMenuItem(
+                    text = { Text(unassignedLabel) },
+                    onClick = { onAssigneeSelected(null) }
+                )
+                members.forEach { member ->
+                    DropdownMenuItem(
+                        text = { Text(member.displayName) },
+                        onClick = { onAssigneeSelected(member.id) }
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateVariantPanel(
+    selectedTemplate: com.taskbandit.app.mobile.MobileChoreTemplate?,
+    createVariantId: String?,
+    variantDropdownExpanded: Boolean,
+    onVariantDropdownExpandedChange: (Boolean) -> Unit,
+    onVariantSelected: (String?) -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
+) {
+    selectedTemplate?.takeIf { it.variants.isNotEmpty() }?.let { template ->
+        val selectedVariantLabel =
+            template.variants.firstOrNull { it.id == createVariantId }?.label
+                ?: stringResource(R.string.mobile_create_select_variant_prompt)
+
+        CreatePanelCard(
+            title = stringResource(R.string.mobile_create_variant),
+            compact = compact,
+            collapsedByDefault = collapsedByDefault
+        ) {
+            ExposedDropdownMenuBox(
+                expanded = variantDropdownExpanded,
+                onExpandedChange = onVariantDropdownExpandedChange
+            ) {
+                OutlinedTextField(
+                    value = selectedVariantLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = variantDropdownExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                )
+                ExposedDropdownMenu(
+                    expanded = variantDropdownExpanded,
+                    onDismissRequest = { onVariantDropdownExpandedChange(false) }
+                ) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.mobile_create_no_subtype)) },
+                        onClick = { onVariantSelected(null) }
+                    )
+                    template.variants.forEach { variant ->
+                        DropdownMenuItem(
+                            text = { Text(variant.label) },
+                            onClick = { onVariantSelected(variant.id) }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CreateSubmitPanel(
+    selectedTemplate: com.taskbandit.app.mobile.MobileChoreTemplate?,
+    createDueAtMillis: Long,
+    createAssigneeId: String?,
+    createAssignmentStrategy: String,
+    createRecurrenceType: String,
+    createRecurrenceInterval: Int?,
+    createRecurrenceIntervalError: String?,
+    createRecurrenceWeekdays: List<String>,
+    createRecurrenceWeekdaysError: String?,
+    createRecurrenceEndMode: String,
+    createRecurrenceOccurrences: Int?,
+    createRecurrenceOccurrencesError: String?,
+    createRecurrenceEndsAtMillis: Long,
+    createRecurrenceEndDateError: String?,
+    createVariantId: String?,
+    activeCreateAction: String?,
+    onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit,
+    compact: Boolean = false,
+    collapsedByDefault: Boolean = false
+) {
+    CreatePanelCard(
+        title = stringResource(R.string.mobile_create_action),
+        compact = compact,
+        collapsedByDefault = collapsedByDefault
+    ) {
+        selectedTemplate?.let { template ->
+            val effectiveRecurrenceType = resolveEffectiveCreateRecurrenceType(template, createRecurrenceType)
+            val needsRecurrenceInterval = createRecurrenceType == "every_x_days"
+            val needsRecurrenceOccurrences =
+                effectiveRecurrenceType != "none" && createRecurrenceEndMode == "after_occurrences"
+            val needsRecurrenceEndDate =
+                effectiveRecurrenceType != "none" && createRecurrenceEndMode == "on_date"
+            val canCreate =
+                activeCreateAction == null &&
+                    (!needsRecurrenceInterval || (createRecurrenceIntervalError == null && (createRecurrenceInterval ?: 0) > 0)) &&
+                    (effectiveRecurrenceType != "custom_weekly" || createRecurrenceWeekdaysError == null) &&
+                    (!needsRecurrenceOccurrences || (createRecurrenceOccurrencesError == null && (createRecurrenceOccurrences ?: 0) > 0)) &&
+                    (!needsRecurrenceEndDate || createRecurrenceEndDateError == null)
+            Button(
+                onClick = {
+                    val recType = if (createRecurrenceType == "template") null else createRecurrenceType
+                    val recInterval = if (createRecurrenceType == "every_x_days") createRecurrenceInterval else null
+                    val recWeekdays =
+                        if (resolveEffectiveCreateRecurrenceType(template, createRecurrenceType) == "custom_weekly") {
+                            createRecurrenceWeekdays
+                        } else {
+                            emptyList()
+                        }
+                    val recurrenceEndMode = if (effectiveRecurrenceType == "none") null else createRecurrenceEndMode
+                    val recurrenceOccurrences =
+                        if (createRecurrenceEndMode == "after_occurrences") createRecurrenceOccurrences else null
+                    val recurrenceEndsAtIsoUtc =
+                        if (createRecurrenceEndMode == "on_date") Instant.ofEpochMilli(createRecurrenceEndsAtMillis).toString() else null
+                    onCreateChore(
+                        template.id,
+                        Instant.ofEpochMilli(createDueAtMillis).toString(),
+                        createAssigneeId,
+                        createAssignmentStrategy,
+                        recType,
+                        recInterval,
+                        recWeekdays,
+                        recurrenceEndMode,
+                        recurrenceOccurrences,
+                        recurrenceEndsAtIsoUtc,
+                        createVariantId
+                    )
+                },
+                enabled = canCreate,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                if (activeCreateAction != null) {
+                    Text(stringResource(R.string.mobile_create_creating))
+                } else {
+                    Text(stringResource(R.string.mobile_create_action))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsAppearanceContent(
+    themeMode: MobileThemeMode,
+    onThemeModeChange: (MobileThemeMode) -> Unit,
+    languageTag: String,
+    onLanguageTagChange: (String) -> Unit
+) {
+    Text(text = stringResource(R.string.mobile_settings_theme), style = MaterialTheme.typography.titleMedium)
+    MobileChoiceRow(options = listOf(
+        MobileChoiceOption(label = stringResource(R.string.mobile_theme_system), selected = themeMode == MobileThemeMode.SYSTEM, onClick = { onThemeModeChange(MobileThemeMode.SYSTEM) }),
+        MobileChoiceOption(label = stringResource(R.string.mobile_theme_light), selected = themeMode == MobileThemeMode.LIGHT, onClick = { onThemeModeChange(MobileThemeMode.LIGHT) }),
+        MobileChoiceOption(label = stringResource(R.string.mobile_theme_dark), selected = themeMode == MobileThemeMode.DARK, onClick = { onThemeModeChange(MobileThemeMode.DARK) })
+    ))
+    Text(text = stringResource(R.string.mobile_settings_language), style = MaterialTheme.typography.titleMedium)
+    MobileChoiceRow(options = listOf(
+        MobileChoiceOption(label = stringResource(R.string.mobile_language_system), selected = languageTag == "system", onClick = { onLanguageTagChange("system") }),
+        MobileChoiceOption(label = stringResource(R.string.mobile_language_en), selected = languageTag == "en", onClick = { onLanguageTagChange("en") }),
+        MobileChoiceOption(label = stringResource(R.string.mobile_language_de), selected = languageTag == "de", onClick = { onLanguageTagChange("de") }),
+        MobileChoiceOption(label = stringResource(R.string.mobile_language_hu), selected = languageTag == "hu", onClick = { onLanguageTagChange("hu") })
+    ))
+}
+
+@Composable
+private fun SettingsDeviceContent(
+    currentDevice: MobileNotificationDevice?,
+    installationId: String,
+    notificationsPermissionGranted: Boolean,
+    isBusy: Boolean,
+    activeDeviceAction: String?,
+    onRefresh: () -> Unit,
+    onRequestNotificationPermission: () -> Unit,
+    onRemoveNotificationDevice: (String) -> Unit
+) {
+    var showTechnicalDetails by rememberSaveable(currentDevice?.id) { mutableStateOf(false) }
+    val pushReadinessText = when {
+        currentDevice == null -> stringResource(R.string.mobile_device_push_missing)
+        !notificationsPermissionGranted -> stringResource(R.string.mobile_device_push_permission_needed)
+        !currentDevice.pushTokenConfigured -> stringResource(R.string.mobile_device_push_token_needed)
+        !currentDevice.notificationsEnabled -> stringResource(R.string.mobile_device_push_disabled)
+        else -> stringResource(R.string.mobile_device_push_ready)
+    }
+
+    Text(text = if (currentDevice == null) stringResource(R.string.mobile_device_status_missing) else stringResource(R.string.mobile_device_status_ready), style = MaterialTheme.typography.bodyMedium)
+    SettingsValueLine(label = stringResource(R.string.mobile_settings_notifications_permission), value = stringResource(if (notificationsPermissionGranted) R.string.mobile_settings_notifications_allowed else R.string.mobile_settings_notifications_needed))
+    SettingsValueLine(label = stringResource(R.string.mobile_settings_push_readiness), value = pushReadinessText)
+    Text(text = stringResource(R.string.mobile_device_push_readiness_hint), style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    TextButton(onClick = { showTechnicalDetails = !showTechnicalDetails }) {
+        Text(
+            stringResource(
+                if (showTechnicalDetails) {
+                    R.string.mobile_device_hide_details
+                } else {
+                    R.string.mobile_device_show_details
+                }
+            )
+        )
+    }
+    if (showTechnicalDetails) {
+        SettingsValueLine(label = stringResource(R.string.mobile_settings_installation_id), value = installationId)
+        currentDevice?.let { device ->
+            SettingsValueLine(label = stringResource(R.string.mobile_settings_provider), value = device.provider)
+            SettingsValueLine(
+                label = stringResource(R.string.mobile_settings_device_name),
+                value = device.deviceName ?: stringResource(R.string.mobile_settings_unknown)
+            )
+            device.appVersion?.let {
+                SettingsValueLine(label = stringResource(R.string.mobile_settings_app_version), value = it)
+            }
+            device.locale?.let {
+                SettingsValueLine(label = stringResource(R.string.mobile_settings_locale), value = it)
+            }
+            SettingsValueLine(label = stringResource(R.string.mobile_settings_last_seen), value = formatApiTimestamp(device.lastSeenAt))
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(onClick = onRefresh, enabled = !isBusy) { Text(stringResource(R.string.mobile_device_refresh)) }
+        if (!notificationsPermissionGranted && Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            OutlinedButton(onClick = onRequestNotificationPermission) {
+                Icon(imageVector = Icons.Rounded.NotificationsActive, contentDescription = null, modifier = Modifier.size(18.dp))
+                Spacer(modifier = Modifier.size(6.dp))
+                Text(stringResource(R.string.mobile_device_allow_notifications))
+            }
+        }
+    }
+    if (currentDevice != null) {
+        OutlinedButton(onClick = { onRemoveNotificationDevice(currentDevice.id) }, enabled = activeDeviceAction == null) {
+            Text(stringResource(if (activeDeviceAction == "remove:${currentDevice.id}") R.string.mobile_device_removing else R.string.mobile_device_remove))
+        }
+    }
+}
+
+@Composable
+private fun SettingsReleaseContent(
+    currentReleaseLabel: String,
+    serverReleaseLabel: String?,
+    serverUrl: String,
+    availableUpdate: MobileReleaseInfo?,
+    onDismissUpdate: () -> Unit,
+    visibleGithubUpdate: GitHubReleaseInfo?,
+    githubCheckDone: Boolean,
+    githubCheckError: Boolean,
+    githubLatestVersion: String?,
+    isDownloadingUpdate: Boolean,
+    downloadProgress: Float,
+    downloadError: Boolean,
+    onCheckForUpdates: () -> Unit,
+    onDismissGithubUpdate: () -> Unit,
+    onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
+) {
+    val isUpToDate = githubCheckDone &&
+        !githubCheckError &&
+        githubLatestVersion != null &&
+        compareReleaseVersions(BuildConfig.TASKBANDIT_RELEASE_VERSION, githubLatestVersion) >= 0
+    val githubVersionDisplay = when {
+        !githubCheckDone -> null
+        githubCheckError -> stringResource(R.string.mobile_settings_github_check_failed)
+        githubLatestVersion == null -> stringResource(R.string.mobile_settings_unknown)
+        else -> "v$githubLatestVersion"
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = stringResource(R.string.mobile_settings_app_release),
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (isUpToDate) {
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.primaryContainer
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_settings_up_to_date),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                        modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                    )
+                }
+            }
+            Text(text = currentReleaseLabel, style = MaterialTheme.typography.bodyMedium)
+        }
+    }
+    SettingsValueLine(label = stringResource(R.string.mobile_settings_server_release), value = serverReleaseLabel ?: stringResource(R.string.mobile_settings_unknown))
+    if (!githubCheckDone) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(text = stringResource(R.string.mobile_settings_latest_github), style = MaterialTheme.typography.labelSmall)
+            CircularProgressIndicator(modifier = Modifier.size(12.dp), strokeWidth = 1.5.dp)
+        }
+    } else if (githubCheckError) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(onClick = onCheckForUpdates),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = stringResource(R.string.mobile_settings_latest_github),
+                style = MaterialTheme.typography.labelSmall
+            )
+            Text(
+                text = stringResource(R.string.mobile_settings_github_check_failed),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.error
+            )
+        }
+    } else {
+        SettingsValueLine(label = stringResource(R.string.mobile_settings_latest_github), value = githubVersionDisplay ?: stringResource(R.string.mobile_settings_unknown))
+    }
+    OutlinedButton(
+        onClick = onCheckForUpdates,
+        enabled = githubCheckDone && !isDownloadingUpdate,
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Text(
+            if (githubCheckError) stringResource(R.string.mobile_settings_retry_check)
+            else stringResource(R.string.mobile_settings_check_for_updates)
+        )
+    }
+    SettingsValueLine(label = stringResource(R.string.mobile_settings_server_url), value = serverUrl)
+    SettingsValueLine(label = stringResource(R.string.mobile_settings_commit), value = BuildConfig.TASKBANDIT_COMMIT_SHA)
+    if (availableUpdate != null) {
+        Card {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = stringResource(R.string.mobile_update_available_title), style = MaterialTheme.typography.titleMedium)
+                Text(text = stringResource(R.string.mobile_update_available_body, currentReleaseLabel, formatReleaseLabel(availableUpdate)), style = MaterialTheme.typography.bodySmall)
+                Button(onClick = onDismissUpdate) { Text(stringResource(R.string.mobile_update_dismiss)) }
+            }
+        }
+    }
+    if (visibleGithubUpdate != null) {
+        Card(
+            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+        ) {
+            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text = stringResource(R.string.mobile_github_update_available_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+                Text(
+                    text = stringResource(R.string.mobile_github_update_available_subtitle, "v${BuildConfig.TASKBANDIT_RELEASE_VERSION}", "v${visibleGithubUpdate.version}"),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (visibleGithubUpdate.body.isNotBlank()) {
+                    Text(
+                        text = visibleGithubUpdate.body.trim(),
+                        style = MaterialTheme.typography.bodySmall,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+                if (isDownloadingUpdate) {
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        LinearProgressIndicator(
+                            progress = { downloadProgress },
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        Text(
+                            text = stringResource(R.string.mobile_github_downloading, (downloadProgress * 100).toInt()),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                } else {
+                    if (downloadError) {
+                        Text(
+                            text = stringResource(R.string.mobile_github_download_failed),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(
+                            onClick = { onDownloadAndInstall(visibleGithubUpdate) },
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Text(stringResource(R.string.mobile_github_download_install, "v${visibleGithubUpdate.version}"))
+                        }
+                        TextButton(onClick = onDismissGithubUpdate) {
+                            Text(stringResource(R.string.mobile_update_dismiss))
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SettingsPlanContent(
+    hostedSubscription: MobileHostedSubscriptionOverview
+) {
+    val packageDisplayName = hostedSubscription.packageDisplayName ?: hostedSubscription.packageCode ?: stringResource(R.string.mobile_settings_unknown)
+    val statusSummary = remember(
+        hostedSubscription.lifecycleState,
+        hostedSubscription.entitlementState,
+        hostedSubscription.billingStatus
+    ) {
+        formatSubscriptionStatusSummary(
+            lifecycleState = hostedSubscription.lifecycleState,
+            entitlementState = hostedSubscription.entitlementState,
+            billingStatus = hostedSubscription.billingStatus
+        )
+    }
+    val storageLimit = hostedSubscription.quotas.storageBytesLimit
+    val storageUsed = hostedSubscription.usage.storageBytesUsed
+    val memberUsage = formatUsageSummary(
+        hostedSubscription.usage.membersUsed?.toLong(),
+        hostedSubscription.quotas.membersLimit?.toLong()
+    )
+    val notificationUsage = formatUsageSummary(
+        hostedSubscription.usage.monthlyNotificationsUsed?.toLong(),
+        hostedSubscription.quotas.monthlyNotificationLimit?.toLong()
+    )
+    val storageUsage = formatUsageSummary(
+        storageUsed,
+        storageLimit,
+        formatter = ::formatByteSize
+    )
+
+    SettingsValueLine(label = stringResource(R.string.mobile_plan_package_name), value = packageDisplayName)
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_status),
+        value = statusSummary ?: stringResource(R.string.mobile_settings_unknown)
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_members_quota),
+        value = memberUsage
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_storage_quota),
+        value = storageUsage
+    )
+    SettingsValueLine(
+        label = stringResource(R.string.mobile_plan_monthly_notifications_quota),
+        value = notificationUsage
+    )
+}
+
+private fun formatSubscriptionStatusSummary(
+    lifecycleState: String?,
+    entitlementState: String?,
+    billingStatus: String?
+): String? = listOf(lifecycleState, entitlementState, billingStatus)
+    .firstOrNull { !it.isNullOrBlank() }
+    ?.replace('_', ' ')
+    ?.trim()
+    ?.replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+private fun formatLeaderboardRoleLabel(role: String): String =
+    role
+        .replace('_', ' ')
+        .trim()
+        .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+@Composable
+private fun SettingsSessionContent(
+    isBusy: Boolean,
+    onRefresh: () -> Unit,
+    onDownloadSettingsLogs: () -> Unit,
+) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Button(
+            onClick = onRefresh,
+            enabled = !isBusy,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(stringResource(R.string.mobile_refresh)) }
+        OutlinedButton(
+            onClick = onDownloadSettingsLogs,
+            modifier = Modifier.fillMaxWidth()
+        ) { Text(stringResource(R.string.mobile_settings_download_logs)) }
+    }
+}
+
+@Composable
+private fun SettingsLogoutContent(onLogout: () -> Unit) {
+    OutlinedButton(
+        onClick = onLogout,
+        modifier = Modifier.fillMaxWidth()
+    ) { Text(stringResource(R.string.mobile_logout)) }
+}
+
+@Composable
+private fun ChoreActionSheet(
+    chore: MobileChore,
+    currentUserId: String?,
+    currentUserRole: String?,
+    supportsTakeoverRequests: Boolean,
+    outgoingTakeoverRequest: MobileTakeoverRequest?,
+    activeReviewAction: String?,
+    activeStartAction: String?,
+    activeSubmitAction: String?,
+    activeCloseCycleAction: String?,
+    activeCancelChoreAction: String?,
+    activeTakeoverRequestAction: String?,
+    activeDueAtAction: String?,
+    activeExternalCompleteAction: String?,
+    selectedChecklistIds: Set<String>,
+    selectedProofCount: Int,
+    editableVariants: List<com.taskbandit.app.mobile.MobileTemplateVariant>,
+    onDismiss: () -> Unit,
+    onApprove: (String) -> Unit,
+    onReject: (String) -> Unit,
+    onClaimChore: (String) -> Unit,
+    onTakeOverChore: (String) -> Unit,
+    onRequestTakeover: (String) -> Unit,
+    onSubmitChore: (String) -> Unit,
+    onEditChoreDueAt: (String, String, String, String?) -> Unit,
+    onCancelChoreOccurrence: (String) -> Unit,
+    onCloseChoreCycle: (String) -> Unit,
+    onCancelChore: (String) -> Unit,
+    onCompleteExternalChore: (String, String) -> Unit
+) {
+    val context = LocalContext.current
+    val featureAccess = LocalMobileFeatureAccess.current
+    val canManageChores = featureAccess.choresManage
+    val canApproveChores = featureAccess.approvals
+    val canUseDirectTakeover = featureAccess.takeoverDirect
+    val canUseTakeoverRequestsLocal = featureAccess.takeoverRequests && supportsTakeoverRequests
+    val canCompleteExternal = featureAccess.externalCompletion && currentUserRole != "child"
+    val isPendingApproval = chore.state == "pending_approval"
+    val isSubmittableState = chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+    val isAssignedToCurrentUser = chore.assigneeId != null && chore.assigneeId == currentUserId
+    val isUnassigned = chore.assigneeId == null
+    val canClaimChore = canManageChores && isSubmittableState && !isAssignedToCurrentUser && (isUnassigned || canUseDirectTakeover)
+    val canSubmit = canManageChores && isAssignedToCurrentUser && isSubmittableState
+    val hasPendingOutgoingTakeover = outgoingTakeoverRequest?.status == "PENDING"
+    val canRequestTakeover = canManageChores && canUseTakeoverRequestsLocal && currentUserRole != "child" && chore.assigneeId == currentUserId && !hasPendingOutgoingTakeover
+    val canEditDueAt = canManageChores && currentUserRole != "child" && chore.state in setOf("open", "assigned", "in_progress", "needs_fixes", "overdue")
+    val canCancelOccurrence = canManageChores && currentUserRole != "child" && chore.supportsOccurrenceCancellation
+    val canCloseCycle = canManageChores && currentUserRole != "child" && chore.supportsSeriesCancellation
+    val canCancelChore = canManageChores && currentUserRole != "child" && isSubmittableState && !canCancelOccurrence && !canCloseCycle
+    val hasAnyPrimaryAction = (isPendingApproval && canApproveChores) || canSubmit || canClaimChore
+    val hasSecondaryActions = canRequestTakeover || canEditDueAt || canCancelOccurrence || canCloseCycle || canCancelChore || (canCompleteExternal && isSubmittableState)
+
+    val zoneId = remember { ZoneId.systemDefault() }
+    var moreExpanded by remember { mutableStateOf(false) }
+    var showApproveConfirm by remember { mutableStateOf(false) }
+    var showRejectConfirm by remember { mutableStateOf(false) }
+    var showCancelOccurrenceConfirm by remember { mutableStateOf(false) }
+    var showCloseCycleConfirm by remember { mutableStateOf(false) }
+    var showCancelChoreConfirm by remember { mutableStateOf(false) }
+    var showExternalCompleteDialog by remember { mutableStateOf(false) }
+    var externalCompleterNameInput by remember { mutableStateOf("") }
+    var showDueAtEditor by remember { mutableStateOf(false) }
+    var dueAtEditorTitle by remember(chore.id, chore.title) { mutableStateOf(chore.title) }
+    var dueAtEditorVariantId by remember(chore.id, chore.variantId) { mutableStateOf(chore.variantId ?: "") }
+    var dueAtVariantDropdownExpanded by remember { mutableStateOf(false) }
+    var dueAtEditorMillis by remember(chore.id, chore.dueAt) {
+        mutableLongStateOf(
+            runCatching { Instant.parse(chore.dueAt).toEpochMilli() }.getOrElse { System.currentTimeMillis() }
+        )
+    }
+    val dueAtEditorDatePicker = remember(context, dueAtEditorMillis) {
+        val ldt = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+        DatePickerDialog(context, { _, year, month, day ->
+            val existing = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+            dueAtEditorMillis = existing.withYear(year).withMonth(month + 1).withDayOfMonth(day).atZone(zoneId).toInstant().toEpochMilli()
+        }, ldt.year, ldt.monthValue - 1, ldt.dayOfMonth)
+    }
+    val dueAtEditorTimePicker = remember(context, dueAtEditorMillis) {
+        val ldt = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+        TimePickerDialog(context, { _, h, m ->
+            val existing = Instant.ofEpochMilli(dueAtEditorMillis).atZone(zoneId).toLocalDateTime()
+            dueAtEditorMillis = existing.withHour(h).withMinute(m).withSecond(0).withNano(0).atZone(zoneId).toInstant().toEpochMilli()
+        }, ldt.hour, ldt.minute, true)
+    }
+
+    val baseTypeTitle = chore.typeTitle.ifBlank { chore.title }
+    val choreIconDrawable = resolveChoreIconDrawable(baseTypeTitle, chore.groupTitle, chore.subtypeLabel)
+    val typeTitle = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(baseTypeTitle))
+    val dueFormatted = formatDueAtForMockCard(chore.dueAt)
+    val isDueSoon = isDueSoonForMockCard(chore.dueAt)
+    val subtypeLabel = normalizeSubtypeLabel(chore.subtypeLabel)
+    val activeDueAtActionKey = "update-due:${chore.id}"
+
+    if (showApproveConfirm) {
+        AlertDialog(
+            onDismissRequest = { showApproveConfirm = false },
+            title = { Text(stringResource(R.string.mobile_approve_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_approve_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showApproveConfirm = false; onApprove(chore.id) }) {
+                    Text(stringResource(R.string.mobile_approve_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showApproveConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showRejectConfirm) {
+        AlertDialog(
+            onDismissRequest = { showRejectConfirm = false },
+            title = { Text(stringResource(R.string.mobile_reject_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_reject_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showRejectConfirm = false; onReject(chore.id) }) {
+                    Text(stringResource(R.string.mobile_reject_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showRejectConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showCancelOccurrenceConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelOccurrenceConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_occurrence_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showCancelOccurrenceConfirm = false; onCancelChoreOccurrence(chore.id) }) {
+                    Text(stringResource(R.string.mobile_cancel_occurrence_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelOccurrenceConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showCloseCycleConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCloseCycleConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_series_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_series_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showCloseCycleConfirm = false; onCloseChoreCycle(chore.id) }) {
+                    Text(stringResource(R.string.mobile_cancel_series_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCloseCycleConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showCancelChoreConfirm) {
+        AlertDialog(
+            onDismissRequest = { showCancelChoreConfirm = false },
+            title = { Text(stringResource(R.string.mobile_cancel_chore_confirm_title)) },
+            text = { Text(stringResource(R.string.mobile_cancel_chore_confirm_body, chore.title)) },
+            confirmButton = {
+                Button(onClick = { showCancelChoreConfirm = false; onCancelChore(chore.id) }) {
+                    Text(stringResource(R.string.mobile_cancel_chore_confirm_action))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showCancelChoreConfirm = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showExternalCompleteDialog) {
+        AlertDialog(
+            onDismissRequest = { showExternalCompleteDialog = false; externalCompleterNameInput = "" },
+            title = { Text(stringResource(R.string.mobile_complete_external_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.mobile_complete_external_dialog_body, chore.title))
+                    OutlinedTextField(
+                        value = externalCompleterNameInput,
+                        onValueChange = { externalCompleterNameInput = it },
+                        label = { Text(stringResource(R.string.mobile_complete_external_name_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val name = externalCompleterNameInput.trim()
+                        showExternalCompleteDialog = false
+                        externalCompleterNameInput = ""
+                        onCompleteExternalChore(chore.id, name)
+                    },
+                    enabled = activeExternalCompleteAction == null && externalCompleterNameInput.isNotBlank()
+                ) {
+                    Text(stringResource(
+                        if (activeExternalCompleteAction == "complete-external:${chore.id}") R.string.mobile_completing_external
+                        else R.string.mobile_complete_external_confirm
+                    ))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showExternalCompleteDialog = false; externalCompleterNameInput = "" }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+    if (showDueAtEditor) {
+        AlertDialog(
+            onDismissRequest = { showDueAtEditor = false },
+            title = { Text(stringResource(R.string.mobile_edit_due_at_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(stringResource(R.string.mobile_edit_due_at_body, chore.title))
+                    OutlinedTextField(
+                        value = dueAtEditorTitle,
+                        onValueChange = { dueAtEditorTitle = it },
+                        label = { Text(stringResource(R.string.mobile_chore_title_label)) },
+                        modifier = Modifier.fillMaxWidth(),
+                        singleLine = true
+                    )
+                    if (editableVariants.isNotEmpty()) {
+                        ExposedDropdownMenuBox(
+                            expanded = dueAtVariantDropdownExpanded,
+                            onExpandedChange = { dueAtVariantDropdownExpanded = it }
+                        ) {
+                            OutlinedTextField(
+                                value = editableVariants.firstOrNull { it.id == dueAtEditorVariantId }?.label
+                                    ?: stringResource(R.string.mobile_create_select_variant_prompt),
+                                onValueChange = {},
+                                readOnly = true,
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = dueAtVariantDropdownExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            )
+                            ExposedDropdownMenu(
+                                expanded = dueAtVariantDropdownExpanded,
+                                onDismissRequest = { dueAtVariantDropdownExpanded = false }
+                            ) {
+                                editableVariants.forEach { variant ->
+                                    DropdownMenuItem(
+                                        text = { Text(variant.label) },
+                                        onClick = { dueAtEditorVariantId = variant.id; dueAtVariantDropdownExpanded = false }
+                                    )
+                                }
+                            }
+                        }
+                    }
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        OutlinedButton(onClick = { dueAtEditorDatePicker.show() }) {
+                            Text(stringResource(R.string.mobile_create_pick_date))
+                        }
+                        OutlinedButton(onClick = { dueAtEditorTimePicker.show() }) {
+                            Text(stringResource(R.string.mobile_create_pick_time))
+                        }
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showDueAtEditor = false
+                        onEditChoreDueAt(
+                            chore.id,
+                            Instant.ofEpochMilli(dueAtEditorMillis).toString(),
+                            dueAtEditorTitle.trim(),
+                            dueAtEditorVariantId.ifBlank { null }
+                        )
+                    },
+                    enabled = activeDueAtAction == null
+                ) {
+                    Text(stringResource(
+                        if (activeDueAtAction == activeDueAtActionKey) R.string.mobile_updating_due_at
+                        else R.string.mobile_edit_due_at_confirm
+                    ))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showDueAtEditor = false }) {
+                    Text(stringResource(R.string.mobile_request_takeover_cancel))
+                }
+            }
+        )
+    }
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 300.dp)
+            .padding(horizontal = 20.dp)
+            .padding(bottom = 32.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            if (choreIconDrawable != null) {
+                Image(
+                    painter = painterResource(choreIconDrawable),
+                    contentDescription = null,
+                    modifier = Modifier.size(44.dp),
+                    contentScale = ContentScale.Fit
+                )
+            }
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(text = typeTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                Text(
+                    text = "${chore.groupTitle.ifBlank { "Home" }} Ã‚Â· $dueFormatted",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+                if (!subtypeLabel.isNullOrBlank()) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = MaterialTheme.colorScheme.surfaceVariant
+                    ) {
+                        Text(
+                            text = subtypeLabel,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 2.dp)
+                        )
+                    }
+                }
+                if (chore.isOverdue || isDueSoon) {
+                    Surface(
+                        shape = RoundedCornerShape(999.dp),
+                        color = if (chore.isOverdue) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.tertiaryContainer
+                    ) {
+                        Text(
+                            text = if (chore.isOverdue) stringResource(R.string.mobile_state_overdue) else "Due soon",
+                            style = MaterialTheme.typography.labelSmall,
+                            color = if (chore.isOverdue) MaterialTheme.colorScheme.onErrorContainer else MaterialTheme.colorScheme.onTertiaryContainer,
+                            modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                        )
+                    }
+                }
+                if (chore.assigneeDisplayName != null) {
+                    Text(
+                        text = stringResource(R.string.mobile_chore_assigned_to, chore.assigneeDisplayName),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        HorizontalDivider()
+
+        chore.triggerInfo?.let { trigger ->
+            val completerName = when {
+                trigger.completedByExternal && !trigger.externalCompleterName.isNullOrBlank() ->
+                    trigger.externalCompleterName!!
+                !trigger.completedByDisplayName.isNullOrBlank() ->
+                    trigger.completedByDisplayName!!
+                else -> "someone"
+            }
+            val whenStr = trigger.completedAt
+                ?.let { runCatching { formatDueAtForCard(it) }.getOrElse { "" } }
+                .orEmpty()
+            Surface(
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = Icons.Rounded.Link,
+                        contentDescription = null,
+                        modifier = Modifier.size(14.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Text(
+                        text = buildString {
+                            append("After: ${trigger.title}")
+                            if (whenStr.isNotBlank()) append(" Ã‚Â· $whenStr")
+                            append(" by $completerName")
+                        },
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        if (isPendingApproval && canApproveChores) {
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = { showApproveConfirm = true },
+                    enabled = activeReviewAction == null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(if (activeReviewAction == "approve:${chore.id}") R.string.mobile_approving else R.string.mobile_approve))
+                }
+                OutlinedButton(
+                    onClick = { showRejectConfirm = true },
+                    enabled = activeReviewAction == null,
+                    modifier = Modifier.weight(1f)
+                ) {
+                    Text(stringResource(if (activeReviewAction == "reject:${chore.id}") R.string.mobile_rejecting else R.string.mobile_reject))
+                }
+            }
+        }
+
+        if (canSubmit) {
+            Button(
+                onClick = { onSubmitChore(chore.id) },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = activeSubmitAction == null
+            ) {
+                Text(stringResource(R.string.mobile_submit))
+            }
+        }
+
+        if (canClaimChore) {
+            Button(
+                onClick = {
+                    if (isUnassigned) onClaimChore(chore.id) else onTakeOverChore(chore.id)
+                },
+                modifier = Modifier.fillMaxWidth(),
+                enabled = activeStartAction == null
+            ) {
+                Text(stringResource(
+                    if (isUnassigned) {
+                        if (activeStartAction == "start:${chore.id}") R.string.mobile_starting else R.string.mobile_claim_task
+                    } else {
+                        if (activeStartAction == "takeover:${chore.id}") R.string.mobile_taking_over_task else R.string.mobile_take_over_task
+                    }
+                ))
+            }
+        }
+
+        if (!hasAnyPrimaryAction && !hasSecondaryActions) {
+            Text(
+                text = stringResource(R.string.mobile_chore_read_only_hint),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+
+        if (hasSecondaryActions) {
+            if (hasAnyPrimaryAction) HorizontalDivider()
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable { moreExpanded = !moreExpanded },
+                color = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f),
+                shape = RoundedCornerShape(10.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(stringResource(R.string.mobile_chore_actions_more), style = MaterialTheme.typography.bodyMedium)
+                    Icon(
+                        imageVector = if (moreExpanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                }
+            }
+            AnimatedVisibility(visible = moreExpanded) {
+                Column {
+                    if (canRequestTakeover) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.SwapHoriz,
+                            label = stringResource(
+                                if (activeTakeoverRequestAction?.startsWith("request:${chore.id}:") == true) R.string.mobile_request_takeover_sending
+                                else R.string.mobile_request_takeover
+                            ),
+                            enabled = activeTakeoverRequestAction == null,
+                            onClick = { onRequestTakeover(chore.id) }
+                        )
+                    }
+                    if (canEditDueAt) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.CalendarMonth,
+                            label = stringResource(R.string.mobile_edit_due_at),
+                            enabled = activeDueAtAction == null,
+                            onClick = { showDueAtEditor = true }
+                        )
+                    }
+                    if (canCancelOccurrence) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.EventBusy,
+                            label = stringResource(R.string.mobile_cancel_occurrence),
+                            enabled = activeCloseCycleAction == null,
+                            onClick = { showCancelOccurrenceConfirm = true }
+                        )
+                    }
+                    if (canCloseCycle) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.EventBusy,
+                            label = stringResource(R.string.mobile_cancel_series),
+                            enabled = activeCloseCycleAction == null,
+                            onClick = { showCloseCycleConfirm = true }
+                        )
+                    }
+                    if (canCancelChore) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.EventBusy,
+                            label = stringResource(R.string.mobile_cancel_chore),
+                            enabled = activeCancelChoreAction == null,
+                            onClick = { showCancelChoreConfirm = true }
+                        )
+                    }
+                    if (canCompleteExternal && isSubmittableState) {
+                        SecondaryActionRow(
+                            icon = Icons.Rounded.HowToReg,
+                            label = stringResource(
+                                if (activeExternalCompleteAction == "complete-external:${chore.id}") R.string.mobile_completing_external
+                                else R.string.mobile_complete_external
+                            ),
+                            enabled = activeExternalCompleteAction == null,
+                            onClick = { showExternalCompleteDialog = true }
+                        )
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun SecondaryActionRow(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    enabled: Boolean = true,
+    onClick: () -> Unit
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable(enabled = enabled, onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 13.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Icon(
+            imageVector = icon,
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            tint = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = if (enabled) MaterialTheme.colorScheme.onSurface else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f),
+            modifier = Modifier.weight(1f)
+        )
+        Icon(
+            imageVector = Icons.Rounded.ChevronRight,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = if (enabled) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+        )
+    }
+}
+
+private fun resolveChoreSection(chore: MobileChore, currentUserId: String?): MobileChoreSection = when {
+    chore.assigneeId != null && chore.assigneeId == currentUserId -> MobileChoreSection.MINE
+    chore.assigneeId.isNullOrBlank() -> MobileChoreSection.UNASSIGNED
+    else -> MobileChoreSection.OTHERS
+}
+
+private enum class MobileMyChoreDueBucket {
+    OVERDUE,
+    TODAY,
+    THIS_WEEK,
+    LATER
+}
+
+private fun resolveMyChoreDueBucket(
+    chore: MobileChore,
+    zoneId: ZoneId = ZoneId.systemDefault(),
+    @Suppress("UNUSED_PARAMETER") locale: Locale = Locale.getDefault()
+): MobileMyChoreDueBucket {
+    val today = LocalDate.now(zoneId)
+    val dueDate = runCatching { Instant.parse(chore.dueAt).atZone(zoneId).toLocalDate() }.getOrDefault(today)
+
+    if (dueDate.isBefore(today)) {
+        return MobileMyChoreDueBucket.OVERDUE
+    }
+    if (!dueDate.isAfter(today)) {
+        return MobileMyChoreDueBucket.TODAY
+    }
+    val endOfRollingWeek = today.plusDays(7)
+
+    return if (!dueDate.isAfter(endOfRollingWeek)) {
+        MobileMyChoreDueBucket.THIS_WEEK
+    } else {
+        MobileMyChoreDueBucket.LATER
+    }
+}
+
+private fun choreSectionRank(section: MobileChoreSection): Int = when (section) {
+    MobileChoreSection.MINE -> 0
+    MobileChoreSection.UNASSIGNED -> 1
+    MobileChoreSection.OTHERS -> 2
+}
+
+private fun parseInstantForSort(value: String): Instant = runCatching { Instant.parse(value) }.getOrDefault(Instant.MAX)
+
+private fun rewardCategoryEmoji(category: String): String = when (category) {
+    "SCREEN_TIME" -> "Ã°Å¸â€œÂ±"
+    "ALLOWANCE"   -> "Ã°Å¸â€™Â°"
+    "TREAT"       -> "Ã°Å¸ÂÂ¬"
+    "ACTIVITY"    -> "Ã°Å¸Å½â€°"
+    "PRIVILEGE"   -> "Ã¢Â­Â"
+    else          -> "Ã°Å¸Å½Â"
+}
+
+@Composable
+private fun describeChoreAssignment(chore: MobileChore, currentUserId: String?): String = when (resolveChoreSection(chore, currentUserId)) {
+    MobileChoreSection.MINE -> stringResource(R.string.mobile_chore_assigned_to_you)
+    MobileChoreSection.UNASSIGNED -> stringResource(R.string.mobile_chore_unassigned)
+    MobileChoreSection.OTHERS -> {
+        val firstName = firstNameFromDisplayName(chore.assigneeDisplayName)
+        if (firstName != null) {
+            stringResource(R.string.mobile_chore_assigned_to_name, firstName)
+        } else {
+            stringResource(R.string.mobile_chore_assigned_elsewhere)
+        }
+    }
+}
+
+@Composable
+private fun describeAssignmentReason(reason: String?): String? = when (reason) {
+    "round_robin" -> stringResource(R.string.mobile_assignment_reason_round_robin)
+    "least_completed_recently" -> stringResource(R.string.mobile_assignment_reason_least_completed)
+    "highest_streak" -> stringResource(R.string.mobile_assignment_reason_highest_streak)
+    "manual" -> stringResource(R.string.mobile_assignment_reason_manual)
+    "claimed" -> stringResource(R.string.mobile_assignment_reason_claimed)
+    "sticky_follow_up" -> stringResource(R.string.mobile_assignment_reason_sticky_follow_up)
+    "rebalanced" -> stringResource(R.string.mobile_assignment_reason_rebalanced)
+    else -> null
+}
+
+private fun firstNameFromDisplayName(displayName: String?): String? =
+    displayName
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() }
+        ?.split(Regex("\\s+"))
+        ?.firstOrNull()
+
+private fun initialsFromDisplayName(displayName: String): String {
+    val tokens = displayName.trim().split(Regex("\\s+")).filter { it.isNotBlank() }.take(2)
+    if (tokens.isEmpty()) {
+        return "U"
+    }
+    return tokens.joinToString("") { token -> token.first().uppercaseChar().toString() }
+}
+
+private fun loadImageBitmapFromUri(
+    context: Context,
+    uriString: String?
+): androidx.compose.ui.graphics.ImageBitmap? {
+    if (uriString.isNullOrBlank()) {
+        return null
+    }
+    val uri = runCatching { Uri.parse(uriString) }.getOrNull() ?: return null
+    return runCatching {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+            val source = ImageDecoder.createSource(context.contentResolver, uri)
+            ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+                decoder.isMutableRequired = false
+            }.asImageBitmap()
+        } else {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                BitmapFactory.decodeStream(stream)?.asImageBitmap()
+            }
+        }
+    }.getOrNull()
+}
+
+private fun normalizeSubtypeLabel(value: String?): String? =
+    value
+        ?.trim()
+        ?.takeIf { it.isNotEmpty() && !it.equals("null", ignoreCase = true) }
+
+private fun defaultCreateDueAtMillis(): Long =
+    Instant.now()
+        .plus(4, ChronoUnit.HOURS)
+        .truncatedTo(ChronoUnit.MINUTES)
+        .toEpochMilli()
+
+private fun defaultCreateRecurrenceEndsAtMillis(baseDueAtMillis: Long = defaultCreateDueAtMillis()): Long =
+    Instant.ofEpochMilli(baseDueAtMillis)
+        .atZone(ZoneId.systemDefault())
+        .plusWeeks(4)
+        .toInstant()
+        .toEpochMilli()
+
+private fun formatEpochMillisForDisplay(value: Long): String =
+    DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+        .withZone(ZoneId.systemDefault())
+        .format(Instant.ofEpochMilli(value))
+
+private fun resolveEffectiveCreateRecurrenceType(
+    template: MobileChoreTemplate?,
+    createRecurrenceType: String
+): String {
+    return if (createRecurrenceType == "template") {
+        template?.recurrence?.type ?: "none"
+    } else {
+        createRecurrenceType
+    }
+}
+
+@Composable
+private fun assignmentStrategyLabel(value: String): String = when (value) {
+    "least_completed_recently" -> stringResource(R.string.mobile_create_assignment_least_completed)
+    "highest_streak" -> stringResource(R.string.mobile_create_assignment_highest_streak)
+    else -> stringResource(R.string.mobile_create_assignment_round_robin)
+}
+
+@Composable
+private fun recurrenceTypeLabel(value: String): String = when (value) {
+    "none" -> stringResource(R.string.mobile_create_repeat_no)
+    "daily" -> stringResource(R.string.mobile_create_repeat_daily_short)
+    "weekly" -> stringResource(R.string.mobile_create_repeat_weekly_short)
+    "custom_weekly" -> stringResource(R.string.mobile_create_repeat_custom_weekly_short)
+    "every_x_days" -> stringResource(R.string.mobile_create_repeat_every_x_days_option)
+    "monthly" -> stringResource(R.string.mobile_create_repeat_monthly_short)
+    else -> stringResource(R.string.mobile_create_repeat_template_short)
+}
+
+private fun templateRecurrenceDefaults(recurrence: MobileTemplateRecurrence): Pair<String, Int> = when (recurrence.type) {
+    "daily" -> "daily" to 1
+    "weekly" -> "weekly" to 7
+    "monthly" -> "monthly" to 30
+    "every_x_days" -> "every_x_days" to (recurrence.intervalDays ?: 7)
+    "custom_weekly" -> "template" to 7
+    else -> "none" to 1
+}
+
+private fun templateRecurrenceWeekdayDefaults(recurrence: MobileTemplateRecurrence?): List<String> {
+    if (recurrence?.type != "custom_weekly") {
+        return emptyList()
+    }
+
+    return recurrence.weekdays
+        .filter { recurrenceWeekdayOrder.contains(it) }
+        .distinct()
+}
+
+private fun weekdayTokenForEpochMillis(value: Long): String {
+    return when (Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).dayOfWeek) {
+        DayOfWeek.MONDAY -> "MONDAY"
+        DayOfWeek.TUESDAY -> "TUESDAY"
+        DayOfWeek.WEDNESDAY -> "WEDNESDAY"
+        DayOfWeek.THURSDAY -> "THURSDAY"
+        DayOfWeek.FRIDAY -> "FRIDAY"
+        DayOfWeek.SATURDAY -> "SATURDAY"
+        DayOfWeek.SUNDAY -> "SUNDAY"
+    }
+}
+
+@Composable
+private fun weekdayShortLabel(weekday: String): String {
+    val locale = Locale.getDefault()
+    val dayOfWeek = when (weekday) {
+        "MONDAY" -> DayOfWeek.MONDAY
+        "TUESDAY" -> DayOfWeek.TUESDAY
+        "WEDNESDAY" -> DayOfWeek.WEDNESDAY
+        "THURSDAY" -> DayOfWeek.THURSDAY
+        "FRIDAY" -> DayOfWeek.FRIDAY
+        "SATURDAY" -> DayOfWeek.SATURDAY
+        else -> DayOfWeek.SUNDAY
+    }
+    return dayOfWeek.getDisplayName(TextStyle.SHORT, locale)
+}
+
+private fun formatApiTimestamp(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm")
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(value)
+}
+
+private fun formatByteSize(value: Long): String {
+    if (value < 1024L) {
+        return "${numberFormatter.format(value)} B"
+    }
+    val units = arrayOf("KB", "MB", "GB", "TB")
+    var size = value.toDouble() / 1024.0
+    var index = 0
+    while (size >= 1024.0 && index < units.lastIndex) {
+        size /= 1024.0
+        index += 1
+    }
+    val digits = when {
+        size >= 100.0 -> 0
+        size >= 10.0 -> 1
+        else -> 2
+    }
+    return "%.${digits}f %s".format(Locale.getDefault(), size, units[index])
+}
+
+private fun formatUsageSummary(
+    used: Long?,
+    limit: Long?,
+    formatter: (Long) -> String = { numberFormatter.format(it) }
+): String {
+    if (used == null) {
+        return "n/a / ${limit?.let(formatter) ?: "unlimited"}"
+    }
+    if (limit == null || limit <= 0L) {
+        return "${formatter(used)} / unlimited"
+    }
+    val percentage = ((used.toDouble() / limit.toDouble()) * 100.0).toInt().coerceIn(0, 100)
+    return "${formatter(used)} / ${formatter(limit)} ($percentage%)"
+}
+
+private fun formatRetentionSummary(
+    auditRetentionDays: Int?,
+    exportRetentionDays: Int?,
+    proofRetentionDays: Int?
+): String {
+    fun normalize(value: Int?): String {
+        if (value == null || value <= 0) {
+            return "n/a"
+        }
+        return numberFormatter.format(value)
+    }
+    return "${normalize(auditRetentionDays)} / ${normalize(exportRetentionDays)} / ${normalize(proofRetentionDays)}"
+}
+
+private fun detectLeadingQuickLogIcon(text: String): String? {
+    val token = text.trim().split(Regex("\\s+")).firstOrNull().orEmpty()
+    if (quickLogIconOptions.contains(token)) {
+        return token
+    }
+    if (quickLogLegacyMojibakePrefix.containsMatchIn(token)) {
+        return quickLogIconCheck
+    }
+    return null
+}
+
+private fun detectLeadingChoreIconToken(text: String): String? {
+    val match = Regex("^\\[\\[icon:([a-z0-9_]+)\\]\\]", RegexOption.IGNORE_CASE).find(text.trim()) ?: return null
+    return match.groupValues.getOrNull(1)?.lowercase(Locale.getDefault())
+}
+
+private fun stripLeadingChoreIconToken(text: String): String {
+    return text.trim().replace(Regex("^\\[\\[icon:[a-z0-9_]+\\]\\]\\s*", RegexOption.IGNORE_CASE), "")
+}
+
+private fun resolveChoreIconDrawableFromToken(iconId: String?): Int? = when (iconId) {
+    "take_out_trash" -> R.drawable.chore_icon_take_out_trash
+    "recycle_sorting" -> R.drawable.chore_icon_recycle_sorting
+    "feed_pets" -> R.drawable.chore_icon_feed_pets
+    "wash_dishes_sink" -> R.drawable.chore_icon_wash_dishes_sink
+    "make_bed" -> R.drawable.chore_icon_make_bed
+    "change_bed_sheets" -> R.drawable.chore_icon_change_bed_sheets
+    "do_laundry" -> R.drawable.chore_icon_do_laundry
+    "vacuum_floor" -> R.drawable.chore_icon_vacuum_floor
+    "water_plants" -> R.drawable.chore_icon_water_plants
+    "clean_toilet" -> R.drawable.chore_icon_clean_toilet
+    "clean_mirror_sink" -> R.drawable.chore_icon_clean_mirror_sink
+    "wipe_counter" -> R.drawable.chore_icon_wipe_counter
+    "dishwasher" -> R.drawable.chore_icon_dishwasher
+    "grocery_shopping" -> R.drawable.chore_icon_grocery_shopping
+    "sort_mail" -> R.drawable.chore_icon_sort_mail
+    else -> null
+}
+
+private fun resolveChoreIconDrawable(title: String, context: String? = null, subtype: String? = null): Int? {
+    val explicitToken = detectLeadingChoreIconToken(title)
+    resolveChoreIconDrawableFromToken(explicitToken)?.let { return it }
+
+    val searchable = listOfNotNull(stripLeadingChoreIconToken(stripLeadingQuickLogIcon(title)), context, subtype)
+        .joinToString(" ")
+        .lowercase(Locale.getDefault())
+    return when {
+        Regex("(trash|garbage|bin|waste)").containsMatchIn(searchable) -> R.drawable.chore_icon_take_out_trash
+        Regex("(recycl)").containsMatchIn(searchable) -> R.drawable.chore_icon_recycle_sorting
+        Regex("(pet|cat|dog|litter)").containsMatchIn(searchable) -> R.drawable.chore_icon_feed_pets
+        Regex("(dish|kitchen|plate|sink)").containsMatchIn(searchable) -> R.drawable.chore_icon_wash_dishes_sink
+        Regex("(bed|sheet|blanket)").containsMatchIn(searchable) -> R.drawable.chore_icon_make_bed
+        Regex("(laundry|clothes|linen|towel|wash)").containsMatchIn(searchable) -> R.drawable.chore_icon_do_laundry
+        Regex("(vacuum)").containsMatchIn(searchable) -> R.drawable.chore_icon_vacuum_floor
+        Regex("(plant|garden|water)").containsMatchIn(searchable) -> R.drawable.chore_icon_water_plants
+        Regex("(bathroom|toilet)").containsMatchIn(searchable) -> R.drawable.chore_icon_clean_toilet
+        Regex("(grocery|shop|market)").containsMatchIn(searchable) -> R.drawable.chore_icon_grocery_shopping
+        else -> null
+    }
+}
+
+private fun stripLeadingQuickLogIcon(text: String): String {
+    val trimmed = text.trim()
+    val token = detectLeadingQuickLogIcon(trimmed) ?: return trimmed
+    return trimmed.removePrefix(token).trimStart()
+}
+
+private fun applyChoreIconTokenToTitle(text: String, iconId: String?): String {
+    val stripped = stripLeadingChoreIconToken(stripLeadingQuickLogIcon(text))
+    if (stripped.isBlank()) return ""
+    if (iconId.isNullOrBlank()) return stripped
+    return "[[icon:$iconId]] $stripped"
+}
+
+private fun resolveChoreIconIdFromTitle(title: String, context: String? = null): String? {
+    detectLeadingChoreIconToken(title)?.let { return it }
+    val searchable = listOfNotNull(
+        stripLeadingChoreIconToken(stripLeadingQuickLogIcon(title)), context
+    ).joinToString(" ").lowercase(Locale.getDefault())
+    return when {
+        Regex("(trash|garbage|bin|waste)").containsMatchIn(searchable) -> "take_out_trash"
+        Regex("(recycl)").containsMatchIn(searchable) -> "recycle_sorting"
+        Regex("(pet|cat|dog|litter)").containsMatchIn(searchable) -> "feed_pets"
+        Regex("(dish|kitchen|plate|sink)").containsMatchIn(searchable) -> "wash_dishes_sink"
+        Regex("(bed|sheet|blanket)").containsMatchIn(searchable) -> "make_bed"
+        Regex("(laundry|clothes|linen|towel|wash)").containsMatchIn(searchable) -> "do_laundry"
+        Regex("(vacuum)").containsMatchIn(searchable) -> "vacuum_floor"
+        Regex("(plant|garden|water)").containsMatchIn(searchable) -> "water_plants"
+        Regex("(bathroom|toilet)").containsMatchIn(searchable) -> "clean_toilet"
+        Regex("(grocery|shop|market)").containsMatchIn(searchable) -> "grocery_shopping"
+        else -> null
+    }
+}
+
+
+private fun formatDueAtForMockCard(value: String): String {
+    return runCatching {
+        val zoneId = ZoneId.systemDefault()
+        val dueDate = Instant.parse(value).atZone(zoneId).toLocalDate()
+        val today = LocalDate.now(zoneId)
+        when (dueDate) {
+            today -> "Due today"
+            today.plusDays(1) -> "Due tomorrow"
+            else -> "Due ${DateTimeFormatter.ofPattern("MMM d", Locale.getDefault()).format(dueDate)}"
+        }
+    }.getOrDefault(formatDueAtForCard(value))
+}
+
+private fun isDueSoonForMockCard(value: String): Boolean {
+    return runCatching {
+        Instant.parse(value) <= Instant.now().plus(36, ChronoUnit.HOURS)
+    }.getOrDefault(false)
+}
+private fun formatDueAtForCard(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("EEEE d MMM HH:mm", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(formatApiTimestamp(value))
+}
+
+private fun formatDueAtForHistoricCard(value: String): String {
+    return runCatching {
+        DateTimeFormatter.ofPattern("d MMM HH:mm", Locale.getDefault())
+            .withZone(ZoneId.systemDefault())
+            .format(Instant.parse(value))
+    }.getOrDefault(formatApiTimestamp(value))
+}
+
+private suspend fun flushQueuedSubmissions(
+    api: TaskBanditMobileApi,
+    outboxStore: TaskBanditOutboxStore,
+    baseUrl: String,
+    token: String,
+    contentResolver: ContentResolver,
+    onSyncingChange: (Boolean) -> Unit
+): Int {
+    val drafts = outboxStore.readQueue()
+    if (drafts.isEmpty()) {
+        return 0
+    }
+
+    onSyncingChange(true)
+    var flushedCount = 0
+
+    for (draft in drafts) {
+        try {
+            withContext(Dispatchers.IO) {
+                submitDraft(
+                    api = api,
+                    baseUrl = baseUrl,
+                    token = token,
+                    draft = draft,
+                    contentResolver = contentResolver
+                )
+                outboxStore.remove(draft.id)
+            }
+            flushedCount += 1
+        } catch (throwable: Throwable) {
+            if (throwable is TaskBanditUnauthorizedException) {
+                throw throwable
+            }
+        }
+    }
+
+    onSyncingChange(false)
+    return flushedCount
+}
+
+private fun submitDraft(
+    api: TaskBanditMobileApi,
+    baseUrl: String,
+    token: String,
+    draft: MobileChoreSubmissionDraft,
+    contentResolver: ContentResolver
+): MobileChore {
+    val uploadedProofs = draft.proofUriStrings.map { uriString ->
+        val proofInput = readProofInput(contentResolver, uriString)
+        api.uploadProof(
+            baseUrl = baseUrl,
+            token = token,
+            filename = proofInput.filename,
+            contentType = proofInput.contentType,
+            contentBytes = proofInput.bytes
+        )
+    }
+
+    return api.submitChore(
+        baseUrl = baseUrl,
+        token = token,
+        instanceId = draft.choreId,
+        completedChecklistItemIds = draft.completedChecklistIds,
+        attachments = uploadedProofs,
+        note = draft.note
+    )
+}
+
+private data class ProofInput(
+    val filename: String,
+    val contentType: String,
+    val bytes: ByteArray
+)
+
+private fun readProofInput(contentResolver: ContentResolver, uriString: String): ProofInput {
+    val uri = Uri.parse(uriString)
+    val filename = readUriDisplayName(contentResolver, uri)
+    val contentType = contentResolver.getType(uri) ?: "image/jpeg"
+    val bytes = contentResolver.openInputStream(uri)?.use { stream ->
+        stream.readBytes()
+    } ?: throw IllegalStateException("Could not read the selected proof image.")
+
+    return ProofInput(
+        filename = filename,
+        contentType = contentType,
+        bytes = bytes
+    )
+}
+
+private fun readUriDisplayName(contentResolver: ContentResolver, uri: Uri): String {
+    contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { cursor ->
+        val columnIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+        if (columnIndex >= 0 && cursor.moveToFirst()) {
+            return cursor.getString(columnIndex).orEmpty().ifBlank { "proof-image" }
+        }
+    }
+
+    return "proof-image"
+}
+
+private fun createProofCaptureFile(context: android.content.Context): File {
+    val proofDirectory = File(context.filesDir, "proof-captures").apply { mkdirs() }
+    return File(proofDirectory, "proof-${UUID.randomUUID()}.jpg")
+}
+
+private fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
+    // Releases use tag format "v{VERSION}" (e.g. "v0.65.8") with a
+    // "taskbandit-{VERSION}.apk" asset attached to every release by CI.
+    val connection = java.net.URL(
+        "https://api.github.com/repos/kriziw/TaskBandit/releases?per_page=10"
+    ).openConnection() as java.net.HttpURLConnection
+    connection.setRequestProperty("Accept", "application/vnd.github+json")
+    connection.setRequestProperty("X-GitHub-Api-Version", "2022-11-28")
+    connection.connectTimeout = 10_000
+    connection.readTimeout = 10_000
+    return try {
+        if (connection.responseCode != 200) return null
+        val responseText = connection.inputStream.bufferedReader().readText()
+        val releases = org.json.JSONArray(responseText)
+        for (i in 0 until releases.length()) {
+            val json = releases.getJSONObject(i)
+            if (json.optBoolean("draft") || json.optBoolean("prerelease")) continue
+            val tagName = json.optString("tag_name", "")
+            if (!tagName.startsWith("v")) continue
+            val version = tagName.removePrefix("v")
+            if (version.isBlank()) continue
+            val body = json.optString("body", "")
+            val assets = json.optJSONArray("assets") ?: continue
+            var apkUrl: String? = null
+            for (j in 0 until assets.length()) {
+                val asset = assets.getJSONObject(j)
+                if (asset.optString("name").endsWith(".apk")) {
+                    apkUrl = asset.optString("browser_download_url").ifBlank { null }
+                    break
+                }
+            }
+            if (apkUrl != null) return GitHubReleaseInfo(version = version, apkDownloadUrl = apkUrl, body = body)
+        }
+        null
+    } catch (_: Exception) {
+        null
+    } finally {
+        connection.disconnect()
+    }
+}
+
+private fun downloadAndInstallApk(
+    context: android.content.Context,
+    url: String,
+    version: String,
+    onProgress: (Float) -> Unit,
+    onDone: () -> Unit,
+    onError: () -> Unit
+) {
+    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+    try {
+        val dir = java.io.File(context.cacheDir, "apk-downloads").also { it.mkdirs() }
+        val file = java.io.File(dir, "taskbandit-$version.apk")
+        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
+        connection.connectTimeout = 15_000
+        connection.readTimeout = 120_000
+        connection.connect()
+        val total = connection.contentLengthLong
+        var downloaded = 0L
+        connection.inputStream.use { input ->
+            file.outputStream().use { output ->
+                val buffer = ByteArray(8192)
+                var read: Int
+                while (input.read(buffer).also { read = it } != -1) {
+                    output.write(buffer, 0, read)
+                    downloaded += read
+                    if (total > 0) {
+                        val progress = downloaded.toFloat() / total
+                        mainHandler.post { onProgress(progress) }
+                    }
+                }
+            }
+        }
+        mainHandler.post { onDone() }
+        val fileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+        val installIntent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(fileUri, "application/vnd.android.package-archive")
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+        }
+        context.startActivity(installIntent)
+    } catch (_: Exception) {
+        mainHandler.post { onError() }
+    }
+}
+
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// TEMPLATE MANAGER
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+
+@Composable
+private fun TemplateManagerScreen(
+    templates: List<MobileChoreTemplate>,
+    isLoading: Boolean,
+    error: String?,
+    allTemplates: List<MobileChoreTemplate>,
+    onRefresh: () -> Unit,
+    onCreateTemplate: (CreateChoreTemplateInput) -> Unit,
+    onUpdateTemplate: (String, CreateChoreTemplateInput) -> Unit,
+    onDeleteTemplate: (String) -> Unit,
+    onResetToDefaults: () -> Unit,
+    canManageTemplates: Boolean,
+    isAdmin: Boolean
+) {
+    LaunchedEffect(Unit) { onRefresh() }
+
+    var searchQuery by rememberSaveable { mutableStateOf("") }
+    var selectedGroup by rememberSaveable { mutableStateOf<String?>(null) }
+    var editingTemplate by remember { mutableStateOf<MobileChoreTemplate?>(null) }
+    var showEditor by rememberSaveable { mutableStateOf(false) }
+    var deleteConfirmTemplate by remember { mutableStateOf<MobileChoreTemplate?>(null) }
+    var showResetConfirm by rememberSaveable { mutableStateOf(false) }
+
+    val allGroups = remember(templates) { templates.map { it.groupTitle }.distinct().sorted() }
+    val filteredTemplates = remember(templates, searchQuery, selectedGroup) {
+        templates.filter { t ->
+            (searchQuery.isBlank() || t.title.contains(searchQuery, ignoreCase = true) || t.groupTitle.contains(searchQuery, ignoreCase = true)) &&
+            (selectedGroup == null || t.groupTitle == selectedGroup)
+        }
+    }
+
+    Box(modifier = Modifier.fillMaxSize()) {
+        Column(modifier = Modifier.fillMaxSize()) {
+            // Header
+            SectionIntro(
+                title = stringResource(R.string.mobile_template_manager_title),
+                body = stringResource(R.string.mobile_template_manager_hint),
+                compact = true
+            )
+
+            // Search + New Template row
+            Row(
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    modifier = Modifier.weight(1f),
+                    placeholder = { Text(stringResource(R.string.mobile_template_search), style = MaterialTheme.typography.bodyMedium) },
+                    singleLine = true,
+                    shape = RoundedCornerShape(14.dp)
+                )
+                if (canManageTemplates) {
+                    OutlinedButton(onClick = { editingTemplate = null; showEditor = true }) {
+                        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    }
+                }
+            }
+
+            // Group filter chips
+            if (allGroups.isNotEmpty()) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState())
+                        .padding(horizontal = 16.dp, vertical = 4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    FilterChip(
+                        selected = selectedGroup == null,
+                        onClick = { selectedGroup = null },
+                        label = { Text(stringResource(R.string.mobile_template_all_groups)) }
+                    )
+                    allGroups.forEach { group ->
+                        FilterChip(
+                            selected = selectedGroup == group,
+                            onClick = { selectedGroup = if (selectedGroup == group) null else group },
+                            label = { Text(group) }
+                        )
+                    }
+                }
+            }
+
+            // Loading / Error / List
+            when {
+                isLoading -> {
+                    Box(modifier = Modifier.fillMaxWidth().padding(48.dp), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator()
+                    }
+                }
+                error != null -> {
+                    Text(
+                        text = error,
+                        color = MaterialTheme.colorScheme.error,
+                        style = MaterialTheme.typography.bodyMedium,
+                        modifier = Modifier.padding(16.dp)
+                    )
+                }
+                filteredTemplates.isEmpty() -> {
+                    Text(
+                        text = stringResource(R.string.mobile_template_empty),
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(24.dp)
+                    )
+                }
+                else -> {
+                    LazyColumn(
+                        modifier = Modifier.weight(1f),
+                        contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(filteredTemplates, key = { it.id }) { template ->
+                            TemplateCard(
+                                template = template,
+                                onClick = { editingTemplate = template; showEditor = true }
+                            )
+                        }
+                    }
+                }
+            }
+
+            // Reset to defaults (admin only)
+            if (isAdmin && canManageTemplates) {
+                TextButton(
+                    onClick = { showResetConfirm = true },
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+                ) {
+                    Text(stringResource(R.string.mobile_template_reset_to_defaults), color = MaterialTheme.colorScheme.error)
+                }
+            }
+        }
+
+        // Editor overlay
+        AnimatedVisibility(
+            visible = showEditor,
+            enter = slideInVertically(initialOffsetY = { it }),
+            exit = slideOutVertically(targetOffsetY = { it })
+        ) {
+            Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+                TemplateEditorScreen(
+                    template = editingTemplate,
+                    allTemplates = allTemplates,
+                    onSave = { input ->
+                        val id = editingTemplate?.id
+                        if (id != null) onUpdateTemplate(id, input) else onCreateTemplate(input)
+                        showEditor = false
+                    },
+                    onDelete = { deleteConfirmTemplate = editingTemplate; showEditor = false },
+                    onBack = { showEditor = false }
+                )
+            }
+        }
+    }
+
+    // Delete confirmation
+    deleteConfirmTemplate?.let { toDelete ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmTemplate = null },
+            title = { Text(toDelete.title) },
+            text = { Text(stringResource(R.string.mobile_template_delete_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = { onDeleteTemplate(toDelete.id); deleteConfirmTemplate = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_common_delete)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { deleteConfirmTemplate = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+
+    // Reset confirmation
+    if (showResetConfirm) {
+        AlertDialog(
+            onDismissRequest = { showResetConfirm = false },
+            title = { Text(stringResource(R.string.mobile_template_reset_to_defaults)) },
+            text = { Text(stringResource(R.string.mobile_template_reset_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = { onResetToDefaults(); showResetConfirm = false },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_template_reset_to_defaults)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { showResetConfirm = false }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun TemplateCard(
+    template: MobileChoreTemplate,
+    onClick: () -> Unit
+) {
+    val difficultyColor = when (template.difficulty) {
+        "easy" -> Color(0xFFFFC94A)
+        "hard" -> Color(0xFFE53935)
+        else   -> Color(0xFFFF7A6B)
+    }
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp)
+        ) {
+            Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(template.title, style = MaterialTheme.typography.titleMedium)
+                Text(template.groupTitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                if (template.checklist.isNotEmpty()) {
+                    Text(
+                        text = stringResource(R.string.mobile_template_steps, template.checklist.size),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+            Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                // Difficulty badge
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = difficultyColor.copy(alpha = 0.18f)
+                ) {
+                    Text(
+                        text = when (template.difficulty) {
+                            "easy" -> stringResource(R.string.mobile_template_difficulty_easy)
+                            "hard" -> stringResource(R.string.mobile_template_difficulty_hard)
+                            else -> stringResource(R.string.mobile_template_difficulty_medium)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = difficultyColor,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
+                // Locale indicators
+                val locales = template.translations.map { it.locale }.filter { it != template.defaultLocale }
+                if (locales.isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        locales.forEach { locale ->
+                            Text(
+                                text = locale.uppercase(),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier
+                                    .background(MaterialTheme.colorScheme.primaryContainer, RoundedCornerShape(4.dp))
+                                    .padding(horizontal = 4.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateEditorScreen(
+    template: MobileChoreTemplate?,
+    allTemplates: List<MobileChoreTemplate>,
+    onSave: (CreateChoreTemplateInput) -> Unit,
+    onDelete: () -> Unit,
+    onBack: () -> Unit
+) {
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Locale tab state Ã¢â€â‚¬Ã¢â€â‚¬
+    var editingLocale by rememberSaveable { mutableStateOf("en") }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Core fields Ã¢â€â‚¬Ã¢â€â‚¬
+    var editGroupTitle by rememberSaveable { mutableStateOf(template?.groupTitle ?: "") }
+    var editTitle by rememberSaveable { mutableStateOf(template?.title ?: "") }
+    var editDescription by rememberSaveable { mutableStateOf(template?.description ?: "") }
+    var editDifficulty by rememberSaveable { mutableStateOf(template?.difficulty ?: "medium") }
+    var editAssignmentStrategy by rememberSaveable { mutableStateOf(template?.assignmentStrategy ?: "round_robin") }
+    var editDefaultLocale by rememberSaveable { mutableStateOf(template?.defaultLocale ?: "en") }
+    var editRecurrenceType by rememberSaveable { mutableStateOf(template?.recurrence?.type ?: "none") }
+    var editRecurrenceIntervalDays by rememberSaveable { mutableStateOf(template?.recurrence?.intervalDays?.toString() ?: "") }
+    var editRecurrenceWeekdays by rememberSaveable { mutableStateOf(template?.recurrence?.weekdays ?: emptyList()) }
+    var editRequirePhotoProof by rememberSaveable { mutableStateOf(template?.requirePhotoProof ?: false) }
+    var editStickyFollowUpAssignee by rememberSaveable { mutableStateOf(template?.stickyFollowUpAssignee ?: false) }
+    var editRecurrenceStartStrategy by rememberSaveable { mutableStateOf(template?.recurrenceStartStrategy ?: "due_at") }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Translations Ã¢â€â‚¬Ã¢â€â‚¬
+    var editTranslations by remember { mutableStateOf(template?.translations ?: emptyList()) }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Checklist Ã¢â€â‚¬Ã¢â€â‚¬
+    var editChecklist by remember { mutableStateOf(
+        template?.checklist?.map { CreateTemplateChecklistItemInput(it.title, it.required) } ?: emptyList()
+    ) }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Variants Ã¢â€â‚¬Ã¢â€â‚¬
+    var editVariants by remember { mutableStateOf(
+        template?.variants?.map { CreateTemplateVariantInput(it.id, it.label, it.translations) } ?: emptyList()
+    ) }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Dependency rules Ã¢â€â‚¬Ã¢â€â‚¬
+    var editDependencyRules by remember { mutableStateOf(template?.dependencyRules ?: emptyList()) }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Section expansion state Ã¢â€â‚¬Ã¢â€â‚¬
+    var recurrenceExpanded by rememberSaveable { mutableStateOf(false) }
+    var checklistExpanded by rememberSaveable { mutableStateOf(false) }
+    var variantsExpanded by rememberSaveable { mutableStateOf(false) }
+    var followupsExpanded by rememberSaveable { mutableStateOf(false) }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Dropdown expansion state Ã¢â€â‚¬Ã¢â€â‚¬
+    var difficultyExpanded by remember { mutableStateOf(false) }
+    var strategyExpanded by remember { mutableStateOf(false) }
+    var defaultLocaleExpanded by remember { mutableStateOf(false) }
+    var recurrenceTypeExpanded by remember { mutableStateOf(false) }
+    var recurrenceStartExpanded by remember { mutableStateOf(false) }
+
+    // Ã¢â€â‚¬Ã¢â€â‚¬ Locale helpers Ã¢â€â‚¬Ã¢â€â‚¬
+    fun getLocaleText(field: String): String {
+        if (editingLocale == "en") return when (field) {
+            "groupTitle" -> editGroupTitle; "title" -> editTitle; else -> editDescription
+        }
+        val t = editTranslations.firstOrNull { it.locale == editingLocale }
+        return when (field) {
+            "groupTitle" -> t?.groupTitle ?: ""; "title" -> t?.title ?: ""; else -> t?.description ?: ""
+        }
+    }
+    fun setLocaleText(field: String, value: String) {
+        if (editingLocale == "en") {
+            when (field) { "groupTitle" -> editGroupTitle = value; "title" -> editTitle = value; else -> editDescription = value }
+            return
+        }
+        val updated = editTranslations.toMutableList()
+        val idx = updated.indexOfFirst { it.locale == editingLocale }
+        val existing = if (idx >= 0) updated[idx] else MobileTemplateTranslation(locale = editingLocale)
+        val next = when (field) {
+            "groupTitle" -> existing.copy(groupTitle = value)
+            "title" -> existing.copy(title = value)
+            else -> existing.copy(description = value)
+        }
+        if (idx >= 0) updated[idx] = next else updated.add(next)
+        editTranslations = updated
+    }
+
+    fun buildInput() = CreateChoreTemplateInput(
+        groupTitle = editGroupTitle,
+        title = editTitle,
+        description = editDescription,
+        difficulty = editDifficulty,
+        assignmentStrategy = editAssignmentStrategy,
+        recurrenceType = editRecurrenceType,
+        recurrenceIntervalDays = editRecurrenceIntervalDays.toIntOrNull(),
+        recurrenceWeekdays = editRecurrenceWeekdays,
+        requirePhotoProof = editRequirePhotoProof,
+        stickyFollowUpAssignee = editStickyFollowUpAssignee,
+        recurrenceStartStrategy = editRecurrenceStartStrategy,
+        defaultLocale = editDefaultLocale,
+        translations = editTranslations,
+        checklist = editChecklist,
+        variants = editVariants,
+        dependencyRules = editDependencyRules
+    )
+
+    val weekdayKeys = listOf("MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY", "SUNDAY")
+    val weekdayLabels = listOf("M", "T", "W", "T", "F", "S", "S")
+
+    Scaffold(
+        topBar = {
+            TopAppBar(
+                title = { Text(if (template == null) stringResource(R.string.mobile_template_editor_new) else template.title) },
+                navigationIcon = {
+                    IconButton(onClick = onBack) {
+                        Icon(Icons.AutoMirrored.Rounded.Logout, contentDescription = stringResource(R.string.mobile_back_label))
+                    }
+                },
+                actions = {
+                    if (template != null) {
+                        IconButton(onClick = onDelete) {
+                            Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                        }
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
+        LazyColumn(
+            modifier = Modifier.fillMaxSize().padding(innerPadding),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Locale tab row Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf("en", "de", "hu").forEach { locale ->
+                        val isSelected = editingLocale == locale
+                        if (isSelected) {
+                            Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(locale.uppercase()) }
+                        } else {
+                            OutlinedButton(onClick = { editingLocale = locale }, modifier = Modifier.weight(1f)) { Text(locale.uppercase()) }
+                        }
+                    }
+                }
+            }
+
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 1: Core fields Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        OutlinedTextField(
+                            value = getLocaleText("groupTitle"),
+                            onValueChange = { setLocaleText("groupTitle", it) },
+                            label = { Text(stringResource(R.string.mobile_template_field_group)) },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = getLocaleText("title"),
+                            onValueChange = { setLocaleText("title", it) },
+                            label = { Text(stringResource(R.string.mobile_template_field_title)) },
+                            modifier = Modifier.fillMaxWidth(), singleLine = true
+                        )
+                        OutlinedTextField(
+                            value = getLocaleText("description"),
+                            onValueChange = { setLocaleText("description", it) },
+                            label = { Text(stringResource(R.string.mobile_template_field_description)) },
+                            modifier = Modifier.fillMaxWidth(), maxLines = 4
+                        )
+                        // Difficulty dropdown
+                        ExposedDropdownMenuBox(expanded = difficultyExpanded, onExpandedChange = { difficultyExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editDifficulty) {
+                                    "easy" -> stringResource(R.string.mobile_template_difficulty_easy)
+                                    "hard" -> stringResource(R.string.mobile_template_difficulty_hard)
+                                    else -> stringResource(R.string.mobile_template_difficulty_medium)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_difficulty)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = difficultyExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = difficultyExpanded, onDismissRequest = { difficultyExpanded = false }) {
+                                listOf("easy" to R.string.mobile_template_difficulty_easy,
+                                    "medium" to R.string.mobile_template_difficulty_medium,
+                                    "hard" to R.string.mobile_template_difficulty_hard).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editDifficulty = key; difficultyExpanded = false })
+                                }
+                            }
+                        }
+                        // Assignment strategy dropdown
+                        ExposedDropdownMenuBox(expanded = strategyExpanded, onExpandedChange = { strategyExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editAssignmentStrategy) {
+                                    "least_completed_recently" -> stringResource(R.string.mobile_template_strategy_least_completed)
+                                    "highest_streak" -> stringResource(R.string.mobile_template_strategy_highest_streak)
+                                    else -> stringResource(R.string.mobile_template_strategy_round_robin)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_assignment)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = strategyExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
+                                listOf("round_robin" to R.string.mobile_template_strategy_round_robin,
+                                    "least_completed_recently" to R.string.mobile_template_strategy_least_completed,
+                                    "highest_streak" to R.string.mobile_template_strategy_highest_streak).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editAssignmentStrategy = key; strategyExpanded = false })
+                                }
+                            }
+                        }
+                        // Default locale dropdown
+                        ExposedDropdownMenuBox(expanded = defaultLocaleExpanded, onExpandedChange = { defaultLocaleExpanded = it }) {
+                            OutlinedTextField(
+                                value = editDefaultLocale.uppercase(),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_default_locale)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = defaultLocaleExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = defaultLocaleExpanded, onDismissRequest = { defaultLocaleExpanded = false }) {
+                                listOf("en", "de", "hu").forEach { locale ->
+                                    DropdownMenuItem(text = { Text(locale.uppercase()) }, onClick = { editDefaultLocale = locale; defaultLocaleExpanded = false })
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 2: Recurrence (collapsible) Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_recurrence),
+                    expanded = recurrenceExpanded,
+                    onToggle = { recurrenceExpanded = !recurrenceExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        ExposedDropdownMenuBox(expanded = recurrenceTypeExpanded, onExpandedChange = { recurrenceTypeExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editRecurrenceType) {
+                                    "daily" -> stringResource(R.string.mobile_template_recurrence_daily)
+                                    "weekly" -> stringResource(R.string.mobile_template_recurrence_weekly)
+                                    "every_x_days" -> stringResource(R.string.mobile_template_recurrence_every_x_days)
+                                    "custom_weekly" -> stringResource(R.string.mobile_template_recurrence_custom_weekly)
+                                    else -> stringResource(R.string.mobile_template_recurrence_none)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_recurrence_type)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceTypeExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = recurrenceTypeExpanded, onDismissRequest = { recurrenceTypeExpanded = false }) {
+                                listOf("none" to R.string.mobile_template_recurrence_none,
+                                    "daily" to R.string.mobile_template_recurrence_daily,
+                                    "weekly" to R.string.mobile_template_recurrence_weekly,
+                                    "every_x_days" to R.string.mobile_template_recurrence_every_x_days,
+                                    "custom_weekly" to R.string.mobile_template_recurrence_custom_weekly).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editRecurrenceType = key; recurrenceTypeExpanded = false })
+                                }
+                            }
+                        }
+                        if (editRecurrenceType == "every_x_days") {
+                            OutlinedTextField(
+                                value = editRecurrenceIntervalDays,
+                                onValueChange = { editRecurrenceIntervalDays = it },
+                                label = { Text(stringResource(R.string.mobile_template_field_recurrence_interval)) },
+                                modifier = Modifier.fillMaxWidth(),
+                                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                singleLine = true
+                            )
+                        }
+                        if (editRecurrenceType == "weekly" || editRecurrenceType == "custom_weekly") {
+                            Text(stringResource(R.string.mobile_template_field_recurrence_weekdays), style = MaterialTheme.typography.labelMedium)
+                            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                weekdayKeys.forEachIndexed { index, key ->
+                                    val selected = editRecurrenceWeekdays.contains(key)
+                                    FilterChip(
+                                        selected = selected,
+                                        onClick = {
+                                            editRecurrenceWeekdays = if (selected)
+                                                editRecurrenceWeekdays.filter { it != key }
+                                            else editRecurrenceWeekdays + key
+                                        },
+                                        label = { Text(weekdayLabels[index]) }
+                                    )
+                                }
+                            }
+                        }
+                        ExposedDropdownMenuBox(expanded = recurrenceStartExpanded, onExpandedChange = { recurrenceStartExpanded = it }) {
+                            OutlinedTextField(
+                                value = if (editRecurrenceStartStrategy == "completed_at")
+                                    stringResource(R.string.mobile_template_recurrence_start_completed_at)
+                                else stringResource(R.string.mobile_template_recurrence_start_due_at),
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_recurrence_start)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = recurrenceStartExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = recurrenceStartExpanded, onDismissRequest = { recurrenceStartExpanded = false }) {
+                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_recurrence_start_due_at)) }, onClick = { editRecurrenceStartStrategy = "due_at"; recurrenceStartExpanded = false })
+                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_recurrence_start_completed_at)) }, onClick = { editRecurrenceStartStrategy = "completed_at"; recurrenceStartExpanded = false })
+                            }
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.mobile_template_field_photo_proof), style = MaterialTheme.typography.bodyMedium)
+                            Switch(checked = editRequirePhotoProof, onCheckedChange = { editRequirePhotoProof = it })
+                        }
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween, verticalAlignment = Alignment.CenterVertically) {
+                            Text(stringResource(R.string.mobile_template_field_sticky_assignee), style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+                            Switch(checked = editStickyFollowUpAssignee, onCheckedChange = { editStickyFollowUpAssignee = it })
+                        }
+                    }
+                }
+            }
+
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 3: Checklist (collapsible) Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_checklist),
+                    expanded = checklistExpanded,
+                    onToggle = { checklistExpanded = !checklistExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editChecklist.forEachIndexed { index, item ->
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = item.title,
+                                    onValueChange = { newTitle ->
+                                        val updated = editChecklist.toMutableList()
+                                        updated[index] = item.copy(title = newTitle)
+                                        editChecklist = updated
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text(stringResource(R.string.mobile_template_checklist_item_label)) },
+                                    singleLine = true
+                                )
+                                Checkbox(
+                                    checked = item.required,
+                                    onCheckedChange = { checked ->
+                                        val updated = editChecklist.toMutableList()
+                                        updated[index] = item.copy(required = checked)
+                                        editChecklist = updated
+                                    }
+                                )
+                                IconButton(onClick = { editChecklist = editChecklist.filterIndexed { i, _ -> i != index } }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                        TextButton(onClick = { editChecklist = editChecklist + CreateTemplateChecklistItemInput("", false) }) {
+                            Text(stringResource(R.string.mobile_template_add_checklist_item))
+                        }
+                    }
+                }
+            }
+
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 4: Variants (collapsible, collapsed by default) Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_variants),
+                    expanded = variantsExpanded,
+                    onToggle = { variantsExpanded = !variantsExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editVariants.forEachIndexed { index, variant ->
+                            val localeLabel = if (editingLocale == "en") variant.label
+                            else variant.translations.firstOrNull { it.locale == editingLocale }?.label ?: ""
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedTextField(
+                                    value = localeLabel,
+                                    onValueChange = { newLabel ->
+                                        val updated = editVariants.toMutableList()
+                                        if (editingLocale == "en") {
+                                            updated[index] = variant.copy(label = newLabel)
+                                        } else {
+                                            val translations = variant.translations.toMutableList()
+                                            val tIdx = translations.indexOfFirst { it.locale == editingLocale }
+                                            if (tIdx >= 0) translations[tIdx] = translations[tIdx].copy(label = newLabel)
+                                            else translations.add(MobileVariantLabelTranslation(editingLocale, newLabel))
+                                            updated[index] = variant.copy(translations = translations)
+                                        }
+                                        editVariants = updated
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    label = { Text(stringResource(R.string.mobile_template_variant_label)) },
+                                    singleLine = true
+                                )
+                                IconButton(onClick = { editVariants = editVariants.filterIndexed { i, _ -> i != index } }) {
+                                    Icon(Icons.Rounded.Close, contentDescription = null, tint = MaterialTheme.colorScheme.error)
+                                }
+                            }
+                        }
+                        TextButton(onClick = { editVariants = editVariants + CreateTemplateVariantInput(label = "") }) {
+                            Text(stringResource(R.string.mobile_template_add_variant))
+                        }
+                    }
+                }
+            }
+
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 5: Follow-up dependencies (collapsible, collapsed by default) Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                TemplateEditorSection(
+                    title = stringResource(R.string.mobile_template_section_followups),
+                    expanded = followupsExpanded,
+                    onToggle = { followupsExpanded = !followupsExpanded }
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        editDependencyRules.forEachIndexed { index, rule ->
+                            var delayUnitExpanded by remember { mutableStateOf(false) }
+                            var followupTemplateExpanded by remember { mutableStateOf(false) }
+                            Card(shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
+                                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        Text(stringResource(R.string.mobile_template_followup_template), style = MaterialTheme.typography.labelMedium, modifier = Modifier.weight(1f))
+                                        IconButton(onClick = { editDependencyRules = editDependencyRules.filterIndexed { i, _ -> i != index } }) {
+                                            Icon(Icons.Rounded.Close, null, tint = MaterialTheme.colorScheme.error)
+                                        }
+                                    }
+                                    ExposedDropdownMenuBox(expanded = followupTemplateExpanded, onExpandedChange = { followupTemplateExpanded = it }) {
+                                        OutlinedTextField(
+                                            value = allTemplates.firstOrNull { it.id == rule.templateId }?.title ?: rule.templateId,
+                                            onValueChange = {},
+                                            readOnly = true,
+                                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = followupTemplateExpanded) },
+                                            modifier = Modifier.fillMaxWidth().menuAnchor(),
+                                            singleLine = true
+                                        )
+                                        ExposedDropdownMenu(expanded = followupTemplateExpanded, onDismissRequest = { followupTemplateExpanded = false }) {
+                                            allTemplates.filter { it.id != template?.id }.forEach { t ->
+                                                DropdownMenuItem(text = { Text(t.title) }, onClick = {
+                                                    val updated = editDependencyRules.toMutableList()
+                                                    updated[index] = rule.copy(templateId = t.id)
+                                                    editDependencyRules = updated
+                                                    followupTemplateExpanded = false
+                                                })
+                                            }
+                                        }
+                                    }
+                                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                        OutlinedTextField(
+                                            value = rule.delayValue.toString(),
+                                            onValueChange = { v ->
+                                                val updated = editDependencyRules.toMutableList()
+                                                updated[index] = rule.copy(delayValue = v.toIntOrNull() ?: 1)
+                                                editDependencyRules = updated
+                                            },
+                                            label = { Text(stringResource(R.string.mobile_template_followup_delay_value)) },
+                                            modifier = Modifier.weight(1f),
+                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                                            singleLine = true
+                                        )
+                                        ExposedDropdownMenuBox(expanded = delayUnitExpanded, onExpandedChange = { delayUnitExpanded = it }, modifier = Modifier.weight(1f)) {
+                                            OutlinedTextField(
+                                                value = if (rule.delayUnit == "hours") stringResource(R.string.mobile_template_delay_hours) else stringResource(R.string.mobile_template_delay_days),
+                                                onValueChange = {},
+                                                readOnly = true,
+                                                label = { Text(stringResource(R.string.mobile_template_followup_delay_unit)) },
+                                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = delayUnitExpanded) },
+                                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                                            )
+                                            ExposedDropdownMenu(expanded = delayUnitExpanded, onDismissRequest = { delayUnitExpanded = false }) {
+                                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_delay_hours)) }, onClick = {
+                                                    val updated = editDependencyRules.toMutableList(); updated[index] = rule.copy(delayUnit = "hours"); editDependencyRules = updated; delayUnitExpanded = false
+                                                })
+                                                DropdownMenuItem(text = { Text(stringResource(R.string.mobile_template_delay_days)) }, onClick = {
+                                                    val updated = editDependencyRules.toMutableList(); updated[index] = rule.copy(delayUnit = "days"); editDependencyRules = updated; delayUnitExpanded = false
+                                                })
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                        TextButton(onClick = {
+                            val firstOtherId = allTemplates.firstOrNull { it.id != template?.id }?.id ?: ""
+                            editDependencyRules = editDependencyRules + MobileTemplateDependencyRule(firstOtherId, 1, "days")
+                        }) {
+                            Text(stringResource(R.string.mobile_template_add_followup))
+                        }
+                    }
+                }
+            }
+
+            // Ã¢â€â‚¬Ã¢â€â‚¬ Save button Ã¢â€â‚¬Ã¢â€â‚¬
+            item {
+                Button(
+                    onClick = {
+                        if (editTitle.isNotBlank() && editGroupTitle.isNotBlank()) {
+                            onSave(buildInput())
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = editTitle.isNotBlank() && editGroupTitle.isNotBlank()
+                ) {
+                    Text(stringResource(R.string.mobile_template_save))
+                }
+                Spacer(Modifier.height(32.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun TemplateEditorSection(
+    title: String,
+    expanded: Boolean,
+    onToggle: () -> Unit,
+    content: @Composable () -> Unit
+) {
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { onToggle() },
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(title, style = MaterialTheme.typography.titleSmall)
+                Icon(
+                    imageVector = if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore,
+                    contentDescription = null
+                )
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column(modifier = Modifier.padding(top = 12.dp)) { content() }
+            }
+        }
+    }
+}
+
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+// REWARDS MANAGER
+// Ã¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢ÂÃ¢â€¢Â
+
+@Composable
+private fun RewardCategorySection(
+    category: String,
+    rewards: List<MobileReward>,
+    onEditReward: (MobileReward) -> Unit,
+    onToggleReward: (String) -> Unit
+) {
+    var expanded by remember { mutableStateOf(true) }
+    val catLabel = when (category.uppercase()) {
+        "SCREEN_TIME" -> stringResource(R.string.mobile_rewards_category_screen_time)
+        "ALLOWANCE"   -> stringResource(R.string.mobile_rewards_category_allowance)
+        "TREAT"       -> stringResource(R.string.mobile_rewards_category_treat)
+        "ACTIVITY"    -> stringResource(R.string.mobile_rewards_category_activity)
+        "PRIVILEGE"   -> stringResource(R.string.mobile_rewards_category_privilege)
+        else          -> stringResource(R.string.mobile_rewards_category_custom)
+    }
+    Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+        Column {
+            Row(
+                modifier = Modifier.fillMaxWidth().clickable { expanded = !expanded }.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(rewardCategoryEmoji(category), style = MaterialTheme.typography.titleMedium)
+                Text(catLabel, style = MaterialTheme.typography.titleSmall, modifier = Modifier.weight(1f))
+                Icon(if (expanded) Icons.Rounded.ExpandLess else Icons.Rounded.ExpandMore, contentDescription = null)
+            }
+            AnimatedVisibility(visible = expanded) {
+                Column {
+                    HorizontalDivider()
+                    rewards.forEach { reward ->
+                        Row(
+                            modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            Text(
+                                text = reward.icon ?: rewardCategoryEmoji(reward.category),
+                                style = MaterialTheme.typography.titleMedium
+                            )
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(reward.title, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.Bold)
+                                Text("${reward.pointCost} pts", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            }
+                            Switch(
+                                checked = reward.isEnabled,
+                                onCheckedChange = { onToggleReward(reward.id) },
+                                enabled = !reward.isOperatorManaged
+                            )
+                            IconButton(onClick = { onEditReward(reward) }) {
+                                Icon(Icons.Rounded.MoreVert, contentDescription = null)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun RewardsManagerScreen(
+    allRewards: List<MobileReward>,
+    pendingRedemptions: List<MobileRedemption>,
+    currentUserPoints: Int,
+    onCreateReward: (CreateRewardInput) -> Unit,
+    onUpdateReward: (String, UpdateRewardInput) -> Unit,
+    onDeleteReward: (String) -> Unit,
+    onToggleReward: (String) -> Unit,
+    onApproveRedemption: (String) -> Unit,
+    onRejectRedemption: (String, String?) -> Unit,
+    onRedeemReward: (String) -> Unit
+) {
+    var activeTab by rememberSaveable { mutableStateOf("shop") }
+    var selectedReward by remember { mutableStateOf<MobileReward?>(null) }
+    var showRewardEditor by rememberSaveable { mutableStateOf(false) }
+    var rejectRedemptionId by remember { mutableStateOf<String?>(null) }
+    var deleteConfirmReward by remember { mutableStateOf<MobileReward?>(null) }
+
+    val categoryOrder = listOf("SCREEN_TIME", "ALLOWANCE", "TREAT", "ACTIVITY", "PRIVILEGE", "CUSTOM")
+    val groupedRewards = remember(allRewards) { allRewards.groupBy { it.category.uppercase() } }
+    val sortedCategories = remember(groupedRewards) {
+        categoryOrder.filter { groupedRewards.containsKey(it) } +
+            groupedRewards.keys.filter { it !in categoryOrder }
+    }
+
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .verticalScroll(rememberScrollState())
+    ) {
+        SectionIntro(
+            title = stringResource(R.string.mobile_rewards_manager_title),
+            body = stringResource(R.string.mobile_rewards_manager_hint),
+            compact = true
+        )
+
+        // Tab row Ã¢â‚¬â€ Shop | Catalogue | Approvals
+        Row(
+            modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            if (activeTab == "shop") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                }
+            } else {
+                OutlinedButton(onClick = { activeTab = "shop" }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                }
+            }
+            if (activeTab == "catalogue") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
+                }
+            } else {
+                OutlinedButton(onClick = { activeTab = "catalogue" }, modifier = Modifier.weight(1f)) {
+                    Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
+                }
+            }
+            val approvalsText = if (pendingRedemptions.isNotEmpty())
+                "${stringResource(R.string.mobile_rewards_manager_approvals_tab)} (${pendingRedemptions.size})"
+            else stringResource(R.string.mobile_rewards_manager_approvals_tab)
+            if (activeTab == "approvals") {
+                Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+            } else {
+                OutlinedButton(onClick = { activeTab = "approvals" }, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+            }
+        }
+
+        if (activeTab == "shop") {
+            val shopRewards = remember(allRewards) {
+                allRewards.filter { it.isEnabled && (it.eligibility == "ALL" || it.eligibility == "ADULT_ONLY") }
+            }
+            Text(
+                text = stringResource(R.string.mobile_rewards_your_balance, currentUserPoints),
+                style = MaterialTheme.typography.titleSmall,
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
+            )
+            if (shopRewards.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_manager_shop_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    shopRewards.forEach { reward ->
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                            Row(
+                                modifier = Modifier.padding(14.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(10.dp)
+                            ) {
+                                if (!reward.icon.isNullOrBlank()) {
+                                    Text(reward.icon, style = MaterialTheme.typography.headlineSmall)
+                                }
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(reward.title, style = MaterialTheme.typography.titleSmall)
+                                    Text(
+                                        text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
+                                        style = MaterialTheme.typography.bodySmall,
+                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    )
+                                }
+                                Button(
+                                    onClick = { onRedeemReward(reward.id) },
+                                    enabled = currentUserPoints >= reward.pointCost
+                                ) {
+                                    Text(stringResource(R.string.mobile_rewards_redeem))
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        if (activeTab == "catalogue") {
+            OutlinedButton(
+                onClick = { selectedReward = null; showRewardEditor = true },
+                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 4.dp)
+            ) { Text(stringResource(R.string.mobile_rewards_add_custom)) }
+
+            if (allRewards.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_catalogue_empty),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    sortedCategories.forEach { category ->
+                        val rewards = groupedRewards[category] ?: return@forEach
+                        RewardCategorySection(
+                            category = category,
+                            rewards = rewards,
+                            onEditReward = { reward -> selectedReward = reward; showRewardEditor = true },
+                            onToggleReward = onToggleReward
+                        )
+                    }
+                }
+            }
+        } else {
+            // Approvals tab
+            if (pendingRedemptions.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.mobile_rewards_no_pending),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(24.dp)
+                )
+            } else {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    pendingRedemptions.forEach { redemption ->
+                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Text(redemption.rewardTitle, style = MaterialTheme.typography.titleMedium)
+                                Text(
+                                    text = "${redemption.requestedByName} Ã‚Â· ${redemption.pointsDeducted} pts",
+                                    style = MaterialTheme.typography.bodySmall,
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                )
+                                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Button(
+                                        onClick = { onApproveRedemption(redemption.id) },
+                                        modifier = Modifier.weight(1f)
+                                    ) { Text(stringResource(R.string.mobile_rewards_approve)) }
+                                    OutlinedButton(
+                                        onClick = { rejectRedemptionId = redemption.id },
+                                        modifier = Modifier.weight(1f),
+                                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                                    ) { Text(stringResource(R.string.mobile_rewards_reject)) }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Reward editor sheet
+    if (showRewardEditor) {
+        RewardEditorSheet(
+            reward = selectedReward,
+            onSave = { input ->
+                val id = selectedReward?.id
+                if (id != null) {
+                    onUpdateReward(id, UpdateRewardInput(
+                        title = input.title,
+                        description = input.description,
+                        category = input.category,
+                        icon = input.icon,
+                        pointCost = input.pointCost,
+                        maxRedemptionsPerChild = input.maxRedemptionsPerChild,
+                        cooldownDays = input.cooldownDays,
+                        eligibility = input.eligibility
+                    ))
+                } else {
+                    onCreateReward(input)
+                }
+                showRewardEditor = false
+            },
+            onDelete = { deleteConfirmReward = selectedReward; showRewardEditor = false },
+            onDismiss = { showRewardEditor = false }
+        )
+    }
+
+    // Reject dialog
+    rejectRedemptionId?.let { rid ->
+        RejectRedemptionDialog(
+            onConfirm = { note -> onRejectRedemption(rid, note.ifBlank { null }); rejectRedemptionId = null },
+            onDismiss = { rejectRedemptionId = null }
+        )
+    }
+
+    // Delete reward confirmation
+    deleteConfirmReward?.let { reward ->
+        AlertDialog(
+            onDismissRequest = { deleteConfirmReward = null },
+            title = { Text(reward.title) },
+            text = { Text(stringResource(R.string.mobile_rewards_delete_confirm)) },
+            confirmButton = {
+                Button(
+                    onClick = { onDeleteReward(reward.id); deleteConfirmReward = null },
+                    colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+                ) { Text(stringResource(R.string.mobile_rewards_delete)) }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = { deleteConfirmReward = null }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+}
+
+@Composable
+private fun RewardEditorSheet(
+    reward: MobileReward?,
+    onSave: (CreateRewardInput) -> Unit,
+    onDelete: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    var editTitle by rememberSaveable { mutableStateOf(reward?.title ?: "") }
+    var editDescription by rememberSaveable { mutableStateOf(reward?.description ?: "") }
+    var editCategory by rememberSaveable { mutableStateOf(reward?.category?.uppercase() ?: "CUSTOM") }
+    var editIcon by rememberSaveable { mutableStateOf(reward?.icon ?: "") }
+    var editPointCost by rememberSaveable { mutableStateOf(reward?.pointCost?.toString() ?: "") }
+    var editEligibility by rememberSaveable { mutableStateOf(reward?.eligibility ?: "ALL") }
+    var editMaxPerChild by rememberSaveable { mutableStateOf(reward?.maxRedemptionsPerChild?.toString() ?: "") }
+    var editCooldownDays by rememberSaveable { mutableStateOf(reward?.cooldownDays?.toString() ?: "") }
+    var categoryExpanded by remember { mutableStateOf(false) }
+    val isOperatorManaged = reward?.isOperatorManaged == true
+
+    ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Text(
+                text = if (reward == null) stringResource(R.string.mobile_rewards_new_title)
+                       else stringResource(R.string.mobile_rewards_edit_title),
+                style = MaterialTheme.typography.titleMedium
+            )
+
+            if (isOperatorManaged) {
+                Surface(
+                    modifier = Modifier.fillMaxWidth(),
+                    color = MaterialTheme.colorScheme.secondaryContainer,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Text(
+                        text = stringResource(R.string.mobile_rewards_operator_managed),
+                        style = MaterialTheme.typography.bodySmall,
+                        modifier = Modifier.padding(12.dp)
+                    )
+                }
+            }
+
+            OutlinedTextField(
+                value = editTitle,
+                onValueChange = { if (!isOperatorManaged) editTitle = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_title)) },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                enabled = !isOperatorManaged
+            )
+            OutlinedTextField(
+                value = editDescription,
+                onValueChange = { if (!isOperatorManaged) editDescription = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_description)) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3,
+                enabled = !isOperatorManaged
+            )
+
+            // Category dropdown
+            ExposedDropdownMenuBox(
+                expanded = categoryExpanded,
+                onExpandedChange = { if (!isOperatorManaged) categoryExpanded = it }
+            ) {
+                val catLabel = when (editCategory.uppercase()) {
+                    "SCREEN_TIME" -> stringResource(R.string.mobile_rewards_category_screen_time)
+                    "ALLOWANCE"   -> stringResource(R.string.mobile_rewards_category_allowance)
+                    "TREAT"       -> stringResource(R.string.mobile_rewards_category_treat)
+                    "ACTIVITY"    -> stringResource(R.string.mobile_rewards_category_activity)
+                    "PRIVILEGE"   -> stringResource(R.string.mobile_rewards_category_privilege)
+                    else          -> stringResource(R.string.mobile_rewards_category_custom)
+                }
+                OutlinedTextField(
+                    value = catLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.mobile_rewards_field_category)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = categoryExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    enabled = !isOperatorManaged
+                )
+                ExposedDropdownMenu(expanded = categoryExpanded, onDismissRequest = { categoryExpanded = false }) {
+                    listOf(
+                        "SCREEN_TIME" to R.string.mobile_rewards_category_screen_time,
+                        "ALLOWANCE"   to R.string.mobile_rewards_category_allowance,
+                        "TREAT"       to R.string.mobile_rewards_category_treat,
+                        "ACTIVITY"    to R.string.mobile_rewards_category_activity,
+                        "PRIVILEGE"   to R.string.mobile_rewards_category_privilege,
+                        "CUSTOM"      to R.string.mobile_rewards_category_custom
+                    ).forEach { (cat, labelRes) ->
+                        DropdownMenuItem(
+                            text = { Text(stringResource(labelRes)) },
+                            onClick = { editCategory = cat; categoryExpanded = false }
+                        )
+                    }
+                }
+            }
+
+            // Icon emoji selector
+            if (!isOperatorManaged) {
+                val iconOptions = listOf(
+                    "Ã°Å¸â€œÂ±", "Ã°Å¸â€™Â°", "Ã°Å¸ÂÂ«", "Ã°Å¸Ââ€¢", "Ã°Å¸ÂÂ¦", "Ã°Å¸ÂÂ¬", "Ã°Å¸Å½Â®", "Ã°Å¸Å½Â¬",
+                    "Ã°Å¸ÂÆ’", "Ã°Å¸Å½Â¨", "Ã°Å¸â€œÅ¡", "Ã¢Â­Â", "Ã°Å¸Å’Å¸", "Ã°Å¸â€˜â€˜", "Ã°Å¸Ââ€ ", "Ã°Å¸Å½Â", "Ã°Å¸Å½â€°", "Ã°Å¸Å¡â‚¬"
+                )
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        stringResource(R.string.mobile_rewards_field_icon),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .horizontalScroll(rememberScrollState()),
+                        horizontalArrangement = Arrangement.spacedBy(6.dp)
+                    ) {
+                        // "None" chip
+                        FilterChip(
+                            selected = editIcon.isBlank(),
+                            onClick = { editIcon = "" },
+                            label = { Text(stringResource(R.string.mobile_rewards_icon_none)) }
+                        )
+                        iconOptions.forEach { emoji ->
+                            FilterChip(
+                                selected = editIcon == emoji,
+                                onClick = { editIcon = emoji },
+                                label = { Text(emoji, style = MaterialTheme.typography.titleMedium) }
+                            )
+                        }
+                    }
+                }
+            }
+            OutlinedTextField(
+                value = editPointCost,
+                onValueChange = { if (!isOperatorManaged) editPointCost = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_cost)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true,
+                enabled = !isOperatorManaged
+            )
+
+            // Eligibility segmented buttons
+            Text(stringResource(R.string.mobile_rewards_field_eligibility), style = MaterialTheme.typography.labelMedium)
+            Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                listOf(
+                    "ALL"        to R.string.mobile_rewards_eligibility_all,
+                    "CHILD_ONLY" to R.string.mobile_rewards_eligibility_child,
+                    "ADULT_ONLY" to R.string.mobile_rewards_eligibility_adult
+                ).forEach { (key, labelRes) ->
+                    if (editEligibility == key) {
+                        Button(onClick = {}, modifier = Modifier.weight(1f), enabled = !isOperatorManaged) {
+                            Text(stringResource(labelRes), maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                        }
+                    } else {
+                        OutlinedButton(
+                            onClick = { if (!isOperatorManaged) editEligibility = key },
+                            modifier = Modifier.weight(1f),
+                            enabled = !isOperatorManaged
+                        ) {
+                            Text(stringResource(labelRes), maxLines = 1, style = MaterialTheme.typography.labelSmall)
+                        }
+                    }
+                }
+            }
+
+            OutlinedTextField(
+                value = editMaxPerChild,
+                onValueChange = { editMaxPerChild = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_max_per_child)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+            OutlinedTextField(
+                value = editCooldownDays,
+                onValueChange = { editCooldownDays = it },
+                label = { Text(stringResource(R.string.mobile_rewards_field_cooldown)) },
+                modifier = Modifier.fillMaxWidth(),
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                singleLine = true
+            )
+
+            if (!isOperatorManaged) {
+                Button(
+                    onClick = {
+                        if (editTitle.isNotBlank()) {
+                            onSave(CreateRewardInput(
+                                title = editTitle,
+                                description = editDescription.ifBlank { null },
+                                category = editCategory,
+                                icon = editIcon.ifBlank { null },
+                                pointCost = editPointCost.toIntOrNull() ?: 0,
+                                maxRedemptionsPerChild = editMaxPerChild.toIntOrNull(),
+                                cooldownDays = editCooldownDays.toIntOrNull(),
+                                isEnabled = reward?.isEnabled ?: true,
+                                eligibility = editEligibility
+                            ))
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    enabled = editTitle.isNotBlank()
+                ) { Text(stringResource(R.string.mobile_rewards_save)) }
+
+                if (reward != null) {
+                    OutlinedButton(
+                        onClick = onDelete,
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error)
+                    ) { Text(stringResource(R.string.mobile_rewards_delete)) }
+                }
+            }
+
+            Spacer(Modifier.height(16.dp))
+        }
+    }
+}
+
+@Composable
+private fun RejectRedemptionDialog(
+    onConfirm: (String) -> Unit,
+    onDismiss: () -> Unit
+) {
+    var note by rememberSaveable { mutableStateOf("") }
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text(stringResource(R.string.mobile_rewards_reject_title)) },
+        text = {
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it },
+                label = { Text(stringResource(R.string.mobile_rewards_reject_note_hint)) },
+                modifier = Modifier.fillMaxWidth(),
+                maxLines = 3
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(note) },
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.error)
+            ) { Text(stringResource(R.string.mobile_rewards_reject_confirm)) }
+        },
+        dismissButton = {
+            OutlinedButton(onClick = onDismiss) { Text(stringResource(R.string.mobile_common_cancel)) }
+        }
+    )
+}
+
+@Composable
+private fun MoreMenuSheet(
+    isCreatorRole: Boolean,
+    canManageTemplates: Boolean,
+    onNavigateSettings: () -> Unit,
+    onNavigateTemplates: () -> Unit,
+    onNavigateRewardsManager: () -> Unit
+) {
+    Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 24.dp)) {
+        Text(
+            text = stringResource(R.string.mobile_tab_more),
+            style = MaterialTheme.typography.titleMedium,
+            modifier = Modifier.padding(horizontal = 4.dp, vertical = 8.dp)
+        )
+        Spacer(modifier = Modifier.height(4.dp))
+        MoreMenuSheetItem(
+            icon = Icons.Rounded.Tune,
+            label = stringResource(R.string.mobile_tab_settings),
+            onClick = onNavigateSettings
+        )
+        if (isCreatorRole && canManageTemplates) {
+            Spacer(modifier = Modifier.height(8.dp))
+            MoreMenuSheetItem(
+                icon = Icons.Rounded.AssignmentTurnedIn,
+                label = stringResource(R.string.mobile_more_templates),
+                onClick = onNavigateTemplates
+            )
+        }
+        if (isCreatorRole) {
+            Spacer(modifier = Modifier.height(8.dp))
+            MoreMenuSheetItem(
+                icon = Icons.Rounded.EmojiEvents,
+                label = stringResource(R.string.mobile_more_rewards_manager),
+                onClick = onNavigateRewardsManager
+            )
+        }
+        Spacer(modifier = Modifier.height(16.dp))
+    }
+}
+
+@Composable
+private fun MoreMenuSheetItem(
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    label: String,
+    onClick: () -> Unit
+) {
+    Card(
+        onClick = onClick,
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 16.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Icon(
+                imageVector = icon,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(26.dp)
+            )
+            Text(
+                text = label,
+                style = MaterialTheme.typography.titleMedium,
+                modifier = Modifier.weight(1f)
+            )
+            Icon(
+                imageVector = Icons.Rounded.ChevronRight,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
