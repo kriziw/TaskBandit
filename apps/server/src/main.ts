@@ -7,6 +7,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { AppModule } from "./app.module";
 import { AppConfigService } from "./common/config/app-config.service";
+import { HttpExceptionFilter } from "./common/errors/http-exception.filter";
 import { rewriteHostedApiPath } from "./common/http/path-routing.util";
 import { AppLogService } from "./common/logging/app-log.service";
 
@@ -30,6 +31,7 @@ async function bootstrap() {
     app.enableCors();
   }
   app.enableShutdownHooks();
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
