@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.1.3](https://github.com/kriziw/TaskBandit/compare/v1.1.2...v1.1.3) (2026-05-28)
+
+
+### Bug Fixes
+
+* **android:** decode garbled multi-encoded chars in comments, constants, and German locale ([#540](https://github.com/kriziw/TaskBandit/issues/540)) ([43aa0c2](https://github.com/kriziw/TaskBandit/commit/43aa0c28ad6476f11d5fe5241eca33b67a16c53c))
+* **android:** replace triple-encoded UTF-8 characters across chore and rewards screens ([#538](https://github.com/kriziw/TaskBandit/issues/538)) ([d33dce0](https://github.com/kriziw/TaskBandit/commit/d33dce03eadd753d592dffbd63fe77538d28b267))
+
 ## [1.1.2](https://github.com/kriziw/TaskBandit/compare/v1.1.1...v1.1.2) (2026-05-28)
 
 
