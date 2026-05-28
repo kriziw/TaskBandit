@@ -754,3 +754,26 @@ export type WebPushPublicKeyResponse = {
   platform: "web_push";
   householdId: string;
 };
+
+export type DashboardPayload = {
+  currentUser: AuthenticatedUser;
+  dashboard: DashboardSummary;
+  household: Household;
+  auditLog: AuditLogEntry[];
+  notifications: NotificationEntry[];
+  notificationDevices: NotificationDevice[];
+  householdNotificationHealth: HouseholdNotificationHealthEntry[];
+  notificationRecovery: NotificationRecovery | null;
+  systemStatus: AdminSystemStatus | null;
+  backupReadiness: BackupReadiness | null;
+  notificationPreferences: NotificationPreferences;
+  pointsLedger: PointsLedgerEntry[];
+  templates: ChoreTemplate[];
+  instances: ChoreInstance[];
+  takeoverRequests: TakeoverRequestEntry[];
+  hostedSubscription: HostedSubscriptionOverview;
+  compatibility: ServerCompatibility;
+  achievements: Achievement[];
+  rewards: Reward[];
+  redemptions: RewardRedemption[];
+};
