@@ -352,10 +352,10 @@ internal fun TemplateEditorScreen(
     onDelete: () -> Unit,
     onBack: () -> Unit
 ) {
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Locale tab state Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Locale tab state ──
     var editingLocale by rememberSaveable { mutableStateOf("en") }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Core fields Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Core fields ──
     var editGroupTitle by rememberSaveable { mutableStateOf(template?.groupTitle ?: "") }
     var editTitle by rememberSaveable { mutableStateOf(template?.title ?: "") }
     var editDescription by rememberSaveable { mutableStateOf(template?.description ?: "") }
@@ -369,36 +369,36 @@ internal fun TemplateEditorScreen(
     var editStickyFollowUpAssignee by rememberSaveable { mutableStateOf(template?.stickyFollowUpAssignee ?: false) }
     var editRecurrenceStartStrategy by rememberSaveable { mutableStateOf(template?.recurrenceStartStrategy ?: "due_at") }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Translations Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Translations ──
     var editTranslations by remember { mutableStateOf(template?.translations ?: emptyList()) }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Checklist Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Checklist ──
     var editChecklist by remember { mutableStateOf(
         template?.checklist?.map { CreateTemplateChecklistItemInput(it.title, it.required) } ?: emptyList()
     ) }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Variants Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Variants ──
     var editVariants by remember { mutableStateOf(
         template?.variants?.map { CreateTemplateVariantInput(it.id, it.label, it.translations) } ?: emptyList()
     ) }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Dependency rules Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Dependency rules ──
     var editDependencyRules by remember { mutableStateOf(template?.dependencyRules ?: emptyList()) }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Section expansion state Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Section expansion state ──
     var recurrenceExpanded by rememberSaveable { mutableStateOf(false) }
     var checklistExpanded by rememberSaveable { mutableStateOf(false) }
     var variantsExpanded by rememberSaveable { mutableStateOf(false) }
     var followupsExpanded by rememberSaveable { mutableStateOf(false) }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Dropdown expansion state Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Dropdown expansion state ──
     var difficultyExpanded by remember { mutableStateOf(false) }
     var strategyExpanded by remember { mutableStateOf(false) }
     var defaultLocaleExpanded by remember { mutableStateOf(false) }
     var recurrenceTypeExpanded by remember { mutableStateOf(false) }
     var recurrenceStartExpanded by remember { mutableStateOf(false) }
 
-    // Ã¢â€â‚¬Ã¢â€â‚¬ Locale helpers Ã¢â€â‚¬Ã¢â€â‚¬
+    // ── Locale helpers ──
     fun getLocaleText(field: String): String {
         if (editingLocale == "en") return when (field) {
             "groupTitle" -> editGroupTitle; "title" -> editTitle; else -> editDescription
@@ -471,7 +471,7 @@ internal fun TemplateEditorScreen(
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Locale tab row Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Locale tab row ──
             item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("en", "de", "hu").forEach { locale ->
@@ -485,7 +485,7 @@ internal fun TemplateEditorScreen(
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 1: Core fields Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Section 1: Core fields ──
             item {
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -571,7 +571,7 @@ internal fun TemplateEditorScreen(
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 2: Recurrence (collapsible) Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Section 2: Recurrence (collapsible) ──
             item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_recurrence),
@@ -659,7 +659,7 @@ internal fun TemplateEditorScreen(
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 3: Checklist (collapsible) Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Section 3: Checklist (collapsible) ──
             item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_checklist),
@@ -700,7 +700,7 @@ internal fun TemplateEditorScreen(
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 4: Variants (collapsible, collapsed by default) Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Section 4: Variants (collapsible, collapsed by default) ──
             item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_variants),
@@ -743,7 +743,7 @@ internal fun TemplateEditorScreen(
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Section 5: Follow-up dependencies (collapsible, collapsed by default) Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Section 5: Follow-up dependencies (collapsible, collapsed by default) ──
             item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_followups),
@@ -827,7 +827,7 @@ internal fun TemplateEditorScreen(
                 }
             }
 
-            // Ã¢â€â‚¬Ã¢â€â‚¬ Save button Ã¢â€â‚¬Ã¢â€â‚¬
+            // ── Save button ──
             item {
                 Button(
                     onClick = {
