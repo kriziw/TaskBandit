@@ -487,6 +487,10 @@
     <string name="mobile_rewards_field_eligibility">Berechtigung</string>
     <string name="mobile_rewards_field_max_per_child">Max. Einl�sungen pro Kind (0 = unbegrenzt)</string>
     <string name="mobile_rewards_field_cooldown">Wartezeit (Tage)</string>
+    <string name="mobile_rewards_field_workflow_type">Workflow-Typ</string>
+    <string name="mobile_rewards_workflow_standard">Standard</string>
+    <string name="mobile_rewards_workflow_daily_exclusive">Täglich exklusiv — eine Einlösung pro Tag</string>
+    <string name="mobile_rewards_claimed_today_by">Heute eingelöst von %1$s</string>
     <string name="mobile_rewards_operator_managed">Diese Belohnung wird vom Betreiber verwaltet und kann nicht bearbeitet werden.</string>
     <string name="mobile_rewards_delete_confirm">Diese Belohnung l�schen? Dies kann nicht r�ckg�ngig gemacht werden.</string>
     <string name="mobile_rewards_delete">Belohnung l�schen</string>

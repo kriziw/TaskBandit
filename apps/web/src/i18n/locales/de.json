@@ -874,6 +874,7 @@
   "rewards.pending": "Ausstehend…",
   "rewards.on_cooldown": "In Abklingzeit",
   "rewards.limit_reached": "Limit erreicht",
+  "rewards.claimed_today_by": "Heute eingelöst von {{name}}",
   "rewards.history.empty": "Du hast noch keine Belohnungen eingelöst.",
 
   "rewards.confirm_dialog.title": "Einlösung bestätigen",
@@ -905,6 +906,9 @@
   "reward.field.point_cost": "Punktekosten",
   "reward.field.max_redemptions": "Max. Einlösungen pro Kind",
   "reward.field.cooldown_days": "Abklingzeit (Tage)",
+  "reward.field.workflow_type": "Workflow-Typ",
+  "reward.workflow_type.standard": "Standard",
+  "reward.workflow_type.daily_exclusive": "Täglich exklusiv — nur eine Person kann pro Tag einlösen",
   "reward.unlimited": "Unbegrenzt",
   "reward.no_cooldown": "Keine Abklingzeit",
 

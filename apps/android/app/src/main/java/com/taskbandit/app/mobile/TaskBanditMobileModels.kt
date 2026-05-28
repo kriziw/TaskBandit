@@ -354,6 +354,11 @@ data class CreateChoreTemplateInput(
     val dependencyRules: List<MobileTemplateDependencyRule> = emptyList()
 )
 
+data class MobileClaimedTodayBy(
+    val userId: String,
+    val displayName: String
+)
+
 data class CreateRewardInput(
     val title: String,
     val description: String?,
@@ -363,7 +368,8 @@ data class CreateRewardInput(
     val maxRedemptionsPerChild: Int?,
     val cooldownDays: Int?,
     val isEnabled: Boolean,
-    val eligibility: String = "ALL"
+    val eligibility: String = "ALL",
+    val workflowType: String = "STANDARD"
 )
 
 data class UpdateRewardInput(
@@ -374,7 +380,8 @@ data class UpdateRewardInput(
     val pointCost: Int,
     val maxRedemptionsPerChild: Int?,
     val cooldownDays: Int?,
-    val eligibility: String = "ALL"
+    val eligibility: String = "ALL",
+    val workflowType: String = "STANDARD"
 )
 
 data class MobileAchievement(
@@ -431,7 +438,9 @@ data class MobileReward(
     val pointCost: Int,
     val maxRedemptionsPerChild: Int?,
     val cooldownDays: Int?,
-    val eligibility: String = "ALL"
+    val eligibility: String = "ALL",
+    val workflowType: String = "STANDARD",
+    val claimedTodayBy: MobileClaimedTodayBy? = null
 )
 
 data class MobileRedemption(

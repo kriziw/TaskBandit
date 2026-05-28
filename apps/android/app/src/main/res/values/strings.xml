@@ -590,6 +590,10 @@
     <string name="mobile_rewards_field_eligibility">Eligibility</string>
     <string name="mobile_rewards_field_max_per_child">Max redemptions per child (0 = unlimited)</string>
     <string name="mobile_rewards_field_cooldown">Cooldown (days)</string>
+    <string name="mobile_rewards_field_workflow_type">Workflow type</string>
+    <string name="mobile_rewards_workflow_standard">Standard</string>
+    <string name="mobile_rewards_workflow_daily_exclusive">Daily exclusive — one claim per day</string>
+    <string name="mobile_rewards_claimed_today_by">Claimed today by %1$s</string>
     <string name="mobile_rewards_operator_managed">This reward is managed by the operator and cannot be edited.</string>
     <string name="mobile_rewards_delete_confirm">Delete this reward? This cannot be undone.</string>
     <string name="mobile_rewards_delete">Delete Reward</string>

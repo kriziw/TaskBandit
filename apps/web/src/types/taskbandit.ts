@@ -304,6 +304,7 @@ export type RewardCategory =
   | 'CUSTOM';
 export type RewardRedemptionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type RewardEligibility = 'CHILD_ONLY' | 'ALL' | 'ADULT_ONLY';
+export type RewardWorkflowType = 'STANDARD' | 'DAILY_EXCLUSIVE';
 
 export type Reward = {
   id: string;
@@ -318,6 +319,8 @@ export type Reward = {
   pointCost: number;
   maxRedemptionsPerChild: number | null;
   cooldownDays: number | null;
+  workflowType: RewardWorkflowType;
+  claimedTodayBy: { userId: string; displayName: string } | null;
 };
 
 export type RewardRedemption = {

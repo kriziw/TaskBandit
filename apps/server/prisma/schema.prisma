@@ -95,6 +95,7 @@ enum NotificationType {
   REWARD_REDEMPTION_REQUESTED
   REWARD_REDEMPTION_APPROVED
   REWARD_REDEMPTION_REJECTED
+  REWARD_CLAIMED_EXCLUSIVE
 }
 
 enum NotificationDevicePlatform {
@@ -148,6 +149,11 @@ enum RewardRedemptionStatus {
   APPROVED
   REJECTED
   CANCELLED
+}
+
+enum RewardWorkflowType {
+  STANDARD
+  DAILY_EXCLUSIVE
 }
 
 model Tenant {
@@ -607,6 +613,7 @@ model Reward {
   pointCost              Int
   maxRedemptionsPerChild Int?
   cooldownDays           Int?
+  workflowType           RewardWorkflowType @default(STANDARD)
   createdAtUtc           DateTime       @default(now())
   household              Household      @relation(fields: [householdId], references: [id], onDelete: Cascade)
   redemptions            RewardRedemption[]

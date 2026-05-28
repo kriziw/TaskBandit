@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { RewardCategory, RewardEligibility } from '../types/taskbandit';
+import type { RewardCategory, RewardEligibility, RewardWorkflowType } from '../types/taskbandit';
 
 export type RewardFormState = {
   title: string;
@@ -9,6 +9,7 @@ export type RewardFormState = {
   pointCost: number;
   maxRedemptionsPerChild: string;
   cooldownDays: string;
+  workflowType: RewardWorkflowType;
 };
 
 const defaultRewardForm = (): RewardFormState => ({
@@ -19,6 +20,7 @@ const defaultRewardForm = (): RewardFormState => ({
   pointCost: 50,
   maxRedemptionsPerChild: '',
   cooldownDays: '',
+  workflowType: 'STANDARD',
 });
 
 interface RewardStore {

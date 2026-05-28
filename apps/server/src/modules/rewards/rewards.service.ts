@@ -4,7 +4,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { NotificationType, RewardRedemptionStatus } from '@prisma/client';
+import { NotificationType, RewardRedemptionStatus, RewardWorkflowType } from '@prisma/client';
 import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
 import { SupportedLanguage } from '../../common/i18n/supported-languages';
 import { RewardsRepository } from './rewards.repository';
@@ -113,6 +113,20 @@ export class RewardsService {
       }
     }
 
+    // Check household-wide daily lock for exclusive rewards
+    if (reward.workflowType === RewardWorkflowType.DAILY_EXCLUSIVE) {
+      const existingClaim = await this.repository.getHouseholdRedemptionToday(
+        rewardId,
+        user.householdId,
+      );
+      if (existingClaim) {
+        throw new BadRequestException({
+          code: 'reward_claimed_today',
+          message: `This reward has already been claimed today by ${existingClaim.requestedBy.displayName}.`,
+        });
+      }
+    }
+
     const household = await this.repository.getHouseholdByTenantId(
       await this.repository.getTenantIdForHousehold(user.householdId),
     );
@@ -134,6 +148,17 @@ export class RewardsService {
         NotificationType.REWARD_REDEMPTION_REQUESTED,
         'Reward redemption requested',
         `${user.displayName} wants to redeem "${reward.title}" for ${reward.pointCost} points.`,
+        redemption.id,
+      );
+    }
+
+    if (autoApprove && reward.workflowType === RewardWorkflowType.DAILY_EXCLUSIVE) {
+      await this.repository.notifyHouseholdExcept(
+        user.householdId,
+        user.id,
+        NotificationType.REWARD_CLAIMED_EXCLUSIVE,
+        'Reward claimed!',
+        `${user.displayName} claimed "${reward.title}" for today.`,
         redemption.id,
       );
     }
@@ -202,6 +227,17 @@ export class RewardsService {
       notifMessage,
       redemptionId,
     );
+
+    if (dto.approved && redemption.reward.workflowType === RewardWorkflowType.DAILY_EXCLUSIVE) {
+      await this.repository.notifyHouseholdExcept(
+        user.householdId,
+        redemption.requestedById,
+        NotificationType.REWARD_CLAIMED_EXCLUSIVE,
+        'Reward claimed!',
+        `${redemption.requestedBy.displayName} claimed "${redemption.reward.title}" for today.`,
+        redemptionId,
+      );
+    }
 
     return resolved;
   }

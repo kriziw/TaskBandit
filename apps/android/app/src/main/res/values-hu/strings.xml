@@ -487,6 +487,10 @@
     <string name="mobile_rewards_field_eligibility">Jogosultság</string>
     <string name="mobile_rewards_field_max_per_child">Max. beváltás gyermekenként (0 = korlátlan)</string>
     <string name="mobile_rewards_field_cooldown">Várakozási idő (napok)</string>
+    <string name="mobile_rewards_field_workflow_type">Munkafolyamat típusa</string>
+    <string name="mobile_rewards_workflow_standard">Normál</string>
+    <string name="mobile_rewards_workflow_daily_exclusive">Napi exkluzív — naponta egy beváltás</string>
+    <string name="mobile_rewards_claimed_today_by">Ma %1$s váltotta be</string>
     <string name="mobile_rewards_operator_managed">Ezt a jutalmat az üzemeltető kezeli, nem szerkeszthető.</string>
     <string name="mobile_rewards_delete_confirm">Törli ezt a jutalmat? Ez nem vonható vissza.</string>
     <string name="mobile_rewards_delete">Jutalom törlése</string>

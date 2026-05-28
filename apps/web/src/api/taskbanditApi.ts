@@ -30,6 +30,8 @@ import type {
   PointsLedgerEntry,
   Reward,
   RewardCategory,
+  RewardEligibility,
+  RewardWorkflowType,
   RewardRedemption,
   RuntimeLogEntry,
   SignupInput,
@@ -856,9 +858,11 @@ export const taskBanditApi = {
       title: string;
       description?: string;
       category: RewardCategory;
+      eligibility?: RewardEligibility;
       pointCost: number;
       maxRedemptionsPerChild?: number;
       cooldownDays?: number;
+      workflowType?: RewardWorkflowType;
     },
   ) {
     return request<Reward>('/api/rewards', { method: 'POST', token, language, body: payload });
@@ -871,9 +875,11 @@ export const taskBanditApi = {
       title?: string;
       description?: string;
       category?: RewardCategory;
+      eligibility?: RewardEligibility;
       pointCost?: number;
       maxRedemptionsPerChild?: number | null;
       cooldownDays?: number | null;
+      workflowType?: RewardWorkflowType;
     },
   ) {
     return request<Reward>(`/api/rewards/${rewardId}`, {

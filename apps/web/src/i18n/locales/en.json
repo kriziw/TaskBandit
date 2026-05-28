@@ -874,6 +874,7 @@
   "rewards.pending": "Pending…",
   "rewards.on_cooldown": "On cooldown",
   "rewards.limit_reached": "Limit reached",
+  "rewards.claimed_today_by": "Claimed today by {{name}}",
   "rewards.history.empty": "You haven't redeemed any rewards yet.",
 
   "rewards.confirm_dialog.title": "Confirm Redemption",
@@ -905,6 +906,9 @@
   "reward.field.point_cost": "Point cost",
   "reward.field.max_redemptions": "Max redemptions per child",
   "reward.field.cooldown_days": "Cooldown (days)",
+  "reward.field.workflow_type": "Workflow type",
+  "reward.workflow_type.standard": "Standard",
+  "reward.workflow_type.daily_exclusive": "Daily exclusive — only one person can claim per day",
   "reward.unlimited": "Unlimited",
   "reward.no_cooldown": "No cooldown",
 

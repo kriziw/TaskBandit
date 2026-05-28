@@ -1956,6 +1956,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       maxRedemptionsPerChild:
         reward.maxRedemptionsPerChild != null ? String(reward.maxRedemptionsPerChild) : '',
       cooldownDays: reward.cooldownDays != null ? String(reward.cooldownDays) : '',
+      workflowType: reward.workflowType ?? 'STANDARD',
     });
   }
 
@@ -1972,6 +1973,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         ? Number(rewardForm.maxRedemptionsPerChild)
         : undefined,
       cooldownDays: rewardForm.cooldownDays ? Number(rewardForm.cooldownDays) : undefined,
+      workflowType: rewardForm.workflowType,
     };
     try {
       let updated: Reward;
@@ -10207,10 +10209,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             reward.maxRedemptionsPerChild != null &&
                             myRedemptionsForReward.filter((r) => r.status === 'APPROVED').length >=
                               reward.maxRedemptionsPerChild;
+                          const claimedToday =
+                            reward.workflowType === 'DAILY_EXCLUSIVE' &&
+                            reward.claimedTodayBy != null;
                           return (
                             <div
                               key={reward.id}
-                              className={`reward-card category-${reward.category.toLowerCase()}`}
+                              className={`reward-card category-${reward.category.toLowerCase()}${claimedToday ? ' reward-card--claimed-today' : ''}`}
                             >
                               <span className="reward-category-icon">
                                 {categoryEmoji(reward.category)}
@@ -10230,7 +10235,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                     payload.currentUser.points < reward.pointCost ||
                                     onCooldown ||
                                     hasPending ||
-                                    reachedLimit
+                                    reachedLimit ||
+                                    claimedToday
                                   }
                                   onClick={() => setRedeemDialogRewardId(reward.id)}
                                 >
@@ -10245,6 +10251,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               {reachedLimit && (
                                 <span className="reward-cooldown-notice">
                                   {t('rewards.limit_reached')}
+                                </span>
+                              )}
+                              {claimedToday && reward.claimedTodayBy && (
+                                <span className="reward-cooldown-notice">
+                                  {t('rewards.claimed_today_by', {
+                                    name: reward.claimedTodayBy.displayName,
+                                  })}
                                 </span>
                               )}
                             </div>
@@ -10478,33 +10491,48 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             </p>
                           ) : (
                             <div className="rewards-grid">
-                              {enabledRewards.map((reward) => (
-                                <div
-                                  key={reward.id}
-                                  className={`reward-card category-${reward.category.toLowerCase()}`}
-                                >
-                                  <span className="reward-category-icon">
-                                    {categoryEmoji(reward.category)}
-                                  </span>
-                                  <h3 className="reward-title">{reward.title}</h3>
-                                  {reward.description && (
-                                    <p className="reward-description">{reward.description}</p>
-                                  )}
-                                  <div className="reward-footer">
-                                    <span className="reward-cost-badge">
-                                      {reward.pointCost} {t('user.points_short')}
+                              {enabledRewards.map((reward) => {
+                                const claimedToday =
+                                  reward.workflowType === 'DAILY_EXCLUSIVE' &&
+                                  reward.claimedTodayBy != null;
+                                return (
+                                  <div
+                                    key={reward.id}
+                                    className={`reward-card category-${reward.category.toLowerCase()}${claimedToday ? ' reward-card--claimed-today' : ''}`}
+                                  >
+                                    <span className="reward-category-icon">
+                                      {categoryEmoji(reward.category)}
                                     </span>
-                                    <button
-                                      type="button"
-                                      className="primary-button"
-                                      disabled={payload.currentUser.points < reward.pointCost}
-                                      onClick={() => setRedeemDialogRewardId(reward.id)}
-                                    >
-                                      {t('rewards.redeem')}
-                                    </button>
+                                    <h3 className="reward-title">{reward.title}</h3>
+                                    {reward.description && (
+                                      <p className="reward-description">{reward.description}</p>
+                                    )}
+                                    <div className="reward-footer">
+                                      <span className="reward-cost-badge">
+                                        {reward.pointCost} {t('user.points_short')}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="primary-button"
+                                        disabled={
+                                          payload.currentUser.points < reward.pointCost ||
+                                          claimedToday
+                                        }
+                                        onClick={() => setRedeemDialogRewardId(reward.id)}
+                                      >
+                                        {t('rewards.redeem')}
+                                      </button>
+                                    </div>
+                                    {claimedToday && reward.claimedTodayBy && (
+                                      <span className="reward-cooldown-notice">
+                                        {t('rewards.claimed_today_by', {
+                                          name: reward.claimedTodayBy.displayName,
+                                        })}
+                                      </span>
+                                    )}
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -10641,6 +10669,25 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                   setRewardForm((c) => ({ ...c, cooldownDays: e.target.value }))
                                 }
                               />
+                            </label>
+                            <label>
+                              <span>{t('reward.field.workflow_type')}</span>
+                              <select
+                                value={rewardForm.workflowType}
+                                onChange={(e) =>
+                                  setRewardForm((c) => ({
+                                    ...c,
+                                    workflowType: e.target.value as 'STANDARD' | 'DAILY_EXCLUSIVE',
+                                  }))
+                                }
+                              >
+                                <option value="STANDARD">
+                                  {t('reward.workflow_type.standard')}
+                                </option>
+                                <option value="DAILY_EXCLUSIVE">
+                                  {t('reward.workflow_type.daily_exclusive')}
+                                </option>
+                              </select>
                             </label>
                           </fieldset>
                           {!(selectedReward?.isOperatorManaged ?? false) && (
