@@ -5,6 +5,13 @@ import { DashboardCard } from "./components/DashboardCard";
 import { AuthPanel } from "./features/auth/AuthPanel";
 import { useAuthStore } from "./stores/authStore";
 import { useDashboardStore } from "./stores/dashboardStore";
+import {
+  useChoreStore,
+  type HouseholdChoreViewMode,
+  type HouseholdChoreStateFilter,
+  type ChoreExportStatusFilter,
+  type InstanceFormState,
+} from "./stores/choreStore";
 import { AppLanguage, useI18n } from "./i18n/I18nProvider";
 import {
   enableClientWebPush,
@@ -85,13 +92,7 @@ type ReadinessChecklistItem = {
 type MemberFormState = CreateHouseholdMemberInput;
 type MemberEditFormState = UpdateHouseholdMemberInput;
 type TemplateFormState = CreateChoreTemplateInput;
-type InstanceFormState = CreateChoreInstanceInput & {
-  templateGroupTitle?: string;
-};
 type BootstrapFormState = BootstrapHouseholdInput;
-type HouseholdChoreViewMode = "list" | "board" | "calendar";
-type HouseholdChoreStateFilter = "all" | ChoreState;
-type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
 type OnboardingStep = string;
 type OnboardingTourMode = "admin" | "client" | "client-mobile";
 type ClientMobileChoreSection = "mine" | "unassigned" | "others";
@@ -1104,26 +1105,50 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [smtpVerifiedFingerprint, setSmtpVerifiedFingerprint] = useState<string | null>(null);
   const [notificationPreferencesDraft, setNotificationPreferencesDraft] =
     useState<NotificationPreferences | null>(null);
-  const [submitSelections, setSubmitSelections] = useState<Record<string, string[]>>({});
-  const [selectedProofFiles, setSelectedProofFiles] = useState<Record<string, File[]>>({});
-  const [submitNotes, setSubmitNotes] = useState<Record<string, string>>({});
-  const [reviewNotes, setReviewNotes] = useState<Record<string, string>>({});
+  const {
+    submitSelections, setSubmitSelections,
+    selectedProofFiles, setSelectedProofFiles,
+    submitNotes, setSubmitNotes,
+    reviewNotes, setReviewNotes,
+    instanceForm, setInstanceForm,
+    editingInstanceId, setEditingInstanceId,
+    householdViewMode, setHouseholdViewMode,
+    householdStateFilter, setHouseholdStateFilter,
+    householdAssigneeFilter, setHouseholdAssigneeFilter,
+    historyPage, setHistoryPage,
+    exportAssigneeFilter, setExportAssigneeFilter,
+    exportStatusFilter, setExportStatusFilter,
+    exportDateFrom, setExportDateFrom,
+    exportDateTo, setExportDateTo,
+    isClientComposerOpen, setIsClientComposerOpen,
+    mobileDueEditorInstanceId, setMobileDueEditorInstanceId,
+    mobileDueEditorValue, setMobileDueEditorValue,
+    mobileDueEditorTitle, setMobileDueEditorTitle,
+    mobileDueEditorIconId, setMobileDueEditorIconId,
+    mobileDueEditorVariantId, setMobileDueEditorVariantId,
+    mobileCardMenuInstanceId, setMobileCardMenuInstanceId,
+    mobileChoreDialogInstanceId, setMobileChoreDialogInstanceId,
+    isQuickLogComposerOpen, setIsQuickLogComposerOpen,
+    quickLogQuery, setQuickLogQuery,
+    quickLogNote, setQuickLogNote,
+    quickLogSelectedInstanceId, setQuickLogSelectedInstanceId,
+    quickLogSelectedTemplateId, setQuickLogSelectedTemplateId,
+    quickLogCreateTemplateFromEntry, setQuickLogCreateTemplateFromEntry,
+    quickLogUsePointsOverride, setQuickLogUsePointsOverride,
+    quickLogPointsOverride, setQuickLogPointsOverride,
+    quickLogIcon, setQuickLogIcon,
+    showMobileCompletedChores, setShowMobileCompletedChores,
+    showDesktopChoreHistory, setShowDesktopChoreHistory,
+    clearSubmitState,
+    closeMobileDueEditor: choreCloseMobileDueEditor,
+    closeQuickLog,
+    clearInstanceEdit,
+  } = useChoreStore();
   const [memberForm, setMemberForm] = useState<MemberFormState>(createEmptyMemberForm);
   const [memberEditForm, setMemberEditForm] = useState<MemberEditFormState>(createEmptyMemberEditForm);
   const [editingMemberId, setEditingMemberId] = useState<string | null>(null);
   const [templateForm, setTemplateForm] = useState<TemplateFormState>(() => createEmptyTemplateForm("en"));
-  const [instanceForm, setInstanceForm] = useState<InstanceFormState>({
-    templateId: "",
-    assigneeId: "",
-    title: "",
-    dueAt: "",
-    reassignAutomatically: false,
-    recurrenceEndMode: "never",
-    recurrenceOccurrences: 3,
-    recurrenceEndsAt: ""
-  });
   const [editingTemplateId, setEditingTemplateId] = useState<string | null>(null);
-  const [editingInstanceId, setEditingInstanceId] = useState<string | null>(null);
   const [templateSearch, setTemplateSearch] = useState("");
   const [templateEditorLocale, setTemplateEditorLocale] = useState<TemplateTranslationLocale>("en");
   const [selectedTemplateGroup, setSelectedTemplateGroup] = useState("");
@@ -1144,39 +1169,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const [redeemDialogRewardId, setRedeemDialogRewardId] = useState<string | null>(null);
   const [rejectDialogRedemptionId, setRejectDialogRedemptionId] = useState<string | null>(null);
   const [rejectDialogNote, setRejectDialogNote] = useState("");
-  const [householdViewMode, setHouseholdViewMode] = useState<HouseholdChoreViewMode>("list");
-  const [householdStateFilter, setHouseholdStateFilter] = useState<HouseholdChoreStateFilter>("all");
-  const [householdAssigneeFilter, setHouseholdAssigneeFilter] = useState<string>("all");
-  const [historyPage, setHistoryPage] = useState(1);
-  const [exportAssigneeFilter, setExportAssigneeFilter] = useState<string>("all");
-  const [exportStatusFilter, setExportStatusFilter] = useState<ChoreExportStatusFilter>("all");
-  const [exportDateFrom, setExportDateFrom] = useState("");
-  const [exportDateTo, setExportDateTo] = useState("");
   const [isClientMobileViewport, setIsClientMobileViewport] = useState(
     () =>
       typeof window !== "undefined" &&
       window.matchMedia(`(max-width: ${clientMobileBreakpointPx}px)`).matches
   );
-  const [isClientComposerOpen, setIsClientComposerOpen] = useState(false);
-  const [mobileDueEditorInstanceId, setMobileDueEditorInstanceId] = useState<string | null>(null);
-  const [mobileDueEditorValue, setMobileDueEditorValue] = useState("");
-  const [mobileDueEditorTitle, setMobileDueEditorTitle] = useState("");
-  const [mobileDueEditorIconId, setMobileDueEditorIconId] = useState<ChoreIconId | "">("");
-  const [mobileDueEditorVariantId, setMobileDueEditorVariantId] = useState<string>("");
-  const [mobileCardMenuInstanceId, setMobileCardMenuInstanceId] = useState<string | null>(null);
-  const [mobileChoreDialogInstanceId, setMobileChoreDialogInstanceId] = useState<string | null>(null);
   const [expandedDeviceDetailsById, setExpandedDeviceDetailsById] = useState<Record<string, boolean>>({});
-  const [isQuickLogComposerOpen, setIsQuickLogComposerOpen] = useState(false);
-  const [quickLogQuery, setQuickLogQuery] = useState("");
-  const [quickLogNote, setQuickLogNote] = useState("");
-  const [quickLogSelectedInstanceId, setQuickLogSelectedInstanceId] = useState<string | null>(null);
-  const [quickLogSelectedTemplateId, setQuickLogSelectedTemplateId] = useState<string | null>(null);
-  const [quickLogCreateTemplateFromEntry, setQuickLogCreateTemplateFromEntry] = useState(false);
-  const [quickLogUsePointsOverride, setQuickLogUsePointsOverride] = useState(false);
-  const [quickLogPointsOverride, setQuickLogPointsOverride] = useState("");
-  const [quickLogIcon, setQuickLogIcon] = useState<ChoreIconId | null>(null);
-  const [showMobileCompletedChores, setShowMobileCompletedChores] = useState(false);
-  const [showDesktopChoreHistory, setShowDesktopChoreHistory] = useState(false);
   const [isMobileProfileOpen, setIsMobileProfileOpen] = useState(false);
   const [isMobileMoreSheetOpen, setIsMobileMoreSheetOpen] = useState(false);
   const [mobileProfileAvatar, setMobileProfileAvatar] = useState<string>(
@@ -2767,7 +2765,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
 
   useEffect(() => {
-    setHistoryPage((current) => Math.min(current, historyPageCount));
+    setHistoryPage(Math.min(historyPage, historyPageCount));
   }, [historyPageCount]);
 
   const exportableChores = useMemo(() => {
@@ -3151,7 +3149,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   aria-haspopup="menu"
                   aria-label={t("panel.quick_actions")}
                   onClick={() =>
-                    setMobileCardMenuInstanceId((current) => (current === instance.id ? null : instance.id))
+                    setMobileCardMenuInstanceId(mobileCardMenuInstanceId === instance.id ? null : instance.id)
                   }
                 >
                   ...
@@ -3768,9 +3766,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         }
       }
       setNotice(t("submission.success"));
-      setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
-      setSubmitSelections((current) => ({ ...current, [instanceId]: [] }));
-      setSelectedProofFiles((current) => ({ ...current, [instanceId]: [] }));
+      clearSubmitState(instanceId);
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t("submission.failed")));
@@ -3834,9 +3830,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       setNotice(
         t("submission.external_success").replace("{name}", trimmedExternalCompleterName)
       );
-      setSubmitNotes((current) => ({ ...current, [instanceId]: "" }));
-      setSubmitSelections((current) => ({ ...current, [instanceId]: [] }));
-      setSelectedProofFiles((current) => ({ ...current, [instanceId]: [] }));
+      clearSubmitState(instanceId);
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t("submission.external_failed")));
@@ -3896,16 +3890,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     }
   }
 
-  function resetQuickLogComposer() {
-    setQuickLogQuery("");
-    setQuickLogNote("");
-    setQuickLogSelectedInstanceId(null);
-    setQuickLogSelectedTemplateId(null);
-    setQuickLogCreateTemplateFromEntry(false);
-    setQuickLogUsePointsOverride(false);
-    setQuickLogPointsOverride("");
-    setQuickLogIcon(null);
-  }
 
   async function handleSubmitQuickLog() {
     if (!token || !payload) {
@@ -3928,7 +3912,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     try {
       const decoratedTitle = quickLogSelectedInstanceId
         ? undefined
-        : applyChoreIconToken(stripLeadingQuickLogIcon(normalizedQuery), quickLogIcon ?? "") || undefined;
+        : applyChoreIconToken(stripLeadingQuickLogIcon(normalizedQuery), (quickLogIcon ?? "") as ChoreIconId | "") || undefined;
       await taskBanditApi.quickLog(token, language, {
         instanceId: quickLogSelectedInstanceId ?? undefined,
         templateId: quickLogSelectedTemplateId ?? undefined,
@@ -3940,8 +3924,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           Boolean(quickLogCreateTemplateFromEntry),
         pointsOverride
       });
-      setIsQuickLogComposerOpen(false);
-      resetQuickLogComposer();
+      closeQuickLog();
       setNotice("Quick log saved.");
       await refreshDashboard(token, { silent: true });
     } catch (error) {
@@ -5267,14 +5250,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setPageError(null);
   }
 
-  function closeMobileDueEditor() {
-    setMobileDueEditorInstanceId(null);
-    setMobileDueEditorValue("");
-    setMobileDueEditorTitle("");
-    setMobileDueEditorIconId("");
-    setMobileDueEditorVariantId("");
-    setMobileCardMenuInstanceId(null);
-  }
+  const closeMobileDueEditor = choreCloseMobileDueEditor;
 
   async function handleSaveMobileDueEditor() {
     if (!token || !mobileDueEditorInstance || !mobileDueEditorValue) {
@@ -5296,7 +5272,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const updatedInstance = await taskBanditApi.updateInstance(token, language, mobileDueEditorInstance.id, {
         templateId: mobileDueEditorInstance.templateId,
         assigneeId: mobileDueEditorInstance.assigneeId ?? undefined,
-        title: applyChoreIconToken(mobileDueEditorTitle, mobileDueEditorIconId) || undefined,
+        title: applyChoreIconToken(mobileDueEditorTitle, mobileDueEditorIconId as ChoreIconId | "") || undefined,
         dueAt: dueAtDate.toISOString(),
         variantId: mobileDueEditorVariantId || undefined,
         recurrenceEndMode: mobileDueEditorInstance.recurrenceEndMode ?? undefined,
@@ -6522,7 +6498,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     className="mobile-quick-log-card mobile-quick-log-card-button"
                     type="button"
                     onClick={() => {
-                      resetQuickLogComposer();
+                      closeQuickLog();
                       setIsQuickLogComposerOpen(true);
                     }}
                   >
@@ -7200,7 +7176,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <button
                       className="ghost-button mock-mobile-view-all"
                       type="button"
-                      onClick={() => setShowMobileCompletedChores((current) => !current)}
+                      onClick={() => setShowMobileCompletedChores(!showMobileCompletedChores)}
                     >
                       {showMobileCompletedChores ? "Hide" : "Show"}
                     </button>
@@ -7217,7 +7193,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       <button
                         className="ghost-button"
                         type="button"
-                        onClick={() => setShowDesktopChoreHistory((current) => !current)}
+                        onClick={() => setShowDesktopChoreHistory(!showDesktopChoreHistory)}
                       >
                         {showDesktopChoreHistory ? t("common.hide") : t("common.show")}
                       </button>
@@ -7317,7 +7293,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           className="ghost-button"
                           type="button"
                           disabled={historyPage <= 1}
-                          onClick={() => setHistoryPage((current) => Math.max(1, current - 1))}
+                          onClick={() => setHistoryPage(Math.max(1, historyPage - 1))}
                         >
                           {t("history.previous_page")}
                         </button>
@@ -7326,7 +7302,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           type="button"
                           disabled={historyPage >= historyPageCount}
                           onClick={() =>
-                            setHistoryPage((current) => Math.min(historyPageCount, current + 1))
+                            setHistoryPage(Math.min(historyPageCount, historyPage + 1))
                           }
                         >
                           {t("history.next_page")}
@@ -10206,10 +10182,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <button
                     className="ghost-button"
                     type="button"
-                    onClick={() => {
-                      setIsQuickLogComposerOpen(false);
-                      resetQuickLogComposer();
-                    }}
+                    onClick={closeQuickLog}
                   >
                     {t("common.cancel")}
                   </button>
