@@ -100,14 +100,13 @@ describe("ChoresService", () => {
     expect(repository.getTemplates).toHaveBeenCalledWith("household-1", "en");
   });
 
-  it("uses live hosted feature access when checking template manager permissions", async () => {
+  it("does not enforce templates_manage in the service (delegated to FeatureGuard at controller level)", async () => {
     await service.createTemplate({} as never, user, "en");
 
-    expect(featureAccessService.getFeatureAccessForTenant).toHaveBeenCalledWith("tenant-1");
-    expect(featureAccessService.assertEnabled).toHaveBeenCalledWith(
-      expect.objectContaining({
-        templates_manage: true
-      }),
+    // templates_manage is enforced by FeatureGuard at the controller level, not inside the service
+    expect(featureAccessService.getFeatureAccessForTenant).not.toHaveBeenCalled();
+    expect(featureAccessService.assertEnabled).not.toHaveBeenCalledWith(
+      expect.anything(),
       "templates_manage"
     );
   });

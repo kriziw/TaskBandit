@@ -17,7 +17,9 @@ import { ApiBody, ApiConsumes, ApiTags } from "@nestjs/swagger";
 import { FileInterceptor } from "@nestjs/platform-express";
 import type { Response } from "express";
 import { CurrentUser } from "../../common/auth/current-user.decorator";
+import { FeatureGuard } from "../../common/auth/feature.guard";
 import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
+import { RequiresFeature } from "../../common/auth/requires-feature.decorator";
 import { Roles } from "../../common/auth/roles.decorator";
 import { RolesGuard } from "../../common/auth/roles.guard";
 import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
@@ -39,7 +41,7 @@ const proofUploadMaxBytes = 10 * 1024 * 1024;
 
 @ApiTags("chores")
 @Controller("api/chores")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureGuard)
 export class ChoresController {
   constructor(
     private readonly choresService: ChoresService,
@@ -54,6 +56,7 @@ export class ChoresController {
 
   @Post("templates")
   @Roles("admin", "parent")
+  @RequiresFeature("templates_manage")
   createTemplate(
     @Body() dto: CreateChoreTemplateDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -64,6 +67,7 @@ export class ChoresController {
 
   @Put("templates/:id")
   @Roles("admin", "parent")
+  @RequiresFeature("templates_manage")
   updateTemplate(
     @Param("id") templateId: string,
     @Body() dto: CreateChoreTemplateDto,
@@ -80,6 +84,7 @@ export class ChoresController {
 
   @Post("templates/reset-to-defaults")
   @Roles("admin")
+  @RequiresFeature("templates_manage")
   resetTemplatesToDefaults(
     @CurrentUser() user: AuthenticatedUser,
     @Headers("accept-language") acceptLanguage?: string
@@ -92,6 +97,7 @@ export class ChoresController {
 
   @Delete("templates/:id")
   @Roles("admin", "parent")
+  @RequiresFeature("templates_manage")
   deleteTemplate(
     @Param("id") templateId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -110,12 +116,14 @@ export class ChoresController {
   }
 
   @Get("takeover-requests")
+  @RequiresFeature("takeover_requests")
   takeoverRequests(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
     return this.choresService.getTakeoverRequests(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Post("instances")
   @Roles("admin", "parent")
+  @RequiresFeature("chores_manage")
   createInstance(
     @Body() dto: CreateChoreInstanceDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -126,6 +134,7 @@ export class ChoresController {
 
   @Post("quick-log")
   @Roles("admin", "parent")
+  @RequiresFeature("quick_log")
   quickLog(
     @Body() dto: QuickLogChoreDto,
     @CurrentUser() user: AuthenticatedUser,
@@ -136,6 +145,7 @@ export class ChoresController {
 
   @Put("instances/:id")
   @Roles("admin", "parent")
+  @RequiresFeature("chores_manage")
   updateInstance(
     @Param("id") instanceId: string,
     @Body() dto: CreateChoreInstanceDto,
@@ -152,6 +162,7 @@ export class ChoresController {
 
   @Post("instances/:id/cancel")
   @Roles("admin", "parent")
+  @RequiresFeature("chores_manage")
   cancel(
     @Param("id") instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -166,6 +177,7 @@ export class ChoresController {
 
   @Post("instances/:id/cancel-occurrence")
   @Roles("admin", "parent")
+  @RequiresFeature("chores_manage")
   cancelOccurrence(
     @Param("id") instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -180,6 +192,7 @@ export class ChoresController {
 
   @Post("instances/:id/close-cycle")
   @Roles("admin", "parent")
+  @RequiresFeature("chores_manage")
   closeCycle(
     @Param("id") instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -194,6 +207,7 @@ export class ChoresController {
 
   @Post("instances/:id/cancel-series")
   @Roles("admin", "parent")
+  @RequiresFeature("chores_manage")
   cancelSeries(
     @Param("id") instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -220,6 +234,7 @@ export class ChoresController {
   }
 
   @Post("instances/:id/takeover")
+  @RequiresFeature("takeover_direct")
   takeOver(
     @Param("id") instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
@@ -233,6 +248,7 @@ export class ChoresController {
   }
 
   @Post("instances/:id/takeover-request")
+  @RequiresFeature("takeover_requests")
   requestTakeOver(
     @Param("id") instanceId: string,
     @Body() dto: RequestChoreTakeoverDto,
@@ -248,6 +264,7 @@ export class ChoresController {
   }
 
   @Post("takeover-requests/:id/approve")
+  @RequiresFeature("takeover_requests")
   approveTakeOverRequest(
     @Param("id") requestId: string,
     @Body() dto: RespondChoreTakeoverDto,
@@ -263,6 +280,7 @@ export class ChoresController {
   }
 
   @Post("takeover-requests/:id/decline")
+  @RequiresFeature("takeover_requests")
   declineTakeOverRequest(
     @Param("id") requestId: string,
     @Body() dto: RespondChoreTakeoverDto,
@@ -278,6 +296,7 @@ export class ChoresController {
   }
 
   @Post("uploads/proof")
+  @RequiresFeature("proof_uploads")
   @UseInterceptors(
     FileInterceptor("file", {
       storage: memoryStorage(),
@@ -348,6 +367,7 @@ export class ChoresController {
 
   @Post("instances/:id/complete-external")
   @Roles("admin", "parent")
+  @RequiresFeature("external_completion")
   completeExternal(
     @Param("id") instanceId: string,
     @Body() dto: CompleteExternalChoreDto,
@@ -364,6 +384,7 @@ export class ChoresController {
 
   @Post("instances/:id/release")
   @Roles("admin", "parent")
+  @RequiresFeature("deferred_follow_up_control")
   releaseDeferred(
     @Param("id") instanceId: string,
     @Body() dto: ReleaseDeferredChoreDto,
@@ -380,6 +401,7 @@ export class ChoresController {
 
   @Post("instances/:id/snooze")
   @Roles("admin", "parent")
+  @RequiresFeature("deferred_follow_up_control")
   snoozeDeferred(
     @Param("id") instanceId: string,
     @Body() dto: SnoozeDeferredChoreDto,
@@ -396,6 +418,7 @@ export class ChoresController {
 
   @Post("instances/:id/approve")
   @Roles("admin", "parent")
+  @RequiresFeature("approvals")
   approve(
     @Param("id") instanceId: string,
     @Body() dto: ReviewChoreDto,
@@ -412,6 +435,7 @@ export class ChoresController {
 
   @Post("instances/:id/reject")
   @Roles("admin", "parent")
+  @RequiresFeature("approvals")
   reject(
     @Param("id") instanceId: string,
     @Body() dto: ReviewChoreDto,
