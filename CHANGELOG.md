@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.1.4](https://github.com/kriziw/TaskBandit/compare/v1.1.3...v1.1.4) (2026-05-28)
+
+
+### Bug Fixes
+
+* **web:** decode double-encoded Hungarian chars in hu.json locale ([#541](https://github.com/kriziw/TaskBandit/issues/541)) ([629c5fb](https://github.com/kriziw/TaskBandit/commit/629c5fbc872a4ef524e7501c5351e32ba811a2f6))
+
 ## [1.1.3](https://github.com/kriziw/TaskBandit/compare/v1.1.2...v1.1.3) (2026-05-28)
 
 
