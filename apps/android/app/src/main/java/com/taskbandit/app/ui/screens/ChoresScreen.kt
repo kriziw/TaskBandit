@@ -139,7 +139,7 @@ import java.util.UUID
 import kotlin.random.Random
 
 // ── Quick-log icon token constants ───────────────────────────────────────────
-internal val quickLogIconCheck = "âœ…"
+internal val quickLogIconCheck = "✅"
 internal val quickLogIconBroom = String(Character.toChars(0x1F9F9))
 internal val quickLogIconBasket = String(Character.toChars(0x1F9FA))
 internal val quickLogIconTrash = String(Character.toChars(0x1F5D1))
@@ -148,7 +148,7 @@ internal val quickLogIconBath = String(Character.toChars(0x1F6C1))
 internal val quickLogIconTeddy = String(Character.toChars(0x1F9F8))
 internal val quickLogIconCart = String(Character.toChars(0x1F6D2))
 internal val quickLogIconBox = String(Character.toChars(0x1F4E6))
-internal val quickLogIconSparkle = "âœ¨"
+internal val quickLogIconSparkle = "✨"
 internal val quickLogLegacyMojibakePrefix = Regex("^[\\u00C3\\u00E2\\u00F0]")
 
 internal val quickLogIconOptions = listOf(
