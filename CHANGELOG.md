@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.1.1](https://github.com/kriziw/TaskBandit/compare/v1.1.0...v1.1.1) (2026-05-28)
+
+
+### Bug Fixes
+
+* **android:** fix garbled separator in chore action sheet and consolidate rewards nav ([#534](https://github.com/kriziw/TaskBandit/issues/534)) ([33a861d](https://github.com/kriziw/TaskBandit/commit/33a861d0cf5135b61c8ca875fb179e41b4dfc027))
+
 ## [1.1.0](https://github.com/kriziw/TaskBandit/compare/v1.0.0...v1.1.0) (2026-05-28)
 
 
