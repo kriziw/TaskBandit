@@ -354,9 +354,11 @@ data class CreateChoreTemplateInput(
     val dependencyRules: List<MobileTemplateDependencyRule> = emptyList()
 )
 
-data class MobileClaimedTodayBy(
+data class MobileUpcomingClaim(
+    val redemptionId: String,
     val userId: String,
-    val displayName: String
+    val displayName: String,
+    val targetDate: String   // 'YYYY-MM-DD'
 )
 
 data class CreateRewardInput(
@@ -440,7 +442,7 @@ data class MobileReward(
     val cooldownDays: Int?,
     val eligibility: String = "ALL",
     val workflowType: String = "STANDARD",
-    val claimedTodayBy: MobileClaimedTodayBy? = null
+    val upcomingClaims: List<MobileUpcomingClaim> = emptyList()
 )
 
 data class MobileRedemption(
@@ -453,5 +455,6 @@ data class MobileRedemption(
     val requestedAtUtc: String,
     val resolvedAtUtc: String?,
     val adminNote: String?,
-    val pointsDeducted: Int
+    val pointsDeducted: Int,
+    val targetDate: String? = null  // 'YYYY-MM-DD', present for DAILY_EXCLUSIVE
 )

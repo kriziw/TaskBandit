@@ -308,6 +308,24 @@ private val historicChoreStates = setOf("completed", "approved", "rejected", "ca
 
 private fun isTabletWidth(maxWidth: Dp): Boolean = maxWidth >= 840.dp
 
+/** Format a 'YYYY-MM-DD' date string as 'Today', 'Tomorrow', or 'Monday, 8 June'. */
+internal fun formatBookingDate(dateStr: String): String {
+    return try {
+        val date = LocalDate.parse(dateStr)
+        val today = LocalDate.now()
+        when {
+            date == today -> "Today"
+            date == today.plusDays(1) -> "Tomorrow"
+            else -> {
+                val day = date.dayOfWeek.getDisplayName(TextStyle.FULL, java.util.Locale.getDefault())
+                val dom = date.dayOfMonth
+                val month = date.month.getDisplayName(TextStyle.FULL, java.util.Locale.getDefault())
+                "$day, $dom $month"
+            }
+        }
+    } catch (_: Exception) { dateStr }
+}
+
 @Composable
 internal fun DashboardScreen(
     dashboard: MobileDashboard?,
@@ -384,7 +402,8 @@ internal fun DashboardScreen(
     onAvatarPresetSelect: (String) -> Unit,
     onAvatarUpload: () -> Unit,
     onRequestNotificationPermission: () -> Unit,
-    onRedeemReward: (String) -> Unit,
+    onRedeemReward: (String, String?) -> Unit,
+    onRescheduleRedemption: (String, String) -> Unit,
     onResolveRedemption: (String, Boolean, String?) -> Unit,
     templateManagerTemplates: List<MobileChoreTemplate>,
     templateManagerLoading: Boolean,
@@ -449,6 +468,9 @@ internal fun DashboardScreen(
     var shouldScrollToUpdate by remember { mutableStateOf(false) }
     var rewardsShopTab by rememberSaveable { mutableStateOf("shop") }
     var redeemConfirmRewardId by rememberSaveable { mutableStateOf<String?>(null) }
+    var redeemTargetDate by rememberSaveable { mutableStateOf("") }
+    var rescheduleRedemptionId by rememberSaveable { mutableStateOf<String?>(null) }
+    var rescheduleTargetDate by rememberSaveable { mutableStateOf("") }
     var rejectRedemptionId by rememberSaveable { mutableStateOf<String?>(null) }
     var rejectRedemptionNote by rememberSaveable { mutableStateOf("") }
     var quickLogQuery by rememberSaveable { mutableStateOf("") }
@@ -842,27 +864,157 @@ internal fun DashboardScreen(
 
     val redeemConfirmReward = allRewards.firstOrNull { it.id == redeemConfirmRewardId }
     if (redeemConfirmReward != null) {
+        val isExclusive = redeemConfirmReward.workflowType == "DAILY_EXCLUSIVE"
+        val conflictingClaim = if (isExclusive && redeemTargetDate.isNotBlank())
+            redeemConfirmReward.upcomingClaims.firstOrNull {
+                it.targetDate == redeemTargetDate && it.userId != dashboard?.user?.id
+            } else null
+        val rewardDatePicker = remember(context, redeemTargetDate) {
+            val initial = if (redeemTargetDate.isNotBlank())
+                runCatching { LocalDate.parse(redeemTargetDate) }.getOrDefault(LocalDate.now())
+            else LocalDate.now()
+            DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    redeemTargetDate = "%04d-%02d-%02d".format(year, month + 1, day)
+                },
+                initial.year, initial.monthValue - 1, initial.dayOfMonth
+            ).apply {
+                datePicker.minDate = System.currentTimeMillis() - 1000
+                datePicker.maxDate = System.currentTimeMillis() + 14 * 86_400_000L
+            }
+        }
         AlertDialog(
-            onDismissRequest = { redeemConfirmRewardId = null },
+            onDismissRequest = {
+                redeemConfirmRewardId = null
+                redeemTargetDate = ""
+            },
             title = { Text(stringResource(R.string.mobile_rewards_confirm_title)) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(redeemConfirmReward.title, style = MaterialTheme.typography.titleSmall)
+                    if (isExclusive) {
+                        OutlinedButton(
+                            onClick = { rewardDatePicker.show() },
+                            modifier = Modifier.fillMaxWidth()
+                        ) {
+                            Text(
+                                if (redeemTargetDate.isBlank())
+                                    stringResource(R.string.mobile_rewards_confirm_choose_date)
+                                else
+                                    formatBookingDate(redeemTargetDate)
+                            )
+                        }
+                        if (conflictingClaim != null) {
+                            Text(
+                                text = stringResource(R.string.mobile_rewards_exclusive_date_taken, conflictingClaim.displayName),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    }
                     Text(stringResource(R.string.mobile_rewards_confirm_cost, redeemConfirmReward.pointCost))
                     Text(stringResource(R.string.mobile_rewards_confirm_balance_after, currentUserPoints - redeemConfirmReward.pointCost))
                 }
             },
             confirmButton = {
-                Button(onClick = {
-                    val id = redeemConfirmReward.id
-                    redeemConfirmRewardId = null
-                    onRedeemReward(id)
-                }) {
+                Button(
+                    onClick = {
+                        val id = redeemConfirmReward.id
+                        val date = if (isExclusive) redeemTargetDate.ifBlank { null } else null
+                        redeemConfirmRewardId = null
+                        redeemTargetDate = ""
+                        onRedeemReward(id, date)
+                    },
+                    enabled = !isExclusive || (redeemTargetDate.isNotBlank() && conflictingClaim == null)
+                ) {
                     Text(stringResource(R.string.mobile_rewards_redeem))
                 }
             },
             dismissButton = {
-                OutlinedButton(onClick = { redeemConfirmRewardId = null }) {
+                OutlinedButton(onClick = {
+                    redeemConfirmRewardId = null
+                    redeemTargetDate = ""
+                }) {
+                    Text(stringResource(R.string.mobile_common_cancel))
+                }
+            }
+        )
+    }
+
+    // Reschedule booking dialog
+    val rescheduleRedemption = allRedemptions.firstOrNull { it.id == rescheduleRedemptionId }
+    if (rescheduleRedemption != null) {
+        val rescheduleReward = allRewards.firstOrNull { it.id == rescheduleRedemption.rewardId }
+        val rescheduleConflict = if (rescheduleTargetDate.isNotBlank())
+            rescheduleReward?.upcomingClaims?.firstOrNull {
+                it.targetDate == rescheduleTargetDate &&
+                it.userId != dashboard?.user?.id &&
+                it.redemptionId != rescheduleRedemptionId
+            } else null
+        val rescheduleDatePicker = remember(context, rescheduleTargetDate) {
+            val initial = if (rescheduleTargetDate.isNotBlank())
+                runCatching { LocalDate.parse(rescheduleTargetDate) }.getOrDefault(LocalDate.now())
+            else LocalDate.now()
+            DatePickerDialog(
+                context,
+                { _, year, month, day ->
+                    rescheduleTargetDate = "%04d-%02d-%02d".format(year, month + 1, day)
+                },
+                initial.year, initial.monthValue - 1, initial.dayOfMonth
+            ).apply {
+                datePicker.minDate = System.currentTimeMillis() - 1000
+                datePicker.maxDate = System.currentTimeMillis() + 14 * 86_400_000L
+            }
+        }
+        AlertDialog(
+            onDismissRequest = {
+                rescheduleRedemptionId = null
+                rescheduleTargetDate = ""
+            },
+            title = { Text(stringResource(R.string.mobile_rewards_reschedule_dialog_title)) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(rescheduleRedemption.rewardTitle, style = MaterialTheme.typography.titleSmall)
+                    OutlinedButton(
+                        onClick = { rescheduleDatePicker.show() },
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Text(
+                            if (rescheduleTargetDate.isBlank())
+                                stringResource(R.string.mobile_rewards_reschedule_dialog_new_date)
+                            else
+                                formatBookingDate(rescheduleTargetDate)
+                        )
+                    }
+                    if (rescheduleConflict != null) {
+                        Text(
+                            text = stringResource(R.string.mobile_rewards_exclusive_date_taken, rescheduleConflict.displayName),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.error
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        val id = rescheduleRedemptionId ?: return@Button
+                        val date = rescheduleTargetDate
+                        rescheduleRedemptionId = null
+                        rescheduleTargetDate = ""
+                        onRescheduleRedemption(id, date)
+                    },
+                    enabled = rescheduleTargetDate.isNotBlank() && rescheduleConflict == null
+                ) {
+                    Text(stringResource(R.string.mobile_rewards_reschedule_dialog_confirm))
+                }
+            },
+            dismissButton = {
+                OutlinedButton(onClick = {
+                    rescheduleRedemptionId = null
+                    rescheduleTargetDate = ""
+                }) {
                     Text(stringResource(R.string.mobile_common_cancel))
                 }
             }
@@ -2250,13 +2402,17 @@ internal fun DashboardScreen(
                             item { Text(stringResource(R.string.mobile_rewards_shop_empty), style = MaterialTheme.typography.bodyMedium) }
                         } else {
                             items(enabledRewards) { reward ->
+                                val isExclusive = reward.workflowType == "DAILY_EXCLUSIVE"
                                 val approvedForThisReward = myRedemptions.filter { it.rewardId == reward.id && it.status == "APPROVED" }
-                                val hasPending = myRedemptions.any { it.rewardId == reward.id && it.status == "PENDING" }
+                                // For DAILY_EXCLUSIVE, pending doesn't block (user can book multiple dates)
+                                val hasPending = !isExclusive && myRedemptions.any { it.rewardId == reward.id && it.status == "PENDING" }
                                 val reachedLimit = reward.maxRedemptionsPerChild != null && approvedForThisReward.size >= reward.maxRedemptionsPerChild
                                 val lastApprovedAt = approvedForThisReward.maxByOrNull { it.requestedAtUtc }?.requestedAtUtc
                                 val onCooldown = reward.cooldownDays != null && lastApprovedAt != null &&
                                     (System.currentTimeMillis() - parseInstantForSort(lastApprovedAt).toEpochMilli()) < reward.cooldownDays * 86_400_000L
                                 val canAfford = currentUserPoints >= reward.pointCost
+                                val myUpcomingClaims = reward.upcomingClaims.filter { it.userId == currentUserId }
+                                val othersUpcomingClaims = reward.upcomingClaims.filter { it.userId != currentUserId }
                                 Card(
                                     modifier = Modifier.fillMaxWidth(),
                                     shape = RoundedCornerShape(16.dp)
@@ -2287,6 +2443,38 @@ internal fun DashboardScreen(
                                         }
                                         if (onCooldown) Text(stringResource(R.string.mobile_rewards_on_cooldown), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
                                         if (reachedLimit) Text(stringResource(R.string.mobile_rewards_limit_reached), style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.error)
+                                        if (isExclusive) {
+                                            myUpcomingClaims.forEach { claim ->
+                                                Row(
+                                                    verticalAlignment = Alignment.CenterVertically,
+                                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                                    modifier = Modifier.fillMaxWidth()
+                                                ) {
+                                                    Text(
+                                                        text = stringResource(R.string.mobile_rewards_your_booking_for, formatBookingDate(claim.targetDate)),
+                                                        style = MaterialTheme.typography.labelSmall,
+                                                        color = MaterialTheme.colorScheme.primary,
+                                                        modifier = Modifier.weight(1f)
+                                                    )
+                                                    TextButton(
+                                                        onClick = {
+                                                            rescheduleRedemptionId = claim.redemptionId
+                                                            rescheduleTargetDate = claim.targetDate
+                                                        },
+                                                        contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                                    ) {
+                                                        Text(stringResource(R.string.mobile_rewards_reschedule), style = MaterialTheme.typography.labelSmall)
+                                                    }
+                                                }
+                                            }
+                                            othersUpcomingClaims.forEach { claim ->
+                                                Text(
+                                                    text = stringResource(R.string.mobile_rewards_booked_for_date_by, formatBookingDate(claim.targetDate), claim.displayName),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                                                )
+                                            }
+                                        }
                                     }
                                 }
                             }
@@ -2305,6 +2493,13 @@ internal fun DashboardScreen(
                                     ) {
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(r.rewardTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
+                                            if (r.targetDate != null) {
+                                                Text(
+                                                    text = formatBookingDate(r.targetDate),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                             Text(r.status, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
                                         Text("−${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
@@ -2325,6 +2520,13 @@ internal fun DashboardScreen(
                                         Column(modifier = Modifier.weight(1f)) {
                                             Text(r.requestedByName, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                             Text(r.rewardTitle, style = MaterialTheme.typography.titleSmall)
+                                            if (r.targetDate != null) {
+                                                Text(
+                                                    text = formatBookingDate(r.targetDate),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
                                         }
                                         Text("${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                                     }
@@ -2721,7 +2923,11 @@ internal fun DashboardScreen(
                             onToggleReward = onToggleReward,
                             onApproveRedemption = { id -> onResolveRedemption(id, true, null) },
                             onRejectRedemption = { id, note -> onResolveRedemption(id, false, note) },
-                            onRedeemReward = { redeemConfirmRewardId = it }
+                            onRedeemReward = { rewardId, _ -> redeemConfirmRewardId = rewardId },
+                            onRescheduleRedemption = { redemptionId, targetDate ->
+                                rescheduleRedemptionId = redemptionId
+                                rescheduleTargetDate = targetDate
+                            }
                         )
                     }
                 }

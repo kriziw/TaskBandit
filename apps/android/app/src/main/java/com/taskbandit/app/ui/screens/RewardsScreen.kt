@@ -148,7 +148,8 @@ internal fun RewardsManagerScreen(
     onToggleReward: (String) -> Unit,
     onApproveRedemption: (String) -> Unit,
     onRejectRedemption: (String, String?) -> Unit,
-    onRedeemReward: (String) -> Unit
+    onRedeemReward: (String, String?) -> Unit,
+    onRescheduleRedemption: (String, String) -> Unit
 ) {
     var activeTab by rememberSaveable { mutableStateOf("shop") }
     var selectedReward by remember { mutableStateOf<MobileReward?>(null) }
@@ -228,14 +229,12 @@ internal fun RewardsManagerScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     shopRewards.forEach { reward ->
-                        val claimedToday = reward.workflowType == "DAILY_EXCLUSIVE" && reward.claimedTodayBy != null
+                        val isExclusive = reward.workflowType == "DAILY_EXCLUSIVE"
                         Card(
-                            modifier = Modifier.fillMaxWidth().then(
-                                if (claimedToday) Modifier.alpha(0.55f) else Modifier
-                            ),
+                            modifier = Modifier.fillMaxWidth(),
                             shape = RoundedCornerShape(16.dp)
                         ) {
-                            Column(modifier = Modifier.padding(14.dp)) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp)
@@ -252,18 +251,33 @@ internal fun RewardsManagerScreen(
                                         )
                                     }
                                     Button(
-                                        onClick = { onRedeemReward(reward.id) },
-                                        enabled = currentUserPoints >= reward.pointCost && !claimedToday
+                                        onClick = { onRedeemReward(reward.id, null) },
+                                        enabled = currentUserPoints >= reward.pointCost
                                     ) {
                                         Text(stringResource(R.string.mobile_rewards_redeem))
                                     }
                                 }
-                                if (claimedToday && reward.claimedTodayBy != null) {
-                                    Text(
-                                        text = stringResource(R.string.mobile_rewards_claimed_today_by, reward.claimedTodayBy.displayName),
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
+                                if (isExclusive) {
+                                    reward.upcomingClaims.forEach { claim ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = "${formatBookingDate(claim.targetDate)} · ${claim.displayName}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            TextButton(
+                                                onClick = { onRescheduleRedemption(claim.redemptionId, claim.targetDate) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                            ) {
+                                                Text(stringResource(R.string.mobile_rewards_reschedule), style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -320,7 +334,8 @@ internal fun RewardsManagerScreen(
                             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(redemption.rewardTitle, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    text = "${redemption.requestedByName} · ${redemption.pointsDeducted} pts",
+                                    text = "${redemption.requestedByName} · ${redemption.pointsDeducted} pts" +
+                                        (if (redemption.targetDate != null) " · ${formatBookingDate(redemption.targetDate)}" else ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )

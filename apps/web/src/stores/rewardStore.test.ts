@@ -15,6 +15,7 @@ beforeEach(() => {
       pointCost: 50,
       maxRedemptionsPerChild: '',
       cooldownDays: '',
+      workflowType: 'STANDARD',
     },
     redeemDialogRewardId: null,
     rejectDialogRedemptionId: null,
@@ -36,6 +37,7 @@ describe('resetRewardForm', () => {
         pointCost: 10,
         maxRedemptionsPerChild: '',
         cooldownDays: '',
+        workflowType: 'STANDARD',
       },
     });
     useRewardStore.getState().resetRewardForm();

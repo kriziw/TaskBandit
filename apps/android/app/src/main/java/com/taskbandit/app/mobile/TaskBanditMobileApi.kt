@@ -388,7 +388,8 @@ class TaskBanditMobileApi {
                     requestedAtUtc = r.optString("requestedAtUtc"),
                     resolvedAtUtc = r.optString("resolvedAtUtc").ifBlank { null },
                     adminNote = r.optString("adminNote").ifBlank { null },
-                    pointsDeducted = r.optInt("pointsDeducted")
+                    pointsDeducted = r.optInt("pointsDeducted"),
+                    targetDate = r.optString("targetDate").ifBlank { null }
                 ))
             }
         }
@@ -1089,8 +1090,11 @@ class TaskBanditMobileApi {
             .ifBlank { "TaskBandit User" }
     }
 
-    fun redeemReward(baseUrl: String, token: String, rewardId: String): MobileRedemption {
-        val json = requestJson(baseUrl, "/api/rewards/$rewardId/redeem", token = token, method = "POST")
+    fun redeemReward(baseUrl: String, token: String, rewardId: String, targetDate: String? = null): MobileRedemption {
+        val body = JSONObject().apply {
+            if (!targetDate.isNullOrBlank()) put("targetDate", targetDate)
+        }
+        val json = requestJson(baseUrl, "/api/rewards/$rewardId/redeem", token = token, method = "POST", body = body)
         val reward = json.optJSONObject("reward")
         val requestedBy = json.optJSONObject("requestedBy")
         return MobileRedemption(
@@ -1103,7 +1107,8 @@ class TaskBanditMobileApi {
             requestedAtUtc = json.optString("requestedAtUtc"),
             resolvedAtUtc = json.optString("resolvedAtUtc").ifBlank { null },
             adminNote = json.optString("adminNote").ifBlank { null },
-            pointsDeducted = json.optInt("pointsDeducted")
+            pointsDeducted = json.optInt("pointsDeducted"),
+            targetDate = json.optString("targetDate").ifBlank { null }
         )
     }
 
@@ -1125,7 +1130,28 @@ class TaskBanditMobileApi {
             requestedAtUtc = json.optString("requestedAtUtc"),
             resolvedAtUtc = json.optString("resolvedAtUtc").ifBlank { null },
             adminNote = json.optString("adminNote").ifBlank { null },
-            pointsDeducted = json.optInt("pointsDeducted")
+            pointsDeducted = json.optInt("pointsDeducted"),
+            targetDate = json.optString("targetDate").ifBlank { null }
+        )
+    }
+
+    fun rescheduleRedemption(baseUrl: String, token: String, redemptionId: String, targetDate: String): MobileRedemption {
+        val payload = JSONObject().apply { put("targetDate", targetDate) }
+        val json = requestJson(baseUrl, "/api/rewards/redemptions/$redemptionId/reschedule", token = token, method = "PATCH", body = payload)
+        val reward = json.optJSONObject("reward")
+        val requestedBy = json.optJSONObject("requestedBy")
+        return MobileRedemption(
+            id = json.optString("id"),
+            rewardId = reward?.optString("id").orEmpty(),
+            rewardTitle = reward?.optString("title").orEmpty(),
+            requestedById = requestedBy?.optString("id").orEmpty(),
+            requestedByName = requestedBy?.optString("displayName").orEmpty(),
+            status = json.optString("status"),
+            requestedAtUtc = json.optString("requestedAtUtc"),
+            resolvedAtUtc = json.optString("resolvedAtUtc").ifBlank { null },
+            adminNote = json.optString("adminNote").ifBlank { null },
+            pointsDeducted = json.optInt("pointsDeducted"),
+            targetDate = json.optString("targetDate").ifBlank { null }
         )
     }
 

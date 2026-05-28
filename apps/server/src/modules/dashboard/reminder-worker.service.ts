@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@ne
 import { AppConfigService } from '../../common/config/app-config.service';
 import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
 import { HouseholdRepository } from '../household/household.repository';
+import { RewardsRepository } from '../rewards/rewards.repository';
 
 @Injectable()
 export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -12,6 +13,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
 
   constructor(
     private readonly repository: HouseholdRepository,
+    private readonly rewardsRepository: RewardsRepository,
     private readonly appConfigService: AppConfigService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
   ) {}
@@ -114,7 +116,11 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
         force: options?.forceDailySummary,
         tenantIds: allowedTenantIds,
       });
-      const reminderCount = reminderResult.createdCount;
+      const bookingReminderResult = await this.rewardsRepository.processRewardBookingReminders({
+        now,
+        tenantIds: allowedTenantIds,
+      });
+      const reminderCount = reminderResult.createdCount + bookingReminderResult.createdCount;
       const dailySummaryCount = dailySummaryResult.createdCount;
       const createdCount = reminderCount + dailySummaryCount;
 

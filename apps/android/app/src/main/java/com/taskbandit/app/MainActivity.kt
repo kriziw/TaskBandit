@@ -1188,9 +1188,14 @@ private fun TaskBanditApp(
                             notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                         }
                     },
-                    onRedeemReward = { rewardId ->
+                    onRedeemReward = { rewardId, targetDate ->
                         withAuth { baseUrl, token ->
-                            dashboardViewModel.redeemReward(rewardId, baseUrl, token)
+                            dashboardViewModel.redeemReward(rewardId, baseUrl, token, targetDate)
+                        }
+                    },
+                    onRescheduleRedemption = { redemptionId, targetDate ->
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.rescheduleRedemption(redemptionId, targetDate, baseUrl, token)
                         }
                     },
                     onResolveRedemption = { redemptionId, approved, note ->

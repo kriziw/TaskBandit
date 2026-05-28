@@ -895,12 +895,18 @@ export const taskBanditApi = {
   deleteReward(token: string, language: AppLanguage, rewardId: string) {
     return request<void>(`/api/rewards/${rewardId}`, { method: 'DELETE', token, language });
   },
-  redeemReward(token: string, language: AppLanguage, rewardId: string, note?: string) {
+  redeemReward(
+    token: string,
+    language: AppLanguage,
+    rewardId: string,
+    note?: string,
+    targetDate?: string,
+  ) {
     return request<RewardRedemption>(`/api/rewards/${rewardId}/redeem`, {
       method: 'POST',
       token,
       language,
-      body: { note },
+      body: { note, targetDate },
     });
   },
   getRedemptions(token: string, language: AppLanguage) {
@@ -918,6 +924,19 @@ export const taskBanditApi = {
       token,
       language,
       body: { approved, note },
+    });
+  },
+  rescheduleRedemption(
+    token: string,
+    language: AppLanguage,
+    redemptionId: string,
+    targetDate: string,
+  ) {
+    return request<RewardRedemption>(`/api/rewards/redemptions/${redemptionId}/reschedule`, {
+      method: 'PATCH',
+      token,
+      language,
+      body: { targetDate },
     });
   },
 };

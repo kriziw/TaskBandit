@@ -96,6 +96,7 @@ enum NotificationType {
   REWARD_REDEMPTION_APPROVED
   REWARD_REDEMPTION_REJECTED
   REWARD_CLAIMED_EXCLUSIVE
+  REWARD_BOOKING_REMINDER
 }
 
 enum NotificationDevicePlatform {
@@ -633,6 +634,7 @@ model RewardRedemption {
   resolvedById   String?                @db.Uuid
   adminNote      String?
   pointsDeducted Int
+  targetDate     DateTime?              @db.Date
   reward         Reward                 @relation(fields: [rewardId], references: [id], onDelete: Cascade)
   household      Household              @relation(fields: [householdId], references: [id], onDelete: Cascade)
   requestedBy    User                   @relation("RedemptionRequester", fields: [requestedById], references: [id])

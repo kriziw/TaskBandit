@@ -1149,11 +1149,11 @@ internal class DashboardViewModel(
 
     // ── Rewards ──────────────────────────────────────────────────────────────
 
-    fun redeemReward(rewardId: String, baseUrl: String, token: String) {
+    fun redeemReward(rewardId: String, baseUrl: String, token: String, targetDate: String? = null) {
         _uiState.update { it.copy(errorMessage = null) }
         viewModelScope.launch {
             runCatching {
-                withContext(Dispatchers.IO) { api.redeemReward(baseUrl, token, rewardId) }
+                withContext(Dispatchers.IO) { api.redeemReward(baseUrl, token, rewardId, targetDate) }
             }.onSuccess { redemption ->
                 _uiState.update { s ->
                     s.copy(
@@ -1188,6 +1188,33 @@ internal class DashboardViewModel(
                             }
                         )
                     )
+                }
+            }.onFailure { throwable ->
+                handleUnauthorized(throwable)
+                if (throwable !is TaskBanditUnauthorizedException) {
+                    _uiState.update { it.copy(errorMessage = throwable.message) }
+                }
+            }
+        }
+    }
+
+    fun rescheduleRedemption(redemptionId: String, targetDate: String, baseUrl: String, token: String) {
+        _uiState.update { it.copy(errorMessage = null) }
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.rescheduleRedemption(baseUrl, token, redemptionId, targetDate) }
+            }.onSuccess { result ->
+                _uiState.update { s ->
+                    val updated = s.dashboard?.redemptions?.map { r ->
+                        when {
+                            r.id == result.id -> result           // updated in-place (PENDING→PENDING)
+                            r.id == redemptionId -> r.copy(status = "CANCELLED")  // old APPROVED cancelled
+                            else -> r
+                        }
+                    } ?: return@onSuccess
+                    // If result is a new redemption (different ID), add it
+                    val withNew = if (updated.none { it.id == result.id }) updated + result else updated
+                    s.copy(dashboard = s.dashboard.copy(redemptions = withNew))
                 }
             }.onFailure { throwable ->
                 handleUnauthorized(throwable)

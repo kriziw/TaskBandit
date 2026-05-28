@@ -10,6 +10,7 @@ import { CreateRewardDto } from './dto/create-reward.dto';
 import { UpdateRewardDto } from './dto/update-reward.dto';
 import { RedeemRewardDto } from './dto/redeem-reward.dto';
 import { ResolveRedemptionDto } from './dto/resolve-redemption.dto';
+import { RescheduleRedemptionDto } from './dto/reschedule-redemption.dto';
 
 @ApiTags('rewards')
 @Controller('api/rewards')
@@ -75,5 +76,15 @@ export class RewardsController {
     @CurrentUser() user: AuthenticatedUser,
   ) {
     return this.rewardsService.resolveRedemption(redemptionId, dto, user);
+  }
+
+  @Patch('redemptions/:id/reschedule')
+  @Roles('admin', 'parent', 'child')
+  rescheduleRedemption(
+    @Param('id') redemptionId: string,
+    @Body() dto: RescheduleRedemptionDto,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.rewardsService.rescheduleRedemption(redemptionId, dto, user);
   }
 }
