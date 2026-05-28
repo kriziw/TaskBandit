@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.1.2](https://github.com/kriziw/TaskBandit/compare/v1.1.1...v1.1.2) (2026-05-28)
+
+
+### Bug Fixes
+
+* **server:** force uuid &gt;=11.1.1 via overrides to address CVE-2026-41907 ([#536](https://github.com/kriziw/TaskBandit/issues/536)) ([e0cf657](https://github.com/kriziw/TaskBandit/commit/e0cf657a88be736864b4da6f41e06654cd76d3c4))
+
 ## [1.1.1](https://github.com/kriziw/TaskBandit/compare/v1.1.0...v1.1.1) (2026-05-28)
 
 
