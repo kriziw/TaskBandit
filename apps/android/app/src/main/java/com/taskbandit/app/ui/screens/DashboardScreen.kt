@@ -1568,10 +1568,6 @@ internal fun DashboardScreen(
                     showMoreSheet = false
                     openTab(MobileDashboardTab.TEMPLATE_MANAGER)
                 },
-                onNavigateRewardsManager = {
-                    showMoreSheet = false
-                    openTab(MobileDashboardTab.REWARDS_MANAGER)
-                }
             )
         }
     }
@@ -1781,16 +1777,16 @@ internal fun DashboardScreen(
                         )
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.REWARDS,
+                            selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
                             label = stringResource(R.string.mobile_tab_rewards),
                             iconRes = R.drawable.mobile_nav_rewards,
                             showLabel = isNewMobileUi,
                             badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
-                            onClick = { openTab(MobileDashboardTab.REWARDS) }
+                            onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
                         )
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || activeTab == MobileDashboardTab.REWARDS_MANAGER || showMoreSheet,
+                            selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || showMoreSheet,
                             label = stringResource(R.string.mobile_tab_more),
                             iconRes = R.drawable.mobile_nav_more,
                             showLabel = isNewMobileUi,
@@ -1839,16 +1835,16 @@ internal fun DashboardScreen(
                             )
                             MobileTabButton(
                                 modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.REWARDS,
+                                selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
                                 label = stringResource(R.string.mobile_tab_rewards),
                                 iconRes = R.drawable.mobile_nav_rewards,
                                 showLabel = isNewMobileUi,
                                 badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
-                                onClick = { openTab(MobileDashboardTab.REWARDS) }
+                                onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
                             )
                             MobileTabButton(
                                 modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || activeTab == MobileDashboardTab.REWARDS_MANAGER || showMoreSheet,
+                                selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || showMoreSheet,
                                 label = stringResource(R.string.mobile_tab_more),
                                 iconRes = R.drawable.mobile_nav_more,
                                 showLabel = isNewMobileUi,
@@ -2311,7 +2307,7 @@ internal fun DashboardScreen(
                                             Text(r.rewardTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                             Text(r.status, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                        Text("Ã¢Ë†â€™${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
+                                        Text("-${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
                             }
@@ -3523,7 +3519,7 @@ private fun ChoreActionSheet(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(text = typeTitle, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 Text(
-                    text = "${chore.groupTitle.ifBlank { "Home" }} Ã‚Â· $dueFormatted",
+                    text = "${chore.groupTitle.ifBlank { "Home" }} · $dueFormatted",
                     style = MaterialTheme.typography.bodySmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )

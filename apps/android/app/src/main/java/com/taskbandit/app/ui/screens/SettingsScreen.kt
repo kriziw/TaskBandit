@@ -28,7 +28,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.Logout
 import androidx.compose.material.icons.rounded.AssignmentTurnedIn
 import androidx.compose.material.icons.rounded.ChevronRight
-import androidx.compose.material.icons.rounded.EmojiEvents
 import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Language
@@ -1148,7 +1147,6 @@ internal fun MoreMenuSheet(
     canManageTemplates: Boolean,
     onNavigateSettings: () -> Unit,
     onNavigateTemplates: () -> Unit,
-    onNavigateRewardsManager: () -> Unit
 ) {
     Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp).padding(bottom = 24.dp)) {
         Text(
@@ -1168,14 +1166,6 @@ internal fun MoreMenuSheet(
                 icon = Icons.Rounded.AssignmentTurnedIn,
                 label = stringResource(R.string.mobile_more_templates),
                 onClick = onNavigateTemplates
-            )
-        }
-        if (isCreatorRole) {
-            Spacer(modifier = Modifier.height(8.dp))
-            MoreMenuSheetItem(
-                icon = Icons.Rounded.EmojiEvents,
-                label = stringResource(R.string.mobile_more_rewards_manager),
-                onClick = onNavigateRewardsManager
             )
         }
         Spacer(modifier = Modifier.height(16.dp))
