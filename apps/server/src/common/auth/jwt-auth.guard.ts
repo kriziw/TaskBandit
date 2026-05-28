@@ -6,7 +6,7 @@ import {
 } from "@nestjs/common";
 import { I18nService } from "../i18n/i18n.service";
 import { AuthService } from "../../modules/auth/auth.service";
-import { buildTenantRequestContext } from "../http/request-url.util";
+import type { TenantRequestContext } from "../http/request-url.util";
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
@@ -19,6 +19,7 @@ export class JwtAuthGuard implements CanActivate {
     const request = context.switchToHttp().getRequest<{
       headers: Record<string, string | undefined>;
       get?: (header: string) => string | undefined;
+      tenantContext: TenantRequestContext;
       user?: unknown;
     }>();
     const language = this.i18nService.resolveLanguage(request.headers["accept-language"]);
@@ -33,7 +34,7 @@ export class JwtAuthGuard implements CanActivate {
     request.user = await this.authService.getCurrentUser(
       authorizationHeader,
       language,
-      buildTenantRequestContext(request)
+      request.tenantContext
     );
     return true;
   }
