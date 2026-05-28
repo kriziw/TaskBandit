@@ -1,5 +1,11 @@
-import { AssignmentStrategyType, Difficulty, FollowUpDelayUnit, RecurrenceStartStrategy, RecurrenceType } from "@prisma/client";
-import { Type } from "class-transformer";
+import {
+  AssignmentStrategyType,
+  Difficulty,
+  FollowUpDelayUnit,
+  RecurrenceStartStrategy,
+  RecurrenceType,
+} from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -13,8 +19,8 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateNested
-} from "class-validator";
+  ValidateNested,
+} from 'class-validator';
 
 export class OperatorLocalizedTextDto {
   @IsString()
@@ -69,7 +75,9 @@ export class OperatorTemplateDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
-  @Matches(/^op_[a-z0-9]{10}$/, { message: "key must match the operator template pattern op_<10 hex chars>" })
+  @Matches(/^op_[a-z0-9]{10}$/, {
+    message: 'key must match the operator template pattern op_<10 hex chars>',
+  })
   key!: string;
 
   @IsString()

@@ -1,5 +1,5 @@
-import { RewardCategory } from "@prisma/client";
-import { Type } from "class-transformer";
+import { RewardCategory } from '@prisma/client';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -12,8 +12,8 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateNested
-} from "class-validator";
+  ValidateNested,
+} from 'class-validator';
 
 export class OperatorRewardLocalizedTextDto {
   @IsString()
@@ -37,7 +37,9 @@ export class OperatorRewardDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(64)
-  @Matches(/^rwd_[a-z0-9]{10}$/, { message: "key must match the operator reward pattern rwd_<10 lowercase hex chars>" })
+  @Matches(/^rwd_[a-z0-9]{10}$/, {
+    message: 'key must match the operator reward pattern rwd_<10 lowercase hex chars>',
+  })
   key!: string;
 
   @IsString()

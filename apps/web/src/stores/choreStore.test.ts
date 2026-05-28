@@ -8,9 +8,14 @@ beforeEach(() => {
     submitNotes: {},
     reviewNotes: {},
     instanceForm: {
-      templateId: '', assigneeId: '', title: '', dueAt: '',
-      reassignAutomatically: false, recurrenceEndMode: 'never',
-      recurrenceOccurrences: 3, recurrenceEndsAt: '',
+      templateId: '',
+      assigneeId: '',
+      title: '',
+      dueAt: '',
+      reassignAutomatically: false,
+      recurrenceEndMode: 'never',
+      recurrenceOccurrences: 3,
+      recurrenceEndsAt: '',
     },
     editingInstanceId: null,
     householdViewMode: 'list',
@@ -46,10 +51,10 @@ beforeEach(() => {
 describe('clearSubmitState', () => {
   it('removes submit state for a specific instance', () => {
     useChoreStore.setState({
-      submitSelections: { 'i1': ['a'], 'i2': ['b'] },
-      selectedProofFiles: { 'i1': [] },
-      submitNotes: { 'i1': 'note', 'i2': 'other' },
-      reviewNotes: { 'i1': 'review' },
+      submitSelections: { i1: ['a'], i2: ['b'] },
+      selectedProofFiles: { i1: [] },
+      submitNotes: { i1: 'note', i2: 'other' },
+      reviewNotes: { i1: 'review' },
     });
     useChoreStore.getState().clearSubmitState('i1');
     const { submitSelections, submitNotes, reviewNotes } = useChoreStore.getState();
@@ -105,8 +110,8 @@ describe('setInstanceForm functional updater', () => {
 
 describe('setSubmitSelections functional updater', () => {
   it('merges new selection into existing records', () => {
-    useChoreStore.setState({ submitSelections: { 'i1': ['a'] } });
-    useChoreStore.getState().setSubmitSelections((prev) => ({ ...prev, 'i2': ['b'] }));
-    expect(useChoreStore.getState().submitSelections).toEqual({ 'i1': ['a'], 'i2': ['b'] });
+    useChoreStore.setState({ submitSelections: { i1: ['a'] } });
+    useChoreStore.getState().setSubmitSelections((prev) => ({ ...prev, i2: ['b'] }));
+    expect(useChoreStore.getState().submitSelections).toEqual({ i1: ['a'], i2: ['b'] });
   });
 });

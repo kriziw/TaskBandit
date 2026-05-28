@@ -1,5 +1,5 @@
-import { Module } from "@nestjs/common";
-import { HouseholdRepository } from "./household.repository";
+import { Module } from '@nestjs/common';
+import { HouseholdRepository } from './household.repository';
 
 /**
  * HouseholdModule — shared data-access layer for all household-related operations.
@@ -29,6 +29,6 @@ import { HouseholdRepository } from "./household.repository";
  */
 @Module({
   providers: [HouseholdRepository],
-  exports: [HouseholdRepository]
+  exports: [HouseholdRepository],
 })
 export class HouseholdModule {}

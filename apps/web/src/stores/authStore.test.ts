@@ -65,9 +65,7 @@ describe('authStore.login', () => {
   it('sets loginError and rethrows on failure', async () => {
     mockedApi.login.mockRejectedValue(new Error('Invalid credentials'));
 
-    await expect(
-      useAuthStore.getState().login('x@y.com', 'bad', 'en', 'client'),
-    ).rejects.toThrow();
+    await expect(useAuthStore.getState().login('x@y.com', 'bad', 'en', 'client')).rejects.toThrow();
 
     expect(useAuthStore.getState().loginError).toBe('Invalid credentials');
     expect(useAuthStore.getState().token).toBeNull();
@@ -104,11 +102,9 @@ describe('authStore.signup', () => {
       tenantContext: null,
     } as never);
 
-    await useAuthStore.getState().signup(
-      { displayName: 'Alice', email: 'a@b.com', password: 'pw' },
-      'en',
-      'client',
-    );
+    await useAuthStore
+      .getState()
+      .signup({ displayName: 'Alice', email: 'a@b.com', password: 'pw' }, 'en', 'client');
 
     expect(useAuthStore.getState().token).toBe('signup-tok');
     expect(mockedWriteToken).toHaveBeenCalledWith('client', 'signup-tok');

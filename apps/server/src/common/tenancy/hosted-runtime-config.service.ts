@@ -1,8 +1,8 @@
-import { Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { AppConfigService } from "../config/app-config.service";
-import { AppLogService } from "../logging/app-log.service";
-import { TenantContextService } from "./tenant-context.service";
-import { TenantRequestContext } from "../http/request-url.util";
+import { Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { AppConfigService } from '../config/app-config.service';
+import { AppLogService } from '../logging/app-log.service';
+import { TenantContextService } from './tenant-context.service';
+import { TenantRequestContext } from '../http/request-url.util';
 
 export type HostedTenantRuntimeConfig = {
   compatibilityMode: string;
@@ -38,7 +38,7 @@ export type HostedTenantRuntimeConfig = {
     health: {
       basic: {
         checks: Array<{
-          depth: "basic" | "deep";
+          depth: 'basic' | 'deep';
           detail: string;
           label: string;
           status: string;
@@ -47,7 +47,7 @@ export type HostedTenantRuntimeConfig = {
       };
       deep: {
         checks: Array<{
-          depth: "basic" | "deep";
+          depth: 'basic' | 'deep';
           detail: string;
           label: string;
           status: string;
@@ -113,12 +113,12 @@ export class HostedRuntimeConfigService {
   constructor(
     private readonly appConfigService: AppConfigService,
     private readonly tenantContextService: TenantContextService,
-    private readonly appLogService: AppLogService
+    private readonly appLogService: AppLogService,
   ) {}
 
   async getTenantRuntimeConfigForHost(hostHeader?: string | null) {
     return this.getTenantRuntimeConfigForRequest({
-      hostHeader
+      hostHeader,
     });
   }
 
@@ -145,41 +145,41 @@ export class HostedRuntimeConfigService {
     const baseUrl = this.appConfigService.controlPlaneRuntimeBaseUrl;
     const token = this.appConfigService.controlPlaneInternalServiceToken;
     if (!baseUrl || !token) {
-      throw this.buildServiceUnavailableError(
-        "Hosted runtime config is not fully configured.",
-        {
-          reason: "control_plane_config_missing",
-          statusCode: 503,
-          upstreamCode: null,
-          upstreamHint: null,
-          upstreamMessage: null
-        }
-      );
+      throw this.buildServiceUnavailableError('Hosted runtime config is not fully configured.', {
+        reason: 'control_plane_config_missing',
+        statusCode: 503,
+        upstreamCode: null,
+        upstreamHint: null,
+        upstreamMessage: null,
+      });
     }
 
     let response: Response;
     try {
-      response = await fetch(`${baseUrl}/internal/runtime/tenants/${encodeURIComponent(tenantId)}/config`, {
-        headers: {
-          accept: "application/json",
-          "x-internal-service-token": token,
-          [runtimeConfigContractVersionHeader]: runtimeConfigContractVersion
-        }
-      });
+      response = await fetch(
+        `${baseUrl}/internal/runtime/tenants/${encodeURIComponent(tenantId)}/config`,
+        {
+          headers: {
+            accept: 'application/json',
+            'x-internal-service-token': token,
+            [runtimeConfigContractVersionHeader]: runtimeConfigContractVersion,
+          },
+        },
+      );
     } catch (error) {
       const failure = {
-        reason: "control_plane_unavailable",
+        reason: 'control_plane_unavailable',
         statusCode: 503,
         upstreamCode: null,
-        upstreamHint: "network_request_failed",
-        upstreamMessage: error instanceof Error ? error.message : String(error ?? "")
+        upstreamHint: 'network_request_failed',
+        upstreamMessage: error instanceof Error ? error.message : String(error ?? ''),
       } satisfies RuntimeConfigFailureContext;
       this.logRuntimeConfigFailure(tenantId, failure);
       return this.resolveWithStaleCacheOrThrow({
         cached,
         failure,
-        message: "Hosted runtime config could not be loaded from the control plane.",
-        tenantId
+        message: 'Hosted runtime config could not be loaded from the control plane.',
+        tenantId,
       });
     }
 
@@ -189,40 +189,44 @@ export class HostedRuntimeConfigService {
       return this.resolveWithStaleCacheOrThrow({
         cached,
         failure,
-        message: "Hosted runtime config could not be loaded from the control plane.",
-        tenantId
+        message: 'Hosted runtime config could not be loaded from the control plane.',
+        tenantId,
       });
     }
 
     const payload = (await response.json()) as { tenantConfig?: HostedTenantRuntimeConfig };
     if (!payload.tenantConfig) {
       const failure = {
-        reason: "control_plane_payload_incomplete",
+        reason: 'control_plane_payload_incomplete',
         statusCode: 503,
         upstreamCode: null,
         upstreamHint: null,
-        upstreamMessage: null
+        upstreamMessage: null,
       } satisfies RuntimeConfigFailureContext;
       this.logRuntimeConfigFailure(tenantId, failure);
       return this.resolveWithStaleCacheOrThrow({
         cached,
         failure,
-        message: "Hosted runtime config response was incomplete.",
-        tenantId
+        message: 'Hosted runtime config response was incomplete.',
+        tenantId,
       });
     }
 
     this.cache.set(tenantId, {
       cachedAt: now,
       expiresAt: now + this.appConfigService.hostedRuntimeConfigCacheTtlMs,
-      value: payload.tenantConfig
+      value: payload.tenantConfig,
     });
 
     return payload.tenantConfig;
   }
 
-  private async readControlPlaneFailureContext(response: Response): Promise<RuntimeConfigFailureContext> {
-    const payload = (await response.json().catch(() => null)) as ControlPlaneRuntimeErrorPayload | null;
+  private async readControlPlaneFailureContext(
+    response: Response,
+  ): Promise<RuntimeConfigFailureContext> {
+    const payload = (await response
+      .json()
+      .catch(() => null)) as ControlPlaneRuntimeErrorPayload | null;
     const topLevelCode = this.normalizeString(payload?.code);
     const nestedCode = this.normalizeString(payload?.error?.code);
     const upstreamCode = nestedCode ?? topLevelCode ?? null;
@@ -241,7 +245,7 @@ export class HostedRuntimeConfigService {
       statusCode: response.status,
       upstreamCode,
       upstreamHint,
-      upstreamMessage
+      upstreamMessage,
     };
   }
 
@@ -251,32 +255,32 @@ export class HostedRuntimeConfigService {
     }
 
     if (statusCode === 404) {
-      return "runtime_tenant_not_mapped";
+      return 'runtime_tenant_not_mapped';
     }
     if (statusCode === 403) {
-      return "control_plane_forbidden";
+      return 'control_plane_forbidden';
     }
     if (statusCode === 401) {
-      return "control_plane_unauthorized";
+      return 'control_plane_unauthorized';
     }
     if (statusCode === 409) {
-      return "runtime_contract_version_incompatible";
+      return 'runtime_contract_version_incompatible';
     }
     if (statusCode >= 500) {
-      return "control_plane_unavailable";
+      return 'control_plane_unavailable';
     }
-    return "control_plane_rejected_request";
+    return 'control_plane_rejected_request';
   }
 
   private buildServiceUnavailableError(message: string, failure: RuntimeConfigFailureContext) {
     return new ServiceUnavailableException({
-      code: "hosted_runtime_config_unavailable",
+      code: 'hosted_runtime_config_unavailable',
       details: {
         reason: failure.reason,
         upstreamCode: failure.upstreamCode,
-        upstreamStatusCode: failure.statusCode
+        upstreamStatusCode: failure.statusCode,
       },
-      message
+      message,
     });
   }
 
@@ -288,9 +292,9 @@ export class HostedRuntimeConfigService {
         tenantId,
         upstreamCode: failure.upstreamCode,
         upstreamHint: failure.upstreamHint,
-        upstreamMessage: failure.upstreamMessage
+        upstreamMessage: failure.upstreamMessage,
       })}`,
-      "HostedRuntimeConfigService"
+      'HostedRuntimeConfigService',
     );
   }
 
@@ -311,9 +315,9 @@ export class HostedRuntimeConfigService {
             tenantId: input.tenantId,
             upstreamCode: input.failure.upstreamCode,
             upstreamHint: input.failure.upstreamHint,
-            upstreamStatusCode: input.failure.statusCode
+            upstreamStatusCode: input.failure.statusCode,
           })}`,
-          "HostedRuntimeConfigService"
+          'HostedRuntimeConfigService',
         );
         return cached.value;
       }
@@ -323,23 +327,23 @@ export class HostedRuntimeConfigService {
   }
 
   private normalizeString(value: unknown) {
-    if (typeof value !== "string") {
+    if (typeof value !== 'string') {
       return null;
     }
 
     const normalized = value.trim();
-    return normalized === "" ? null : normalized;
+    return normalized === '' ? null : normalized;
   }
 }
 
 const allowedControlPlaneReasonCodes = new Set([
-  "internal_service_token_not_configured",
-  "runtime_contract_version_incompatible",
-  "runtime_tenant_not_mapped",
-  "token_invalid",
-  "token_missing"
+  'internal_service_token_not_configured',
+  'runtime_contract_version_incompatible',
+  'runtime_tenant_not_mapped',
+  'token_invalid',
+  'token_missing',
 ]);
 
-const runtimeConfigContractVersion = "1.0.0";
-const runtimeConfigContractVersionHeader = "x-taskbandit-runtime-contract-version";
+const runtimeConfigContractVersion = '1.0.0';
+const runtimeConfigContractVersionHeader = 'x-taskbandit-runtime-contract-version';
 const hostedRuntimeConfigStaleCacheWindowMs = 5 * 60_000;

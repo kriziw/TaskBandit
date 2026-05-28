@@ -1,10 +1,10 @@
-import { Injectable, MessageEvent } from "@nestjs/common";
-import { Observable, Subject, interval, map, merge } from "rxjs";
+import { Injectable, MessageEvent } from '@nestjs/common';
+import { Observable, Subject, interval, map, merge } from 'rxjs';
 
-type DashboardSyncEntityType = "instance" | "template" | "takeover_request";
+type DashboardSyncEntityType = 'instance' | 'template' | 'takeover_request';
 
 interface DashboardSyncPayload {
-  topic: "chores";
+  topic: 'chores';
   action: string;
   entityType: DashboardSyncEntityType;
   entityId?: string;
@@ -22,19 +22,19 @@ export class DashboardSyncService {
     return merge(
       subject.pipe(
         map((payload) => ({
-          type: "chore-sync",
-          data: payload
-        }))
+          type: 'chore-sync',
+          data: payload,
+        })),
       ),
       interval(25000).pipe(
         map(() => ({
-          type: "heartbeat",
+          type: 'heartbeat',
           data: {
-            topic: "heartbeat",
-            occurredAt: new Date().toISOString()
-          }
-        }))
-      )
+            topic: 'heartbeat',
+            occurredAt: new Date().toISOString(),
+          },
+        })),
+      ),
     );
   }
 
@@ -47,12 +47,12 @@ export class DashboardSyncService {
   }) {
     const subject = this.getOrCreateHouseholdStream(input.householdId);
     subject.next({
-      topic: "chores",
+      topic: 'chores',
       action: input.action,
       entityType: input.entityType,
       entityId: input.entityId,
       actorUserId: input.actorUserId,
-      occurredAt: new Date().toISOString()
+      occurredAt: new Date().toISOString(),
     });
   }
 

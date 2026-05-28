@@ -1,9 +1,9 @@
-import { ConsoleLogger, Injectable } from "@nestjs/common";
-import { appendFile, readFile, rename, stat, unlink } from "node:fs/promises";
-import { mkdirSync } from "node:fs";
-import path from "node:path";
-import { AppConfigService } from "../config/app-config.service";
-import { RuntimeLogEntry, RuntimeLogLevel } from "./runtime-log-entry.type";
+import { ConsoleLogger, Injectable } from '@nestjs/common';
+import { appendFile, readFile, rename, stat, unlink } from 'node:fs/promises';
+import { mkdirSync } from 'node:fs';
+import path from 'node:path';
+import { AppConfigService } from '../config/app-config.service';
+import { RuntimeLogEntry, RuntimeLogLevel } from './runtime-log-entry.type';
 
 @Injectable()
 export class AppLogService extends ConsoleLogger {
@@ -24,34 +24,34 @@ export class AppLogService extends ConsoleLogger {
     this.maxTotalSizeBytes = appConfigService.runtimeLogMaxTotalSizeBytes;
     this.maxArchiveFiles = Math.max(
       0,
-      Math.ceil(this.maxTotalSizeBytes / this.maxFileSizeBytes) - 1
+      Math.ceil(this.maxTotalSizeBytes / this.maxFileSizeBytes) - 1,
     );
     mkdirSync(path.dirname(this.logFilePath), { recursive: true });
   }
 
   override log(message: unknown, context?: string) {
     super.log(message as string, context);
-    this.capture("log", message, context);
+    this.capture('log', message, context);
   }
 
   override warn(message: unknown, context?: string) {
     super.warn(message as string, context);
-    this.capture("warn", message, context);
+    this.capture('warn', message, context);
   }
 
   override error(message: unknown, stack?: string, context?: string) {
     super.error(message as string, stack, context);
-    this.capture("error", message, context, stack);
+    this.capture('error', message, context, stack);
   }
 
   override debug(message: unknown, context?: string) {
     super.debug?.(message as string, context);
-    this.capture("debug", message, context);
+    this.capture('debug', message, context);
   }
 
   override verbose(message: unknown, context?: string) {
     super.verbose?.(message as string, context);
-    this.capture("verbose", message, context);
+    this.capture('verbose', message, context);
   }
 
   getRecentEntries(limit = 200) {
@@ -60,11 +60,9 @@ export class AppLogService extends ConsoleLogger {
 
   async exportText() {
     try {
-      return await readFile(this.logFilePath, "utf8");
+      return await readFile(this.logFilePath, 'utf8');
     } catch {
-      return this.entries
-        .map((entry) => this.formatLine(entry))
-        .join("\n");
+      return this.entries.map((entry) => this.formatLine(entry)).join('\n');
     }
   }
 
@@ -79,7 +77,7 @@ export class AppLogService extends ConsoleLogger {
       level,
       context: context ?? null,
       message: this.stringifyLogMessage(message),
-      stack: stack ?? null
+      stack: stack ?? null,
     };
 
     this.entries.push(entry);
@@ -94,9 +92,9 @@ export class AppLogService extends ConsoleLogger {
   }
 
   private async persistEntry(serializedEntry: string) {
-    const serializedSize = Buffer.byteLength(serializedEntry, "utf8");
+    const serializedSize = Buffer.byteLength(serializedEntry, 'utf8');
     await this.rotateIfNeeded(serializedSize);
-    await appendFile(this.logFilePath, serializedEntry, "utf8");
+    await appendFile(this.logFilePath, serializedEntry, 'utf8');
     await this.pruneArchivedLogsToTotalLimit();
   }
 
@@ -118,7 +116,8 @@ export class AppLogService extends ConsoleLogger {
     await unlink(this.getArchivePath(this.maxArchiveFiles)).catch(() => undefined);
 
     for (let archiveIndex = this.maxArchiveFiles; archiveIndex >= 1; archiveIndex -= 1) {
-      const sourcePath = archiveIndex === 1 ? this.logFilePath : this.getArchivePath(archiveIndex - 1);
+      const sourcePath =
+        archiveIndex === 1 ? this.logFilePath : this.getArchivePath(archiveIndex - 1);
       const destinationPath = this.getArchivePath(archiveIndex);
 
       if (!(await this.fileExists(sourcePath))) {
@@ -178,13 +177,13 @@ export class AppLogService extends ConsoleLogger {
   }
 
   private formatLine(entry: RuntimeLogEntry) {
-    const contextPart = entry.context ? ` [${entry.context}]` : "";
-    const stackPart = entry.stack ? `\n${entry.stack}` : "";
+    const contextPart = entry.context ? ` [${entry.context}]` : '';
+    const stackPart = entry.stack ? `\n${entry.stack}` : '';
     return `${entry.timestamp} ${entry.level.toUpperCase()}${contextPart} ${entry.message}${stackPart}`;
   }
 
   private stringifyLogMessage(message: unknown) {
-    if (typeof message === "string") {
+    if (typeof message === 'string') {
       return message;
     }
 

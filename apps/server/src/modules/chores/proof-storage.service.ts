@@ -1,11 +1,11 @@
-import { BadRequestException, Injectable } from "@nestjs/common";
-import { randomUUID } from "node:crypto";
-import { mkdir, readdir, readFile, rm, stat, writeFile } from "node:fs/promises";
-import path from "node:path";
-import { AppConfigService } from "../../common/config/app-config.service";
-import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
-import { I18nService } from "../../common/i18n/i18n.service";
-import { SupportedLanguage } from "../../common/i18n/supported-languages";
+import { BadRequestException, Injectable } from '@nestjs/common';
+import { randomUUID } from 'node:crypto';
+import { mkdir, readdir, readFile, rm, stat, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { AppConfigService } from '../../common/config/app-config.service';
+import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
+import { I18nService } from '../../common/i18n/i18n.service';
+import { SupportedLanguage } from '../../common/i18n/supported-languages';
 
 type StoredProofUpload = {
   clientFilename: string;
@@ -41,7 +41,7 @@ class LocalProofObjectStorageDriver implements ProofObjectStorageDriver {
 
   async deleteObject(storageKey: string) {
     await rm(this.resolveAbsolutePath(storageKey), {
-      force: true
+      force: true,
     });
   }
 
@@ -67,7 +67,7 @@ class LocalProofObjectStorageDriver implements ProofObjectStorageDriver {
 
   private async walkDirectory(directoryPath: string, output: string[]) {
     const entries = await readdir(directoryPath, {
-      withFileTypes: true
+      withFileTypes: true,
     });
 
     for (const entry of entries) {
@@ -85,16 +85,16 @@ class LocalProofObjectStorageDriver implements ProofObjectStorageDriver {
 
   private resolveAbsolutePath(storageKey: string) {
     const normalizedKey = storageKey
-      .split("/")
+      .split('/')
       .map((segment) => segment.trim())
       .filter(Boolean)
       .join(path.sep);
     const absolutePath = path.resolve(this.rootPath, normalizedKey);
     const relativePath = path.relative(this.rootPath, absolutePath);
 
-    if (relativePath.startsWith("..") || path.isAbsolute(relativePath)) {
+    if (relativePath.startsWith('..') || path.isAbsolute(relativePath)) {
       throw new BadRequestException({
-        message: "That proof upload path is invalid."
+        message: 'That proof upload path is invalid.',
       });
     }
 
@@ -113,7 +113,7 @@ export class ProofStorageService {
 
   constructor(
     private readonly appConfigService: AppConfigService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
   ) {
     this.driver = new LocalProofObjectStorageDriver(this.appConfigService.storageRootPath);
   }
@@ -121,29 +121,29 @@ export class ProofStorageService {
   async storeProofUpload(
     file: Express.Multer.File | undefined,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ): Promise<StoredProofUpload> {
     if (!file) {
       throw new BadRequestException({
-        message: this.i18nService.translate("chores.photo_upload_missing", language)
+        message: this.i18nService.translate('chores.photo_upload_missing', language),
       });
     }
 
-    if (!file.mimetype?.startsWith("image/")) {
+    if (!file.mimetype?.startsWith('image/')) {
       throw new BadRequestException({
-        message: this.i18nService.translate("chores.photo_upload_invalid_type", language)
+        message: this.i18nService.translate('chores.photo_upload_invalid_type', language),
       });
     }
 
-    const originalExtension = path.extname(file.originalname || "").toLowerCase();
+    const originalExtension = path.extname(file.originalname || '').toLowerCase();
     const safeExtension = /^[.][a-z0-9]{1,8}$/.test(originalExtension)
       ? originalExtension
       : this.resolveExtensionFromMimeType(file.mimetype);
-    const originalFilename = this.sanitizeFilename(file.originalname || "proof-image");
+    const originalFilename = this.sanitizeFilename(file.originalname || 'proof-image');
     const storedFilename = `${randomUUID()}${safeExtension}`;
     const storageKey = path.posix.join(
       this.buildTenantProofPrefix(user.tenantId, user.householdId),
-      storedFilename
+      storedFilename,
     );
 
     await this.driver.writeObject(storageKey, file.buffer);
@@ -152,7 +152,7 @@ export class ProofStorageService {
       clientFilename: originalFilename,
       contentType: file.mimetype,
       storageKey,
-      sizeBytes: file.size
+      sizeBytes: file.size,
     };
   }
 
@@ -167,11 +167,13 @@ export class ProofStorageService {
   }
 
   async listProofObjectKeys(scope: TenantProofScope) {
-    return this.driver.listObjectKeys(this.buildTenantProofPrefix(scope.tenantId, scope.householdId));
+    return this.driver.listObjectKeys(
+      this.buildTenantProofPrefix(scope.tenantId, scope.householdId),
+    );
   }
 
   buildTenantProofPrefix(tenantId: string, householdId: string) {
-    return path.posix.join("tenants", tenantId, "proofs", householdId);
+    return path.posix.join('tenants', tenantId, 'proofs', householdId);
   }
 
   assertStorageKeyBelongsToScope(storageKey: string, scope: TenantProofScope) {
@@ -180,14 +182,14 @@ export class ProofStorageService {
 
     if (!normalizedStorageKey || !normalizedStorageKey.startsWith(expectedPrefix)) {
       throw new BadRequestException({
-        message: "That proof upload path is invalid for this tenant."
+        message: 'That proof upload path is invalid for this tenant.',
       });
     }
 
-    const normalizedPath = normalizedStorageKey.split("/").filter(Boolean).join("/");
-    if (normalizedPath.includes("../") || normalizedPath.startsWith("..")) {
+    const normalizedPath = normalizedStorageKey.split('/').filter(Boolean).join('/');
+    if (normalizedPath.includes('../') || normalizedPath.startsWith('..')) {
       throw new BadRequestException({
-        message: "That proof upload path is invalid."
+        message: 'That proof upload path is invalid.',
       });
     }
   }
@@ -195,39 +197,39 @@ export class ProofStorageService {
   private sanitizeFilename(filename: string) {
     const sanitized = filename
       .trim()
-      .replace(/[^a-zA-Z0-9._-]+/g, "-")
+      .replace(/[^a-zA-Z0-9._-]+/g, '-')
       .slice(0, 255);
 
     let start = 0;
     let end = sanitized.length;
 
-    while (start < end && sanitized[start] === "-") {
+    while (start < end && sanitized[start] === '-') {
       start += 1;
     }
 
-    while (end > start && sanitized[end - 1] === "-") {
+    while (end > start && sanitized[end - 1] === '-') {
       end -= 1;
     }
 
-    return sanitized.slice(start, end) || "proof-image";
+    return sanitized.slice(start, end) || 'proof-image';
   }
 
   private resolveExtensionFromMimeType(mimeType: string) {
     switch (mimeType) {
-      case "image/jpeg":
-        return ".jpg";
-      case "image/png":
-        return ".png";
-      case "image/webp":
-        return ".webp";
-      case "image/gif":
-        return ".gif";
-      case "image/heic":
-        return ".heic";
-      case "image/heif":
-        return ".heif";
+      case 'image/jpeg':
+        return '.jpg';
+      case 'image/png':
+        return '.png';
+      case 'image/webp':
+        return '.webp';
+      case 'image/gif':
+        return '.gif';
+      case 'image/heic':
+        return '.heic';
+      case 'image/heif':
+        return '.heif';
       default:
-        return ".img";
+        return '.img';
     }
   }
 }

@@ -27,6 +27,10 @@ jobs:
           cache-dependency-path: apps/web/package.json
       - name: Install dependencies
         run: npm install
+      - name: Lint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
       - name: Build web app
         run: npm run build
       - name: Build admin web app
@@ -50,6 +54,10 @@ jobs:
         run: npm install
       - name: Generate Prisma client
         run: npm run prisma:generate
+      - name: Lint
+        run: npm run lint
+      - name: Check formatting
+        run: npm run format:check
       - name: Build server
         run: npm run build
       - name: Test

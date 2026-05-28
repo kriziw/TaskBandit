@@ -136,9 +136,7 @@ export function AuthPanel({ workspaceVariant, onNotice }: Props) {
   const noAuthProvidersAvailable = !providers?.local.enabled && !providers?.oidc.enabled;
   const allowCredentialLogin = providers?.local.enabled || noAuthProvidersAvailable;
   const authUnavailableNoticeKey =
-    noAuthProvidersAvailable && providers?.local.householdId
-      ? 'auth.local_disabled_notice'
-      : null;
+    noAuthProvidersAvailable && providers?.local.householdId ? 'auth.local_disabled_notice' : null;
 
   if (isAuthEntryLoading) {
     return (
@@ -206,9 +204,7 @@ export function AuthPanel({ workspaceVariant, onNotice }: Props) {
             <input
               type="password"
               value={passwordResetCompleteForm.password}
-              onChange={(event) =>
-                setPasswordResetCompleteForm({ password: event.target.value })
-              }
+              onChange={(event) => setPasswordResetCompleteForm({ password: event.target.value })}
               autoComplete="new-password"
             />
           </label>

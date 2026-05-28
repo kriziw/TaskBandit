@@ -1,4 +1,4 @@
-export type RuntimeLogLevel = "log" | "warn" | "error" | "debug" | "verbose";
+export type RuntimeLogLevel = 'log' | 'warn' | 'error' | 'debug' | 'verbose';
 
 export type RuntimeLogEntry = {
   id: string;

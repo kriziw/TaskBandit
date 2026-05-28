@@ -2,17 +2,17 @@ import {
   BadRequestException,
   ForbiddenException,
   Injectable,
-  NotFoundException
-} from "@nestjs/common";
-import { NotificationType, RewardRedemptionStatus } from "@prisma/client";
-import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
-import { SupportedLanguage } from "../../common/i18n/supported-languages";
-import { RewardsRepository } from "./rewards.repository";
-import { CreateRewardDto } from "./dto/create-reward.dto";
-import { UpdateRewardDto } from "./dto/update-reward.dto";
-import { RedeemRewardDto } from "./dto/redeem-reward.dto";
-import { ResolveRedemptionDto } from "./dto/resolve-redemption.dto";
-import { OperatorRewardDto } from "./dto/import-operator-rewards.dto";
+  NotFoundException,
+} from '@nestjs/common';
+import { NotificationType, RewardRedemptionStatus } from '@prisma/client';
+import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
+import { SupportedLanguage } from '../../common/i18n/supported-languages';
+import { RewardsRepository } from './rewards.repository';
+import { CreateRewardDto } from './dto/create-reward.dto';
+import { UpdateRewardDto } from './dto/update-reward.dto';
+import { RedeemRewardDto } from './dto/redeem-reward.dto';
+import { ResolveRedemptionDto } from './dto/resolve-redemption.dto';
+import { OperatorRewardDto } from './dto/import-operator-rewards.dto';
 
 @Injectable()
 export class RewardsService {
@@ -21,7 +21,7 @@ export class RewardsService {
   // ── Catalogue ───────────────────────────────────────────────────────────────
 
   async getRewards(user: AuthenticatedUser) {
-    const enabledOnly = user.role === "child";
+    const enabledOnly = user.role === 'child';
     return this.repository.getRewardsForHousehold(user.householdId, enabledOnly);
   }
 
@@ -32,12 +32,12 @@ export class RewardsService {
   async updateReward(rewardId: string, dto: UpdateRewardDto, user: AuthenticatedUser) {
     const reward = await this.repository.getRewardById(rewardId, user.householdId);
     if (!reward) {
-      throw new NotFoundException({ code: "reward_not_found", message: "Reward not found." });
+      throw new NotFoundException({ code: 'reward_not_found', message: 'Reward not found.' });
     }
     if (reward.isOperatorManaged) {
       throw new ForbiddenException({
-        code: "operator_managed_reward",
-        message: "This reward is managed by the operator and cannot be edited."
+        code: 'operator_managed_reward',
+        message: 'This reward is managed by the operator and cannot be edited.',
       });
     }
     return this.repository.updateReward(rewardId, user.householdId, dto);
@@ -46,7 +46,7 @@ export class RewardsService {
   async toggleReward(rewardId: string, user: AuthenticatedUser) {
     const reward = await this.repository.getRewardById(rewardId, user.householdId);
     if (!reward) {
-      throw new NotFoundException({ code: "reward_not_found", message: "Reward not found." });
+      throw new NotFoundException({ code: 'reward_not_found', message: 'Reward not found.' });
     }
     return this.repository.toggleReward(rewardId, user.householdId, !reward.isEnabled);
   }
@@ -54,12 +54,13 @@ export class RewardsService {
   async deleteReward(rewardId: string, user: AuthenticatedUser) {
     const reward = await this.repository.getRewardById(rewardId, user.householdId);
     if (!reward) {
-      throw new NotFoundException({ code: "reward_not_found", message: "Reward not found." });
+      throw new NotFoundException({ code: 'reward_not_found', message: 'Reward not found.' });
     }
     if (reward.isOperatorManaged) {
       throw new ForbiddenException({
-        code: "operator_managed_reward",
-        message: "This reward is managed by the operator and cannot be deleted. You can disable it instead."
+        code: 'operator_managed_reward',
+        message:
+          'This reward is managed by the operator and cannot be deleted. You can disable it instead.',
       });
     }
     return this.repository.deleteReward(rewardId, user.householdId);
@@ -70,15 +71,18 @@ export class RewardsService {
   async redeemReward(rewardId: string, _dto: RedeemRewardDto, user: AuthenticatedUser) {
     const reward = await this.repository.getRewardById(rewardId, user.householdId);
     if (!reward) {
-      throw new NotFoundException({ code: "reward_not_found", message: "Reward not found." });
+      throw new NotFoundException({ code: 'reward_not_found', message: 'Reward not found.' });
     }
     if (!reward.isEnabled) {
-      throw new BadRequestException({ code: "reward_not_enabled", message: "This reward is not currently available." });
+      throw new BadRequestException({
+        code: 'reward_not_enabled',
+        message: 'This reward is not currently available.',
+      });
     }
     if (user.points < reward.pointCost) {
       throw new BadRequestException({
-        code: "insufficient_points",
-        message: `You need ${reward.pointCost} points but only have ${user.points}.`
+        code: 'insufficient_points',
+        message: `You need ${reward.pointCost} points but only have ${user.points}.`,
       });
     }
 
@@ -87,8 +91,8 @@ export class RewardsService {
       const count = await this.repository.countChildRedemptions(rewardId, user.id);
       if (count >= reward.maxRedemptionsPerChild) {
         throw new BadRequestException({
-          code: "redemption_limit_reached",
-          message: "You have reached the maximum number of redemptions for this reward."
+          code: 'redemption_limit_reached',
+          message: 'You have reached the maximum number of redemptions for this reward.',
         });
       }
     }
@@ -102,15 +106,15 @@ export class RewardsService {
         if (elapsed < cooldownMs) {
           const remainingDays = Math.ceil((cooldownMs - elapsed) / (24 * 60 * 60 * 1000));
           throw new BadRequestException({
-            code: "reward_on_cooldown",
-            message: `You can redeem this reward again in ${remainingDays} day(s).`
+            code: 'reward_on_cooldown',
+            message: `You can redeem this reward again in ${remainingDays} day(s).`,
           });
         }
       }
     }
 
     const household = await this.repository.getHouseholdByTenantId(
-      await this.repository.getTenantIdForHousehold(user.householdId)
+      await this.repository.getTenantIdForHousehold(user.householdId),
     );
     const autoApprove = !(household?.settings?.requireRewardApproval ?? true);
     const tenantId = await this.repository.getTenantIdForHousehold(user.householdId);
@@ -121,16 +125,16 @@ export class RewardsService {
       tenantId,
       requestedById: user.id,
       pointsDeducted: reward.pointCost,
-      autoApprove
+      autoApprove,
     });
 
     if (!autoApprove) {
       await this.repository.notifyAdminsAndParents(
         user.householdId,
         NotificationType.REWARD_REDEMPTION_REQUESTED,
-        "Reward redemption requested",
+        'Reward redemption requested',
         `${user.displayName} wants to redeem "${reward.title}" for ${reward.pointCost} points.`,
-        redemption.id
+        redemption.id,
       );
     }
 
@@ -138,19 +142,33 @@ export class RewardsService {
   }
 
   async getRedemptions(user: AuthenticatedUser) {
-    if (user.role === "child") {
+    if (user.role === 'child') {
       return this.repository.getRedemptionsForHousehold(user.householdId, user.id);
     }
-    return this.repository.getRedemptionsForHousehold(user.householdId, undefined, RewardRedemptionStatus.PENDING);
+    return this.repository.getRedemptionsForHousehold(
+      user.householdId,
+      undefined,
+      RewardRedemptionStatus.PENDING,
+    );
   }
 
-  async resolveRedemption(redemptionId: string, dto: ResolveRedemptionDto, user: AuthenticatedUser) {
+  async resolveRedemption(
+    redemptionId: string,
+    dto: ResolveRedemptionDto,
+    user: AuthenticatedUser,
+  ) {
     const redemption = await this.repository.getRedemptionById(redemptionId, user.householdId);
     if (!redemption) {
-      throw new NotFoundException({ code: "redemption_not_found", message: "Redemption not found." });
+      throw new NotFoundException({
+        code: 'redemption_not_found',
+        message: 'Redemption not found.',
+      });
     }
     if (redemption.status !== RewardRedemptionStatus.PENDING) {
-      throw new BadRequestException({ code: "redemption_already_resolved", message: "This redemption has already been resolved." });
+      throw new BadRequestException({
+        code: 'redemption_already_resolved',
+        message: 'This redemption has already been resolved.',
+      });
     }
 
     const tenantId = await this.repository.getTenantIdForHousehold(user.householdId);
@@ -164,16 +182,16 @@ export class RewardsService {
       adminNote: dto.note,
       pointsDeducted: redemption.pointsDeducted,
       requestedById: redemption.requestedById,
-      rewardTitle: redemption.reward.title
+      rewardTitle: redemption.reward.title,
     });
 
     const notifType = dto.approved
       ? NotificationType.REWARD_REDEMPTION_APPROVED
       : NotificationType.REWARD_REDEMPTION_REJECTED;
-    const notifTitle = dto.approved ? "Reward approved!" : "Reward request declined";
+    const notifTitle = dto.approved ? 'Reward approved!' : 'Reward request declined';
     const notifMessage = dto.approved
       ? `Your request for "${redemption.reward.title}" was approved. ${redemption.pointsDeducted} points deducted.`
-      : `Your request for "${redemption.reward.title}" was declined.${dto.note ? ` Note: ${dto.note}` : ""}`;
+      : `Your request for "${redemption.reward.title}" was declined.${dto.note ? ` Note: ${dto.note}` : ''}`;
 
     await this.repository.notifyUser(
       redemption.requestedById,
@@ -182,7 +200,7 @@ export class RewardsService {
       notifType,
       notifTitle,
       notifMessage,
-      redemptionId
+      redemptionId,
     );
 
     return resolved;
@@ -190,7 +208,11 @@ export class RewardsService {
 
   // ── Operator import ──────────────────────────────────────────────────────────
 
-  async importOperatorRewards(householdId: string, rewards: OperatorRewardDto[], locale: SupportedLanguage) {
+  async importOperatorRewards(
+    householdId: string,
+    rewards: OperatorRewardDto[],
+    locale: SupportedLanguage,
+  ) {
     return this.repository.importOperatorRewards(householdId, rewards, locale);
   }
 }

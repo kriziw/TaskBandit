@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsEmail, IsIn, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 export class UpdateHouseholdMemberDto {
   @ApiProperty()
@@ -9,8 +9,8 @@ export class UpdateHouseholdMemberDto {
   displayName!: string;
 
   @ApiProperty()
-  @IsIn(["parent", "child"])
-  role!: "parent" | "child";
+  @IsIn(['parent', 'child'])
+  role!: 'parent' | 'child';
 
   @ApiProperty()
   @IsEmail()

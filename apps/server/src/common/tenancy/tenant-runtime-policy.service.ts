@@ -1,17 +1,17 @@
-import { ForbiddenException, Injectable, ServiceUnavailableException } from "@nestjs/common";
-import { AppConfigService } from "../config/app-config.service";
+import { ForbiddenException, Injectable, ServiceUnavailableException } from '@nestjs/common';
+import { AppConfigService } from '../config/app-config.service';
 import {
   HostedRuntimeConfigService,
-  type HostedTenantRuntimeConfig
-} from "./hosted-runtime-config.service";
+  type HostedTenantRuntimeConfig,
+} from './hosted-runtime-config.service';
 
 export type TenantRuntimeAction =
-  | "member_create"
-  | "proof_upload"
-  | "notification_enqueue"
-  | "notification_delivery"
-  | "notification_retry"
-  | "runtime_logs";
+  | 'member_create'
+  | 'proof_upload'
+  | 'notification_enqueue'
+  | 'notification_delivery'
+  | 'notification_retry'
+  | 'runtime_logs';
 
 export type TenantRuntimeQuotaPolicy = {
   membersLimit: number | null;
@@ -53,14 +53,14 @@ const defaultQuotaPolicy: TenantRuntimeQuotaPolicy = {
   proofRetentionDays: null,
   auditRetentionDays: null,
   customDomainEnabled: null,
-  brandingEnabled: null
+  brandingEnabled: null,
 };
 
 @Injectable()
 export class TenantRuntimePolicyService {
   constructor(
     private readonly appConfigService: AppConfigService,
-    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
   ) {}
 
   async getTenantAccessState(tenantId: string): Promise<TenantRuntimeAccessState> {
@@ -68,17 +68,17 @@ export class TenantRuntimePolicyService {
       return {
         tenantId,
         hostedMode: false,
-        lifecycleState: "self_hosted",
-        entitlementState: "self_hosted",
-        billingStatus: "none",
+        lifecycleState: 'self_hosted',
+        entitlementState: 'self_hosted',
+        billingStatus: 'none',
         suspensionReason: null,
         trialEndsAt: null,
         graceEndsAt: null,
-        planCode: "self-hosted",
-        quotaPolicyVersion: "self-hosted",
-        configVersion: "self-hosted",
+        planCode: 'self-hosted',
+        quotaPolicyVersion: 'self-hosted',
+        configVersion: 'self-hosted',
         updatedAt: null,
-        quotas: defaultQuotaPolicy
+        quotas: defaultQuotaPolicy,
       };
     }
 
@@ -96,7 +96,7 @@ export class TenantRuntimePolicyService {
       quotaPolicyVersion: config.quotaPolicyVersion,
       configVersion: config.configVersion,
       updatedAt: config.updatedAt,
-      quotas: this.parseQuotaPolicy(config.quotaPolicy)
+      quotas: this.parseQuotaPolicy(config.quotaPolicy),
     };
   }
 
@@ -104,21 +104,21 @@ export class TenantRuntimePolicyService {
     const decision = await this.getActionDecision(tenantId, action);
     if (!decision.allowed) {
       throw new ForbiddenException({
-        message: decision.reason ?? "That tenant action is blocked by the hosted runtime policy."
+        message: decision.reason ?? 'That tenant action is blocked by the hosted runtime policy.',
       });
     }
   }
 
   async getActionDecision(
     tenantId: string,
-    action: TenantRuntimeAction
+    action: TenantRuntimeAction,
   ): Promise<TenantRuntimeDecision> {
     const state = await this.getTenantAccessState(tenantId);
 
     if (!state.hostedMode) {
       return {
         allowed: true,
-        reason: null
+        reason: null,
       };
     }
 
@@ -126,13 +126,13 @@ export class TenantRuntimePolicyService {
     if (blockingMessage) {
       return {
         allowed: false,
-        reason: blockingMessage
+        reason: blockingMessage,
       };
     }
 
     return {
       allowed: true,
-      reason: null
+      reason: null,
     };
   }
 
@@ -145,7 +145,7 @@ export class TenantRuntimePolicyService {
 
     if (currentMembers + additionalMembers > limit) {
       throw new ForbiddenException({
-        message: `This hosted tenant has reached the current household member limit of ${limit}.`
+        message: `This hosted tenant has reached the current household member limit of ${limit}.`,
       });
     }
   }
@@ -159,12 +159,16 @@ export class TenantRuntimePolicyService {
 
     if (currentBytes + incomingBytes > limit) {
       throw new ForbiddenException({
-        message: "This hosted tenant has reached the current proof storage limit."
+        message: 'This hosted tenant has reached the current proof storage limit.',
       });
     }
   }
 
-  async assertMonthlyNotificationLimit(tenantId: string, currentCount: number, additionalCount = 1) {
+  async assertMonthlyNotificationLimit(
+    tenantId: string,
+    currentCount: number,
+    additionalCount = 1,
+  ) {
     const state = await this.getTenantAccessState(tenantId);
     const limit = state.quotas.monthlyNotificationLimit;
     if (limit === null) {
@@ -173,7 +177,7 @@ export class TenantRuntimePolicyService {
 
     if (currentCount + additionalCount > limit) {
       throw new ForbiddenException({
-        message: "This hosted tenant has reached the current monthly notification limit."
+        message: 'This hosted tenant has reached the current monthly notification limit.',
       });
     }
   }
@@ -183,7 +187,7 @@ export class TenantRuntimePolicyService {
       const config = await this.hostedRuntimeConfigService.getTenantRuntimeConfig(tenantId);
       if (!config) {
         throw new ServiceUnavailableException(
-          "Hosted tenant runtime state is missing for a hosted deployment."
+          'Hosted tenant runtime state is missing for a hosted deployment.',
         );
       }
 
@@ -194,7 +198,7 @@ export class TenantRuntimePolicyService {
       }
 
       throw new ServiceUnavailableException(
-        "Hosted tenant runtime state could not be loaded for runtime enforcement."
+        'Hosted tenant runtime state could not be loaded for runtime enforcement.',
       );
     }
   }
@@ -208,56 +212,53 @@ export class TenantRuntimePolicyService {
       proofRetentionDays: this.readInteger(quotaPolicy.proofRetentionDays),
       auditRetentionDays: this.readInteger(quotaPolicy.auditRetentionDays),
       customDomainEnabled: this.readBoolean(quotaPolicy.customDomainEnabled),
-      brandingEnabled: this.readBoolean(quotaPolicy.brandingEnabled)
+      brandingEnabled: this.readBoolean(quotaPolicy.brandingEnabled),
     };
   }
 
   private readInteger(value: unknown) {
-    return typeof value === "number" && Number.isFinite(value) ? value : null;
+    return typeof value === 'number' && Number.isFinite(value) ? value : null;
   }
 
   private readBoolean(value: unknown) {
-    return typeof value === "boolean" ? value : null;
+    return typeof value === 'boolean' ? value : null;
   }
 
   private resolveLifecycleBlockMessage(
     state: TenantRuntimeAccessState,
-    action: TenantRuntimeAction
+    action: TenantRuntimeAction,
   ) {
     switch (state.lifecycleState) {
-      case "provisioning":
-        return "This hosted tenant is still provisioning, so runtime side effects are not available yet.";
-      case "archived":
-      case "deleting":
-      case "deleted":
-        return "This hosted tenant is no longer active for runtime write or delivery actions.";
-      case "suspended":
+      case 'provisioning':
+        return 'This hosted tenant is still provisioning, so runtime side effects are not available yet.';
+      case 'archived':
+      case 'deleting':
+      case 'deleted':
+        return 'This hosted tenant is no longer active for runtime write or delivery actions.';
+      case 'suspended':
         return this.resolveSuspensionMessage(state, action);
       default:
         break;
     }
 
-    if (state.entitlementState === "suspended") {
+    if (state.entitlementState === 'suspended') {
       return this.resolveSuspensionMessage(state, action);
     }
 
     return null;
   }
 
-  private resolveSuspensionMessage(
-    state: TenantRuntimeAccessState,
-    action: TenantRuntimeAction
-  ) {
+  private resolveSuspensionMessage(state: TenantRuntimeAccessState, action: TenantRuntimeAction) {
     switch (action) {
-      case "runtime_logs":
-        return "Runtime log access is not available for hosted tenants.";
-      case "member_create":
+      case 'runtime_logs':
+        return 'Runtime log access is not available for hosted tenants.';
+      case 'member_create':
         return `This tenant is suspended${this.formatSuspensionReason(state.suspensionReason)}, so new invites and members are blocked.`;
-      case "proof_upload":
+      case 'proof_upload':
         return `This tenant is suspended${this.formatSuspensionReason(state.suspensionReason)}, so proof uploads are blocked.`;
-      case "notification_enqueue":
-      case "notification_delivery":
-      case "notification_retry":
+      case 'notification_enqueue':
+      case 'notification_delivery':
+      case 'notification_retry':
         return `This tenant is suspended${this.formatSuspensionReason(state.suspensionReason)}, so non-essential notifications are blocked.`;
       default:
         return `This tenant is suspended${this.formatSuspensionReason(state.suspensionReason)}.`;
@@ -265,6 +266,6 @@ export class TenantRuntimePolicyService {
   }
 
   private formatSuspensionReason(reason: string | null) {
-    return reason ? ` (${reason})` : "";
+    return reason ? ` (${reason})` : '';
   }
 }

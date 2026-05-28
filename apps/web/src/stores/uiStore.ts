@@ -1,21 +1,25 @@
-import { create } from "zustand";
-import type { BootstrapHouseholdInput, ReleaseInfo, UnlockedAchievement } from "../types/taskbandit";
-import type { ClientWebPushStatus } from "../pwa/clientPush";
+import { create } from 'zustand';
+import type {
+  BootstrapHouseholdInput,
+  ReleaseInfo,
+  UnlockedAchievement,
+} from '../types/taskbandit';
+import type { ClientWebPushStatus } from '../pwa/clientPush';
 
 export type WorkspacePage =
-  | "overview"
-  | "chores"
-  | "leaderboard"
-  | "rewards"
-  | "templates"
-  | "household"
-  | "notifications"
-  | "settings"
-  | "admin"
-  | "logs";
+  | 'overview'
+  | 'chores'
+  | 'leaderboard'
+  | 'rewards'
+  | 'templates'
+  | 'household'
+  | 'notifications'
+  | 'settings'
+  | 'admin'
+  | 'logs';
 
 export type OnboardingStep = string;
-export type OnboardingTourMode = "admin" | "client" | "client-mobile";
+export type OnboardingTourMode = 'admin' | 'client' | 'client-mobile';
 export type BootstrapFormState = BootstrapHouseholdInput;
 
 export type CompletionCelebration = {
@@ -24,13 +28,13 @@ export type CompletionCelebration = {
   titleKey: string;
   eyebrowKey: string;
   phraseKey: string;
-  variant: "standard" | "rare" | "chore" | "perfect" | "achievement";
+  variant: 'standard' | 'rare' | 'chore' | 'perfect' | 'achievement';
   unlockedAchievement?: UnlockedAchievement;
 };
 
 type BeforeInstallPromptEvent = Event & {
   prompt: () => Promise<void>;
-  userChoice: Promise<{ outcome: "accepted" | "dismissed" }>;
+  userChoice: Promise<{ outcome: 'accepted' | 'dismissed' }>;
 };
 
 interface UiStore {
@@ -63,7 +67,7 @@ interface UiStore {
 
   // Bootstrap wizard
   bootstrapForm: BootstrapFormState;
-  bootstrapSetupStep: "account" | "templates" | "review";
+  bootstrapSetupStep: 'account' | 'templates' | 'review';
   selectedBootstrapStarterGroup: string;
 
   // Onboarding
@@ -92,10 +96,14 @@ interface UiStore {
   setInstallPromptEvent: (v: BeforeInstallPromptEvent | null) => void;
   setInstallPromptDismissed: (v: boolean) => void;
 
-  setClientWebPushStatus: (v: ClientWebPushStatus | ((prev: ClientWebPushStatus) => ClientWebPushStatus)) => void;
+  setClientWebPushStatus: (
+    v: ClientWebPushStatus | ((prev: ClientWebPushStatus) => ClientWebPushStatus),
+  ) => void;
 
-  setBootstrapForm: (v: BootstrapFormState | ((prev: BootstrapFormState) => BootstrapFormState)) => void;
-  setBootstrapSetupStep: (v: "account" | "templates" | "review") => void;
+  setBootstrapForm: (
+    v: BootstrapFormState | ((prev: BootstrapFormState) => BootstrapFormState),
+  ) => void;
+  setBootstrapSetupStep: (v: 'account' | 'templates' | 'review') => void;
   setSelectedBootstrapStarterGroup: (v: string) => void;
 
   setOnboardingStep: (v: OnboardingStep) => void;
@@ -106,14 +114,14 @@ interface UiStore {
 
 // Circular import avoidance — type is declared in clientPush.ts
 // We re-export it from there instead of duplicating
-export type { ClientWebPushStatus } from "../pwa/clientPush";
+export type { ClientWebPushStatus } from '../pwa/clientPush';
 
 export const useUiStore = create<UiStore>((set) => ({
-  activePage: "overview",
+  activePage: 'overview',
   isMobileProfileOpen: false,
   isMobileMoreSheetOpen: false,
   isClientMobileViewport: false,
-  mobileProfileAvatar: "",
+  mobileProfileAvatar: '',
 
   pageError: null,
   notice: null,
@@ -128,20 +136,25 @@ export const useUiStore = create<UiStore>((set) => ({
   installPromptEvent: null,
   installPromptDismissed: false,
 
-  clientWebPushStatus: { supported: false, enabled: false, permission: "unsupported" as const, needsPrompt: false },
+  clientWebPushStatus: {
+    supported: false,
+    enabled: false,
+    permission: 'unsupported' as const,
+    needsPrompt: false,
+  },
 
   bootstrapForm: {
-    householdName: "",
-    ownerDisplayName: "",
-    ownerEmail: "",
-    ownerPassword: "",
+    householdName: '',
+    ownerDisplayName: '',
+    ownerEmail: '',
+    ownerPassword: '',
     selfSignupEnabled: false,
     starterTemplateKeys: [],
   },
-  bootstrapSetupStep: "account",
-  selectedBootstrapStarterGroup: "",
+  bootstrapSetupStep: 'account',
+  selectedBootstrapStarterGroup: '',
 
-  onboardingStep: "welcome",
+  onboardingStep: 'welcome',
   onboardingDismissed: false,
   onboardingManuallyOpened: false,
   onboardingTourCompleted: false,
@@ -166,10 +179,10 @@ export const useUiStore = create<UiStore>((set) => ({
   setInstallPromptDismissed: (v) => set({ installPromptDismissed: v }),
 
   setClientWebPushStatus: (v) =>
-    set((s) => ({ clientWebPushStatus: typeof v === "function" ? v(s.clientWebPushStatus) : v })),
+    set((s) => ({ clientWebPushStatus: typeof v === 'function' ? v(s.clientWebPushStatus) : v })),
 
   setBootstrapForm: (v) =>
-    set((s) => ({ bootstrapForm: typeof v === "function" ? v(s.bootstrapForm) : v })),
+    set((s) => ({ bootstrapForm: typeof v === 'function' ? v(s.bootstrapForm) : v })),
   setBootstrapSetupStep: (v) => set({ bootstrapSetupStep: v }),
   setSelectedBootstrapStarterGroup: (v) => set({ selectedBootstrapStarterGroup: v }),
 

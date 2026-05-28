@@ -1,20 +1,20 @@
-import { create } from "zustand";
-import type { ChoreState, CreateChoreInstanceInput } from "../types/taskbandit";
+import { create } from 'zustand';
+import type { ChoreState, CreateChoreInstanceInput } from '../types/taskbandit';
 
-export type HouseholdChoreViewMode = "list" | "board" | "calendar";
-export type HouseholdChoreStateFilter = "all" | ChoreState;
-export type ChoreExportStatusFilter = "all" | "active" | "historic" | ChoreState;
+export type HouseholdChoreViewMode = 'list' | 'board' | 'calendar';
+export type HouseholdChoreStateFilter = 'all' | ChoreState;
+export type ChoreExportStatusFilter = 'all' | 'active' | 'historic' | ChoreState;
 export type InstanceFormState = CreateChoreInstanceInput & { templateGroupTitle?: string };
 
 const emptyInstanceForm = (): InstanceFormState => ({
-  templateId: "",
-  assigneeId: "",
-  title: "",
-  dueAt: "",
+  templateId: '',
+  assigneeId: '',
+  title: '',
+  dueAt: '',
   reassignAutomatically: false,
-  recurrenceEndMode: "never",
+  recurrenceEndMode: 'never',
   recurrenceOccurrences: 3,
-  recurrenceEndsAt: "",
+  recurrenceEndsAt: '',
 });
 
 interface ChoreStore {
@@ -70,12 +70,22 @@ interface ChoreStore {
   showDesktopChoreHistory: boolean;
 
   // Setters
-  setSubmitSelections: (v: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>)) => void;
-  setSelectedProofFiles: (v: Record<string, File[]> | ((prev: Record<string, File[]>) => Record<string, File[]>)) => void;
-  setSubmitNotes: (v: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
-  setReviewNotes: (v: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>)) => void;
+  setSubmitSelections: (
+    v: Record<string, string[]> | ((prev: Record<string, string[]>) => Record<string, string[]>),
+  ) => void;
+  setSelectedProofFiles: (
+    v: Record<string, File[]> | ((prev: Record<string, File[]>) => Record<string, File[]>),
+  ) => void;
+  setSubmitNotes: (
+    v: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>),
+  ) => void;
+  setReviewNotes: (
+    v: Record<string, string> | ((prev: Record<string, string>) => Record<string, string>),
+  ) => void;
 
-  setInstanceForm: (v: InstanceFormState | ((prev: InstanceFormState) => InstanceFormState)) => void;
+  setInstanceForm: (
+    v: InstanceFormState | ((prev: InstanceFormState) => InstanceFormState),
+  ) => void;
   setEditingInstanceId: (v: string | null) => void;
 
   setHouseholdViewMode: (v: HouseholdChoreViewMode) => void;
@@ -127,51 +137,51 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
   instanceForm: emptyInstanceForm(),
   editingInstanceId: null,
 
-  householdViewMode: "list",
-  householdStateFilter: "all",
-  householdAssigneeFilter: "all",
+  householdViewMode: 'list',
+  householdStateFilter: 'all',
+  householdAssigneeFilter: 'all',
 
   historyPage: 1,
-  exportAssigneeFilter: "all",
-  exportStatusFilter: "all",
-  exportDateFrom: "",
-  exportDateTo: "",
+  exportAssigneeFilter: 'all',
+  exportStatusFilter: 'all',
+  exportDateFrom: '',
+  exportDateTo: '',
 
   isClientComposerOpen: false,
 
   mobileDueEditorInstanceId: null,
-  mobileDueEditorValue: "",
-  mobileDueEditorTitle: "",
-  mobileDueEditorIconId: "",
-  mobileDueEditorVariantId: "",
+  mobileDueEditorValue: '',
+  mobileDueEditorTitle: '',
+  mobileDueEditorIconId: '',
+  mobileDueEditorVariantId: '',
 
   mobileCardMenuInstanceId: null,
   mobileChoreDialogInstanceId: null,
 
   isQuickLogComposerOpen: false,
-  quickLogQuery: "",
-  quickLogNote: "",
+  quickLogQuery: '',
+  quickLogNote: '',
   quickLogSelectedInstanceId: null,
   quickLogSelectedTemplateId: null,
   quickLogCreateTemplateFromEntry: false,
   quickLogUsePointsOverride: false,
-  quickLogPointsOverride: "",
+  quickLogPointsOverride: '',
   quickLogIcon: null,
 
   showMobileCompletedChores: false,
   showDesktopChoreHistory: false,
 
   setSubmitSelections: (v) =>
-    set((s) => ({ submitSelections: typeof v === "function" ? v(s.submitSelections) : v })),
+    set((s) => ({ submitSelections: typeof v === 'function' ? v(s.submitSelections) : v })),
   setSelectedProofFiles: (v) =>
-    set((s) => ({ selectedProofFiles: typeof v === "function" ? v(s.selectedProofFiles) : v })),
+    set((s) => ({ selectedProofFiles: typeof v === 'function' ? v(s.selectedProofFiles) : v })),
   setSubmitNotes: (v) =>
-    set((s) => ({ submitNotes: typeof v === "function" ? v(s.submitNotes) : v })),
+    set((s) => ({ submitNotes: typeof v === 'function' ? v(s.submitNotes) : v })),
   setReviewNotes: (v) =>
-    set((s) => ({ reviewNotes: typeof v === "function" ? v(s.reviewNotes) : v })),
+    set((s) => ({ reviewNotes: typeof v === 'function' ? v(s.reviewNotes) : v })),
 
   setInstanceForm: (v) =>
-    set((state) => ({ instanceForm: typeof v === "function" ? v(state.instanceForm) : v })),
+    set((state) => ({ instanceForm: typeof v === 'function' ? v(state.instanceForm) : v })),
   setEditingInstanceId: (v) => set({ editingInstanceId: v }),
 
   setHouseholdViewMode: (v) => set({ householdViewMode: v }),
@@ -224,26 +234,25 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
   closeMobileDueEditor: () =>
     set({
       mobileDueEditorInstanceId: null,
-      mobileDueEditorValue: "",
-      mobileDueEditorTitle: "",
-      mobileDueEditorIconId: "",
-      mobileDueEditorVariantId: "",
+      mobileDueEditorValue: '',
+      mobileDueEditorTitle: '',
+      mobileDueEditorIconId: '',
+      mobileDueEditorVariantId: '',
       mobileCardMenuInstanceId: null,
     }),
 
   closeQuickLog: () =>
     set({
       isQuickLogComposerOpen: false,
-      quickLogQuery: "",
-      quickLogNote: "",
+      quickLogQuery: '',
+      quickLogNote: '',
       quickLogSelectedInstanceId: null,
       quickLogSelectedTemplateId: null,
       quickLogCreateTemplateFromEntry: false,
       quickLogUsePointsOverride: false,
-      quickLogPointsOverride: "",
+      quickLogPointsOverride: '',
       quickLogIcon: null,
     }),
 
-  clearInstanceEdit: () =>
-    set({ editingInstanceId: null, instanceForm: emptyInstanceForm() }),
+  clearInstanceEdit: () => set({ editingInstanceId: null, instanceForm: emptyInstanceForm() }),
 }));
