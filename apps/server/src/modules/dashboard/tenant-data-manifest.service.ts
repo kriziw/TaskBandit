@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
-import { PrismaService } from "../../common/prisma/prisma.service";
-import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
+import { Injectable } from '@nestjs/common';
+import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
 
 type TenantManifestRecord = {
   id: string;
@@ -21,18 +21,18 @@ type TenantNotificationPreferenceManifestRecord = {
 export class TenantDataManifestService {
   constructor(
     private readonly prisma: PrismaService,
-    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
   ) {}
 
   async buildExportManifest(user: AuthenticatedUser) {
-    return this.buildManifest("export", user);
+    return this.buildManifest('export', user);
   }
 
   async buildDeletionManifest(user: AuthenticatedUser) {
-    return this.buildManifest("deletion", user);
+    return this.buildManifest('deletion', user);
   }
 
-  private async buildManifest(kind: "export" | "deletion", user: AuthenticatedUser) {
+  private async buildManifest(kind: 'export' | 'deletion', user: AuthenticatedUser) {
     const [
       tenantAccess,
       users,
@@ -44,110 +44,128 @@ export class TenantDataManifestService {
       notifications,
       notificationPreferences,
       notificationDevices,
-      notificationPushDeliveries
+      notificationPushDeliveries,
     ] = await Promise.all([
       this.tenantRuntimePolicyService.getTenantAccessState(user.tenantId),
-      this.listIds(this.prisma.user.findMany({
-        where: {
-          tenantId: user.tenantId,
-          householdId: user.householdId
-        },
-        select: {
-          id: true
-        }
-      })),
-      this.listIds(this.prisma.choreTemplate.findMany({
-        where: {
-          householdId: user.householdId
-        },
-        select: {
-          id: true
-        }
-      })),
-      this.listIds(this.prisma.choreInstance.findMany({
-        where: {
-          householdId: user.householdId
-        },
-        select: {
-          id: true
-        }
-      })),
+      this.listIds(
+        this.prisma.user.findMany({
+          where: {
+            tenantId: user.tenantId,
+            householdId: user.householdId,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
+      this.listIds(
+        this.prisma.choreTemplate.findMany({
+          where: {
+            householdId: user.householdId,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
+      this.listIds(
+        this.prisma.choreInstance.findMany({
+          where: {
+            householdId: user.householdId,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
       this.prisma.choreAttachment.findMany({
         where: {
           tenantId: user.tenantId,
           choreInstance: {
-            householdId: user.householdId
-          }
+            householdId: user.householdId,
+          },
         },
         select: {
           id: true,
           storageKey: true,
-          sizeBytes: true
+          sizeBytes: true,
         },
         orderBy: {
-          createdAtUtc: "asc"
-        }
+          createdAtUtc: 'asc',
+        },
       }),
-      this.listIds(this.prisma.auditLog.findMany({
-        where: {
-          tenantId: user.tenantId,
-          householdId: user.householdId
-        },
-        select: {
-          id: true
-        }
-      })),
-      this.listIds(this.prisma.pointsLedgerEntry.findMany({
-        where: {
-          tenantId: user.tenantId,
-          householdId: user.householdId
-        },
-        select: {
-          id: true
-        }
-      })),
-      this.listIds(this.prisma.notification.findMany({
-        where: {
-          tenantId: user.tenantId,
-          householdId: user.householdId
-        },
-        select: {
-          id: true
-        }
-      })),
-      this.listNotificationPreferenceIds(this.prisma.notificationPreference.findMany({
-        where: {
-          tenantId: user.tenantId,
-          user: {
-            householdId: user.householdId
-          }
-        },
-        select: {
-          userId: true
-        }
-      })),
-      this.listIds(this.prisma.notificationDevice.findMany({
-        where: {
-          tenantId: user.tenantId,
-          user: {
-            householdId: user.householdId
-          }
-        },
-        select: {
-          id: true
-        }
-      })),
-      this.listIds(this.prisma.notificationPushDelivery.findMany({
-        where: {
-          tenantId: user.tenantId,
-          notification: {
-            householdId: user.householdId
-          }
-        },
-        select: {
-          id: true
-        }
-      }))
+      this.listIds(
+        this.prisma.auditLog.findMany({
+          where: {
+            tenantId: user.tenantId,
+            householdId: user.householdId,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
+      this.listIds(
+        this.prisma.pointsLedgerEntry.findMany({
+          where: {
+            tenantId: user.tenantId,
+            householdId: user.householdId,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
+      this.listIds(
+        this.prisma.notification.findMany({
+          where: {
+            tenantId: user.tenantId,
+            householdId: user.householdId,
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
+      this.listNotificationPreferenceIds(
+        this.prisma.notificationPreference.findMany({
+          where: {
+            tenantId: user.tenantId,
+            user: {
+              householdId: user.householdId,
+            },
+          },
+          select: {
+            userId: true,
+          },
+        }),
+      ),
+      this.listIds(
+        this.prisma.notificationDevice.findMany({
+          where: {
+            tenantId: user.tenantId,
+            user: {
+              householdId: user.householdId,
+            },
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
+      this.listIds(
+        this.prisma.notificationPushDelivery.findMany({
+          where: {
+            tenantId: user.tenantId,
+            notification: {
+              householdId: user.householdId,
+            },
+          },
+          select: {
+            id: true,
+          },
+        }),
+      ),
     ]);
 
     const proofObjects = attachments
@@ -155,7 +173,7 @@ export class TenantDataManifestService {
       .map((attachment) => ({
         attachmentId: attachment.id,
         storageKey: attachment.storageKey!,
-        sizeBytes: attachment.sizeBytes
+        sizeBytes: attachment.sizeBytes,
       }));
 
     return {
@@ -165,7 +183,7 @@ export class TenantDataManifestService {
       tenant: {
         tenantId: user.tenantId,
         householdId: user.householdId,
-        runtime: tenantAccess
+        runtime: tenantAccess,
       },
       databaseInventory: {
         users,
@@ -177,13 +195,13 @@ export class TenantDataManifestService {
         notifications,
         notificationPreferences,
         notificationDevices,
-        notificationPushDeliveries
+        notificationPushDeliveries,
       },
       objectInventory: {
         proofObjects,
         totalProofObjectCount: proofObjects.length,
-        totalProofBytes: proofObjects.reduce((sum, entry) => sum + entry.sizeBytes, 0)
-      }
+        totalProofBytes: proofObjects.reduce((sum, entry) => sum + entry.sizeBytes, 0),
+      },
     };
   }
 
@@ -193,7 +211,7 @@ export class TenantDataManifestService {
   }
 
   private async listNotificationPreferenceIds(
-    query: Promise<TenantNotificationPreferenceManifestRecord[]>
+    query: Promise<TenantNotificationPreferenceManifestRecord[]>,
   ) {
     const rows = await query;
     return rows.map((row) => row.userId);

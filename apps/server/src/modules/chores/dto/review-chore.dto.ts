@@ -1,5 +1,5 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsOptional, IsString, MaxLength } from "class-validator";
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import { IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class ReviewChoreDto {
   @ApiPropertyOptional()
@@ -8,4 +8,3 @@ export class ReviewChoreDto {
   @MaxLength(500)
   note?: string;
 }
-

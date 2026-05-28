@@ -1,9 +1,9 @@
-import React from "react";
-import ReactDOM from "react-dom/client";
-import { resolveAdminBaseUrl, resolveClientBaseUrl } from "./runtimeConfig";
-import "./styles/app.css";
+import React from 'react';
+import ReactDOM from 'react-dom/client';
+import { resolveAdminBaseUrl, resolveClientBaseUrl } from './runtimeConfig';
+import './styles/app.css';
 
-ReactDOM.createRoot(document.getElementById("root")!).render(
+ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <main className="app-shell">
       <section className="content-grid login-grid">
@@ -17,15 +17,15 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
             household configuration and operations.
           </p>
           <div className="button-row">
-            <a className="primary-button" href={resolveClientBaseUrl() ?? "./client.html"}>
+            <a className="primary-button" href={resolveClientBaseUrl() ?? './client.html'}>
               Open client UI
             </a>
-            <a className="secondary-button" href={resolveAdminBaseUrl() ?? "./admin.html"}>
+            <a className="secondary-button" href={resolveAdminBaseUrl() ?? './admin.html'}>
               Open admin UI
             </a>
           </div>
         </article>
       </section>
     </main>
-  </React.StrictMode>
+  </React.StrictMode>,
 );

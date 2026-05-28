@@ -7,7 +7,15 @@ beforeEach(() => {
     rewardsManagerTab: 'my_shop',
     selectedRewardId: null,
     isCreatingNewReward: false,
-    rewardForm: { title: '', description: '', category: 'CUSTOM', eligibility: 'ALL', pointCost: 50, maxRedemptionsPerChild: '', cooldownDays: '' },
+    rewardForm: {
+      title: '',
+      description: '',
+      category: 'CUSTOM',
+      eligibility: 'ALL',
+      pointCost: 50,
+      maxRedemptionsPerChild: '',
+      cooldownDays: '',
+    },
     redeemDialogRewardId: null,
     rejectDialogRedemptionId: null,
     rejectDialogNote: '',
@@ -17,7 +25,19 @@ beforeEach(() => {
 
 describe('resetRewardForm', () => {
   it('clears form, creating flag, and selected id', () => {
-    useRewardStore.setState({ selectedRewardId: 'r1', isCreatingNewReward: true, rewardForm: { title: 'Test', description: '', category: 'CUSTOM', eligibility: 'ALL', pointCost: 10, maxRedemptionsPerChild: '', cooldownDays: '' } });
+    useRewardStore.setState({
+      selectedRewardId: 'r1',
+      isCreatingNewReward: true,
+      rewardForm: {
+        title: 'Test',
+        description: '',
+        category: 'CUSTOM',
+        eligibility: 'ALL',
+        pointCost: 10,
+        maxRedemptionsPerChild: '',
+        cooldownDays: '',
+      },
+    });
     useRewardStore.getState().resetRewardForm();
     const { selectedRewardId, isCreatingNewReward, rewardForm } = useRewardStore.getState();
     expect(selectedRewardId).toBeNull();

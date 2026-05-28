@@ -1,6 +1,6 @@
-import { Injectable, NestMiddleware } from "@nestjs/common";
-import type { NextFunction, Request, Response } from "express";
-import { buildTenantRequestContext, TenantRequestContext } from "./request-url.util";
+import { Injectable, NestMiddleware } from '@nestjs/common';
+import type { NextFunction, Request, Response } from 'express';
+import { buildTenantRequestContext, TenantRequestContext } from './request-url.util';
 
 /**
  * Resolves the tenant request context (host header + original URL) once per

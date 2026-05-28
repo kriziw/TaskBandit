@@ -1,0 +1,9 @@
+dist/
+dist-admin/
+dist-client/
+node_modules/
+apps/server/dist/
+apps/android/
+.claude/
+.codex-worktrees/
+CHANGELOG.md

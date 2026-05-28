@@ -1,7 +1,7 @@
-import { SetMetadata } from "@nestjs/common";
-import type { PackageFeatureId } from "../tenancy/feature-access.service";
+import { SetMetadata } from '@nestjs/common';
+import type { PackageFeatureId } from '../tenancy/feature-access.service';
 
-export const FEATURE_METADATA_KEY = "taskbandit_required_feature";
+export const FEATURE_METADATA_KEY = 'taskbandit_required_feature';
 
 /**
  * Marks a controller route as requiring a specific package feature to be enabled.

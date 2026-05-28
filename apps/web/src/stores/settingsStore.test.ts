@@ -1,5 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { useSettingsStore, createEmptyMemberForm, createEmptyMemberEditForm } from './settingsStore';
+import {
+  useSettingsStore,
+  createEmptyMemberForm,
+  createEmptyMemberEditForm,
+} from './settingsStore';
 
 beforeEach(() => {
   useSettingsStore.setState({
@@ -33,8 +37,12 @@ describe('createEmptyMemberEditForm', () => {
 describe('setSettingsDraft functional updater', () => {
   it('applies updater to current draft', () => {
     useSettingsStore.setState({ settingsDraft: { smtpEnabled: false } as never });
-    useSettingsStore.getState().setSettingsDraft((prev) => prev ? { ...prev, smtpEnabled: true } : prev);
-    expect((useSettingsStore.getState().settingsDraft as { smtpEnabled: boolean } | null)?.smtpEnabled).toBe(true);
+    useSettingsStore
+      .getState()
+      .setSettingsDraft((prev) => (prev ? { ...prev, smtpEnabled: true } : prev));
+    expect(
+      (useSettingsStore.getState().settingsDraft as { smtpEnabled: boolean } | null)?.smtpEnabled,
+    ).toBe(true);
   });
 
   it('accepts null to clear draft', () => {
@@ -46,7 +54,7 @@ describe('setSettingsDraft functional updater', () => {
 
 describe('setExpandedDeviceDetailsById', () => {
   it('merges new entries via functional updater', () => {
-    useSettingsStore.getState().setExpandedDeviceDetailsById((prev) => ({ ...prev, 'd1': true }));
-    expect(useSettingsStore.getState().expandedDeviceDetailsById).toEqual({ 'd1': true });
+    useSettingsStore.getState().setExpandedDeviceDetailsById((prev) => ({ ...prev, d1: true }));
+    expect(useSettingsStore.getState().expandedDeviceDetailsById).toEqual({ d1: true });
   });
 });

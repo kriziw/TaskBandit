@@ -1,5 +1,5 @@
-import { create } from "zustand";
-import type { DashboardPayload, RuntimeLogEntry } from "../types/taskbandit";
+import { create } from 'zustand';
+import type { DashboardPayload, RuntimeLogEntry } from '../types/taskbandit';
 
 interface DashboardStore {
   payload: DashboardPayload | null;

@@ -1,28 +1,23 @@
-export type RecurrenceStartStrategy = "due_at" | "completed_at";
+export type RecurrenceStartStrategy = 'due_at' | 'completed_at';
 
-export type HouseholdRole = "admin" | "parent" | "child";
+export type HouseholdRole = 'admin' | 'parent' | 'child';
 
-export type Difficulty = "easy" | "medium" | "hard";
+export type Difficulty = 'easy' | 'medium' | 'hard';
 
-export type RecurrenceType =
-  | "none"
-  | "daily"
-  | "weekly"
-  | "every_x_days"
-  | "custom_weekly";
+export type RecurrenceType = 'none' | 'daily' | 'weekly' | 'every_x_days' | 'custom_weekly';
 
-export type RecurrenceEndMode = "never" | "after_occurrences" | "on_date";
+export type RecurrenceEndMode = 'never' | 'after_occurrences' | 'on_date';
 
 export type ChoreState =
-  | "open"
-  | "assigned"
-  | "in_progress"
-  | "deferred"
-  | "pending_approval"
-  | "needs_fixes"
-  | "completed"
-  | "overdue"
-  | "cancelled";
+  | 'open'
+  | 'assigned'
+  | 'in_progress'
+  | 'deferred'
+  | 'pending_approval'
+  | 'needs_fixes'
+  | 'completed'
+  | 'overdue'
+  | 'cancelled';
 
 export type AuthenticatedUser = {
   id: string;
@@ -50,7 +45,7 @@ export type AuthenticatedUser = {
 
 export type AuthResponse = {
   accessToken: string;
-  tokenType: "Bearer";
+  tokenType: 'Bearer';
   expiresIn: string;
   tenantContext?: {
     tenantId: string;
@@ -99,7 +94,7 @@ export type HostedSubscriptionOverview = {
     storageBytesUsed: number;
     monthlyNotificationsUsed: number;
   };
-  featureAccess?: AuthenticatedUser["featureAccess"];
+  featureAccess?: AuthenticatedUser['featureAccess'];
   canonicalApiBaseUrl?: string | null;
   canonicalWebBaseUrl?: string | null;
 };
@@ -172,14 +167,14 @@ export type NotificationEntry = {
   readAt: string | null;
   delivery: {
     push: {
-      status: "not_configured" | "pending" | "sent" | "failed";
+      status: 'not_configured' | 'pending' | 'sent' | 'failed';
       targetCount: number;
       sentCount: number;
       failedCount: number;
       pendingCount: number;
     };
     email: {
-      status: "pending" | "sent" | "failed" | "skipped";
+      status: 'pending' | 'sent' | 'failed' | 'skipped';
       deliveredAt: string | null;
       attemptedAt: string | null;
       error: string | null;
@@ -191,7 +186,7 @@ export type TakeoverRequestEntry = {
   id: string;
   choreId: string;
   choreTitle: string;
-  status: "PENDING" | "APPROVED" | "DECLINED" | "CANCELLED";
+  status: 'PENDING' | 'APPROVED' | 'DECLINED' | 'CANCELLED';
   note: string | null;
   createdAt: string;
   respondedAt: string | null;
@@ -210,7 +205,7 @@ export type TakeoverRequestEntry = {
 export type RuntimeLogEntry = {
   id: string;
   timestamp: string;
-  level: "log" | "warn" | "error" | "debug" | "verbose";
+  level: 'log' | 'warn' | 'error' | 'debug' | 'verbose';
   context: string | null;
   message: string;
   stack: string | null;
@@ -221,7 +216,7 @@ export type HouseholdMember = {
   displayName: string;
   role: HouseholdRole;
   email?: string | null;
-  authProviders: Array<"local" | "oidc">;
+  authProviders: Array<'local' | 'oidc'>;
   localAuthConfigured: boolean;
   points: number;
   currentStreak: number;
@@ -280,7 +275,7 @@ export type HouseholdSettings = {
   oidcClientSecretConfigured: boolean;
   oidcScope: string;
   oidcEffective: boolean;
-  oidcSource: "ui" | "env" | "control_plane" | "none";
+  oidcSource: 'ui' | 'env' | 'control_plane' | 'none';
   smtpEnabled: boolean;
   smtpHost: string;
   smtpPort: number;
@@ -300,9 +295,15 @@ export type NotificationPreferences = {
   receiveDailySummary: boolean;
 };
 
-export type RewardCategory = "SCREEN_TIME" | "ALLOWANCE" | "TREAT" | "ACTIVITY" | "PRIVILEGE" | "CUSTOM";
-export type RewardRedemptionStatus = "PENDING" | "APPROVED" | "REJECTED" | "CANCELLED";
-export type RewardEligibility = "CHILD_ONLY" | "ALL" | "ADULT_ONLY";
+export type RewardCategory =
+  | 'SCREEN_TIME'
+  | 'ALLOWANCE'
+  | 'TREAT'
+  | 'ACTIVITY'
+  | 'PRIVILEGE'
+  | 'CUSTOM';
+export type RewardRedemptionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
+export type RewardEligibility = 'CHILD_ONLY' | 'ALL' | 'ADULT_ONLY';
 
 export type Reward = {
   id: string;
@@ -331,8 +332,8 @@ export type RewardRedemption = {
   pointsDeducted: number;
 };
 
-export type NotificationDevicePlatform = "android" | "web";
-export type NotificationDeviceProvider = "generic" | "fcm" | "web_push";
+export type NotificationDevicePlatform = 'android' | 'web';
+export type NotificationDeviceProvider = 'generic' | 'fcm' | 'web_push';
 
 export type NotificationDevice = {
   id: string;
@@ -358,13 +359,13 @@ export type HouseholdNotificationHealthEntry = {
   pushReadyDeviceCount: number;
   latestDeviceSeenAt: string | null;
   emailFallbackEligible: boolean;
-  deliveryMode: "push" | "email_fallback" | "none";
+  deliveryMode: 'push' | 'email_fallback' | 'none';
 };
 
 export type AdminSystemStatus = {
   checkedAt: string;
   application: {
-    status: "ready";
+    status: 'ready';
     port: number;
     serveEmbeddedWeb: boolean;
     corsAllowedOrigins: string[];
@@ -372,11 +373,11 @@ export type AdminSystemStatus = {
     reverseProxyPathBase: string | null;
   };
   database: {
-    status: "ready" | "error";
+    status: 'ready' | 'error';
     error: string | null;
   };
   storage: {
-    status: "ready" | "error";
+    status: 'ready' | 'error';
     rootPath: string;
     runtimeLogFilePath: string;
     runtimeLogMaxFileSizeMb: number;
@@ -386,18 +387,18 @@ export type AdminSystemStatus = {
     error: string | null;
   };
   auth: {
-    status: "ready" | "error";
+    status: 'ready' | 'error';
     localAuthEnabled: boolean;
     localAuthForcedByConfig: boolean;
     localAuthEffective: boolean;
     oidcEnabled: boolean;
     oidcEffective: boolean;
-    oidcSource: "ui" | "env" | "control_plane" | "none";
+    oidcSource: 'ui' | 'env' | 'control_plane' | 'none';
     oidcAuthority: string;
     oidcClientId: string;
   };
   smtp: {
-    status: "ready" | "warning";
+    status: 'ready' | 'warning';
     enabled: boolean;
     configured: boolean;
     host: string | null;
@@ -406,7 +407,7 @@ export type AdminSystemStatus = {
     fromEmail: string | null;
   };
   push: {
-    status: "ready" | "warning";
+    status: 'ready' | 'warning';
     householdPushEnabled: boolean;
     serverFcmEnabled: boolean;
     serviceAccountConfigured: boolean;
@@ -419,7 +420,7 @@ export type AdminSystemStatus = {
     deliveryWorkerIntervalMs: number;
   };
   emailFallback: {
-    status: "ready" | "warning";
+    status: 'ready' | 'warning';
     smtpReady: boolean;
     eligibleMemberCount: number;
     activeFallbackMemberCount: number;
@@ -491,22 +492,19 @@ export type ChoreTemplateChecklistItem = {
   required: boolean;
 };
 
-export type AssignmentStrategy =
-  | "round_robin"
-  | "least_completed_recently"
-  | "highest_streak";
+export type AssignmentStrategy = 'round_robin' | 'least_completed_recently' | 'highest_streak';
 
 export type ChoreAssignmentReason =
-  | "round_robin"
-  | "least_completed_recently"
-  | "highest_streak"
-  | "manual"
-  | "claimed"
-  | "sticky_follow_up"
-  | "rebalanced";
+  | 'round_robin'
+  | 'least_completed_recently'
+  | 'highest_streak'
+  | 'manual'
+  | 'claimed'
+  | 'sticky_follow_up'
+  | 'rebalanced';
 
-export type FollowUpDelayUnit = "hours" | "days";
-export type TemplateTranslationLocale = "en" | "de" | "hu";
+export type FollowUpDelayUnit = 'hours' | 'days';
+export type TemplateTranslationLocale = 'en' | 'de' | 'hu';
 export type LocalizedTemplateTranslation = {
   locale: TemplateTranslationLocale;
   groupTitle?: string;
@@ -558,7 +556,7 @@ export type ChoreAttachment = {
 };
 
 export type CompletionMilestone = {
-  type: "perfect_day";
+  type: 'perfect_day';
   userId: string;
   dayKey: string;
   completedChoreCount: number;
@@ -647,7 +645,7 @@ export type AuthProviders = {
     enabled: boolean;
     authority: string;
     clientId: string;
-    source: "ui" | "env" | "none";
+    source: 'ui' | 'env' | 'none';
   };
 };
 
@@ -659,7 +657,7 @@ export type SignupInput = {
 
 export type CreateHouseholdMemberInput = {
   displayName: string;
-  role: "parent" | "child";
+  role: 'parent' | 'child';
   email: string;
   password: string;
   sendInviteEmail?: boolean;
@@ -672,7 +670,7 @@ export type CreateHouseholdMemberResult = {
 
 export type UpdateHouseholdMemberInput = {
   displayName: string;
-  role: "parent" | "child";
+  role: 'parent' | 'child';
   email: string;
   password?: string;
 };
@@ -691,7 +689,11 @@ export type CreateChoreTemplateInput = {
   requirePhotoProof: boolean;
   stickyFollowUpAssignee?: boolean;
   recurrenceStartStrategy?: RecurrenceStartStrategy;
-  variants?: Array<{ id?: string; label: string; translations?: LocalizedVariantLabelTranslation[] }>;
+  variants?: Array<{
+    id?: string;
+    label: string;
+    translations?: LocalizedVariantLabelTranslation[];
+  }>;
   dependencyTemplateIds?: string[];
   dependencyRules?: ChoreTemplateDependencyRule[];
   checklist?: Array<{
@@ -751,7 +753,7 @@ export type DashboardSyncToken = {
 export type WebPushPublicKeyResponse = {
   supported: boolean;
   publicKey: string | null;
-  platform: "web_push";
+  platform: 'web_push';
   householdId: string;
 };
 

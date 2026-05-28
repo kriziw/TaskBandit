@@ -1,8 +1,8 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from "@nestjs/common";
-import { AppConfigService } from "../../common/config/app-config.service";
-import { PushDeliveryService } from "../../common/push/push-delivery.service";
-import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
-import { HouseholdRepository } from "../household/household.repository";
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { AppConfigService } from '../../common/config/app-config.service';
+import { PushDeliveryService } from '../../common/push/push-delivery.service';
+import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
+import { HouseholdRepository } from '../household/household.repository';
 
 @Injectable()
 export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -15,12 +15,12 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     private readonly repository: HouseholdRepository,
     private readonly pushDeliveryService: PushDeliveryService,
     private readonly appConfigService: AppConfigService,
-    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
   ) {}
 
   async onApplicationBootstrap() {
     if (this.appConfigService.pushDeliveryIntervalMs <= 0) {
-      this.logger.log("Push delivery worker is disabled.");
+      this.logger.log('Push delivery worker is disabled.');
       return;
     }
 
@@ -61,7 +61,7 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
 
   async runOnceForDelivery(
     tenantId: string,
-    deliveryId: string
+    deliveryId: string,
   ): Promise<{ processed: boolean; sentCount: number; failedCount: number; reason?: string }> {
     const delivery = await this.repository.getPendingPushDeliveryById(deliveryId, tenantId);
     if (!delivery) {
@@ -69,25 +69,25 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
         processed: false,
         sentCount: 0,
         failedCount: 0,
-        reason: "delivery_not_pending"
+        reason: 'delivery_not_pending',
       };
     }
 
     const decision = await this.tenantRuntimePolicyService.getActionDecision(
       delivery.tenantId,
-      "notification_delivery"
+      'notification_delivery',
     );
     if (!decision.allowed) {
       await this.repository.markPushDeliveryFailed(
         delivery.id,
         delivery.tenantId,
-        decision.reason ?? "Push delivery blocked."
+        decision.reason ?? 'Push delivery blocked.',
       );
       return {
         processed: true,
         sentCount: 0,
         failedCount: 1,
-        reason: "tenant_policy_blocked"
+        reason: 'tenant_policy_blocked',
       };
     }
 
@@ -102,30 +102,38 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
       entityType: delivery.entityType,
       entityId: delivery.entityId,
       notificationId: delivery.notificationId,
-      deviceId: delivery.notificationDeviceId
+      deviceId: delivery.notificationDeviceId,
     });
 
-    if (result.status === "sent") {
-      await this.repository.markPushDeliverySent(delivery.id, delivery.tenantId, result.providerMessageId);
+    if (result.status === 'sent') {
+      await this.repository.markPushDeliverySent(
+        delivery.id,
+        delivery.tenantId,
+        result.providerMessageId,
+      );
       return {
         processed: true,
         sentCount: 1,
-        failedCount: 0
+        failedCount: 0,
       };
     }
 
-    await this.repository.markPushDeliveryFailed(delivery.id, delivery.tenantId, result.errorMessage);
+    await this.repository.markPushDeliveryFailed(
+      delivery.id,
+      delivery.tenantId,
+      result.errorMessage,
+    );
     return {
       processed: true,
       sentCount: 0,
-      failedCount: 1
+      failedCount: 1,
     };
   }
 
   private async runLoop(limit: number): Promise<{ sentCount: number; failedCount: number }> {
     const aggregate = {
       sentCount: 0,
-      failedCount: 0
+      failedCount: 0,
     };
 
     do {
@@ -138,12 +146,15 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     return aggregate;
   }
 
-  private async runInternal(limit = 25, tenantId?: string): Promise<{ sentCount: number; failedCount: number }> {
+  private async runInternal(
+    limit = 25,
+    tenantId?: string,
+  ): Promise<{ sentCount: number; failedCount: number }> {
     const pendingDeliveries = await this.repository.getPendingPushDeliveries(limit, tenantId);
     if (pendingDeliveries.length === 0) {
       return {
         sentCount: 0,
-        failedCount: 0
+        failedCount: 0,
       };
     }
 
@@ -153,14 +164,14 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
     for (const delivery of pendingDeliveries) {
       const decision = await this.tenantRuntimePolicyService.getActionDecision(
         delivery.tenantId,
-        "notification_delivery"
+        'notification_delivery',
       );
       if (!decision.allowed) {
         failedCount += 1;
         await this.repository.markPushDeliveryFailed(
           delivery.id,
           delivery.tenantId,
-          decision.reason ?? "Push delivery blocked."
+          decision.reason ?? 'Push delivery blocked.',
         );
         continue;
       }
@@ -176,27 +187,35 @@ export class PushDeliveryWorkerService implements OnApplicationBootstrap, OnModu
         entityType: delivery.entityType,
         entityId: delivery.entityId,
         notificationId: delivery.notificationId,
-        deviceId: delivery.notificationDeviceId
+        deviceId: delivery.notificationDeviceId,
       });
 
-      if (result.status === "sent") {
+      if (result.status === 'sent') {
         sentCount += 1;
-        await this.repository.markPushDeliverySent(delivery.id, delivery.tenantId, result.providerMessageId);
+        await this.repository.markPushDeliverySent(
+          delivery.id,
+          delivery.tenantId,
+          result.providerMessageId,
+        );
       } else {
         failedCount += 1;
-        await this.repository.markPushDeliveryFailed(delivery.id, delivery.tenantId, result.errorMessage);
+        await this.repository.markPushDeliveryFailed(
+          delivery.id,
+          delivery.tenantId,
+          result.errorMessage,
+        );
       }
     }
 
     if (sentCount > 0 || failedCount > 0) {
       this.logger.log(
-        `Processed ${pendingDeliveries.length} push delivery job(s): ${sentCount} sent, ${failedCount} failed.`
+        `Processed ${pendingDeliveries.length} push delivery job(s): ${sentCount} sent, ${failedCount} failed.`,
       );
     }
 
     return {
       sentCount,
-      failedCount
+      failedCount,
     };
   }
 }

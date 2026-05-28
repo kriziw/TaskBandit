@@ -1,19 +1,19 @@
-import { create } from "zustand";
+import { create } from 'zustand';
 import type {
   HouseholdSettings,
   NotificationPreferences,
   CreateHouseholdMemberInput,
   UpdateHouseholdMemberInput,
-} from "../types/taskbandit";
+} from '../types/taskbandit';
 
 export type MemberFormState = CreateHouseholdMemberInput;
 export type MemberEditFormState = UpdateHouseholdMemberInput;
 
 function createTemporaryPassword(length = 16) {
-  const uppercase = "ABCDEFGHJKLMNPQRSTUVWXYZ";
-  const lowercase = "abcdefghijkmnopqrstuvwxyz";
-  const digits = "23456789";
-  const symbols = "!@#$%*-_?";
+  const uppercase = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lowercase = 'abcdefghijkmnopqrstuvwxyz';
+  const digits = '23456789';
+  const symbols = '!@#$%*-_?';
   const allCharacters = uppercase + lowercase + digits + symbols;
   const randomValues = new Uint32Array(length);
   const cryptoProvider = globalThis.crypto;
@@ -49,14 +49,14 @@ function createTemporaryPassword(length = 16) {
     ];
   }
 
-  return generatedCharacters.join("");
+  return generatedCharacters.join('');
 }
 
 export function createEmptyMemberForm(): MemberFormState {
   return {
-    displayName: "",
-    role: "child",
-    email: "",
+    displayName: '',
+    role: 'child',
+    email: '',
     password: createTemporaryPassword(),
     sendInviteEmail: false,
   };
@@ -64,10 +64,10 @@ export function createEmptyMemberForm(): MemberFormState {
 
 export function createEmptyMemberEditForm(): MemberEditFormState {
   return {
-    displayName: "",
-    role: "child",
-    email: "",
-    password: "",
+    displayName: '',
+    role: 'child',
+    email: '',
+    password: '',
   };
 }
 
@@ -80,13 +80,24 @@ interface SettingsStore {
   editingMemberId: string | null;
   expandedDeviceDetailsById: Record<string, boolean>;
 
-  setSettingsDraft: (v: HouseholdSettings | null | ((prev: HouseholdSettings | null) => HouseholdSettings | null)) => void;
+  setSettingsDraft: (
+    v: HouseholdSettings | null | ((prev: HouseholdSettings | null) => HouseholdSettings | null),
+  ) => void;
   setSmtpVerifiedFingerprint: (v: string | null) => void;
-  setNotificationPreferencesDraft: (v: NotificationPreferences | null | ((prev: NotificationPreferences | null) => NotificationPreferences | null)) => void;
+  setNotificationPreferencesDraft: (
+    v:
+      | NotificationPreferences
+      | null
+      | ((prev: NotificationPreferences | null) => NotificationPreferences | null),
+  ) => void;
   setMemberForm: (v: MemberFormState | ((prev: MemberFormState) => MemberFormState)) => void;
-  setMemberEditForm: (v: MemberEditFormState | ((prev: MemberEditFormState) => MemberEditFormState)) => void;
+  setMemberEditForm: (
+    v: MemberEditFormState | ((prev: MemberEditFormState) => MemberEditFormState),
+  ) => void;
   setEditingMemberId: (v: string | null) => void;
-  setExpandedDeviceDetailsById: (v: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>)) => void;
+  setExpandedDeviceDetailsById: (
+    v: Record<string, boolean> | ((prev: Record<string, boolean>) => Record<string, boolean>),
+  ) => void;
 }
 
 export const useSettingsStore = create<SettingsStore>((set) => ({
@@ -99,15 +110,18 @@ export const useSettingsStore = create<SettingsStore>((set) => ({
   expandedDeviceDetailsById: {},
 
   setSettingsDraft: (v) =>
-    set((s) => ({ settingsDraft: typeof v === "function" ? v(s.settingsDraft) : v })),
+    set((s) => ({ settingsDraft: typeof v === 'function' ? v(s.settingsDraft) : v })),
   setSmtpVerifiedFingerprint: (v) => set({ smtpVerifiedFingerprint: v }),
   setNotificationPreferencesDraft: (v) =>
-    set((s) => ({ notificationPreferencesDraft: typeof v === "function" ? v(s.notificationPreferencesDraft) : v })),
-  setMemberForm: (v) =>
-    set((s) => ({ memberForm: typeof v === "function" ? v(s.memberForm) : v })),
+    set((s) => ({
+      notificationPreferencesDraft: typeof v === 'function' ? v(s.notificationPreferencesDraft) : v,
+    })),
+  setMemberForm: (v) => set((s) => ({ memberForm: typeof v === 'function' ? v(s.memberForm) : v })),
   setMemberEditForm: (v) =>
-    set((s) => ({ memberEditForm: typeof v === "function" ? v(s.memberEditForm) : v })),
+    set((s) => ({ memberEditForm: typeof v === 'function' ? v(s.memberEditForm) : v })),
   setEditingMemberId: (v) => set({ editingMemberId: v }),
   setExpandedDeviceDetailsById: (v) =>
-    set((s) => ({ expandedDeviceDetailsById: typeof v === "function" ? v(s.expandedDeviceDetailsById) : v })),
+    set((s) => ({
+      expandedDeviceDetailsById: typeof v === 'function' ? v(s.expandedDeviceDetailsById) : v,
+    })),
 }));

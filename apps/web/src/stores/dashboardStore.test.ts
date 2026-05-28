@@ -2,30 +2,41 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { useDashboardStore } from './dashboardStore';
 import type { DashboardPayload, RuntimeLogEntry } from '../types/taskbandit';
 
-const makePayload = (overrides: Partial<DashboardPayload> = {}): DashboardPayload =>
-  ({
-    currentUser: { id: 'u1', displayName: 'Alice', role: 'admin', email: 'a@test.com', points: 100, authProviders: ['local'] } as unknown as DashboardPayload['currentUser'],
-    dashboard: {} as DashboardPayload['dashboard'],
-    household: { householdId: 'h1', name: 'Home', settings: {} as DashboardPayload['household']['settings'], members: [] } as DashboardPayload['household'],
-    auditLog: [],
-    notifications: [],
-    notificationDevices: [],
-    householdNotificationHealth: [],
-    notificationRecovery: null,
-    systemStatus: null,
-    backupReadiness: null,
-    notificationPreferences: {} as DashboardPayload['notificationPreferences'],
-    pointsLedger: [],
-    templates: [],
-    instances: [],
-    takeoverRequests: [],
-    hostedSubscription: {} as DashboardPayload['hostedSubscription'],
-    compatibility: {} as DashboardPayload['compatibility'],
-    achievements: [],
-    rewards: [],
-    redemptions: [],
-    ...overrides,
-  });
+const makePayload = (overrides: Partial<DashboardPayload> = {}): DashboardPayload => ({
+  currentUser: {
+    id: 'u1',
+    displayName: 'Alice',
+    role: 'admin',
+    email: 'a@test.com',
+    points: 100,
+    authProviders: ['local'],
+  } as unknown as DashboardPayload['currentUser'],
+  dashboard: {} as DashboardPayload['dashboard'],
+  household: {
+    householdId: 'h1',
+    name: 'Home',
+    settings: {} as DashboardPayload['household']['settings'],
+    members: [],
+  } as DashboardPayload['household'],
+  auditLog: [],
+  notifications: [],
+  notificationDevices: [],
+  householdNotificationHealth: [],
+  notificationRecovery: null,
+  systemStatus: null,
+  backupReadiness: null,
+  notificationPreferences: {} as DashboardPayload['notificationPreferences'],
+  pointsLedger: [],
+  templates: [],
+  instances: [],
+  takeoverRequests: [],
+  hostedSubscription: {} as DashboardPayload['hostedSubscription'],
+  compatibility: {} as DashboardPayload['compatibility'],
+  achievements: [],
+  rewards: [],
+  redemptions: [],
+  ...overrides,
+});
 
 const makeLogEntry = (id: string): RuntimeLogEntry => ({
   id,
@@ -57,7 +68,9 @@ describe('setPayload', () => {
 describe('updatePayload', () => {
   it('applies updater when payload exists', () => {
     useDashboardStore.setState({ payload: makePayload() });
-    useDashboardStore.getState().updatePayload((c) => ({ ...c, auditLog: [{ id: 'log1' } as never] }));
+    useDashboardStore
+      .getState()
+      .updatePayload((c) => ({ ...c, auditLog: [{ id: 'log1' } as never] }));
     expect(useDashboardStore.getState().payload?.auditLog).toHaveLength(1);
   });
 
@@ -86,7 +99,11 @@ describe('setIsLoading', () => {
 
 describe('clearDashboard', () => {
   it('resets all state to defaults', () => {
-    useDashboardStore.setState({ payload: makePayload(), runtimeLogs: [makeLogEntry('l1')], isLoading: true });
+    useDashboardStore.setState({
+      payload: makePayload(),
+      runtimeLogs: [makeLogEntry('l1')],
+      isLoading: true,
+    });
     useDashboardStore.getState().clearDashboard();
     const { payload, runtimeLogs, isLoading } = useDashboardStore.getState();
     expect(payload).toBeNull();

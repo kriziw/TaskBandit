@@ -26,7 +26,12 @@ beforeEach(() => {
     dismissedUpdateKey: null,
     installPromptEvent: null,
     installPromptDismissed: false,
-    clientWebPushStatus: { supported: false, enabled: false, permission: 'unsupported', needsPrompt: false },
+    clientWebPushStatus: {
+      supported: false,
+      enabled: false,
+      permission: 'unsupported',
+      needsPrompt: false,
+    },
     bootstrapForm: defaultBootstrapForm,
     bootstrapSetupStep: 'account',
     selectedBootstrapStarterGroup: '',

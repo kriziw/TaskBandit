@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   IsArray,
@@ -9,8 +9,8 @@ import {
   IsString,
   IsUUID,
   MaxLength,
-  ValidateNested
-} from "class-validator";
+  ValidateNested,
+} from 'class-validator';
 
 export class SubmitAttachmentDto {
   @ApiProperty()
@@ -41,7 +41,7 @@ export class SubmitChoreDto {
   @IsOptional()
   @IsArray()
   @ArrayMaxSize(50)
-  @IsUUID("4", { each: true })
+  @IsUUID('4', { each: true })
   completedChecklistItemIds?: string[];
 
   @ApiPropertyOptional()

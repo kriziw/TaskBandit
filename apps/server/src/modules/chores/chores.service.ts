@@ -1,25 +1,28 @@
-import { BadRequestException, ForbiddenException, Injectable } from "@nestjs/common";
-import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
-import { AppConfigService } from "../../common/config/app-config.service";
-import { I18nService } from "../../common/i18n/i18n.service";
-import { SupportedLanguage } from "../../common/i18n/supported-languages";
-import { FeatureAccessService, PackageFeatureId } from "../../common/tenancy/feature-access.service";
-import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
-import { DashboardSyncService } from "../dashboard/dashboard-sync.service";
-import { AchievementsService } from "../achievements/achievements.service";
-import { PointsService } from "../gamification/points.service";
-import { HouseholdRepository } from "../household/household.repository";
-import { CompleteExternalChoreDto } from "./dto/complete-external-chore.dto";
-import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
-import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
-import { RequestChoreTakeoverDto } from "./dto/request-chore-takeover.dto";
-import { ReleaseDeferredChoreDto } from "./dto/release-deferred-chore.dto";
-import { ReviewChoreDto } from "./dto/review-chore.dto";
-import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
-import { SnoozeDeferredChoreDto } from "./dto/snooze-deferred-chore.dto";
-import { SubmitChoreDto } from "./dto/submit-chore.dto";
-import { QuickLogChoreDto } from "./dto/quick-log-chore.dto";
-import { ProofStorageService } from "./proof-storage.service";
+import { BadRequestException, ForbiddenException, Injectable } from '@nestjs/common';
+import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
+import { AppConfigService } from '../../common/config/app-config.service';
+import { I18nService } from '../../common/i18n/i18n.service';
+import { SupportedLanguage } from '../../common/i18n/supported-languages';
+import {
+  FeatureAccessService,
+  PackageFeatureId,
+} from '../../common/tenancy/feature-access.service';
+import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
+import { DashboardSyncService } from '../dashboard/dashboard-sync.service';
+import { AchievementsService } from '../achievements/achievements.service';
+import { PointsService } from '../gamification/points.service';
+import { HouseholdRepository } from '../household/household.repository';
+import { CompleteExternalChoreDto } from './dto/complete-external-chore.dto';
+import { CreateChoreInstanceDto } from './dto/create-chore-instance.dto';
+import { CreateChoreTemplateDto } from './dto/create-chore-template.dto';
+import { RequestChoreTakeoverDto } from './dto/request-chore-takeover.dto';
+import { ReleaseDeferredChoreDto } from './dto/release-deferred-chore.dto';
+import { ReviewChoreDto } from './dto/review-chore.dto';
+import { RespondChoreTakeoverDto } from './dto/respond-chore-takeover.dto';
+import { SnoozeDeferredChoreDto } from './dto/snooze-deferred-chore.dto';
+import { SubmitChoreDto } from './dto/submit-chore.dto';
+import { QuickLogChoreDto } from './dto/quick-log-chore.dto';
+import { ProofStorageService } from './proof-storage.service';
 
 @Injectable()
 export class ChoresService {
@@ -32,7 +35,7 @@ export class ChoresService {
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly proofStorageService: ProofStorageService,
     private readonly dashboardSyncService: DashboardSyncService,
-    private readonly achievementsService: AchievementsService
+    private readonly achievementsService: AchievementsService,
   ) {}
 
   async getTemplates(user: AuthenticatedUser, language: SupportedLanguage) {
@@ -42,13 +45,17 @@ export class ChoresService {
     return this.repository.getTemplates(user.householdId, language);
   }
 
-  async createTemplate(dto: CreateChoreTemplateDto, user: AuthenticatedUser, language: SupportedLanguage) {
+  async createTemplate(
+    dto: CreateChoreTemplateDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
     // templates_manage enforced by FeatureGuard at the controller level
     if (this.hasFollowUpAutomation(dto)) {
-      await this.requireFeature(user, "follow_up_automation");
+      await this.requireFeature(user, 'follow_up_automation');
     }
     const template = await this.repository.createTemplate(dto, user.householdId, user.id, language);
-    this.publishSyncEvent(user, "template.created", "template", template.id);
+    this.publishSyncEvent(user, 'template.created', 'template', template.id);
     return template;
   }
 
@@ -56,20 +63,27 @@ export class ChoresService {
     templateId: string,
     dto: CreateChoreTemplateDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     // templates_manage enforced by FeatureGuard at the controller level
     if (this.hasFollowUpAutomation(dto)) {
-      await this.requireFeature(user, "follow_up_automation");
+      await this.requireFeature(user, 'follow_up_automation');
     }
-    const template = await this.repository.getTemplateForHousehold(templateId, user.householdId, language);
+    const template = await this.repository.getTemplateForHousehold(
+      templateId,
+      user.householdId,
+      language,
+    );
     if (!template) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.template_not_found', language),
+      );
     }
     if (template.isOperatorManaged) {
       throw new ForbiddenException({
-        code: "operator_managed_template",
-        message: "This template is managed by the operator and cannot be edited. Use 'Save as copy' to create an editable version."
+        code: 'operator_managed_template',
+        message:
+          "This template is managed by the operator and cannot be edited. Use 'Save as copy' to create an editable version.",
       });
     }
 
@@ -78,55 +92,69 @@ export class ChoresService {
       dto,
       user.householdId,
       user.id,
-      language
+      language,
     );
-    this.publishSyncEvent(user, "template.updated", "template", templateId);
+    this.publishSyncEvent(user, 'template.updated', 'template', templateId);
     return updatedTemplate;
   }
 
   async deleteTemplate(templateId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const template = await this.repository.getTemplateForHousehold(templateId, user.householdId, language);
+    const template = await this.repository.getTemplateForHousehold(
+      templateId,
+      user.householdId,
+      language,
+    );
     if (!template) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.template_not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.template_not_found', language),
+      );
     }
     if (template.isOperatorManaged) {
       throw new ForbiddenException({
-        code: "operator_managed_template",
-        message: "This template is managed by the operator and cannot be deleted. You can disable it instead."
+        code: 'operator_managed_template',
+        message:
+          'This template is managed by the operator and cannot be deleted. You can disable it instead.',
       });
     }
 
     const deleted = await this.repository.deleteTemplate(templateId, user.householdId, user.id);
-    this.publishSyncEvent(user, "template.deleted", "template", templateId);
+    this.publishSyncEvent(user, 'template.deleted', 'template', templateId);
     return deleted;
   }
 
   async resetTemplatesToDefaults(user: AuthenticatedUser, language: SupportedLanguage) {
-    const result = await this.repository.resetDefaultTemplatesForHousehold(user.householdId, language);
-    this.publishSyncEvent(user, "templates.reset", "template");
+    const result = await this.repository.resetDefaultTemplatesForHousehold(
+      user.householdId,
+      language,
+    );
+    this.publishSyncEvent(user, 'templates.reset', 'template');
     return result;
   }
 
-  async createInstance(dto: CreateChoreInstanceDto, user: AuthenticatedUser, language: SupportedLanguage) {
+  async createInstance(
+    dto: CreateChoreInstanceDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
     // chores_manage enforced by FeatureGuard at the controller level
     if (dto.assigneeId) {
-      await this.requireFeature(user, "reassignment");
+      await this.requireFeature(user, 'reassignment');
     }
     const instance = await this.repository.createInstance(dto, user.householdId, user.id, language);
-    this.publishSyncEvent(user, "instance.created", "instance", instance.id);
+    this.publishSyncEvent(user, 'instance.created', 'instance', instance.id);
     return instance;
   }
 
   async quickLog(dto: QuickLogChoreDto, user: AuthenticatedUser, language: SupportedLanguage) {
     if (!dto.instanceId && !dto.templateId && !dto.title?.trim()) {
       throw new BadRequestException({
-        message: "Quick log needs an existing chore/template selection or free-text title."
+        message: 'Quick log needs an existing chore/template selection or free-text title.',
       });
     }
 
     if (dto.createTemplateFromEntry && !dto.title?.trim()) {
       throw new BadRequestException({
-        message: "A title is required when creating a template from a quick log entry."
+        message: 'A title is required when creating a template from a quick log entry.',
       });
     }
 
@@ -134,26 +162,22 @@ export class ChoresService {
     const fallbackPoints = 0;
     const resolvedPoints = Math.max(
       0,
-      Math.floor(
-        dto.pointsOverride ??
-          household.settings.quickLogPointsDefault ??
-          fallbackPoints
-      )
+      Math.floor(dto.pointsOverride ?? household.settings.quickLogPointsDefault ?? fallbackPoints),
     );
 
     const instance = await this.repository.createQuickLogEntry({
       householdId: user.householdId,
       actorUserId: user.id,
-      title: dto.title?.trim() || "Quick log entry",
+      title: dto.title?.trim() || 'Quick log entry',
       note: dto.note,
       points: resolvedPoints,
       templateId: dto.templateId,
       instanceId: dto.instanceId,
       createTemplateFromEntry: dto.createTemplateFromEntry,
-      language
+      language,
     });
 
-    this.publishSyncEvent(user, "instance.quick_logged", "instance", instance.id);
+    this.publishSyncEvent(user, 'instance.quick_logged', 'instance', instance.id);
     return instance;
   }
 
@@ -161,21 +185,27 @@ export class ChoresService {
     instanceId: string,
     dto: CreateChoreInstanceDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     // chores_manage enforced by FeatureGuard at the controller level
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
     if (dto.assigneeId && dto.assigneeId !== instance.assigneeId) {
-      await this.requireFeature(user, "reassignment");
+      await this.requireFeature(user, 'reassignment');
     }
 
-    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+    if (['completed', 'cancelled', 'pending_approval'].includes(instance.state)) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_edit_state", language)
+        this.i18nService.translate('chores.invalid_edit_state', language),
       );
     }
 
@@ -184,21 +214,27 @@ export class ChoresService {
       dto,
       user.householdId,
       user.id,
-      language
+      language,
     );
-    this.publishSyncEvent(user, "instance.updated", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.updated', 'instance', instanceId);
     return updatedInstance;
   }
 
   async cancelInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (instance.state === "completed" || instance.state === "cancelled") {
+    if (instance.state === 'completed' || instance.state === 'cancelled') {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_cancel_state", language)
+        this.i18nService.translate('chores.invalid_cancel_state', language),
       );
     }
 
@@ -206,27 +242,33 @@ export class ChoresService {
       instanceId,
       user.householdId,
       user.id,
-      language
+      language,
     );
-    this.publishSyncEvent(user, "instance.cancelled", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.cancelled', 'instance', instanceId);
     return cancelledInstance;
   }
 
   async cancelOccurrence(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (instance.state === "completed" || instance.state === "cancelled") {
+    if (instance.state === 'completed' || instance.state === 'cancelled') {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_cancel_state", language)
+        this.i18nService.translate('chores.invalid_cancel_state', language),
       );
     }
 
     if (!instance.supportsOccurrenceCancellation) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.occurrence_cancel_not_available", language)
+        this.i18nService.translate('chores.occurrence_cancel_not_available', language),
       );
     }
 
@@ -234,29 +276,35 @@ export class ChoresService {
       instanceId,
       user.householdId,
       user.id,
-      language
+      language,
     );
 
     result.cancelledIds.forEach((cancelledId) => {
-      this.publishSyncEvent(user, "instance.cancelled", "instance", cancelledId);
+      this.publishSyncEvent(user, 'instance.cancelled', 'instance', cancelledId);
     });
 
     if (result.nextInstance) {
-      this.publishSyncEvent(user, "instance.created", "instance", result.nextInstance.id);
+      this.publishSyncEvent(user, 'instance.created', 'instance', result.nextInstance.id);
     }
 
     return result;
   }
 
   async closeCycle(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
     if (!instance.supportsSeriesCancellation) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.cycle_close_not_available", language)
+        this.i18nService.translate('chores.cycle_close_not_available', language),
       );
     }
 
@@ -264,11 +312,11 @@ export class ChoresService {
       instanceId,
       user.householdId,
       user.id,
-      language
+      language,
     );
 
     result.cancelledIds.forEach((cancelledId) => {
-      this.publishSyncEvent(user, "instance.cancelled", "instance", cancelledId);
+      this.publishSyncEvent(user, 'instance.cancelled', 'instance', cancelledId);
     });
 
     return result;
@@ -279,20 +327,26 @@ export class ChoresService {
   }
 
   async startInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
-    }
-
-    if (user.role === "child" && instance.assigneeId && instance.assigneeId !== user.id) {
-      return this.repository.throwForbidden(
-        this.i18nService.translate("chores.assignee_only_submit", language)
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
       );
     }
 
-    if (["completed", "cancelled", "pending_approval", "in_progress"].includes(instance.state)) {
+    if (user.role === 'child' && instance.assigneeId && instance.assigneeId !== user.id) {
+      return this.repository.throwForbidden(
+        this.i18nService.translate('chores.assignee_only_submit', language),
+      );
+    }
+
+    if (['completed', 'cancelled', 'pending_approval', 'in_progress'].includes(instance.state)) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_start_state", language)
+        this.i18nService.translate('chores.invalid_start_state', language),
       );
     }
 
@@ -300,27 +354,33 @@ export class ChoresService {
       instanceId,
       user.householdId,
       user.id,
-      language
+      language,
     );
-    this.publishSyncEvent(user, "instance.started", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.started', 'instance', instanceId);
     return startedInstance;
   }
 
   async takeOverInstance(instanceId: string, user: AuthenticatedUser, language: SupportedLanguage) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+    if (['completed', 'cancelled', 'pending_approval'].includes(instance.state)) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_start_state", language)
+        this.i18nService.translate('chores.invalid_start_state', language),
       );
     }
 
     if (instance.assigneeId === user.id) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_start_state", language)
+        this.i18nService.translate('chores.invalid_start_state', language),
       );
     }
 
@@ -328,9 +388,9 @@ export class ChoresService {
       instanceId,
       user.householdId,
       user.id,
-      language
+      language,
     );
-    this.publishSyncEvent(user, "instance.taken_over", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.taken_over', 'instance', instanceId);
     return updatedInstance;
   }
 
@@ -346,29 +406,35 @@ export class ChoresService {
     instanceId: string,
     dto: RequestChoreTakeoverDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     // takeover_requests enforced by FeatureGuard at the controller level
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (user.role === "child") {
+    if (user.role === 'child') {
       return this.repository.throwForbidden(
-        this.i18nService.translate("chores.takeover_request_forbidden", language)
+        this.i18nService.translate('chores.takeover_request_forbidden', language),
       );
     }
 
     if (instance.assigneeId !== user.id) {
       return this.repository.throwForbidden(
-        this.i18nService.translate("chores.takeover_request_only_assignee", language)
+        this.i18nService.translate('chores.takeover_request_only_assignee', language),
       );
     }
 
-    if (["completed", "cancelled", "pending_approval"].includes(instance.state)) {
+    if (['completed', 'cancelled', 'pending_approval'].includes(instance.state)) {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_takeover_request_state", language)
+        this.i18nService.translate('chores.invalid_takeover_request_state', language),
       );
     }
 
@@ -379,10 +445,16 @@ export class ChoresService {
       requestedUserId: dto.requestedUserId,
       note: dto.note,
       language,
-      conflictMessage: this.i18nService.translate("chores.takeover_request_already_pending", language),
-      forbiddenMessage: this.i18nService.translate("chores.takeover_request_invalid_target", language)
+      conflictMessage: this.i18nService.translate(
+        'chores.takeover_request_already_pending',
+        language,
+      ),
+      forbiddenMessage: this.i18nService.translate(
+        'chores.takeover_request_invalid_target',
+        language,
+      ),
     });
-    this.publishSyncEvent(user, "instance.takeover_requested", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.takeover_requested', 'instance', instanceId);
     return takeoverRequest;
   }
 
@@ -390,7 +462,7 @@ export class ChoresService {
     requestId: string,
     dto: RespondChoreTakeoverDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     const updatedInstance = await this.repository.approveTakeoverRequest({
       requestId,
@@ -398,11 +470,17 @@ export class ChoresService {
       actingUserId: user.id,
       note: dto.note,
       language,
-      invalidStateMessage: this.i18nService.translate("chores.invalid_takeover_request_state", language),
-      notFoundMessage: this.i18nService.translate("chores.takeover_request_not_found", language),
-      forbiddenMessage: this.i18nService.translate("chores.takeover_request_approval_forbidden", language)
+      invalidStateMessage: this.i18nService.translate(
+        'chores.invalid_takeover_request_state',
+        language,
+      ),
+      notFoundMessage: this.i18nService.translate('chores.takeover_request_not_found', language),
+      forbiddenMessage: this.i18nService.translate(
+        'chores.takeover_request_approval_forbidden',
+        language,
+      ),
     });
-    this.publishSyncEvent(user, "instance.takeover_approved", "instance", updatedInstance.id);
+    this.publishSyncEvent(user, 'instance.takeover_approved', 'instance', updatedInstance.id);
     return updatedInstance;
   }
 
@@ -410,7 +488,7 @@ export class ChoresService {
     requestId: string,
     dto: RespondChoreTakeoverDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     const takeoverRequest = await this.repository.declineTakeoverRequest({
       requestId,
@@ -418,18 +496,29 @@ export class ChoresService {
       actingUserId: user.id,
       note: dto.note,
       language,
-      invalidStateMessage: this.i18nService.translate("chores.invalid_takeover_request_state", language),
-      notFoundMessage: this.i18nService.translate("chores.takeover_request_not_found", language),
-      forbiddenMessage: this.i18nService.translate("chores.takeover_request_approval_forbidden", language)
+      invalidStateMessage: this.i18nService.translate(
+        'chores.invalid_takeover_request_state',
+        language,
+      ),
+      notFoundMessage: this.i18nService.translate('chores.takeover_request_not_found', language),
+      forbiddenMessage: this.i18nService.translate(
+        'chores.takeover_request_approval_forbidden',
+        language,
+      ),
     });
-    this.publishSyncEvent(user, "instance.takeover_declined", "takeover_request", takeoverRequest.id);
+    this.publishSyncEvent(
+      user,
+      'instance.takeover_declined',
+      'takeover_request',
+      takeoverRequest.id,
+    );
     return takeoverRequest;
   }
 
   uploadProof(
     file: Express.Multer.File | undefined,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     return this.handleProofUpload(file, user, language);
   }
@@ -437,15 +526,18 @@ export class ChoresService {
   private async handleProofUpload(
     file: Express.Multer.File | undefined,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     // proof_uploads enforced by FeatureGuard at the controller level (uploadProof route)
-    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, "proof_upload");
-    const currentUsageBytes = await this.repository.getProofStorageUsage(user.tenantId, user.householdId);
+    await this.tenantRuntimePolicyService.assertActionAllowed(user.tenantId, 'proof_upload');
+    const currentUsageBytes = await this.repository.getProofStorageUsage(
+      user.tenantId,
+      user.householdId,
+    );
     await this.tenantRuntimePolicyService.assertStorageBytesLimit(
       user.tenantId,
       currentUsageBytes,
-      file?.size ?? 0
+      file?.size ?? 0,
     );
     return this.proofStorageService.storeProofUpload(file, user, language);
   }
@@ -453,25 +545,29 @@ export class ChoresService {
   async downloadAttachment(
     attachmentId: string,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     const attachment = await this.repository.getAttachmentForViewer(user, attachmentId);
     if (!attachment?.storageKey) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
     try {
       const fileBuffer = await this.proofStorageService.readProofUpload(attachment.storageKey, {
         tenantId: user.tenantId,
-        householdId: user.householdId
+        householdId: user.householdId,
       });
       return {
         ...attachment,
-        fileBuffer
+        fileBuffer,
       };
     } catch (error) {
-      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-        return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      if (error && typeof error === 'object' && 'code' in error && error.code === 'ENOENT') {
+        return this.repository.throwNotFound(
+          this.i18nService.translate('chores.not_found', language),
+        );
       }
 
       throw error;
@@ -482,41 +578,43 @@ export class ChoresService {
     instanceId: string,
     dto: SubmitChoreDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
-    if (user.role === "child") {
-      await this.requireFeature(user, "approvals");
+    if (user.role === 'child') {
+      await this.requireFeature(user, 'approvals');
     }
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (
-      user.role === "child" &&
-      instance.assigneeId &&
-      instance.assigneeId !== user.id
-    ) {
+    if (user.role === 'child' && instance.assigneeId && instance.assigneeId !== user.id) {
       return this.repository.throwForbidden(
-        this.i18nService.translate("chores.assignee_only_submit", language)
+        this.i18nService.translate('chores.assignee_only_submit', language),
       );
     }
 
     if (
-      user.role !== "child" &&
+      user.role !== 'child' &&
       instance.assigneeId &&
       instance.assigneeId !== user.id &&
-      user.role !== "admin" &&
-      user.role !== "parent"
+      user.role !== 'admin' &&
+      user.role !== 'parent'
     ) {
       return this.repository.throwForbidden(
-        this.i18nService.translate("chores.assignee_only_submit", language)
+        this.i18nService.translate('chores.assignee_only_submit', language),
       );
     }
 
-    if (instance.state === "completed") {
+    if (instance.state === 'completed') {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.already_completed", language)
+        this.i18nService.translate('chores.already_completed', language),
       );
     }
 
@@ -524,17 +622,17 @@ export class ChoresService {
 
     if (instance.requirePhotoProof && (dto.attachments?.length ?? 0) < 1) {
       throw new BadRequestException({
-        message: this.i18nService.translate("chores.photo_proof_required", language)
+        message: this.i18nService.translate('chores.photo_proof_required', language),
       });
     }
 
-    const shouldRequireApproval = user.role === "child";
+    const shouldRequireApproval = user.role === 'child';
     const awardedPoints = shouldRequireApproval
       ? 0
       : this.pointsService.calculateForApprovedCompletion(
           instance.difficulty,
           completedChecklistItemIds.length,
-          instance.isOverdue
+          instance.isOverdue,
         ).finalAwardedPoints;
 
     const submittedInstance = await this.repository.submitInstance({
@@ -546,13 +644,13 @@ export class ChoresService {
       note: dto.note,
       awardedPoints,
       language,
-      nextState: shouldRequireApproval ? "pending_approval" : "completed"
+      nextState: shouldRequireApproval ? 'pending_approval' : 'completed',
     });
     this.publishSyncEvent(
       user,
-      shouldRequireApproval ? "instance.submitted" : "instance.completed",
-      "instance",
-      instanceId
+      shouldRequireApproval ? 'instance.submitted' : 'instance.completed',
+      'instance',
+      instanceId,
     );
 
     if (!shouldRequireApproval) {
@@ -562,9 +660,11 @@ export class ChoresService {
         householdId: user.householdId,
         tenantId: user.tenantId,
         choreCompleted: true,
-        difficulty: instance.difficulty as "easy" | "medium" | "hard",
+        difficulty: instance.difficulty as 'easy' | 'medium' | 'hard',
         choreGroupTitle: instance.groupTitle ?? null,
-        isPerfectDay: "completionMilestone" in submittedInstance && submittedInstance.completionMilestone?.type === "perfect_day"
+        isPerfectDay:
+          'completionMilestone' in submittedInstance &&
+          submittedInstance.completionMilestone?.type === 'perfect_day',
       });
       if (newlyUnlocked.length > 0) {
         return { ...submittedInstance, newlyUnlockedAchievements: newlyUnlocked };
@@ -578,16 +678,22 @@ export class ChoresService {
     instanceId: string,
     dto: CompleteExternalChoreDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (user.role === "child") {
+    if (user.role === 'child') {
       return this.repository.throwForbidden(
-        this.i18nService.translate("chores.assignee_only_submit", language)
+        this.i18nService.translate('chores.assignee_only_submit', language),
       );
     }
 
@@ -595,7 +701,7 @@ export class ChoresService {
 
     if (instance.requirePhotoProof && (dto.attachments?.length ?? 0) < 1) {
       throw new BadRequestException({
-        message: this.i18nService.translate("chores.photo_proof_required", language)
+        message: this.i18nService.translate('chores.photo_proof_required', language),
       });
     }
 
@@ -611,9 +717,9 @@ export class ChoresService {
       externalCompleterName: dto.externalCompleterName,
       externalCompletionNote: dto.note,
       language,
-      nextState: "completed"
+      nextState: 'completed',
     });
-    this.publishSyncEvent(user, "instance.completed_external", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.completed_external', 'instance', instanceId);
     return completedInstance;
   }
 
@@ -621,23 +727,29 @@ export class ChoresService {
     instanceId: string,
     dto: ReviewChoreDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (instance.state !== "pending_approval") {
+    if (instance.state !== 'pending_approval') {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_review_state", language)
+        this.i18nService.translate('chores.invalid_review_state', language),
       );
     }
 
     const awardedPoints = this.pointsService.calculateForApprovedCompletion(
       instance.difficulty,
       instance.completedChecklistItems,
-      instance.isOverdue
+      instance.isOverdue,
     ).finalAwardedPoints;
 
     const reviewedInstance = await this.repository.reviewInstance({
@@ -647,9 +759,9 @@ export class ChoresService {
       approved: true,
       note: dto.note,
       language,
-      awardedPoints
+      awardedPoints,
     });
-    this.publishSyncEvent(user, "instance.approved", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.approved', 'instance', instanceId);
 
     const beneficiaryId = instance.assigneeId ?? null;
     if (beneficiaryId) {
@@ -658,9 +770,11 @@ export class ChoresService {
         householdId: user.householdId,
         tenantId: user.tenantId,
         choreCompleted: true,
-        difficulty: instance.difficulty as "easy" | "medium" | "hard",
+        difficulty: instance.difficulty as 'easy' | 'medium' | 'hard',
         choreGroupTitle: instance.groupTitle ?? null,
-        isPerfectDay: "completionMilestone" in reviewedInstance && reviewedInstance.completionMilestone?.type === "perfect_day"
+        isPerfectDay:
+          'completionMilestone' in reviewedInstance &&
+          reviewedInstance.completionMilestone?.type === 'perfect_day',
       });
       if (newlyUnlocked.length > 0) {
         return { ...reviewedInstance, newlyUnlockedAchievements: newlyUnlocked };
@@ -674,16 +788,22 @@ export class ChoresService {
     instanceId: string,
     dto: ReviewChoreDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
-    const instance = await this.repository.getInstanceForHousehold(instanceId, user.householdId, language);
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
     if (!instance) {
-      return this.repository.throwNotFound(this.i18nService.translate("chores.not_found", language));
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
     }
 
-    if (instance.state !== "pending_approval") {
+    if (instance.state !== 'pending_approval') {
       return this.repository.throwConflict(
-        this.i18nService.translate("chores.invalid_review_state", language)
+        this.i18nService.translate('chores.invalid_review_state', language),
       );
     }
 
@@ -694,9 +814,9 @@ export class ChoresService {
       approved: false,
       note: dto.note,
       language,
-      awardedPoints: 0
+      awardedPoints: 0,
     });
-    this.publishSyncEvent(user, "instance.rejected", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.rejected', 'instance', instanceId);
     return reviewedInstance;
   }
 
@@ -704,16 +824,16 @@ export class ChoresService {
     instanceId: string,
     dto: ReleaseDeferredChoreDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     const releasedInstance = await this.repository.releaseDeferredFollowUp({
       instanceId,
       actingUserId: user.id,
       householdId: user.householdId,
       note: dto.note,
-      language
+      language,
     });
-    this.publishSyncEvent(user, "instance.released", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.released', 'instance', instanceId);
     return releasedInstance;
   }
 
@@ -721,7 +841,7 @@ export class ChoresService {
     instanceId: string,
     dto: SnoozeDeferredChoreDto,
     user: AuthenticatedUser,
-    language: SupportedLanguage
+    language: SupportedLanguage,
   ) {
     const snoozedInstance = await this.repository.snoozeDeferredFollowUp({
       instanceId,
@@ -729,24 +849,24 @@ export class ChoresService {
       householdId: user.householdId,
       notBeforeAt: dto.notBeforeAt,
       note: dto.note,
-      language
+      language,
     });
-    this.publishSyncEvent(user, "instance.snoozed", "instance", instanceId);
+    this.publishSyncEvent(user, 'instance.snoozed', 'instance', instanceId);
     return snoozedInstance;
   }
 
   private publishSyncEvent(
     user: AuthenticatedUser,
     action: string,
-    entityType: "instance" | "template" | "takeover_request",
-    entityId?: string
+    entityType: 'instance' | 'template' | 'takeover_request',
+    entityId?: string,
   ) {
     this.dashboardSyncService.publishChoreUpdate({
       householdId: user.householdId,
       actorUserId: user.id,
       action,
       entityType,
-      entityId
+      entityId,
     });
   }
 

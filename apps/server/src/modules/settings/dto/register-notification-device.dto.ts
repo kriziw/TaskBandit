@@ -1,5 +1,5 @@
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from "class-validator";
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { IsBoolean, IsIn, IsOptional, IsString, MaxLength } from 'class-validator';
 
 export class RegisterNotificationDeviceDto {
   @ApiProperty()
@@ -8,18 +8,18 @@ export class RegisterNotificationDeviceDto {
   installationId!: string;
 
   @ApiPropertyOptional({
-    enum: ["android", "web"]
+    enum: ['android', 'web'],
   })
   @IsOptional()
-  @IsIn(["android", "web"])
-  platform?: "android" | "web";
+  @IsIn(['android', 'web'])
+  platform?: 'android' | 'web';
 
   @ApiPropertyOptional({
-    enum: ["generic", "fcm", "web_push"]
+    enum: ['generic', 'fcm', 'web_push'],
   })
   @IsOptional()
-  @IsIn(["generic", "fcm", "web_push"])
-  provider?: "generic" | "fcm" | "web_push";
+  @IsIn(['generic', 'fcm', 'web_push'])
+  provider?: 'generic' | 'fcm' | 'web_push';
 
   @ApiPropertyOptional()
   @IsOptional()
