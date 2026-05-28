@@ -68,12 +68,12 @@ import com.taskbandit.app.mobile.MobileReward
 import com.taskbandit.app.mobile.UpdateRewardInput
 
 internal fun rewardCategoryEmoji(category: String): String = when (category) {
-    "SCREEN_TIME" -> "Ã°Å¸â€œÂ±"
-    "ALLOWANCE"   -> "Ã°Å¸â€™Â°"
-    "TREAT"       -> "Ã°Å¸ÂÂ¬"
-    "ACTIVITY"    -> "Ã°Å¸Å½â€°"
-    "PRIVILEGE"   -> "Ã¢Â­Â"
-    else          -> "Ã°Å¸Å½Â"
+    "SCREEN_TIME" -> "📱"
+    "ALLOWANCE"   -> "💰"
+    "TREAT"       -> "🍬"
+    "ACTIVITY"    -> "🎉"
+    "PRIVILEGE"   -> "⭐"
+    else          -> "🎁"
 }
 
 @Composable
@@ -172,7 +172,7 @@ internal fun RewardsManagerScreen(
             compact = true
         )
 
-        // Tab row Ã¢â‚¬â€ Shop | Catalogue | Approvals
+        // Tab row — Shop | Catalogue | Approvals
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
@@ -305,7 +305,7 @@ internal fun RewardsManagerScreen(
                             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(redemption.rewardTitle, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    text = "${redemption.requestedByName} Ã‚Â· ${redemption.pointsDeducted} pts",
+                                    text = "${redemption.requestedByName} · ${redemption.pointsDeducted} pts",
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -491,8 +491,8 @@ internal fun RewardEditorSheet(
             // Icon emoji selector
             if (!isOperatorManaged) {
                 val iconOptions = listOf(
-                    "Ã°Å¸â€œÂ±", "Ã°Å¸â€™Â°", "Ã°Å¸ÂÂ«", "Ã°Å¸Ââ€¢", "Ã°Å¸ÂÂ¦", "Ã°Å¸ÂÂ¬", "Ã°Å¸Å½Â®", "Ã°Å¸Å½Â¬",
-                    "Ã°Å¸ÂÆ’", "Ã°Å¸Å½Â¨", "Ã°Å¸â€œÅ¡", "Ã¢Â­Â", "Ã°Å¸Å’Å¸", "Ã°Å¸â€˜â€˜", "Ã°Å¸Ââ€ ", "Ã°Å¸Å½Â", "Ã°Å¸Å½â€°", "Ã°Å¸Å¡â‚¬"
+                    "📱", "💰", "🍫", "🍕", "🍦", "🍬", "🎮", "🎬",
+                    "🏃", "🎨", "📚", "⭐", "🌟", "👑", "🏆", "🎁", "🎉", "🚀"
                 )
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     Text(

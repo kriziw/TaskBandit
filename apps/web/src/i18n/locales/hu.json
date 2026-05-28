@@ -832,7 +832,7 @@
   "templates.follow_up_same_group_hint": "A koveto feladatok csak ugyanabba a csoportba tartozo sablonokra mutathatnak.",
   "templates.follow_up_summary": "{count} koveto feladat kivalasztva",
   "templates.subtypes_short": "Alt {count}",
-  "auth.tenant_not_ready_notice": "Ez a hosztolt munkaterÃ¼let ezen az URL-en mÃ©g nem Ã¡ll kÃ©szen a bejelentkezÃ©sre. ElÅbb fejezze be a tenant beÃ¡llÃ­tÃ¡sÃ¡t, vagy hasznÃ¡lja a tenant-specifikus bejelentkezÃ©si hivatkozÃ¡st, ha mÃ¡r ki lett Ã©pÃ­tve.",
+  "auth.tenant_not_ready_notice": "Ez a hosztolt munkaterület ezen az URL-en még nem áll készen a bejelentkezésre. Előbb fejezze be a tenant beállítását, vagy használja a tenant-specifikus bejelentkezési hivatkozást, ha már ki lett építve.",
   "nav.home": "Kezdolap",
   "nav.plan": "Tervezes",
   "nav.ops": "Uzemeltetes",

@@ -221,12 +221,12 @@ import java.util.UUID
 import kotlin.random.Random
 import androidx.core.content.FileProvider
 
-// â”€â”€ Shared composition locals (used throughout the dashboard composable tree) â”€
+// ── Shared composition locals (used throughout the dashboard composable tree) ─
 
 internal val LocalMobileFeatureAccess = compositionLocalOf { MobileFeatureAccess() }
 internal val LocalIsNewMobileUi = compositionLocalOf { true }
 
-// â”€â”€ Private types used only within DashboardScreen â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+// ── Private types used only within DashboardScreen ───────────────────────────
 
 private enum class MobileDashboardTab {
     CHORES,
@@ -1042,7 +1042,7 @@ internal fun DashboardScreen(
                             ),
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Ã¢â‚¬â€", style = MaterialTheme.typography.titleMedium)
+                            Text("—", style = MaterialTheme.typography.titleMedium)
                         }
                         quickLogDrawableIconIds.forEach { iconId ->
                             val drawable = resolveChoreIconDrawableFromToken(iconId)
@@ -1703,7 +1703,7 @@ internal fun DashboardScreen(
                                 )
                             }
                         }
-                        // Main FAB Ã¢â‚¬â€ rotates + Ã¢â€ â€™ Ãƒâ€” when expanded
+                        // Main FAB — rotates + → × when expanded
                         val fabRotation by animateFloatAsState(
                             targetValue = if (showSpeedDial) 45f else 0f,
                             animationSpec = tween(200),
@@ -1725,7 +1725,7 @@ internal fun DashboardScreen(
                         }
                     }
                 } else {
-                    // Quick Log not available on this plan Ã¢â‚¬â€ single-tap FAB goes straight to Create
+                    // Quick Log not available on this plan — single-tap FAB goes straight to Create
                     Button(
                         onClick = { openTab(MobileDashboardTab.CREATE) },
                         shape = CircleShape,
@@ -2224,7 +2224,7 @@ internal fun DashboardScreen(
                 }
 
                 if (!isParentOrAdmin) {
-                    // Ã¢â€â‚¬Ã¢â€â‚¬ Child: Shop Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                    // ── Child: Shop ─────────────────────────────────────────
                     item {
                         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                             Button(
@@ -2307,14 +2307,14 @@ internal fun DashboardScreen(
                                             Text(r.rewardTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                             Text(r.status, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                        Text("-${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
+                                        Text("−${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
                             }
                         }
                     }
                 } else {
-                    // Ã¢â€â‚¬Ã¢â€â‚¬ Parent / Admin: Approval Queue Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                    // ── Parent / Admin: Approval Queue ──────────────────────
                     if (pendingRedemptions.isEmpty()) {
                         item { Text(stringResource(R.string.mobile_rewards_no_pending), style = MaterialTheme.typography.bodyMedium) }
                     } else {
@@ -2688,7 +2688,7 @@ internal fun DashboardScreen(
 
                 }
 
-                // Ã¢â€â‚¬Ã¢â€â‚¬ Full-screen overlays for virtual tabs Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
+                // ── Full-screen overlays for virtual tabs ─────────────────────────────
                 // Rendered OUTSIDE the LazyColumn so they get proper bounded constraints
                 // (Scaffold and nested LazyColumn both require bounded height).
                 if (activeTab == MobileDashboardTab.TEMPLATE_MANAGER) {
@@ -2749,7 +2749,7 @@ internal fun DashboardScreen(
                     exit = fadeOut(animationSpec = tween(200)),
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
-                        // Leave extra room on the right so the dismiss Ã¢Å“â€¢ button is not
+                        // Leave extra room on the right so the dismiss ✕ button is not
                         // hidden behind the circular create FAB (60dp + 16dp margin + 8dp gap).
                         .padding(
                             start = 16.dp,
@@ -3591,7 +3591,7 @@ private fun ChoreActionSheet(
                     Text(
                         text = buildString {
                             append("After: ${trigger.title}")
-                            if (whenStr.isNotBlank()) append(" Ã‚Â· $whenStr")
+                            if (whenStr.isNotBlank()) append(" · $whenStr")
                             append(" by $completerName")
                         },
                         style = MaterialTheme.typography.bodySmall,
