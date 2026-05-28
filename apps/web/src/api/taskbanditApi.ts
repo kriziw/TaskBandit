@@ -38,13 +38,13 @@ import type {
   TakeoverRequestEntry,
   UpdateHouseholdMemberInput,
   UploadedProof,
-  WebPushPublicKeyResponse
-} from "../types/taskbandit";
-import type { AppLanguage } from "../i18n/I18nProvider";
-import { resolveApiBaseUrl } from "../runtimeConfig";
+  WebPushPublicKeyResponse,
+} from '../types/taskbandit';
+import type { AppLanguage } from '../i18n/I18nProvider';
+import { resolveApiBaseUrl } from '../runtimeConfig';
 
 type RequestOptions = {
-  method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
   token?: string | null;
   language: AppLanguage;
   body?: unknown;
@@ -62,7 +62,7 @@ export class TaskBanditApiError extends Error {
 
   constructor(message: string, status: number, code?: string) {
     super(message);
-    this.name = "TaskBanditApiError";
+    this.name = 'TaskBanditApiError';
     this.status = status;
     this.code = code;
   }
@@ -71,30 +71,30 @@ export class TaskBanditApiError extends Error {
 function looksLikeHtmlDocument(value: string) {
   const trimmedValue = value.trimStart().toLowerCase();
   return (
-    trimmedValue.startsWith("<!doctype html") ||
-    trimmedValue.startsWith("<html") ||
-    trimmedValue.startsWith("<head") ||
-    trimmedValue.startsWith("<body")
+    trimmedValue.startsWith('<!doctype html') ||
+    trimmedValue.startsWith('<html') ||
+    trimmedValue.startsWith('<head') ||
+    trimmedValue.startsWith('<body')
   );
 }
 
 function buildUnexpectedResponseMessage(response: Response, responseText: string) {
-  const contentType = response.headers.get("Content-Type")?.toLowerCase() ?? "";
-  if (contentType.includes("text/html") || looksLikeHtmlDocument(responseText)) {
-    return "TaskBandit received an HTML page instead of API JSON. Check the API base URL and reverse proxy configuration.";
+  const contentType = response.headers.get('Content-Type')?.toLowerCase() ?? '';
+  if (contentType.includes('text/html') || looksLikeHtmlDocument(responseText)) {
+    return 'TaskBandit received an HTML page instead of API JSON. Check the API base URL and reverse proxy configuration.';
   }
 
-  return "TaskBandit received an unexpected response from the server.";
+  return 'TaskBandit received an unexpected response from the server.';
 }
 
 function buildHeaders(token: string | null | undefined, language: AppLanguage) {
   const headers = new Headers({
-    Accept: "application/json",
-    "Accept-Language": language
+    Accept: 'application/json',
+    'Accept-Language': language,
   });
 
   if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
+    headers.set('Authorization', `Bearer ${token}`);
   }
 
   return headers;
@@ -104,13 +104,13 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
   const headers = buildHeaders(options.token, options.language);
 
   if (options.body !== undefined) {
-    headers.set("Content-Type", "application/json");
+    headers.set('Content-Type', 'application/json');
   }
 
   const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
-    method: options.method ?? "GET",
+    method: options.method ?? 'GET',
     headers,
-    body: options.body !== undefined ? JSON.stringify(options.body) : undefined
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
   });
 
   if (!response.ok) {
@@ -126,17 +126,14 @@ async function readErrorDetails(response: Response): Promise<{ message: string; 
 
   try {
     const data = JSON.parse(responseText) as ApiErrorShape;
-    const code = typeof data.code === "string" ? data.code : "";
+    const code = typeof data.code === 'string' ? data.code : '';
     const message = Array.isArray(data.message)
-      ? data.message.join(", ")
-      : data.message ?? data.error ?? buildUnexpectedResponseMessage(response, responseText);
+      ? data.message.join(', ')
+      : (data.message ?? data.error ?? buildUnexpectedResponseMessage(response, responseText));
 
     return {
-      message:
-        code && message
-          ? `${code}: ${message}`
-          : code || message,
-      code: code || undefined
+      message: code && message ? `${code}: ${message}` : code || message,
+      code: code || undefined,
     };
   } catch {
     return { message: buildUnexpectedResponseMessage(response, responseText) };
@@ -149,133 +146,138 @@ async function readJsonResponse<T>(response: Response): Promise<T> {
   try {
     return JSON.parse(responseText) as T;
   } catch {
-    throw new TaskBanditApiError(buildUnexpectedResponseMessage(response, responseText), response.status);
+    throw new TaskBanditApiError(
+      buildUnexpectedResponseMessage(response, responseText),
+      response.status,
+    );
   }
 }
 
 export const taskBanditApi = {
   getReleaseInfo(language: AppLanguage) {
-    return request<ReleaseInfo>("/api/meta/release", { language });
+    return request<ReleaseInfo>('/api/meta/release', { language });
   },
   getOidcStartUrl(language: AppLanguage, returnTo?: string) {
     const apiBaseUrl = resolveApiBaseUrl();
     const normalizedApiBaseUrl = /^https?:\/\//i.test(apiBaseUrl)
       ? apiBaseUrl
-      : new URL(apiBaseUrl, window.location.origin).toString().replace(/\/+$/, "");
+      : new URL(apiBaseUrl, window.location.origin).toString().replace(/\/+$/, '');
     const url = new URL(`${normalizedApiBaseUrl}/api/auth/oidc/start`);
-    url.searchParams.set("language", language);
+    url.searchParams.set('language', language);
 
     if (returnTo) {
-      url.searchParams.set("returnTo", returnTo);
+      url.searchParams.set('returnTo', returnTo);
     }
 
     return url.toString();
   },
   getBootstrapStatus(language: AppLanguage) {
-    return request<BootstrapStatus>("/api/bootstrap/status", { language });
+    return request<BootstrapStatus>('/api/bootstrap/status', { language });
   },
   getBootstrapStarterTemplates(language: AppLanguage) {
-    return request<BootstrapStarterTemplateOption[]>("/api/bootstrap/starter-templates", { language });
+    return request<BootstrapStarterTemplateOption[]>('/api/bootstrap/starter-templates', {
+      language,
+    });
   },
   bootstrapHousehold(language: AppLanguage, input: BootstrapHouseholdInput) {
-    return request("/api/bootstrap/household", {
-      method: "POST",
+    return request('/api/bootstrap/household', {
+      method: 'POST',
       language,
-      body: input
+      body: input,
     });
   },
   getProviders(language: AppLanguage) {
-    return request<AuthProviders>("/api/auth/providers", { language });
+    return request<AuthProviders>('/api/auth/providers', { language });
   },
   login(email: string, password: string, language: AppLanguage) {
-    return request<AuthResponse>("/api/auth/login", {
-      method: "POST",
+    return request<AuthResponse>('/api/auth/login', {
+      method: 'POST',
       language,
-      body: { email, password }
+      body: { email, password },
     });
   },
   signup(input: SignupInput, language: AppLanguage) {
-    return request<AuthResponse>("/api/auth/signup", {
-      method: "POST",
+    return request<AuthResponse>('/api/auth/signup', {
+      method: 'POST',
       language,
-      body: input
+      body: input,
     });
   },
   requestPasswordReset(email: string, language: AppLanguage) {
-    return request<ApiStatusResponse>("/api/auth/password-reset/request", {
-      method: "POST",
+    return request<ApiStatusResponse>('/api/auth/password-reset/request', {
+      method: 'POST',
       language,
-      body: { email }
+      body: { email },
     });
   },
   completePasswordReset(token: string, password: string, language: AppLanguage) {
-    return request<ApiStatusResponse>("/api/auth/password-reset/complete", {
-      method: "POST",
+    return request<ApiStatusResponse>('/api/auth/password-reset/complete', {
+      method: 'POST',
       language,
-      body: { token, password }
+      body: { token, password },
     });
   },
   getCurrentUser(token: string, language: AppLanguage) {
-    return request<AuthenticatedUser>("/api/auth/me", {
+    return request<AuthenticatedUser>('/api/auth/me', {
       token,
-      language
+      language,
     });
   },
   getDashboardSummary(token: string, language: AppLanguage) {
-    return request<DashboardSummary>("/api/dashboard/summary", {
+    return request<DashboardSummary>('/api/dashboard/summary', {
       token,
-      language
+      language,
     });
   },
   getPointsLedger(token: string, language: AppLanguage) {
-    return request<PointsLedgerEntry[]>("/api/dashboard/points-ledger", {
+    return request<PointsLedgerEntry[]>('/api/dashboard/points-ledger', {
       token,
-      language
+      language,
     });
   },
   getAchievements(token: string, language: AppLanguage) {
-    return request<Achievement[]>("/api/achievements", { token, language });
+    return request<Achievement[]>('/api/achievements', { token, language });
   },
   getHouseholdAchievements(token: string, language: AppLanguage) {
-    return request<AchievementHouseholdEntry[]>("/api/achievements/household", { token, language });
+    return request<AchievementHouseholdEntry[]>('/api/achievements/household', { token, language });
   },
   resetAchievements(token: string, language: AppLanguage) {
-    return request("/api/achievements/reset", { method: "DELETE", token, language });
+    return request('/api/achievements/reset', { method: 'DELETE', token, language });
   },
   getNotifications(token: string, language: AppLanguage) {
-    return request<NotificationEntry[]>("/api/dashboard/notifications", {
+    return request<NotificationEntry[]>('/api/dashboard/notifications', {
       token,
-      language
+      language,
     });
   },
   getDashboardSyncToken(token: string, language: AppLanguage) {
-    return request<DashboardSyncToken>("/api/dashboard/sync/token", {
+    return request<DashboardSyncToken>('/api/dashboard/sync/token', {
       token,
-      language
+      language,
     });
   },
   markNotificationRead(token: string, language: AppLanguage, notificationId: string) {
     return request<NotificationEntry[]>(`/api/dashboard/notifications/${notificationId}/read`, {
-      method: "POST",
+      method: 'POST',
       token,
-      language
+      language,
     });
   },
   markAllNotificationsRead(token: string, language: AppLanguage) {
-    return request<NotificationEntry[]>("/api/dashboard/notifications/read-all", {
-      method: "POST",
+    return request<NotificationEntry[]>('/api/dashboard/notifications/read-all', {
+      method: 'POST',
       token,
-      language
+      language,
     });
   },
   processOverduePenalties(token: string, language: AppLanguage) {
     return request<{ processedCount: number; totalPenaltyPoints: number }>(
-      "/api/dashboard/maintenance/process-overdue",
+      '/api/dashboard/maintenance/process-overdue',
       {
-        method: "POST",
+        method: 'POST',
         token,
-        language
-      }
+        language,
+      },
     );
   },
   processNotificationMaintenance(token: string, language: AppLanguage) {
@@ -287,14 +289,11 @@ export const taskBanditApi = {
       emailSentCount: number;
       emailFailedCount: number;
       emailSkippedCount: number;
-    }>(
-      "/api/dashboard/maintenance/process-notifications",
-      {
-        method: "POST",
-        token,
-        language
-      }
-    );
+    }>('/api/dashboard/maintenance/process-notifications', {
+      method: 'POST',
+      token,
+      language,
+    });
   },
   sendTestNotification(token: string, language: AppLanguage, recipientUserId?: string) {
     return request<{
@@ -307,11 +306,11 @@ export const taskBanditApi = {
       emailSentCount: number;
       emailFailedCount: number;
       emailSkippedCount: number;
-    }>("/api/dashboard/maintenance/test-notification", {
-      method: "POST",
+    }>('/api/dashboard/maintenance/test-notification', {
+      method: 'POST',
       token,
       language,
-      body: recipientUserId ? { recipientUserId } : {}
+      body: recipientUserId ? { recipientUserId } : {},
     });
   },
   testSmtp(
@@ -319,55 +318,55 @@ export const taskBanditApi = {
     language: AppLanguage,
     settings: Pick<
       HouseholdSettings,
-      | "smtpEnabled"
-      | "smtpHost"
-      | "smtpPort"
-      | "smtpSecure"
-      | "smtpUsername"
-      | "smtpPassword"
-      | "smtpFromEmail"
-      | "smtpFromName"
-    >
+      | 'smtpEnabled'
+      | 'smtpHost'
+      | 'smtpPort'
+      | 'smtpSecure'
+      | 'smtpUsername'
+      | 'smtpPassword'
+      | 'smtpFromEmail'
+      | 'smtpFromName'
+    >,
   ) {
-    return request<{ ok: boolean }>("/api/settings/smtp/test", {
-      method: "POST",
+    return request<{ ok: boolean }>('/api/settings/smtp/test', {
+      method: 'POST',
       token,
       language,
-      body: settings
+      body: settings,
     });
   },
   getRuntimeLogs(token: string, language: AppLanguage, limit = 200) {
     return request<RuntimeLogEntry[]>(`/api/dashboard/admin/logs?limit=${limit}`, {
       token,
-      language
+      language,
     });
   },
   getSystemStatus(token: string, language: AppLanguage) {
-    return request<AdminSystemStatus>("/api/dashboard/admin/system-status", {
+    return request<AdminSystemStatus>('/api/dashboard/admin/system-status', {
       token,
-      language
+      language,
     });
   },
   getBackupReadiness(token: string, language: AppLanguage) {
-    return request<BackupReadiness>("/api/dashboard/admin/backup-readiness", {
+    return request<BackupReadiness>('/api/dashboard/admin/backup-readiness', {
       token,
-      language
+      language,
     });
   },
   getNotificationRecovery(token: string, language: AppLanguage) {
-    return request<NotificationRecovery>("/api/dashboard/admin/notification-recovery", {
+    return request<NotificationRecovery>('/api/dashboard/admin/notification-recovery', {
       token,
-      language
+      language,
     });
   },
   retryPushDelivery(token: string, language: AppLanguage, deliveryId: string) {
     return request<{ deliveryId: string; sentCount: number; failedCount: number }>(
       `/api/dashboard/admin/notification-recovery/push/${deliveryId}/retry`,
       {
-        method: "POST",
+        method: 'POST',
         token,
-        language
-      }
+        language,
+      },
     );
   },
   retryEmailDelivery(token: string, language: AppLanguage, notificationId: string) {
@@ -377,78 +376,81 @@ export const taskBanditApi = {
       failedCount: number;
       skippedCount: number;
     }>(`/api/dashboard/admin/notification-recovery/email/${notificationId}/retry`, {
-      method: "POST",
+      method: 'POST',
       token,
-      language
+      language,
     });
   },
   getHousehold(token: string, language: AppLanguage) {
-    return request<Household>("/api/settings/household", {
+    return request<Household>('/api/settings/household', {
       token,
-      language
+      language,
     });
   },
   getNotificationPreferences(token: string, language: AppLanguage) {
-    return request<NotificationPreferences>("/api/settings/notifications", {
+    return request<NotificationPreferences>('/api/settings/notifications', {
       token,
-      language
+      language,
     });
   },
   getNotificationDevices(token: string, language: AppLanguage) {
-    return request<NotificationDevice[]>("/api/settings/notification-devices", {
+    return request<NotificationDevice[]>('/api/settings/notification-devices', {
       token,
-      language
+      language,
     });
   },
   getHostedSubscriptionOverview(token: string, language: AppLanguage) {
-    return request<HostedSubscriptionOverview>("/api/settings/subscription", {
+    return request<HostedSubscriptionOverview>('/api/settings/subscription', {
       token,
-      language
+      language,
     });
   },
   getWebPushPublicKey(token: string, language: AppLanguage) {
-    return request<WebPushPublicKeyResponse>("/api/settings/notification-devices/web-push/public-key", {
-      token,
-      language
-    });
+    return request<WebPushPublicKeyResponse>(
+      '/api/settings/notification-devices/web-push/public-key',
+      {
+        token,
+        language,
+      },
+    );
   },
   getHouseholdNotificationHealth(token: string, language: AppLanguage) {
-    return request<HouseholdNotificationHealthEntry[]>("/api/settings/notification-health", {
+    return request<HouseholdNotificationHealthEntry[]>('/api/settings/notification-health', {
       token,
-      language
+      language,
     });
   },
   getAuditLog(token: string, language: AppLanguage) {
-    return request<AuditLogEntry[]>("/api/settings/audit-log", {
+    return request<AuditLogEntry[]>('/api/settings/audit-log', {
       token,
-      language
+      language,
     });
   },
   updateHousehold(token: string, language: AppLanguage, settings: Partial<HouseholdSettings>) {
-    return request<Household>("/api/settings/household", {
-      method: "PUT",
+    return request<Household>('/api/settings/household', {
+      method: 'PUT',
       token,
       language,
-      body: settings
+      body: settings,
     });
   },
   updateNotificationPreferences(
     token: string,
     language: AppLanguage,
-    preferences: Partial<NotificationPreferences>
+    preferences: Partial<NotificationPreferences>,
   ) {
-    return request<NotificationPreferences>("/api/settings/notifications", {
-      method: "PUT",
+    return request<NotificationPreferences>('/api/settings/notifications', {
+      method: 'PUT',
       token,
       language,
-      body: preferences
+      body: preferences,
     });
   },
   deleteNotificationDevice(token: string, language: AppLanguage, deviceId: string) {
     return request<NotificationDevice[]>(`/api/settings/notification-devices/${deviceId}`, {
-      method: "DELETE",
+      method: 'DELETE',
       token,
-      language
+      language,
     });
   },
   registerNotificationDevice(
@@ -456,8 +458,8 @@ export const taskBanditApi = {
     language: AppLanguage,
     input: {
       installationId: string;
-      platform?: "android" | "web";
-      provider?: "generic" | "fcm" | "web_push";
+      platform?: 'android' | 'web';
+      provider?: 'generic' | 'fcm' | 'web_push';
       pushToken?: string;
       webPushP256dh?: string;
       webPushAuth?: string;
@@ -465,101 +467,114 @@ export const taskBanditApi = {
       appVersion?: string;
       locale?: string;
       notificationsEnabled?: boolean;
-    }
+    },
   ) {
-    return request<NotificationDevice>("/api/settings/notification-devices/register", {
-      method: "POST",
+    return request<NotificationDevice>('/api/settings/notification-devices/register', {
+      method: 'POST',
       token,
       language,
-      body: input
+      body: input,
     });
   },
   createHouseholdMember(token: string, language: AppLanguage, input: CreateHouseholdMemberInput) {
-    return request<CreateHouseholdMemberResult>("/api/settings/household/members", {
-      method: "POST",
+    return request<CreateHouseholdMemberResult>('/api/settings/household/members', {
+      method: 'POST',
       token,
       language,
-      body: input
+      body: input,
     });
   },
   updateHouseholdMember(
     token: string,
     language: AppLanguage,
     memberId: string,
-    input: UpdateHouseholdMemberInput
+    input: UpdateHouseholdMemberInput,
   ) {
     return request<Household>(`/api/settings/household/members/${memberId}`, {
-      method: "PUT",
+      method: 'PUT',
       token,
       language,
-      body: input
+      body: input,
     });
   },
   getTemplates(token: string, language: AppLanguage) {
-    return request<ChoreTemplate[]>("/api/chores/templates", {
+    return request<ChoreTemplate[]>('/api/chores/templates', {
       token,
-      language
+      language,
     });
   },
   createTemplate(token: string, language: AppLanguage, input: CreateChoreTemplateInput) {
-    return request<ChoreTemplate>("/api/chores/templates", {
-      method: "POST",
+    return request<ChoreTemplate>('/api/chores/templates', {
+      method: 'POST',
       token,
       language,
-      body: input
+      body: input,
     });
   },
-  updateTemplate(token: string, language: AppLanguage, templateId: string, input: CreateChoreTemplateInput) {
+  updateTemplate(
+    token: string,
+    language: AppLanguage,
+    templateId: string,
+    input: CreateChoreTemplateInput,
+  ) {
     return request<ChoreTemplate>(`/api/chores/templates/${templateId}`, {
-      method: "PUT",
+      method: 'PUT',
       token,
       language,
-      body: input
+      body: input,
     });
   },
   deleteTemplate(token: string, language: AppLanguage, templateId: string) {
     return request<{ ok: true }>(`/api/chores/templates/${templateId}`, {
-      method: "DELETE",
+      method: 'DELETE',
       token,
-      language
+      language,
     });
   },
   resetTemplatesToDefaults(token: string, language: AppLanguage) {
-    return request<{ reset: boolean; templateCount: number }>("/api/chores/templates/reset-to-defaults", {
-      method: "POST",
-      token,
-      language
-    });
+    return request<{ reset: boolean; templateCount: number }>(
+      '/api/chores/templates/reset-to-defaults',
+      {
+        method: 'POST',
+        token,
+        language,
+      },
+    );
   },
-    createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
-    return request<ChoreInstance>("/api/chores/instances", {
-      method: "POST",
+  createInstance(token: string, language: AppLanguage, input: CreateChoreInstanceInput) {
+    return request<ChoreInstance>('/api/chores/instances', {
+      method: 'POST',
       token,
       language,
-      body: input
+      body: input,
     });
   },
   quickLog(token: string, language: AppLanguage, input: QuickLogInput) {
-    return request<ChoreInstance>("/api/chores/quick-log", {
-      method: "POST",
+    return request<ChoreInstance>('/api/chores/quick-log', {
+      method: 'POST',
       token,
       language,
-      body: input
+      body: input,
     });
   },
-  updateInstance(token: string, language: AppLanguage, instanceId: string, input: CreateChoreInstanceInput) {
+  updateInstance(
+    token: string,
+    language: AppLanguage,
+    instanceId: string,
+    input: CreateChoreInstanceInput,
+  ) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}`, {
-      method: "PUT",
+      method: 'PUT',
       token,
       language,
-      body: input
+      body: input,
     });
   },
   cancelInstance(token: string, language: AppLanguage, instanceId: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/cancel`, {
-      method: "POST",
+      method: 'POST',
       token,
-      language
+      language,
     });
   },
   cancelOccurrence(token: string, language: AppLanguage, instanceId: string) {
@@ -570,45 +585,49 @@ export const taskBanditApi = {
       cancelledAt: string | null;
       nextInstance: ChoreInstance | null;
     }>(`/api/chores/instances/${instanceId}/cancel-occurrence`, {
-      method: "POST",
+      method: 'POST',
       token,
-      language
+      language,
     });
   },
   closeCycle(token: string, language: AppLanguage, instanceId: string) {
-    return request<{ cycleId: string; cancelledCount: number; cancelledIds: string[]; cancelledAt: string | null }>(
-      `/api/chores/instances/${instanceId}/close-cycle`,
-      {
-        method: "POST",
-        token,
-        language
-      }
-    );
+    return request<{
+      cycleId: string;
+      cancelledCount: number;
+      cancelledIds: string[];
+      cancelledAt: string | null;
+    }>(`/api/chores/instances/${instanceId}/close-cycle`, {
+      method: 'POST',
+      token,
+      language,
+    });
   },
   cancelSeries(token: string, language: AppLanguage, instanceId: string) {
-    return request<{ cycleId: string; cancelledCount: number; cancelledIds: string[]; cancelledAt: string | null }>(
-      `/api/chores/instances/${instanceId}/cancel-series`,
-      {
-        method: "POST",
-        token,
-        language
-      }
-    );
+    return request<{
+      cycleId: string;
+      cancelledCount: number;
+      cancelledIds: string[];
+      cancelledAt: string | null;
+    }>(`/api/chores/instances/${instanceId}/cancel-series`, {
+      method: 'POST',
+      token,
+      language,
+    });
   },
   startInstance(token: string, language: AppLanguage, instanceId: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/start`, {
-      method: "POST",
+      method: 'POST',
       token,
-      language
+      language,
     });
   },
   async downloadChoresCsv(token: string, language: AppLanguage) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/exports/chores.csv`, {
-      method: "GET",
-      headers: buildHeaders(token, language)
+      method: 'GET',
+      headers: buildHeaders(token, language),
     });
 
-  if (!response.ok) {
+    if (!response.ok) {
       const errorDetails = await readErrorDetails(response);
       throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
@@ -617,11 +636,11 @@ export const taskBanditApi = {
   },
   async downloadRuntimeLogsText(token: string, language: AppLanguage) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/admin/logs/export.txt`, {
-      method: "GET",
-      headers: buildHeaders(token, language)
+      method: 'GET',
+      headers: buildHeaders(token, language),
     });
 
-  if (!response.ok) {
+    if (!response.ok) {
       const errorDetails = await readErrorDetails(response);
       throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
@@ -630,11 +649,11 @@ export const taskBanditApi = {
   },
   async downloadRuntimeLogsJson(token: string, language: AppLanguage) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/admin/logs/export.json`, {
-      method: "GET",
-      headers: buildHeaders(token, language)
+      method: 'GET',
+      headers: buildHeaders(token, language),
     });
 
-  if (!response.ok) {
+    if (!response.ok) {
       const errorDetails = await readErrorDetails(response);
       throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
@@ -642,12 +661,15 @@ export const taskBanditApi = {
     return response.blob();
   },
   async downloadHouseholdSnapshot(token: string, language: AppLanguage) {
-    const response = await fetch(`${resolveApiBaseUrl()}/api/dashboard/admin/exports/household.json`, {
-      method: "GET",
-      headers: buildHeaders(token, language)
-    });
+    const response = await fetch(
+      `${resolveApiBaseUrl()}/api/dashboard/admin/exports/household.json`,
+      {
+        method: 'GET',
+        headers: buildHeaders(token, language),
+      },
+    );
 
-  if (!response.ok) {
+    if (!response.ok) {
       const errorDetails = await readErrorDetails(response);
       throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
@@ -655,28 +677,28 @@ export const taskBanditApi = {
     return response.blob();
   },
   getInstances(token: string, language: AppLanguage) {
-    return request<ChoreInstance[]>("/api/chores/instances", {
+    return request<ChoreInstance[]>('/api/chores/instances', {
       token,
-      language
+      language,
     });
   },
   getTakeoverRequests(token: string, language: AppLanguage) {
-    return request<TakeoverRequestEntry[]>("/api/chores/takeover-requests", {
+    return request<TakeoverRequestEntry[]>('/api/chores/takeover-requests', {
       token,
-      language
+      language,
     });
   },
   requestTakeover(
     token: string,
     language: AppLanguage,
     instanceId: string,
-    payload: { requestedUserId: string; note?: string }
+    payload: { requestedUserId: string; note?: string },
   ) {
     return request<TakeoverRequestEntry>(`/api/chores/instances/${instanceId}/takeover-request`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: payload
+      body: payload,
     });
   },
   submitChore(
@@ -691,17 +713,17 @@ export const taskBanditApi = {
         storageKey: string;
       }>;
       note?: string;
-    }
+    },
   ) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/submit`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
       body: {
         completedChecklistItemIds: payload.completedChecklistItemIds,
         note: payload.note,
-        attachments: payload.attachments
-      }
+        attachments: payload.attachments,
+      },
     });
   },
   completeChoreExternal(
@@ -717,52 +739,52 @@ export const taskBanditApi = {
         storageKey: string;
       }>;
       note?: string;
-    }
+    },
   ) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/complete-external`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
       body: {
         externalCompleterName: payload.externalCompleterName,
         completedChecklistItemIds: payload.completedChecklistItemIds,
         note: payload.note,
-        attachments: payload.attachments
-      }
+        attachments: payload.attachments,
+      },
     });
   },
   releaseDeferredChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/release`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: { note }
+      body: { note },
     });
   },
   snoozeDeferredChore(
     token: string,
     language: AppLanguage,
     instanceId: string,
-    payload: { notBeforeAt: string; note?: string }
+    payload: { notBeforeAt: string; note?: string },
   ) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/snooze`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: payload
+      body: payload,
     });
   },
   async uploadProof(token: string, language: AppLanguage, file: File) {
     const formData = new FormData();
-    formData.append("file", file);
+    formData.append('file', file);
 
     const response = await fetch(`${resolveApiBaseUrl()}/api/chores/uploads/proof`, {
-      method: "POST",
+      method: 'POST',
       headers: buildHeaders(token, language),
-      body: formData
+      body: formData,
     });
 
-  if (!response.ok) {
+    if (!response.ok) {
       const errorDetails = await readErrorDetails(response);
       throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
@@ -771,16 +793,16 @@ export const taskBanditApi = {
   },
   async downloadProofAttachment(token: string, language: AppLanguage, attachmentId: string) {
     const response = await fetch(`${resolveApiBaseUrl()}/api/chores/attachments/${attachmentId}`, {
-      method: "GET",
-      headers: buildHeaders(token, language)
+      method: 'GET',
+      headers: buildHeaders(token, language),
     });
 
-  if (!response.ok) {
+    if (!response.ok) {
       const errorDetails = await readErrorDetails(response);
       throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
     }
 
-    const contentDisposition = response.headers.get("Content-Disposition");
+    const contentDisposition = response.headers.get('Content-Disposition');
     const encodedFilename =
       contentDisposition?.match(/filename\*=UTF-8''([^;]+)/i)?.[1] ??
       contentDisposition?.match(/filename=\"?([^\";]+)\"?/i)?.[1] ??
@@ -789,77 +811,107 @@ export const taskBanditApi = {
     return {
       blob: await response.blob(),
       filename: encodedFilename ? decodeURIComponent(encodedFilename) : null,
-      contentType: response.headers.get("Content-Type")
+      contentType: response.headers.get('Content-Type'),
     };
   },
   approveChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/approve`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: { note }
+      body: { note },
     });
   },
   rejectChore(token: string, language: AppLanguage, instanceId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/instances/${instanceId}/reject`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: { note }
+      body: { note },
     });
   },
   approveTakeoverRequest(token: string, language: AppLanguage, requestId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/takeover-requests/${requestId}/approve`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: { note }
+      body: { note },
     });
   },
   declineTakeoverRequest(token: string, language: AppLanguage, requestId: string, note?: string) {
     return request<TakeoverRequestEntry>(`/api/chores/takeover-requests/${requestId}/decline`, {
-      method: "POST",
+      method: 'POST',
       token,
       language,
-      body: { note }
+      body: { note },
     });
   },
   getRewards(token: string, language: AppLanguage) {
-    return request<Reward[]>("/api/rewards", { token, language });
+    return request<Reward[]>('/api/rewards', { token, language });
   },
   createReward(
     token: string,
     language: AppLanguage,
-    payload: { title: string; description?: string; category: RewardCategory; pointCost: number; maxRedemptionsPerChild?: number; cooldownDays?: number }
+    payload: {
+      title: string;
+      description?: string;
+      category: RewardCategory;
+      pointCost: number;
+      maxRedemptionsPerChild?: number;
+      cooldownDays?: number;
+    },
   ) {
-    return request<Reward>("/api/rewards", { method: "POST", token, language, body: payload });
+    return request<Reward>('/api/rewards', { method: 'POST', token, language, body: payload });
   },
   updateReward(
     token: string,
     language: AppLanguage,
     rewardId: string,
-    payload: { title?: string; description?: string; category?: RewardCategory; pointCost?: number; maxRedemptionsPerChild?: number | null; cooldownDays?: number | null }
+    payload: {
+      title?: string;
+      description?: string;
+      category?: RewardCategory;
+      pointCost?: number;
+      maxRedemptionsPerChild?: number | null;
+      cooldownDays?: number | null;
+    },
   ) {
-    return request<Reward>(`/api/rewards/${rewardId}`, { method: "PUT", token, language, body: payload });
-  },
-  toggleReward(token: string, language: AppLanguage, rewardId: string) {
-    return request<Reward>(`/api/rewards/${rewardId}/toggle`, { method: "PATCH", token, language });
-  },
-  deleteReward(token: string, language: AppLanguage, rewardId: string) {
-    return request<void>(`/api/rewards/${rewardId}`, { method: "DELETE", token, language });
-  },
-  redeemReward(token: string, language: AppLanguage, rewardId: string, note?: string) {
-    return request<RewardRedemption>(`/api/rewards/${rewardId}/redeem`, { method: "POST", token, language, body: { note } });
-  },
-  getRedemptions(token: string, language: AppLanguage) {
-    return request<RewardRedemption[]>("/api/rewards/redemptions", { token, language });
-  },
-  resolveRedemption(token: string, language: AppLanguage, redemptionId: string, approved: boolean, note?: string) {
-    return request<RewardRedemption>(`/api/rewards/redemptions/${redemptionId}/resolve`, {
-      method: "POST",
+    return request<Reward>(`/api/rewards/${rewardId}`, {
+      method: 'PUT',
       token,
       language,
-      body: { approved, note }
+      body: payload,
     });
-  }
+  },
+  toggleReward(token: string, language: AppLanguage, rewardId: string) {
+    return request<Reward>(`/api/rewards/${rewardId}/toggle`, { method: 'PATCH', token, language });
+  },
+  deleteReward(token: string, language: AppLanguage, rewardId: string) {
+    return request<void>(`/api/rewards/${rewardId}`, { method: 'DELETE', token, language });
+  },
+  redeemReward(token: string, language: AppLanguage, rewardId: string, note?: string) {
+    return request<RewardRedemption>(`/api/rewards/${rewardId}/redeem`, {
+      method: 'POST',
+      token,
+      language,
+      body: { note },
+    });
+  },
+  getRedemptions(token: string, language: AppLanguage) {
+    return request<RewardRedemption[]>('/api/rewards/redemptions', { token, language });
+  },
+  resolveRedemption(
+    token: string,
+    language: AppLanguage,
+    redemptionId: string,
+    approved: boolean,
+    note?: string,
+  ) {
+    return request<RewardRedemption>(`/api/rewards/redemptions/${redemptionId}/resolve`, {
+      method: 'POST',
+      token,
+      language,
+      body: { approved, note },
+    });
+  },
 };

@@ -1,11 +1,11 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { NotificationType, Prisma, RewardRedemptionStatus } from "@prisma/client";
-import { PrismaService } from "../../common/prisma/prisma.service";
-import { SupportedLanguage } from "../../common/i18n/supported-languages";
-import { StarterRewardDefinition } from "../bootstrap/starter-rewards.catalog";
-import { CreateRewardDto } from "./dto/create-reward.dto";
-import { UpdateRewardDto } from "./dto/update-reward.dto";
-import { OperatorRewardDto } from "./dto/import-operator-rewards.dto";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { NotificationType, Prisma, RewardRedemptionStatus } from '@prisma/client';
+import { PrismaService } from '../../common/prisma/prisma.service';
+import { SupportedLanguage } from '../../common/i18n/supported-languages';
+import { StarterRewardDefinition } from '../bootstrap/starter-rewards.catalog';
+import { CreateRewardDto } from './dto/create-reward.dto';
+import { UpdateRewardDto } from './dto/update-reward.dto';
+import { OperatorRewardDto } from './dto/import-operator-rewards.dto';
 
 @Injectable()
 export class RewardsRepository {
@@ -16,7 +16,7 @@ export class RewardsRepository {
   async getRewardsForHousehold(householdId: string, enabledOnly: boolean) {
     return this.prisma.reward.findMany({
       where: { householdId, ...(enabledOnly ? { isEnabled: true } : {}) },
-      orderBy: [{ category: "asc" }, { pointCost: "asc" }]
+      orderBy: [{ category: 'asc' }, { pointCost: 'asc' }],
     });
   }
 
@@ -31,13 +31,13 @@ export class RewardsRepository {
         title: dto.title,
         description: dto.description ?? null,
         category: dto.category,
-        eligibility: dto.eligibility ?? "ALL",
+        eligibility: dto.eligibility ?? 'ALL',
         icon: dto.icon ?? null,
         pointCost: dto.pointCost,
         maxRedemptionsPerChild: dto.maxRedemptionsPerChild ?? null,
         cooldownDays: dto.cooldownDays ?? null,
-        isEnabled: false
-      }
+        isEnabled: false,
+      },
     });
   }
 
@@ -51,16 +51,18 @@ export class RewardsRepository {
         ...(dto.eligibility !== undefined && { eligibility: dto.eligibility }),
         ...(dto.icon !== undefined && { icon: dto.icon }),
         ...(dto.pointCost !== undefined && { pointCost: dto.pointCost }),
-        ...(dto.maxRedemptionsPerChild !== undefined && { maxRedemptionsPerChild: dto.maxRedemptionsPerChild }),
-        ...(dto.cooldownDays !== undefined && { cooldownDays: dto.cooldownDays })
-      }
+        ...(dto.maxRedemptionsPerChild !== undefined && {
+          maxRedemptionsPerChild: dto.maxRedemptionsPerChild,
+        }),
+        ...(dto.cooldownDays !== undefined && { cooldownDays: dto.cooldownDays }),
+      },
     });
   }
 
   async toggleReward(rewardId: string, householdId: string, isEnabled: boolean) {
     return this.prisma.reward.update({
       where: { id: rewardId },
-      data: { isEnabled }
+      data: { isEnabled },
     });
   }
 
@@ -89,13 +91,13 @@ export class RewardsRepository {
             pointsDeducted: input.pointsDeducted,
             status: RewardRedemptionStatus.APPROVED,
             resolvedAtUtc: new Date(),
-            resolvedById: input.requestedById
+            resolvedById: input.requestedById,
           },
-          include: { reward: true, requestedBy: true }
+          include: { reward: true, requestedBy: true },
         });
         await tx.user.update({
           where: { id: input.requestedById },
-          data: { points: { decrement: input.pointsDeducted } }
+          data: { points: { decrement: input.pointsDeducted } },
         });
         await tx.pointsLedgerEntry.create({
           data: {
@@ -103,8 +105,8 @@ export class RewardsRepository {
             householdId: input.householdId,
             userId: input.requestedById,
             amount: -input.pointsDeducted,
-            reason: `Reward redeemed: ${redemption.reward.title}`
-          }
+            reason: `Reward redeemed: ${redemption.reward.title}`,
+          },
         });
         return redemption;
       });
@@ -117,25 +119,29 @@ export class RewardsRepository {
         tenantId: input.tenantId,
         requestedById: input.requestedById,
         pointsDeducted: input.pointsDeducted,
-        status: RewardRedemptionStatus.PENDING
+        status: RewardRedemptionStatus.PENDING,
       },
-      include: { reward: true, requestedBy: true }
+      include: { reward: true, requestedBy: true },
     });
   }
 
-  async getRedemptionsForHousehold(householdId: string, userId?: string, statusFilter?: RewardRedemptionStatus) {
+  async getRedemptionsForHousehold(
+    householdId: string,
+    userId?: string,
+    statusFilter?: RewardRedemptionStatus,
+  ) {
     return this.prisma.rewardRedemption.findMany({
       where: {
         householdId,
         ...(userId ? { requestedById: userId } : {}),
-        ...(statusFilter ? { status: statusFilter } : {})
+        ...(statusFilter ? { status: statusFilter } : {}),
       },
       include: {
         reward: true,
         requestedBy: { select: { id: true, displayName: true, role: true } },
-        resolvedBy: { select: { id: true, displayName: true, role: true } }
+        resolvedBy: { select: { id: true, displayName: true, role: true } },
       },
-      orderBy: { requestedAtUtc: "desc" }
+      orderBy: { requestedAtUtc: 'desc' },
     });
   }
 
@@ -145,8 +151,8 @@ export class RewardsRepository {
       include: {
         reward: true,
         requestedBy: { select: { id: true, displayName: true, role: true } },
-        resolvedBy: { select: { id: true, displayName: true, role: true } }
-      }
+        resolvedBy: { select: { id: true, displayName: true, role: true } },
+      },
     });
   }
 
@@ -169,13 +175,13 @@ export class RewardsRepository {
             status: RewardRedemptionStatus.APPROVED,
             resolvedAtUtc: new Date(),
             resolvedById: input.resolvedById,
-            adminNote: input.adminNote ?? null
+            adminNote: input.adminNote ?? null,
           },
-          include: { reward: true, requestedBy: true }
+          include: { reward: true, requestedBy: true },
         });
         await tx.user.update({
           where: { id: input.requestedById },
-          data: { points: { decrement: input.pointsDeducted } }
+          data: { points: { decrement: input.pointsDeducted } },
         });
         await tx.pointsLedgerEntry.create({
           data: {
@@ -183,8 +189,8 @@ export class RewardsRepository {
             householdId: input.householdId,
             userId: input.requestedById,
             amount: -input.pointsDeducted,
-            reason: `Reward redeemed: ${input.rewardTitle}`
-          }
+            reason: `Reward redeemed: ${input.rewardTitle}`,
+          },
         });
         return redemption;
       });
@@ -196,9 +202,9 @@ export class RewardsRepository {
         status: RewardRedemptionStatus.REJECTED,
         resolvedAtUtc: new Date(),
         resolvedById: input.resolvedById,
-        adminNote: input.adminNote ?? null
+        adminNote: input.adminNote ?? null,
       },
-      include: { reward: true, requestedBy: true }
+      include: { reward: true, requestedBy: true },
     });
   }
 
@@ -207,15 +213,15 @@ export class RewardsRepository {
       where: {
         rewardId,
         requestedById: userId,
-        status: { in: [RewardRedemptionStatus.APPROVED] }
-      }
+        status: { in: [RewardRedemptionStatus.APPROVED] },
+      },
     });
   }
 
   async getLastApprovedRedemption(rewardId: string, userId: string) {
     return this.prisma.rewardRedemption.findFirst({
       where: { rewardId, requestedById: userId, status: RewardRedemptionStatus.APPROVED },
-      orderBy: { resolvedAtUtc: "desc" }
+      orderBy: { resolvedAtUtc: 'desc' },
     });
   }
 
@@ -226,10 +232,10 @@ export class RewardsRepository {
     type: NotificationType,
     title: string,
     message: string,
-    entityId: string
+    entityId: string,
   ) {
     const recipients = await this.prisma.user.findMany({
-      where: { householdId, role: { in: ["ADMIN", "PARENT"] } }
+      where: { householdId, role: { in: ['ADMIN', 'PARENT'] } },
     });
     for (const recipient of recipients) {
       await this.prisma.notification.create({
@@ -240,10 +246,10 @@ export class RewardsRepository {
           type,
           title,
           message,
-          entityType: "rewardRedemption",
+          entityType: 'rewardRedemption',
           entityId,
-          isRead: false
-        }
+          isRead: false,
+        },
       });
     }
   }
@@ -255,7 +261,7 @@ export class RewardsRepository {
     type: NotificationType,
     title: string,
     message: string,
-    entityId: string
+    entityId: string,
   ) {
     await this.prisma.notification.create({
       data: {
@@ -265,10 +271,10 @@ export class RewardsRepository {
         type,
         title,
         message,
-        entityType: "rewardRedemption",
+        entityType: 'rewardRedemption',
         entityId,
-        isRead: false
-      }
+        isRead: false,
+      },
     });
   }
 
@@ -277,41 +283,45 @@ export class RewardsRepository {
   async seedStarterRewards(
     householdId: string,
     definitions: StarterRewardDefinition[],
-    locale: SupportedLanguage
+    locale: SupportedLanguage,
   ) {
     for (const def of definitions) {
       await this.prisma.reward.upsert({
         where: {
-          householdId_catalogKey: { householdId, catalogKey: def.key }
+          householdId_catalogKey: { householdId, catalogKey: def.key },
         },
         create: {
           householdId,
           catalogKey: def.key,
           isEnabled: false,
           defaultLocale: locale,
-          title: def.title[locale] ?? def.title["en"],
+          title: def.title[locale] ?? def.title['en'],
           titleTranslations: def.title as unknown as Prisma.InputJsonValue,
-          description: def.description[locale] ?? def.description["en"] ?? null,
+          description: def.description[locale] ?? def.description['en'] ?? null,
           descriptionTranslations: def.description as unknown as Prisma.InputJsonValue,
           category: def.category,
           icon: def.icon ?? null,
           pointCost: def.pointCost,
           maxRedemptionsPerChild: def.maxRedemptionsPerChild ?? null,
-          cooldownDays: def.cooldownDays ?? null
+          cooldownDays: def.cooldownDays ?? null,
         },
-        update: {}
+        update: {},
       });
     }
   }
 
   // ── Operator import ──────────────────────────────────────────────────────────
 
-  async importOperatorRewards(householdId: string, rewards: OperatorRewardDto[], locale: SupportedLanguage) {
+  async importOperatorRewards(
+    householdId: string,
+    rewards: OperatorRewardDto[],
+    locale: SupportedLanguage,
+  ) {
     let upserted = 0;
     for (const dto of rewards) {
       await this.prisma.reward.upsert({
         where: {
-          householdId_catalogKey: { householdId, catalogKey: dto.key }
+          householdId_catalogKey: { householdId, catalogKey: dto.key },
         },
         create: {
           householdId,
@@ -321,26 +331,34 @@ export class RewardsRepository {
           defaultLocale: locale,
           title: dto.title[locale] ?? dto.title.en,
           titleTranslations: dto.title as unknown as Prisma.InputJsonValue,
-          description: dto.description ? (dto.description[locale] ?? dto.description.en ?? null) : null,
-          descriptionTranslations: dto.description ? (dto.description as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+          description: dto.description
+            ? (dto.description[locale] ?? dto.description.en ?? null)
+            : null,
+          descriptionTranslations: dto.description
+            ? (dto.description as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
           category: dto.category,
           icon: dto.icon ?? null,
           pointCost: dto.pointCost,
           maxRedemptionsPerChild: dto.maxRedemptionsPerChild ?? null,
-          cooldownDays: dto.cooldownDays ?? null
+          cooldownDays: dto.cooldownDays ?? null,
         },
         update: {
           isOperatorManaged: true,
           title: dto.title[locale] ?? dto.title.en,
           titleTranslations: dto.title as unknown as Prisma.InputJsonValue,
-          description: dto.description ? (dto.description[locale] ?? dto.description.en ?? null) : null,
-          descriptionTranslations: dto.description ? (dto.description as unknown as Prisma.InputJsonValue) : Prisma.JsonNull,
+          description: dto.description
+            ? (dto.description[locale] ?? dto.description.en ?? null)
+            : null,
+          descriptionTranslations: dto.description
+            ? (dto.description as unknown as Prisma.InputJsonValue)
+            : Prisma.JsonNull,
           category: dto.category,
           icon: dto.icon ?? null,
           pointCost: dto.pointCost,
           maxRedemptionsPerChild: dto.maxRedemptionsPerChild ?? null,
-          cooldownDays: dto.cooldownDays ?? null
-        }
+          cooldownDays: dto.cooldownDays ?? null,
+        },
       });
       upserted++;
     }
@@ -350,10 +368,10 @@ export class RewardsRepository {
   async getTenantIdForHousehold(householdId: string): Promise<string> {
     const household = await this.prisma.household.findUnique({
       where: { id: householdId },
-      select: { tenantId: true }
+      select: { tenantId: true },
     });
     if (!household) {
-      throw new NotFoundException({ code: "household_not_found", message: "Household not found." });
+      throw new NotFoundException({ code: 'household_not_found', message: 'Household not found.' });
     }
     return household.tenantId;
   }
@@ -361,7 +379,7 @@ export class RewardsRepository {
   async getHouseholdByTenantId(tenantId: string) {
     return this.prisma.household.findUnique({
       where: { tenantId },
-      include: { settings: true }
+      include: { settings: true },
     });
   }
 

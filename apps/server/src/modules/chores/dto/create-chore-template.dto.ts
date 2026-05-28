@@ -1,6 +1,12 @@
-import { AssignmentStrategyType, Difficulty, FollowUpDelayUnit, RecurrenceStartStrategy, RecurrenceType } from "@prisma/client";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Transform, Type } from "class-transformer";
+import {
+  AssignmentStrategyType,
+  Difficulty,
+  FollowUpDelayUnit,
+  RecurrenceStartStrategy,
+  RecurrenceType,
+} from '@prisma/client';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Transform, Type } from 'class-transformer';
 import {
   ArrayMaxSize,
   ArrayUnique,
@@ -16,9 +22,9 @@ import {
   Max,
   MaxLength,
   Min,
-  ValidateNested
-} from "class-validator";
-import { supportedLanguages, SupportedLanguage } from "../../../common/i18n/supported-languages";
+  ValidateNested,
+} from 'class-validator';
+import { supportedLanguages, SupportedLanguage } from '../../../common/i18n/supported-languages';
 
 export class CreateChecklistItemDto {
   @ApiProperty()
@@ -73,7 +79,7 @@ export class CreateLocalizedVariantLabelDto {
 export class CreateChoreTemplateVariantDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID("4")
+  @IsUUID('4')
   id?: string;
 
   @ApiProperty()
@@ -93,7 +99,7 @@ export class CreateChoreTemplateVariantDto {
 
 export class CreateChoreDependencyRuleDto {
   @ApiProperty()
-  @IsUUID("4")
+  @IsUUID('4')
   templateId!: string;
 
   @ApiPropertyOptional()
@@ -104,10 +110,8 @@ export class CreateChoreDependencyRuleDto {
   @Max(365)
   delayValue: number = 1;
 
-  @ApiPropertyOptional({ enum: FollowUpDelayUnit, enumName: "FollowUpDelayUnit" })
-  @Transform(({ value }) =>
-    typeof value === "string" ? value.trim().toUpperCase() : value
-  )
+  @ApiPropertyOptional({ enum: FollowUpDelayUnit, enumName: 'FollowUpDelayUnit' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsOptional()
   @IsEnum(FollowUpDelayUnit)
   delayUnit?: FollowUpDelayUnit;
@@ -137,27 +141,31 @@ export class CreateChoreTemplateDto {
   @MaxLength(2000)
   description!: string;
 
-  @ApiProperty({ enum: Difficulty, enumName: "Difficulty" })
-  @Transform(({ value }) =>
-    typeof value === "string" ? value.trim().toUpperCase() : value
-  )
+  @ApiProperty({ enum: Difficulty, enumName: 'Difficulty' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsEnum(Difficulty)
   difficulty!: Difficulty;
 
-  @ApiProperty({ enum: AssignmentStrategyType, enumName: "AssignmentStrategyType" })
+  @ApiProperty({ enum: AssignmentStrategyType, enumName: 'AssignmentStrategyType' })
   @Transform(({ value }) =>
-    typeof value === "string"
-      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
-      : value
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
   )
   @IsEnum(AssignmentStrategyType)
   assignmentStrategy!: AssignmentStrategyType;
 
-  @ApiPropertyOptional({ enum: RecurrenceType, enumName: "RecurrenceType" })
+  @ApiPropertyOptional({ enum: RecurrenceType, enumName: 'RecurrenceType' })
   @Transform(({ value }) =>
-    typeof value === "string"
-      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
-      : value
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
   )
   @IsOptional()
   @IsEnum(RecurrenceType)
@@ -176,8 +184,8 @@ export class CreateChoreTemplateDto {
   @IsArray()
   @ArrayMaxSize(7)
   @ArrayUnique()
-  @IsIn(["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"], {
-    each: true
+  @IsIn(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'], {
+    each: true,
   })
   recurrenceWeekdays?: string[];
 
@@ -203,7 +211,7 @@ export class CreateChoreTemplateDto {
   @IsArray()
   @ArrayMaxSize(10)
   @ArrayUnique()
-  @IsUUID("4", { each: true })
+  @IsUUID('4', { each: true })
   dependencyTemplateIds?: string[];
 
   @ApiPropertyOptional({ type: [CreateChoreDependencyRuleDto] })
@@ -214,9 +222,14 @@ export class CreateChoreTemplateDto {
   @Type(() => CreateChoreDependencyRuleDto)
   dependencyRules?: CreateChoreDependencyRuleDto[];
 
-  @ApiPropertyOptional({ enum: RecurrenceStartStrategy, enumName: "RecurrenceStartStrategy" })
+  @ApiPropertyOptional({ enum: RecurrenceStartStrategy, enumName: 'RecurrenceStartStrategy' })
   @Transform(({ value }) =>
-    typeof value === "string" ? value.trim().toUpperCase().replace(/[\s-]+/g, "_") : value
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
   )
   @IsOptional()
   @IsEnum(RecurrenceStartStrategy)

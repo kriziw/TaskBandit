@@ -18,7 +18,7 @@ interface Window {
   __TASKBANDIT_RUNTIME_CONFIG__?: {
     apiBaseUrl?: string;
     webBaseUrl?: string;
-    hostedTenantRoutingMode?: "subdomain" | "path";
+    hostedTenantRoutingMode?: 'subdomain' | 'path';
     tenantPathPrefix?: string;
   };
 }

@@ -302,7 +302,7 @@ class TaskBanditMobileApi {
                 storageBytesUsed = usageJson.optLong("storageBytesUsed").takeIf { !usageJson.isNull("storageBytesUsed") },
                 monthlyNotificationsUsed = usageJson.optInt("monthlyNotificationsUsed").takeIf { !usageJson.isNull("monthlyNotificationsUsed") }
             ),
-            featureAccess = parseFeatureAccess(responseJson.optJSONObject("featureAccess")),
+            featureAccess = parseFeatureAccessFromApi(responseJson.optJSONObject("featureAccess")),
             canonicalApiBaseUrl = responseJson.optNullableString("canonicalApiBaseUrl"),
             canonicalWebBaseUrl = responseJson.optNullableString("canonicalWebBaseUrl")
         )
@@ -325,83 +325,21 @@ class TaskBanditMobileApi {
             role = userJson.optString("role"),
             points = userJson.optInt("points"),
             currentStreak = userJson.optInt("currentStreak"),
-            featureAccess = parseFeatureAccess(userJson.optJSONObject("featureAccess"))
+            featureAccess = parseFeatureAccessFromApi(userJson.optJSONObject("featureAccess"))
         )
 
-        val leaderboard = buildList {
-            val entries = summaryJson.optJSONArray("leaderboard") ?: JSONArray()
-            for (index in 0 until entries.length()) {
-                val entry = entries.optJSONObject(index) ?: continue
-                add(
-                    MobileLeaderboardEntry(
-                        displayName = entry.optString("displayName"),
-                        role = entry.optString("role"),
-                        points = entry.optInt("points"),
-                        currentStreak = entry.optInt("currentStreak"),
-                        isExternal = entry.optBoolean("isExternal", false)
-                    )
-                )
-            }
-        }
+        val leaderboard = parseJsonArray(summaryJson.optJSONArray("leaderboard"), ::parseLeaderboardEntry)
 
-        val chores = buildList {
-            for (index in 0 until choresJson.length()) {
-                val entry = choresJson.optJSONObject(index) ?: continue
-                add(parseChore(entry))
-            }
-        }
+        val chores = parseJsonArray(choresJson, ::parseChoreFromApi)
 
-        val notifications = buildList {
-            for (index in 0 until notificationsJson.length()) {
-                val entry = notificationsJson.optJSONObject(index) ?: continue
-                add(
-                    MobileNotification(
-                        id = entry.optString("id"),
-                        type = entry.optString("type"),
-                        title = entry.optString("title"),
-                        message = entry.optString("message"),
-                        entityType = entry.optString("entityType").ifBlank { null },
-                        entityId = entry.optString("entityId").ifBlank { null },
-                        isRead = entry.optBoolean("isRead"),
-                        createdAt = entry.optString("createdAt")
-                    )
-                )
-            }
-        }
+        val notifications = parseJsonArray(notificationsJson, ::parseNotification)
 
-        val takeoverRequests = buildList {
-            for (index in 0 until takeoverRequestsJson.length()) {
-                val entry = takeoverRequestsJson.optJSONObject(index) ?: continue
-                val requesterJson = entry.optJSONObject("requester") ?: continue
-                val requestedJson = entry.optJSONObject("requested") ?: continue
-                add(
-                    MobileTakeoverRequest(
-                        id = entry.optString("id"),
-                        choreId = entry.optString("choreId"),
-                        choreTitle = entry.optString("choreTitle"),
-                        status = entry.optString("status"),
-                        note = entry.optString("note").ifBlank { null },
-                        createdAt = entry.optString("createdAt"),
-                        respondedAt = entry.optString("respondedAt").ifBlank { null },
-                        requester = MobileHouseholdMember(
-                            id = requesterJson.optString("id"),
-                            displayName = requesterJson.optString("displayName"),
-                            role = requesterJson.optString("role")
-                        ),
-                        requested = MobileHouseholdMember(
-                            id = requestedJson.optString("id"),
-                            displayName = requestedJson.optString("displayName"),
-                            role = requestedJson.optString("role")
-                        )
-                    )
-                )
-            }
-        }
+        val takeoverRequests = parseJsonArray(takeoverRequestsJson, ::parseTakeoverRequest)
 
         val templates = if (user.role == "admin" || user.role == "parent") {
             runCatching {
                 requestJsonArray(baseUrl, "/api/chores/templates", token = token)
-            }.getOrNull()?.let(::parseTemplates).orEmpty()
+            }.getOrNull()?.let(::parseFullTemplates).orEmpty()
         } else {
             emptyList()
         }
@@ -427,36 +365,12 @@ class TaskBanditMobileApi {
         } else {
             null
         }
-        val achievements = buildList {
-            val arr = achievementsJson ?: JSONArray()
-            for (index in 0 until arr.length()) {
-                val a = arr.optJSONObject(index) ?: continue
-                add(parseAchievement(a))
-            }
-        }
+        val achievements = parseJsonArray(achievementsJson, ::parseAchievement)
 
         val rewardsJson = runCatching { requestJsonArray(baseUrl, "/api/rewards", token = token) }.getOrNull()
         val redemptionsJson = runCatching { requestJsonArray(baseUrl, "/api/rewards/redemptions", token = token) }.getOrNull()
 
-        val rewards = buildList {
-            val arr = rewardsJson ?: JSONArray()
-            for (index in 0 until arr.length()) {
-                val r = arr.optJSONObject(index) ?: continue
-                add(MobileReward(
-                    id = r.optString("id"),
-                    catalogKey = r.optString("catalogKey").ifBlank { null },
-                    isOperatorManaged = r.optBoolean("isOperatorManaged"),
-                    isEnabled = r.optBoolean("isEnabled"),
-                    title = r.optString("title"),
-                    description = r.optString("description").ifBlank { null },
-                    category = r.optString("category"),
-                    icon = r.optString("icon").ifBlank { null },
-                    pointCost = r.optInt("pointCost"),
-                    maxRedemptionsPerChild = r.optInt("maxRedemptionsPerChild").takeIf { r.has("maxRedemptionsPerChild") && !r.isNull("maxRedemptionsPerChild") },
-                    cooldownDays = r.optInt("cooldownDays").takeIf { r.has("cooldownDays") && !r.isNull("cooldownDays") }
-                ))
-            }
-        }
+        val rewards = parseJsonArray(rewardsJson, ::parseReward)
 
         val redemptions = buildList {
             val arr = redemptionsJson ?: JSONArray()
@@ -501,31 +415,8 @@ class TaskBanditMobileApi {
         )
     }
 
-    fun fetchAchievements(baseUrl: String, token: String): List<MobileAchievement> {
-        val arr = requestJsonArray(baseUrl, "/api/achievements", token = token)
-        return buildList {
-            for (index in 0 until arr.length()) {
-                val a = arr.optJSONObject(index) ?: continue
-                add(parseAchievement(a))
-            }
-        }
-    }
-
-    private fun parseAchievement(json: JSONObject): MobileAchievement {
-        return MobileAchievement(
-            key = json.optString("key"),
-            name = json.optString("name"),
-            descriptionKey = json.optString("descriptionKey"),
-            category = json.optString("category"),
-            isRepeatable = json.optBoolean("isRepeatable"),
-            goal = json.optInt("goal"),
-            bonusPoints = json.optInt("bonusPoints"),
-            sortOrder = json.optInt("sortOrder"),
-            progress = json.optInt("progress"),
-            earnedAt = json.optString("earnedAt").ifBlank { null },
-            timesEarned = json.optInt("timesEarned")
-        )
-    }
+    fun fetchAchievements(baseUrl: String, token: String): List<MobileAchievement> =
+        parseJsonArray(requestJsonArray(baseUrl, "/api/achievements", token = token), ::parseAchievement)
 
     fun quickLog(
         baseUrl: String,
@@ -557,7 +448,7 @@ class TaskBanditMobileApi {
             payload.put("pointsOverride", pointsOverride)
         }
 
-        return parseChore(
+        return parseChoreFromApi(
             requestJson(
                 baseUrl = baseUrl,
                 path = "/api/chores/quick-log",
@@ -823,7 +714,7 @@ class TaskBanditMobileApi {
             payload.put("variantId", variantId)
         }
 
-        return parseChore(
+        return parseChoreFromApi(
             requestJson(
                 baseUrl = baseUrl,
                 path = "/api/chores/instances/${chore.id}",
@@ -859,7 +750,7 @@ class TaskBanditMobileApi {
             )
             .put("note", note ?: "")
 
-        return parseChore(
+        return parseChoreFromApi(
             requestJson(
                 baseUrl = baseUrl,
                 path = "/api/chores/instances/$instanceId/submit",
@@ -884,7 +775,7 @@ class TaskBanditMobileApi {
             .put("attachments", JSONArray())
             .put("note", note ?: "")
 
-        return parseChore(
+        return parseChoreFromApi(
             requestJson(
                 baseUrl = baseUrl,
                 path = "/api/chores/instances/$instanceId/complete-external",
@@ -1156,7 +1047,7 @@ class TaskBanditMobileApi {
         val payload = JSONObject()
             .put("note", note ?: "")
 
-        return parseChore(
+        return parseChoreFromApi(
             requestJson(
                 baseUrl = baseUrl,
                 path = path,
@@ -1165,25 +1056,6 @@ class TaskBanditMobileApi {
                 body = payload
             )
         )
-    }
-
-    private fun parseChecklist(entries: JSONArray?): List<MobileChecklistItem> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val item = entries.optJSONObject(index) ?: continue
-                add(
-                    MobileChecklistItem(
-                        id = item.optString("id"),
-                        title = item.optString("title"),
-                        required = item.optBoolean("required")
-                    )
-                )
-            }
-        }
     }
 
     private fun parseResolvedInvite(responseJson: JSONObject): MobileResolvedInvite {
@@ -1215,72 +1087,6 @@ class TaskBanditMobileApi {
                 token.replaceFirstChar { if (it.isLowerCase()) it.titlecase() else it.toString() }
             }
             .ifBlank { "TaskBandit User" }
-    }
-
-    private fun JSONObject.optNullableString(key: String): String? {
-        return optString(key)
-            .trim()
-            .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
-    }
-
-    private fun parseChore(entry: JSONObject): MobileChore {
-        return MobileChore(
-            id = entry.optString("id"),
-            cycleId = entry.optNullableString("cycleId"),
-            occurrenceRootId = entry.optNullableString("occurrenceRootId"),
-            title = entry.optString("title"),
-            groupTitle = entry.optString("groupTitle").ifBlank { "General" },
-            typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
-            subtypeLabel = entry.optNullableString("subtypeLabel"),
-            state = entry.optString("state"),
-            supportsOccurrenceCancellation = entry.optBoolean("supportsOccurrenceCancellation"),
-            supportsSeriesCancellation = entry.optBoolean("supportsSeriesCancellation"),
-            assigneeId = entry.optNullableString("assigneeId"),
-            assigneeDisplayName = entry.optNullableString("assigneeDisplayName"),
-            assignmentReason = entry.optNullableString("assignmentReason"),
-            dueAt = entry.optString("dueAt"),
-            completedAt = entry.optNullableString("completedAt"),
-            cancelledAt = entry.optNullableString("cancelledAt"),
-            isOverdue = entry.optBoolean("isOverdue"),
-            requirePhotoProof = entry.optBoolean("requirePhotoProof"),
-            basePoints = entry.optInt("basePoints"),
-            awardedPoints = entry.optInt("awardedPoints"),
-            checklist = parseChecklist(entry.optJSONArray("checklist")),
-            completedChecklistIds = parseStringList(entry.optJSONArray("checklistCompletionIds")),
-            variantId = entry.optNullableString("variantId"),
-            templateId = entry.optNullableString("templateId"),
-            completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone")),
-            triggerInfo = entry.optJSONObject("triggerInfo")?.let { tj ->
-                MobileTriggerInfo(
-                    title = tj.optString("title"),
-                    completedAt = tj.optNullableString("completedAt"),
-                    completedByDisplayName = tj.optNullableString("completedByDisplayName"),
-                    completedByExternal = tj.optBoolean("completedByExternal"),
-                    externalCompleterName = tj.optNullableString("externalCompleterName")
-                )
-            }
-        )
-    }
-
-    private fun parseCompletionMilestone(entry: JSONObject?): MobileCompletionMilestone? {
-        if (entry == null) {
-            return null
-        }
-
-        val type = entry.optString("type")
-        val userId = entry.optString("userId")
-        val dayKey = entry.optString("dayKey")
-        if (type.isBlank() || userId.isBlank() || dayKey.isBlank()) {
-            return null
-        }
-
-        return MobileCompletionMilestone(
-            type = type,
-            userId = userId,
-            dayKey = dayKey,
-            completedChoreCount = entry.optInt("completedChoreCount"),
-            messageIndex = entry.optInt("messageIndex")
-        )
     }
 
     fun redeemReward(baseUrl: String, token: String, rewardId: String): MobileRedemption {
@@ -1441,249 +1247,4 @@ class TaskBanditMobileApi {
         return payload
     }
 
-    private fun parseReward(json: JSONObject): MobileReward {
-        return MobileReward(
-            id = json.optString("id"),
-            catalogKey = json.optString("catalogKey").ifBlank { null },
-            isOperatorManaged = json.optBoolean("isOperatorManaged"),
-            isEnabled = json.optBoolean("isEnabled"),
-            title = json.optString("title"),
-            description = json.optString("description").ifBlank { null },
-            category = json.optString("category"),
-            icon = json.optString("icon").ifBlank { null },
-            pointCost = json.optInt("pointCost"),
-            maxRedemptionsPerChild = json.optInt("maxRedemptionsPerChild").takeIf { json.has("maxRedemptionsPerChild") && !json.isNull("maxRedemptionsPerChild") },
-            cooldownDays = json.optInt("cooldownDays").takeIf { json.has("cooldownDays") && !json.isNull("cooldownDays") },
-            eligibility = json.optString("eligibility").ifBlank { "ALL" }
-        )
-    }
-
-    private fun parseFullTemplates(entries: JSONArray?): List<MobileChoreTemplate> {
-        if (entries == null) return emptyList()
-        return buildList {
-            for (i in 0 until entries.length()) {
-                val item = entries.optJSONObject(i) ?: continue
-                if (item.optString("id").isBlank() || item.optString("title").isBlank()) continue
-                add(parseFullTemplate(item))
-            }
-        }
-    }
-
-    private fun parseFullTemplate(item: JSONObject): MobileChoreTemplate {
-        val recurrence = item.optJSONObject("recurrence") ?: JSONObject()
-        return MobileChoreTemplate(
-            id = item.optString("id"),
-            groupTitle = item.optString("groupTitle").ifBlank { "General" },
-            title = item.optString("title"),
-            description = item.optString("description"),
-            difficulty = item.optString("difficulty").ifBlank { "medium" },
-            basePoints = item.optInt("basePoints"),
-            assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },
-            recurrence = MobileTemplateRecurrence(
-                type = recurrence.optString("type").ifBlank { "none" },
-                intervalDays = if (!recurrence.isNull("intervalDays")) recurrence.optInt("intervalDays") else null,
-                weekdays = parseStringList(recurrence.optJSONArray("weekdays"))
-            ),
-            requirePhotoProof = item.optBoolean("requirePhotoProof"),
-            stickyFollowUpAssignee = item.optBoolean("stickyFollowUpAssignee"),
-            recurrenceStartStrategy = item.optString("recurrenceStartStrategy").ifBlank { "due_at" },
-            defaultLocale = item.optString("defaultLocale").ifBlank { "en" },
-            variants = parseVariants(item.optJSONArray("variants")),
-            checklist = parseTemplateChecklist(item.optJSONArray("checklist")),
-            translations = parseTemplateTranslations(item.optJSONArray("translations")),
-            dependencyRules = parseTemplateDependencyRules(item.optJSONArray("dependencyRules"))
-        )
-    }
-
-    private fun parseTemplateChecklist(entries: JSONArray?): List<MobileTemplateChecklistItem> {
-        if (entries == null) return emptyList()
-        return buildList {
-            for (i in 0 until entries.length()) {
-                val item = entries.optJSONObject(i) ?: continue
-                add(MobileTemplateChecklistItem(
-                    id = item.optString("id"),
-                    title = item.optString("title"),
-                    required = item.optBoolean("required")
-                ))
-            }
-        }
-    }
-
-    private fun parseTemplateTranslations(entries: JSONArray?): List<MobileTemplateTranslation> {
-        if (entries == null) return emptyList()
-        return buildList {
-            for (i in 0 until entries.length()) {
-                val item = entries.optJSONObject(i) ?: continue
-                add(MobileTemplateTranslation(
-                    locale = item.optString("locale").ifBlank { "en" },
-                    groupTitle = item.optString("groupTitle").ifBlank { null },
-                    title = item.optString("title").ifBlank { null },
-                    description = item.optString("description").ifBlank { null }
-                ))
-            }
-        }
-    }
-
-    private fun parseTemplateDependencyRules(entries: JSONArray?): List<MobileTemplateDependencyRule> {
-        if (entries == null) return emptyList()
-        return buildList {
-            for (i in 0 until entries.length()) {
-                val item = entries.optJSONObject(i) ?: continue
-                add(MobileTemplateDependencyRule(
-                    templateId = item.optString("templateId"),
-                    delayValue = item.optInt("delayValue", 1),
-                    delayUnit = item.optString("delayUnit").ifBlank { "days" }
-                ))
-            }
-        }
-    }
-
-    private fun parseStringList(entries: JSONArray?): List<String> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val value = entries.optString(index)
-                if (value.isNotBlank()) {
-                    add(value)
-                }
-            }
-        }
-    }
-
-    private fun parseVariants(entries: JSONArray?): List<MobileTemplateVariant> {
-        if (entries == null) return emptyList()
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val item = entries.optJSONObject(index) ?: continue
-                val id = item.optString("id")
-                val label = item.optString("label")
-                    .trim()
-                    .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
-                    ?: continue
-                if (id.isBlank()) continue
-                val vtArr = item.optJSONArray("translations")
-                val vtList = buildList {
-                    for (j in 0 until (vtArr?.length() ?: 0)) {
-                        val vt = vtArr?.optJSONObject(j) ?: continue
-                        add(MobileVariantLabelTranslation(
-                            locale = vt.optString("locale").ifBlank { "en" },
-                            label = vt.optString("label").ifBlank { null }
-                        ))
-                    }
-                }
-                add(MobileTemplateVariant(id = id, label = label, translations = vtList))
-            }
-        }
-    }
-
-    private fun parseTemplates(entries: JSONArray?): List<MobileChoreTemplate> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val item = entries.optJSONObject(index) ?: continue
-                val id = item.optString("id")
-                val title = item.optString("title")
-                if (id.isBlank() || title.isBlank()) {
-                    continue
-                }
-
-                add(
-                    MobileChoreTemplate(
-                        id = id,
-                        groupTitle = item.optString("groupTitle").ifBlank { "General" },
-                        title = title,
-                        description = item.optString("description"),
-                        assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },
-                        recurrence = (item.optJSONObject("recurrence") ?: JSONObject()).let { recurrence ->
-                            MobileTemplateRecurrence(
-                                type = recurrence.optString("type").ifBlank { "none" },
-                                intervalDays = recurrence.takeIf { !it.isNull("intervalDays") }?.optInt("intervalDays"),
-                                weekdays = parseStringList(recurrence.optJSONArray("weekdays"))
-                            )
-                        },
-                        requirePhotoProof = item.optBoolean("requirePhotoProof"),
-                        stickyFollowUpAssignee = item.optBoolean("stickyFollowUpAssignee"),
-                        recurrenceStartStrategy = item.optString("recurrenceStartStrategy").ifBlank { "due_at" },
-                        variants = parseVariants(item.optJSONArray("variants"))
-                    )
-                )
-            }
-        }
-    }
-
-    private fun parseFeatureAccess(entry: JSONObject?): MobileFeatureAccess {
-        if (entry == null) {
-            return MobileFeatureAccess()
-        }
-
-        return MobileFeatureAccess(
-            templatesManage = entry.optBoolean("templates_manage", true),
-            choresManage = entry.optBoolean("chores_manage", true),
-            reassignment = entry.optBoolean("reassignment", true),
-            takeoverDirect = entry.optBoolean("takeover_direct", true),
-            takeoverRequests = entry.optBoolean("takeover_requests", true),
-            approvals = entry.optBoolean("approvals", true),
-            proofUploads = entry.optBoolean("proof_uploads", true),
-            followUpAutomation = entry.optBoolean("follow_up_automation", true),
-            externalCompletion = entry.optBoolean("external_completion", true),
-            deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true),
-            quickLog = entry.optBoolean("quick_log", true)
-        )
-    }
-
-    private fun parseMembers(entries: JSONArray?): List<MobileHouseholdMember> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val item = entries.optJSONObject(index) ?: continue
-                val id = item.optString("id")
-                val displayName = item.optString("displayName")
-                if (id.isBlank() || displayName.isBlank()) {
-                    continue
-                }
-
-                add(
-                    MobileHouseholdMember(
-                        id = id,
-                        displayName = displayName,
-                        role = item.optString("role")
-                    )
-                )
-            }
-        }
-    }
-
-    private fun parseNotificationDevices(entries: JSONArray?): List<MobileNotificationDevice> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val item = entries.optJSONObject(index) ?: continue
-                add(
-                    MobileNotificationDevice(
-                        id = item.optString("id"),
-                        installationId = item.optString("installationId"),
-                        provider = item.optString("provider"),
-                        pushTokenConfigured = item.optBoolean("pushTokenConfigured"),
-                        deviceName = item.optString("deviceName").ifBlank { null },
-                        appVersion = item.optString("appVersion").ifBlank { null },
-                        locale = item.optString("locale").ifBlank { null },
-                        notificationsEnabled = item.optBoolean("notificationsEnabled"),
-                        lastSeenAt = item.optString("lastSeenAt")
-                    )
-                )
-            }
-        }
-    }
 }

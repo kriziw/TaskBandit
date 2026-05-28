@@ -1,18 +1,18 @@
-import { ForbiddenException, Injectable } from "@nestjs/common";
-import { HostedRuntimeConfigService } from "./hosted-runtime-config.service";
+import { ForbiddenException, Injectable } from '@nestjs/common';
+import { HostedRuntimeConfigService } from './hosted-runtime-config.service';
 
 export const packageFeatureIds = [
-  "templates_manage",
-  "chores_manage",
-  "reassignment",
-  "takeover_direct",
-  "takeover_requests",
-  "approvals",
-  "proof_uploads",
-  "follow_up_automation",
-  "external_completion",
-  "deferred_follow_up_control",
-  "quick_log"
+  'templates_manage',
+  'chores_manage',
+  'reassignment',
+  'takeover_direct',
+  'takeover_requests',
+  'approvals',
+  'proof_uploads',
+  'follow_up_automation',
+  'external_completion',
+  'deferred_follow_up_control',
+  'quick_log',
 ] as const;
 
 export type PackageFeatureId = (typeof packageFeatureIds)[number];
@@ -20,7 +20,7 @@ export type PackageFeatureId = (typeof packageFeatureIds)[number];
 export type FeatureAccess = Record<PackageFeatureId, boolean>;
 
 const fullFeatureAccess = Object.freeze(
-  Object.fromEntries(packageFeatureIds.map((featureId) => [featureId, true])) as FeatureAccess
+  Object.fromEntries(packageFeatureIds.map((featureId) => [featureId, true])) as FeatureAccess,
 );
 
 @Injectable()
@@ -34,7 +34,7 @@ export class FeatureAccessService {
 
   normalizeFeatureAccess(input: Record<string, unknown> | null | undefined): FeatureAccess {
     const next = { ...fullFeatureAccess };
-    if (!input || typeof input !== "object") {
+    if (!input || typeof input !== 'object') {
       return next;
     }
 
@@ -53,8 +53,8 @@ export class FeatureAccessService {
     }
 
     throw new ForbiddenException({
-      code: "package_feature_disabled",
-      message: `The ${featureId} feature is not enabled for this package.`
+      code: 'package_feature_disabled',
+      message: `The ${featureId} feature is not enabled for this package.`,
     });
   }
 }
@@ -64,22 +64,22 @@ function coerceFeatureAccessFlag(value: unknown, fallbackValue: boolean) {
     return fallbackValue;
   }
 
-  if (typeof value === "boolean") {
+  if (typeof value === 'boolean') {
     return value;
   }
 
-  if (typeof value === "string") {
+  if (typeof value === 'string') {
     const normalized = value.trim().toLowerCase();
-    if (["false", "0", "off", "no"].includes(normalized)) {
+    if (['false', '0', 'off', 'no'].includes(normalized)) {
       return false;
     }
-    if (["true", "1", "on", "yes"].includes(normalized)) {
+    if (['true', '1', 'on', 'yes'].includes(normalized)) {
       return true;
     }
     return fallbackValue;
   }
 
-  if (typeof value === "number") {
+  if (typeof value === 'number') {
     return value !== 0;
   }
 

@@ -1,8 +1,8 @@
-import { Injectable } from "@nestjs/common";
-import de from "./locales/de.json";
-import en from "./locales/en.json";
-import hu from "./locales/hu.json";
-import { fallbackLanguage, supportedLanguages, SupportedLanguage } from "./supported-languages";
+import { Injectable } from '@nestjs/common';
+import de from './locales/de.json';
+import en from './locales/en.json';
+import hu from './locales/hu.json';
+import { fallbackLanguage, supportedLanguages, SupportedLanguage } from './supported-languages';
 
 type Dictionary = Record<string, string>;
 
@@ -11,7 +11,7 @@ export class I18nService {
   private readonly dictionaries: Record<SupportedLanguage, Dictionary> = {
     en,
     de,
-    hu
+    hu,
   };
 
   resolveLanguage(acceptLanguageHeader?: string): SupportedLanguage {
@@ -20,8 +20,8 @@ export class I18nService {
     }
 
     const requestedLanguages = acceptLanguageHeader
-      .split(",")
-      .map((entry) => entry.split(";")[0]?.trim().toLowerCase())
+      .split(',')
+      .map((entry) => entry.split(';')[0]?.trim().toLowerCase())
       .filter((entry): entry is string => Boolean(entry));
 
     for (const requestedLanguage of requestedLanguages) {
@@ -30,7 +30,7 @@ export class I18nService {
         return exactMatch;
       }
 
-      const baseLanguage = requestedLanguage.split("-")[0] as SupportedLanguage;
+      const baseLanguage = requestedLanguage.split('-')[0] as SupportedLanguage;
       const baseMatch = supportedLanguages.find((language) => language === baseLanguage);
       if (baseMatch) {
         return baseMatch;
@@ -47,8 +47,7 @@ export class I18nService {
   getSupportedLanguages() {
     return supportedLanguages.map((code) => ({
       code,
-      name: this.translate("i18n.language_name", code)
+      name: this.translate('i18n.language_name', code),
     }));
   }
 }
-

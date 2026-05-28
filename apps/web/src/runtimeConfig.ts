@@ -1,11 +1,11 @@
 type TaskBanditRuntimeConfig = {
   apiBaseUrl?: string;
   webBaseUrl?: string;
-  hostedTenantRoutingMode?: "subdomain" | "path";
+  hostedTenantRoutingMode?: 'subdomain' | 'path';
   tenantPathPrefix?: string;
 };
 
-const apiBaseUrlOverrideStorageKey = "taskbandit-api-base-url-override";
+const apiBaseUrlOverrideStorageKey = 'taskbandit-api-base-url-override';
 
 function normalizeBaseUrl(value: string | undefined) {
   const trimmedValue = value?.trim();
@@ -13,7 +13,7 @@ function normalizeBaseUrl(value: string | undefined) {
     return undefined;
   }
 
-  return trimmedValue.replace(/\/+$/, "");
+  return trimmedValue.replace(/\/+$/, '');
 }
 
 function readRuntimeConfig(): TaskBanditRuntimeConfig {
@@ -28,15 +28,15 @@ function resolveWebBaseUrl() {
 function normalizeTenantPathPrefix(value: string | undefined) {
   const trimmedValue = value?.trim();
   if (!trimmedValue) {
-    return "/t";
+    return '/t';
   }
 
-  const withLeadingSlash = trimmedValue.startsWith("/") ? trimmedValue : `/${trimmedValue}`;
-  return withLeadingSlash.replace(/\/+$/, "") || "/t";
+  const withLeadingSlash = trimmedValue.startsWith('/') ? trimmedValue : `/${trimmedValue}`;
+  return withLeadingSlash.replace(/\/+$/, '') || '/t';
 }
 
 function readHostedTenantRoutingMode() {
-  return readRuntimeConfig().hostedTenantRoutingMode === "path" ? "path" : "subdomain";
+  return readRuntimeConfig().hostedTenantRoutingMode === 'path' ? 'path' : 'subdomain';
 }
 
 function readTenantPathPrefix() {
@@ -44,21 +44,21 @@ function readTenantPathPrefix() {
 }
 
 function escapeRegExp(value: string) {
-  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
 function resolveTenantMountPathFromLocation() {
-  if (readHostedTenantRoutingMode() !== "path") {
+  if (readHostedTenantRoutingMode() !== 'path') {
     return undefined;
   }
 
   const cleanedPath = window.location.pathname
-    .replace(/index\.html$/, "")
-    .replace(/admin\.html$/, "")
-    .replace(/client\.html$/, "")
-    .replace(/\/+$/, "");
+    .replace(/index\.html$/, '')
+    .replace(/admin\.html$/, '')
+    .replace(/client\.html$/, '')
+    .replace(/\/+$/, '');
   const match = cleanedPath.match(
-    new RegExp(`^${escapeRegExp(readTenantPathPrefix())}/([a-z0-9][a-z0-9-]*)(?:/.*)?$`, "i")
+    new RegExp(`^${escapeRegExp(readTenantPathPrefix())}/([a-z0-9][a-z0-9-]*)(?:/.*)?$`, 'i'),
   );
 
   return match ? `${readTenantPathPrefix()}/${match[1].toLowerCase()}` : undefined;
@@ -70,7 +70,7 @@ function appendTenantMountPath(baseUrl: string | undefined) {
     return baseUrl;
   }
 
-  const normalizedBaseUrl = baseUrl.replace(/\/+$/, "");
+  const normalizedBaseUrl = baseUrl.replace(/\/+$/, '');
   if (normalizedBaseUrl.toLowerCase().endsWith(tenantMountPath.toLowerCase())) {
     return normalizedBaseUrl;
   }
@@ -79,7 +79,7 @@ function appendTenantMountPath(baseUrl: string | undefined) {
 }
 
 function readApiBaseUrlOverride() {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return undefined;
   }
 
@@ -87,7 +87,7 @@ function readApiBaseUrlOverride() {
 }
 
 export function setApiBaseUrlOverride(baseUrl: string | null | undefined) {
-  if (typeof window === "undefined") {
+  if (typeof window === 'undefined') {
     return;
   }
 
@@ -111,21 +111,24 @@ export function resolveApiBaseUrl() {
     return runtimeConfigured;
   }
 
-  const buildConfigured = appendTenantMountPath(normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_API_BASE_URL));
+  const buildConfigured = appendTenantMountPath(
+    normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_API_BASE_URL),
+  );
   if (buildConfigured) {
     return buildConfigured;
   }
 
   const cleanedPath = window.location.pathname
-    .replace(/index\.html$/, "")
-    .replace(/admin\.html$/, "")
-    .replace(/client\.html$/, "")
-    .replace(/\/+$/, "");
+    .replace(/index\.html$/, '')
+    .replace(/admin\.html$/, '')
+    .replace(/client\.html$/, '')
+    .replace(/\/+$/, '');
   const adminMountMatch = cleanedPath.match(/^(.*)\/admin(?:\/.*)?$/);
   const pathWithoutAdminMount = adminMountMatch ? adminMountMatch[1] : cleanedPath;
-  const inferredBasePath = pathWithoutAdminMount && pathWithoutAdminMount !== "/" ? pathWithoutAdminMount : "";
+  const inferredBasePath =
+    pathWithoutAdminMount && pathWithoutAdminMount !== '/' ? pathWithoutAdminMount : '';
 
-  return `${window.location.origin.replace(/\/+$/, "")}${inferredBasePath}`;
+  return `${window.location.origin.replace(/\/+$/, '')}${inferredBasePath}`;
 }
 
 export function resolveAdminBaseUrl() {
@@ -136,8 +139,5 @@ export function resolveAdminBaseUrl() {
 }
 
 export function resolveClientBaseUrl() {
-  return (
-    normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_CLIENT_BASE_URL) ??
-    resolveWebBaseUrl()
-  );
+  return normalizeBaseUrl(import.meta.env.VITE_TASKBANDIT_CLIENT_BASE_URL) ?? resolveWebBaseUrl();
 }

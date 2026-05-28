@@ -1,34 +1,55 @@
-import { AssignmentStrategyType, RecurrenceEndMode, RecurrenceType } from "@prisma/client";
-import { ApiProperty, ApiPropertyOptional } from "@nestjs/swagger";
-import { Type } from "class-transformer";
-import { Transform } from "class-transformer";
-import { ArrayMaxSize, ArrayUnique, IsBoolean, IsDate, IsEnum, IsIn, IsOptional, IsString, IsUUID, MaxLength, Min, Max, IsInt, IsArray } from "class-validator";
+import { AssignmentStrategyType, RecurrenceEndMode, RecurrenceType } from '@prisma/client';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
+import {
+  ArrayMaxSize,
+  ArrayUnique,
+  IsBoolean,
+  IsDate,
+  IsEnum,
+  IsIn,
+  IsOptional,
+  IsString,
+  IsUUID,
+  MaxLength,
+  Min,
+  Max,
+  IsInt,
+  IsArray,
+} from 'class-validator';
 
 export class CreateChoreInstanceDto {
   @ApiProperty()
-  @IsUUID("4")
+  @IsUUID('4')
   templateId!: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID("4")
+  @IsUUID('4')
   assigneeId?: string;
 
-  @ApiPropertyOptional({ enum: AssignmentStrategyType, enumName: "AssignmentStrategyType" })
+  @ApiPropertyOptional({ enum: AssignmentStrategyType, enumName: 'AssignmentStrategyType' })
   @Transform(({ value }) =>
-    typeof value === "string"
-      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
-      : value
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
   )
   @IsOptional()
   @IsEnum(AssignmentStrategyType)
   assignmentStrategy?: AssignmentStrategyType;
 
-  @ApiPropertyOptional({ enum: RecurrenceType, enumName: "RecurrenceType" })
+  @ApiPropertyOptional({ enum: RecurrenceType, enumName: 'RecurrenceType' })
   @Transform(({ value }) =>
-    typeof value === "string"
-      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
-      : value
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
   )
   @IsOptional()
   @IsEnum(RecurrenceType)
@@ -42,11 +63,14 @@ export class CreateChoreInstanceDto {
   @Max(365)
   recurrenceIntervalDays?: number;
 
-  @ApiPropertyOptional({ enum: RecurrenceEndMode, enumName: "RecurrenceEndMode" })
+  @ApiPropertyOptional({ enum: RecurrenceEndMode, enumName: 'RecurrenceEndMode' })
   @Transform(({ value }) =>
-    typeof value === "string"
-      ? value.trim().toUpperCase().replace(/[\s-]+/g, "_")
-      : value
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
   )
   @IsOptional()
   @IsEnum(RecurrenceEndMode)
@@ -71,8 +95,8 @@ export class CreateChoreInstanceDto {
   @IsArray()
   @ArrayMaxSize(7)
   @ArrayUnique()
-  @IsIn(["SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"], {
-    each: true
+  @IsIn(['SUNDAY', 'MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY'], {
+    each: true,
   })
   recurrenceWeekdays?: string[];
 
@@ -94,7 +118,7 @@ export class CreateChoreInstanceDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID("4")
+  @IsUUID('4')
   variantId?: string;
 
   @ApiProperty()

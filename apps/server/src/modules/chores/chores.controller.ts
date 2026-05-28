@@ -11,428 +11,476 @@ import {
   StreamableFile,
   UploadedFile,
   UseGuards,
-  UseInterceptors
-} from "@nestjs/common";
-import { ApiBody, ApiConsumes, ApiTags } from "@nestjs/swagger";
-import { FileInterceptor } from "@nestjs/platform-express";
-import type { Response } from "express";
-import { CurrentUser } from "../../common/auth/current-user.decorator";
-import { JwtAuthGuard } from "../../common/auth/jwt-auth.guard";
-import { Roles } from "../../common/auth/roles.decorator";
-import { RolesGuard } from "../../common/auth/roles.guard";
-import { AuthenticatedUser } from "../../common/auth/authenticated-user.type";
-import { I18nService } from "../../common/i18n/i18n.service";
-import { ChoresService } from "./chores.service";
-import { CompleteExternalChoreDto } from "./dto/complete-external-chore.dto";
-import { CreateChoreInstanceDto } from "./dto/create-chore-instance.dto";
-import { CreateChoreTemplateDto } from "./dto/create-chore-template.dto";
-import { ReleaseDeferredChoreDto } from "./dto/release-deferred-chore.dto";
-import { RequestChoreTakeoverDto } from "./dto/request-chore-takeover.dto";
-import { ReviewChoreDto } from "./dto/review-chore.dto";
-import { RespondChoreTakeoverDto } from "./dto/respond-chore-takeover.dto";
-import { SnoozeDeferredChoreDto } from "./dto/snooze-deferred-chore.dto";
-import { SubmitChoreDto } from "./dto/submit-chore.dto";
-import { QuickLogChoreDto } from "./dto/quick-log-chore.dto";
-import { memoryStorage } from "multer";
+  UseInterceptors,
+} from '@nestjs/common';
+import { ApiBody, ApiConsumes, ApiTags } from '@nestjs/swagger';
+import { FileInterceptor } from '@nestjs/platform-express';
+import type { Response } from 'express';
+import { CurrentUser } from '../../common/auth/current-user.decorator';
+import { FeatureGuard } from '../../common/auth/feature.guard';
+import { JwtAuthGuard } from '../../common/auth/jwt-auth.guard';
+import { RequiresFeature } from '../../common/auth/requires-feature.decorator';
+import { Roles } from '../../common/auth/roles.decorator';
+import { RolesGuard } from '../../common/auth/roles.guard';
+import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
+import { I18nService } from '../../common/i18n/i18n.service';
+import { ChoresService } from './chores.service';
+import { CompleteExternalChoreDto } from './dto/complete-external-chore.dto';
+import { CreateChoreInstanceDto } from './dto/create-chore-instance.dto';
+import { CreateChoreTemplateDto } from './dto/create-chore-template.dto';
+import { ReleaseDeferredChoreDto } from './dto/release-deferred-chore.dto';
+import { RequestChoreTakeoverDto } from './dto/request-chore-takeover.dto';
+import { ReviewChoreDto } from './dto/review-chore.dto';
+import { RespondChoreTakeoverDto } from './dto/respond-chore-takeover.dto';
+import { SnoozeDeferredChoreDto } from './dto/snooze-deferred-chore.dto';
+import { SubmitChoreDto } from './dto/submit-chore.dto';
+import { QuickLogChoreDto } from './dto/quick-log-chore.dto';
+import { memoryStorage } from 'multer';
 
 const proofUploadMaxBytes = 10 * 1024 * 1024;
 
-@ApiTags("chores")
-@Controller("api/chores")
-@UseGuards(JwtAuthGuard, RolesGuard)
+@ApiTags('chores')
+@Controller('api/chores')
+@UseGuards(JwtAuthGuard, RolesGuard, FeatureGuard)
 export class ChoresController {
   constructor(
     private readonly choresService: ChoresService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
   ) {}
 
-  @Get("templates")
-  @Roles("admin", "parent")
-  templates(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
+  @Get('templates')
+  @Roles('admin', 'parent')
+  templates(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
     return this.choresService.getTemplates(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
-  @Post("templates")
-  @Roles("admin", "parent")
+  @Post('templates')
+  @Roles('admin', 'parent')
+  @RequiresFeature('templates_manage')
   createTemplate(
     @Body() dto: CreateChoreTemplateDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.choresService.createTemplate(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
+    return this.choresService.createTemplate(
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
   }
 
-  @Put("templates/:id")
-  @Roles("admin", "parent")
+  @Put('templates/:id')
+  @Roles('admin', 'parent')
+  @RequiresFeature('templates_manage')
   updateTemplate(
-    @Param("id") templateId: string,
+    @Param('id') templateId: string,
     @Body() dto: CreateChoreTemplateDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.updateTemplate(
       templateId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("templates/reset-to-defaults")
-  @Roles("admin")
+  @Post('templates/reset-to-defaults')
+  @Roles('admin')
+  @RequiresFeature('templates_manage')
   resetTemplatesToDefaults(
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.resetTemplatesToDefaults(
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Delete("templates/:id")
-  @Roles("admin", "parent")
+  @Delete('templates/:id')
+  @Roles('admin', 'parent')
+  @RequiresFeature('templates_manage')
   deleteTemplate(
-    @Param("id") templateId: string,
+    @Param('id') templateId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.deleteTemplate(
       templateId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Get("instances")
-  instances(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
+  @Get('instances')
+  instances(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
     return this.choresService.getInstances(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
-  @Get("takeover-requests")
-  takeoverRequests(@CurrentUser() user: AuthenticatedUser, @Headers("accept-language") acceptLanguage?: string) {
-    return this.choresService.getTakeoverRequests(user, this.i18nService.resolveLanguage(acceptLanguage));
+  @Get('takeover-requests')
+  @RequiresFeature('takeover_requests')
+  takeoverRequests(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.choresService.getTakeoverRequests(
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
   }
 
-  @Post("instances")
-  @Roles("admin", "parent")
+  @Post('instances')
+  @Roles('admin', 'parent')
+  @RequiresFeature('chores_manage')
   createInstance(
     @Body() dto: CreateChoreInstanceDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.choresService.createInstance(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
+    return this.choresService.createInstance(
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
   }
 
-  @Post("quick-log")
-  @Roles("admin", "parent")
+  @Post('quick-log')
+  @Roles('admin', 'parent')
+  @RequiresFeature('quick_log')
   quickLog(
     @Body() dto: QuickLogChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.quickLog(dto, user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
-  @Put("instances/:id")
-  @Roles("admin", "parent")
+  @Put('instances/:id')
+  @Roles('admin', 'parent')
+  @RequiresFeature('chores_manage')
   updateInstance(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: CreateChoreInstanceDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.updateInstance(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/cancel")
-  @Roles("admin", "parent")
+  @Post('instances/:id/cancel')
+  @Roles('admin', 'parent')
+  @RequiresFeature('chores_manage')
   cancel(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.cancelInstance(
       instanceId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/cancel-occurrence")
-  @Roles("admin", "parent")
+  @Post('instances/:id/cancel-occurrence')
+  @Roles('admin', 'parent')
+  @RequiresFeature('chores_manage')
   cancelOccurrence(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.cancelOccurrence(
       instanceId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/close-cycle")
-  @Roles("admin", "parent")
+  @Post('instances/:id/close-cycle')
+  @Roles('admin', 'parent')
+  @RequiresFeature('chores_manage')
   closeCycle(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.closeCycle(
       instanceId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/cancel-series")
-  @Roles("admin", "parent")
+  @Post('instances/:id/cancel-series')
+  @Roles('admin', 'parent')
+  @RequiresFeature('chores_manage')
   cancelSeries(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.cancelSeries(
       instanceId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/start")
+  @Post('instances/:id/start')
   start(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.startInstance(
       instanceId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/takeover")
+  @Post('instances/:id/takeover')
+  @RequiresFeature('takeover_direct')
   takeOver(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.takeOverInstance(
       instanceId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/takeover-request")
+  @Post('instances/:id/takeover-request')
+  @RequiresFeature('takeover_requests')
   requestTakeOver(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: RequestChoreTakeoverDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.requestTakeover(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("takeover-requests/:id/approve")
+  @Post('takeover-requests/:id/approve')
+  @RequiresFeature('takeover_requests')
   approveTakeOverRequest(
-    @Param("id") requestId: string,
+    @Param('id') requestId: string,
     @Body() dto: RespondChoreTakeoverDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.approveTakeoverRequest(
       requestId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("takeover-requests/:id/decline")
+  @Post('takeover-requests/:id/decline')
+  @RequiresFeature('takeover_requests')
   declineTakeOverRequest(
-    @Param("id") requestId: string,
+    @Param('id') requestId: string,
     @Body() dto: RespondChoreTakeoverDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.declineTakeoverRequest(
       requestId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("uploads/proof")
+  @Post('uploads/proof')
+  @RequiresFeature('proof_uploads')
   @UseInterceptors(
-    FileInterceptor("file", {
+    FileInterceptor('file', {
       storage: memoryStorage(),
       limits: {
-        fileSize: proofUploadMaxBytes
-      }
-    })
+        fileSize: proofUploadMaxBytes,
+      },
+    }),
   )
-  @ApiConsumes("multipart/form-data")
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
     schema: {
-      type: "object",
+      type: 'object',
       properties: {
         file: {
-          type: "string",
-          format: "binary"
-        }
+          type: 'string',
+          format: 'binary',
+        },
       },
-      required: ["file"]
-    }
+      required: ['file'],
+    },
   })
   uploadProof(
     @UploadedFile() file: Express.Multer.File | undefined,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.choresService.uploadProof(file, user, this.i18nService.resolveLanguage(acceptLanguage));
+    return this.choresService.uploadProof(
+      file,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
   }
 
-  @Get("attachments/:id")
+  @Get('attachments/:id')
   async downloadAttachment(
-    @Param("id") attachmentId: string,
+    @Param('id') attachmentId: string,
     @CurrentUser() user: AuthenticatedUser,
     @Res({ passthrough: true }) response: Response,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     const attachment = await this.choresService.downloadAttachment(
       attachmentId,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
     const safeFilename = this.buildContentDispositionFilename(attachment.clientFilename);
 
-    response.setHeader("Content-Type", attachment.contentType ?? "application/octet-stream");
+    response.setHeader('Content-Type', attachment.contentType ?? 'application/octet-stream');
     response.setHeader(
-      "Content-Disposition",
-      `inline; filename="${safeFilename.asciiFallback}"; filename*=UTF-8''${safeFilename.encoded}`
+      'Content-Disposition',
+      `inline; filename="${safeFilename.asciiFallback}"; filename*=UTF-8''${safeFilename.encoded}`,
     );
-    response.setHeader("Cache-Control", "private, max-age=300");
+    response.setHeader('Cache-Control', 'private, max-age=300');
 
     return new StreamableFile(attachment.fileBuffer);
   }
 
-  @Post("instances/:id/submit")
+  @Post('instances/:id/submit')
   submit(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: SubmitChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.submitInstance(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/complete-external")
-  @Roles("admin", "parent")
+  @Post('instances/:id/complete-external')
+  @Roles('admin', 'parent')
+  @RequiresFeature('external_completion')
   completeExternal(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: CompleteExternalChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.completeInstanceExternally(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/release")
-  @Roles("admin", "parent")
+  @Post('instances/:id/release')
+  @Roles('admin', 'parent')
+  @RequiresFeature('deferred_follow_up_control')
   releaseDeferred(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: ReleaseDeferredChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.releaseDeferredInstance(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/snooze")
-  @Roles("admin", "parent")
+  @Post('instances/:id/snooze')
+  @Roles('admin', 'parent')
+  @RequiresFeature('deferred_follow_up_control')
   snoozeDeferred(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: SnoozeDeferredChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.snoozeDeferredInstance(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/approve")
-  @Roles("admin", "parent")
+  @Post('instances/:id/approve')
+  @Roles('admin', 'parent')
+  @RequiresFeature('approvals')
   approve(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: ReviewChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.approveInstance(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
-  @Post("instances/:id/reject")
-  @Roles("admin", "parent")
+  @Post('instances/:id/reject')
+  @Roles('admin', 'parent')
+  @RequiresFeature('approvals')
   reject(
-    @Param("id") instanceId: string,
+    @Param('id') instanceId: string,
     @Body() dto: ReviewChoreDto,
     @CurrentUser() user: AuthenticatedUser,
-    @Headers("accept-language") acceptLanguage?: string
+    @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.rejectInstance(
       instanceId,
       dto,
       user,
-      this.i18nService.resolveLanguage(acceptLanguage)
+      this.i18nService.resolveLanguage(acceptLanguage),
     );
   }
 
   private buildContentDispositionFilename(filename: string) {
-    const normalizedFilename = filename.trim() || "proof-image";
-    const asciiFallback = normalizedFilename.replace(/[^a-zA-Z0-9._-]+/g, "-") || "proof-image";
+    const normalizedFilename = filename.trim() || 'proof-image';
+    const asciiFallback = normalizedFilename.replace(/[^a-zA-Z0-9._-]+/g, '-') || 'proof-image';
 
     return {
       asciiFallback,
-      encoded: encodeURIComponent(normalizedFilename)
+      encoded: encodeURIComponent(normalizedFilename),
     };
   }
 }

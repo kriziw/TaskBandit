@@ -1,14 +1,14 @@
-import { Injectable } from "@nestjs/common";
-import { NotificationDeviceProvider } from "@prisma/client";
-import { AppConfigService } from "../config/app-config.service";
-import { AppLogService } from "../logging/app-log.service";
-import { HostedRuntimeConfigService } from "../tenancy/hosted-runtime-config.service";
-import { PushDeliveryResult } from "./push-delivery-result.type";
-import { createHash } from "node:crypto";
+import { Injectable } from '@nestjs/common';
+import { NotificationDeviceProvider } from '@prisma/client';
+import { AppConfigService } from '../config/app-config.service';
+import { AppLogService } from '../logging/app-log.service';
+import { HostedRuntimeConfigService } from '../tenancy/hosted-runtime-config.service';
+import { PushDeliveryResult } from './push-delivery-result.type';
+import { createHash } from 'node:crypto';
 
-type FirebaseAdminModule = typeof import("firebase-admin");
-type FirebaseMessagingModule = typeof import("firebase-admin/messaging");
-type WebPushModule = typeof import("web-push");
+type FirebaseAdminModule = typeof import('firebase-admin');
+type FirebaseMessagingModule = typeof import('firebase-admin/messaging');
+type WebPushModule = typeof import('web-push');
 type FirebaseServiceAccount = {
   projectId: string;
   clientEmail: string;
@@ -16,7 +16,7 @@ type FirebaseServiceAccount = {
 };
 type ResolvedFcmCredentials = {
   serviceAccount: FirebaseServiceAccount;
-  source: "env" | "hosted_runtime_config";
+  source: 'env' | 'hosted_runtime_config';
   sourceKey: string;
 };
 
@@ -33,7 +33,7 @@ export class PushDeliveryService {
   constructor(
     private readonly appConfigService: AppConfigService,
     private readonly appLogService: AppLogService,
-    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService
+    private readonly hostedRuntimeConfigService: HostedRuntimeConfigService,
   ) {}
 
   async deliver(input: {
@@ -53,20 +53,20 @@ export class PushDeliveryService {
       case NotificationDeviceProvider.FCM:
         if (!input.pushToken) {
           return {
-            status: "failed",
-            errorMessage: "No push token is registered for this device."
+            status: 'failed',
+            errorMessage: 'No push token is registered for this device.',
           };
         }
 
         return this.deliverWithFcm({
           ...input,
-          pushToken: input.pushToken
+          pushToken: input.pushToken,
         });
       case NotificationDeviceProvider.WEB_PUSH:
         if (!input.pushToken || !input.webPushP256dh || !input.webPushAuth) {
           return {
-            status: "failed",
-            errorMessage: "The browser push subscription is incomplete for this device."
+            status: 'failed',
+            errorMessage: 'The browser push subscription is incomplete for this device.',
           };
         }
 
@@ -74,13 +74,13 @@ export class PushDeliveryService {
           ...input,
           pushToken: input.pushToken,
           webPushP256dh: input.webPushP256dh,
-          webPushAuth: input.webPushAuth
+          webPushAuth: input.webPushAuth,
         });
       case NotificationDeviceProvider.GENERIC:
       default:
         return {
-          status: "failed",
-          errorMessage: `Provider ${input.provider.toLowerCase()} is not configured for server delivery.`
+          status: 'failed',
+          errorMessage: `Provider ${input.provider.toLowerCase()} is not configured for server delivery.`,
         };
     }
   }
@@ -98,8 +98,8 @@ export class PushDeliveryService {
     const credentials = await this.resolveFcmCredentials(input.tenantId ?? null);
     if (!credentials) {
       return {
-        status: "failed",
-        errorMessage: "FCM server delivery is not configured."
+        status: 'failed',
+        errorMessage: 'FCM server delivery is not configured.',
       };
     }
 
@@ -109,8 +109,8 @@ export class PushDeliveryService {
 
       if (!adminModule || !messagingModule) {
         return {
-          status: "failed",
-          errorMessage: "Firebase Admin SDK is not available in the server runtime."
+          status: 'failed',
+          errorMessage: 'Firebase Admin SDK is not available in the server runtime.',
         };
       }
 
@@ -120,25 +120,25 @@ export class PushDeliveryService {
         token: input.pushToken,
         notification: {
           title: input.title,
-          body: input.message
+          body: input.message,
         },
         data: {
-          entityType: input.entityType ?? "",
-          entityId: input.entityId ?? "",
+          entityType: input.entityType ?? '',
+          entityId: input.entityId ?? '',
           notificationId: input.notificationId,
-          deviceId: input.deviceId
-        }
+          deviceId: input.deviceId,
+        },
       });
 
       return {
-        status: "sent",
-        providerMessageId: messageId
+        status: 'sent',
+        providerMessageId: messageId,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "FCM delivery failed.";
+      const message = error instanceof Error ? error.message : 'FCM delivery failed.';
       return {
-        status: "failed",
-        errorMessage: message
+        status: 'failed',
+        errorMessage: message,
       };
     }
   }
@@ -157,8 +157,8 @@ export class PushDeliveryService {
     const webPushConfig = this.appConfigService.webPushConfig;
     if (!webPushConfig) {
       return {
-        status: "failed",
-        errorMessage: "Web Push delivery is not configured."
+        status: 'failed',
+        errorMessage: 'Web Push delivery is not configured.',
       };
     }
 
@@ -166,8 +166,8 @@ export class PushDeliveryService {
       const webPushModule = await this.loadWebPushModule();
       if (!webPushModule) {
         return {
-          status: "failed",
-          errorMessage: "The web-push module is not available in the server runtime."
+          status: 'failed',
+          errorMessage: 'The web-push module is not available in the server runtime.',
         };
       }
 
@@ -175,10 +175,10 @@ export class PushDeliveryService {
         webPushModule.setVapidDetails(
           webPushConfig.subject,
           webPushConfig.publicKey,
-          webPushConfig.privateKey
+          webPushConfig.privateKey,
         );
         this.webPushInitialized = true;
-        this.appLogService.log("Web Push delivery has been initialized.", "PushDelivery");
+        this.appLogService.log('Web Push delivery has been initialized.', 'PushDelivery');
       }
 
       const payload = JSON.stringify({
@@ -186,9 +186,9 @@ export class PushDeliveryService {
         deviceId: input.deviceId,
         title: input.title,
         message: input.message,
-        entityType: input.entityType ?? "",
-        entityId: input.entityId ?? "",
-        path: "./#notifications"
+        entityType: input.entityType ?? '',
+        entityId: input.entityId ?? '',
+        path: './#notifications',
       });
 
       const result = await webPushModule.sendNotification(
@@ -196,37 +196,37 @@ export class PushDeliveryService {
           endpoint: input.pushToken,
           keys: {
             p256dh: input.webPushP256dh,
-            auth: input.webPushAuth
-          }
+            auth: input.webPushAuth,
+          },
         },
         payload,
         {
-          TTL: 60
-        }
+          TTL: 60,
+        },
       );
 
       return {
-        status: "sent",
-        providerMessageId: result.headers?.location ?? null
+        status: 'sent',
+        providerMessageId: result.headers?.location ?? null,
       };
     } catch (error) {
-      const message = error instanceof Error ? error.message : "Web push delivery failed.";
+      const message = error instanceof Error ? error.message : 'Web push delivery failed.';
       return {
-        status: "failed",
-        errorMessage: message
+        status: 'failed',
+        errorMessage: message,
       };
     }
   }
 
   private async loadFirebaseAdminModule() {
     if (!this.firebaseAdminModulePromise) {
-      this.firebaseAdminModulePromise = import("firebase-admin")
+      this.firebaseAdminModulePromise = import('firebase-admin')
         .then((module) => module)
         .catch((error) => {
           if (!this.initializationAttempted) {
             this.appLogService.warn(
               `Firebase Admin SDK could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
-              "PushDelivery"
+              'PushDelivery',
             );
           }
 
@@ -240,12 +240,12 @@ export class PushDeliveryService {
 
   private async loadFirebaseMessagingModule() {
     if (!this.firebaseMessagingModulePromise) {
-      this.firebaseMessagingModulePromise = import("firebase-admin/messaging")
+      this.firebaseMessagingModulePromise = import('firebase-admin/messaging')
         .then((module) => module)
         .catch((error) => {
           this.appLogService.warn(
             `Firebase Messaging SDK could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
-            "PushDelivery"
+            'PushDelivery',
           );
           return null;
         });
@@ -256,12 +256,12 @@ export class PushDeliveryService {
 
   private async loadWebPushModule() {
     if (!this.webPushModulePromise) {
-      this.webPushModulePromise = import("web-push")
+      this.webPushModulePromise = import('web-push')
         .then((module) => module.default ?? module)
         .catch((error) => {
           this.appLogService.warn(
             `Web Push SDK could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
-            "PushDelivery"
+            'PushDelivery',
           );
           return null;
         });
@@ -270,7 +270,9 @@ export class PushDeliveryService {
     return this.webPushModulePromise;
   }
 
-  private async resolveFcmCredentials(tenantId: string | null): Promise<ResolvedFcmCredentials | null> {
+  private async resolveFcmCredentials(
+    tenantId: string | null,
+  ): Promise<ResolvedFcmCredentials | null> {
     if (tenantId) {
       const hostedCredentials = await this.resolveHostedFcmCredentials(tenantId);
       if (hostedCredentials) {
@@ -285,38 +287,43 @@ export class PushDeliveryService {
 
     return {
       serviceAccount: envCredentials,
-      source: "env",
-      sourceKey: this.buildCredentialSourceKey("env", envCredentials)
+      source: 'env',
+      sourceKey: this.buildCredentialSourceKey('env', envCredentials),
     };
   }
 
-  private async resolveHostedFcmCredentials(tenantId: string): Promise<ResolvedFcmCredentials | null> {
+  private async resolveHostedFcmCredentials(
+    tenantId: string,
+  ): Promise<ResolvedFcmCredentials | null> {
     try {
-      const hostedRuntimeConfig = await this.hostedRuntimeConfigService.getTenantRuntimeConfig(tenantId);
+      const hostedRuntimeConfig =
+        await this.hostedRuntimeConfigService.getTenantRuntimeConfig(tenantId);
       const hostedFcmConfig = hostedRuntimeConfig?.hostedPushConfig?.fcm;
       if (!hostedFcmConfig?.enabled || !hostedFcmConfig.serviceAccountBase64) {
         return null;
       }
 
-      const decodedJson = Buffer.from(hostedFcmConfig.serviceAccountBase64, "base64").toString("utf8");
+      const decodedJson = Buffer.from(hostedFcmConfig.serviceAccountBase64, 'base64').toString(
+        'utf8',
+      );
       const parsed = this.parseFirebaseServiceAccount(decodedJson);
       if (!parsed) {
         this.appLogService.warn(
-          "Hosted FCM service account payload is invalid for tenant runtime config.",
-          "PushDelivery"
+          'Hosted FCM service account payload is invalid for tenant runtime config.',
+          'PushDelivery',
         );
         return null;
       }
 
       return {
         serviceAccount: parsed,
-        source: "hosted_runtime_config",
-        sourceKey: this.buildCredentialSourceKey("hosted_runtime_config", parsed)
+        source: 'hosted_runtime_config',
+        sourceKey: this.buildCredentialSourceKey('hosted_runtime_config', parsed),
       };
     } catch (error) {
       this.appLogService.warn(
         `Hosted runtime config was unavailable while resolving FCM credentials: ${error instanceof Error ? error.message : String(error)}`,
-        "PushDelivery"
+        'PushDelivery',
       );
       return null;
     }
@@ -324,7 +331,7 @@ export class PushDeliveryService {
 
   private getOrCreateFirebaseApp(
     adminModule: FirebaseAdminModule,
-    credentials: ResolvedFcmCredentials
+    credentials: ResolvedFcmCredentials,
   ) {
     const existingAppName = this.firebaseAppNameByCredentialKey.get(credentials.sourceKey);
     if (existingAppName) {
@@ -336,14 +343,14 @@ export class PushDeliveryService {
     const appName = `taskbandit-fcm-${nextIndex}`;
     const app = adminModule.initializeApp(
       {
-        credential: adminModule.credential.cert(credentials.serviceAccount)
+        credential: adminModule.credential.cert(credentials.serviceAccount),
       },
-      appName
+      appName,
     );
     this.firebaseAppNameByCredentialKey.set(credentials.sourceKey, appName);
     this.appLogService.log(
       `Firebase Cloud Messaging delivery initialized with ${credentials.source}.`,
-      "PushDelivery"
+      'PushDelivery',
     );
     return app;
   }
@@ -363,17 +370,20 @@ export class PushDeliveryService {
       return {
         projectId: parsed.project_id,
         clientEmail: parsed.client_email,
-        privateKey: parsed.private_key.replace(/\\n/g, "\n")
+        privateKey: parsed.private_key.replace(/\\n/g, '\n'),
       };
     } catch {
       return null;
     }
   }
 
-  private buildCredentialSourceKey(source: "env" | "hosted_runtime_config", account: FirebaseServiceAccount) {
-    const fingerprint = createHash("sha256")
+  private buildCredentialSourceKey(
+    source: 'env' | 'hosted_runtime_config',
+    account: FirebaseServiceAccount,
+  ) {
+    const fingerprint = createHash('sha256')
       .update(`${account.projectId}\u0000${account.clientEmail}\u0000${account.privateKey}`)
-      .digest("hex")
+      .digest('hex')
       .slice(0, 24);
     return `${source}:${fingerprint}`;
   }

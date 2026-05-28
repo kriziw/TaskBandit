@@ -1,12 +1,12 @@
-import { Module } from "@nestjs/common";
-import { AuthModule } from "../auth/auth.module";
-import { HouseholdRepository } from "../household/household.repository";
-import { BootstrapController } from "./bootstrap.controller";
-import { BootstrapService } from "./bootstrap.service";
+import { Module } from '@nestjs/common';
+import { AuthModule } from '../auth/auth.module';
+import { HouseholdModule } from '../household/household.module';
+import { BootstrapController } from './bootstrap.controller';
+import { BootstrapService } from './bootstrap.service';
 
 @Module({
-  imports: [AuthModule],
+  imports: [AuthModule, HouseholdModule],
   controllers: [BootstrapController],
-  providers: [BootstrapService, HouseholdRepository]
+  providers: [BootstrapService],
 })
 export class BootstrapModule {}

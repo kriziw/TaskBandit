@@ -1,7 +1,7 @@
-import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from "@nestjs/common";
-import { AppConfigService } from "../../common/config/app-config.service";
-import { TenantRuntimePolicyService } from "../../common/tenancy/tenant-runtime-policy.service";
-import { HouseholdRepository } from "../household/household.repository";
+import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@nestjs/common';
+import { AppConfigService } from '../../common/config/app-config.service';
+import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
+import { HouseholdRepository } from '../household/household.repository';
 
 @Injectable()
 export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -13,12 +13,12 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly appConfigService: AppConfigService,
-    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService
+    private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
   ) {}
 
   async onApplicationBootstrap() {
     if (this.appConfigService.reminderIntervalMs <= 0) {
-      this.logger.log("Chore reminder worker is disabled.");
+      this.logger.log('Chore reminder worker is disabled.');
       return;
     }
 
@@ -35,9 +35,10 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
     }
   }
 
-  async runOnce(
-    options?: { forceDailySummary?: boolean; tenantId?: string }
-  ): Promise<{ reminderCount: number; dailySummaryCount: number }> {
+  async runOnce(options?: {
+    forceDailySummary?: boolean;
+    tenantId?: string;
+  }): Promise<{ reminderCount: number; dailySummaryCount: number }> {
     if (this.activeRun) {
       this.rerunRequested = true;
       return this.activeRun.then(() => this.runOnce(options));
@@ -55,12 +56,13 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
     }
   }
 
-  private async runLoop(
-    options?: { forceDailySummary?: boolean; tenantId?: string }
-  ): Promise<{ reminderCount: number; dailySummaryCount: number }> {
+  private async runLoop(options?: {
+    forceDailySummary?: boolean;
+    tenantId?: string;
+  }): Promise<{ reminderCount: number; dailySummaryCount: number }> {
     const aggregate = {
       reminderCount: 0,
-      dailySummaryCount: 0
+      dailySummaryCount: 0,
     };
 
     do {
@@ -73,9 +75,10 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
     return aggregate;
   }
 
-  private async runInternal(
-    options?: { forceDailySummary?: boolean; tenantId?: string }
-  ): Promise<{ reminderCount: number; dailySummaryCount: number }> {
+  private async runInternal(options?: {
+    forceDailySummary?: boolean;
+    tenantId?: string;
+  }): Promise<{ reminderCount: number; dailySummaryCount: number }> {
     try {
       const candidateTenantIds = options?.tenantId
         ? [options.tenantId]
@@ -85,7 +88,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
       for (const tenantId of candidateTenantIds) {
         const decision = await this.tenantRuntimePolicyService.getActionDecision(
           tenantId,
-          "notification_enqueue"
+          'notification_enqueue',
         );
         if (decision.allowed) {
           allowedTenantIds.push(tenantId);
@@ -95,7 +98,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
       if (allowedTenantIds.length === 0) {
         return {
           reminderCount: 0,
-          dailySummaryCount: 0
+          dailySummaryCount: 0,
         };
       }
 
@@ -103,13 +106,13 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
       const reminderResult = await this.repository.processReminderNotifications({
         now,
         dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours,
-        tenantIds: allowedTenantIds
+        tenantIds: allowedTenantIds,
       });
       const dailySummaryResult = await this.repository.processDailySummaryNotifications({
         now,
         summaryHourUtc: this.appConfigService.dailySummaryHourUtc,
         force: options?.forceDailySummary,
-        tenantIds: allowedTenantIds
+        tenantIds: allowedTenantIds,
       });
       const reminderCount = reminderResult.createdCount;
       const dailySummaryCount = dailySummaryResult.createdCount;
@@ -121,17 +124,17 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
 
       return {
         reminderCount,
-        dailySummaryCount
+        dailySummaryCount,
       };
     } catch (error) {
       this.logger.error(
-        "Failed to process chore reminders.",
-        error instanceof Error ? error.stack : undefined
+        'Failed to process chore reminders.',
+        error instanceof Error ? error.stack : undefined,
       );
 
       return {
         reminderCount: 0,
-        dailySummaryCount: 0
+        dailySummaryCount: 0,
       };
     }
   }

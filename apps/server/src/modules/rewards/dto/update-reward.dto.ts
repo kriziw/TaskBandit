@@ -1,4 +1,4 @@
-import { RewardCategory, RewardEligibility } from "@prisma/client";
+import { RewardCategory, RewardEligibility } from '@prisma/client';
 import {
   IsEnum,
   IsInt,
@@ -7,8 +7,8 @@ import {
   IsString,
   Max,
   MaxLength,
-  Min
-} from "class-validator";
+  Min,
+} from 'class-validator';
 
 export class UpdateRewardDto {
   @IsOptional()

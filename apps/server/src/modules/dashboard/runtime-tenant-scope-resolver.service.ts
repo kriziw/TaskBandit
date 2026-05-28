@@ -1,5 +1,5 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
-import { PrismaService } from "../../common/prisma/prisma.service";
+import { Injectable, NotFoundException } from '@nestjs/common';
+import { PrismaService } from '../../common/prisma/prisma.service';
 
 type TenantScopeResolutionInput = {
   tenantScope: string;
@@ -21,11 +21,11 @@ export class RuntimeTenantScopeResolverService {
     if (userId && isUuidLike(userId)) {
       const user = await this.prisma.user.findUnique({
         where: {
-          id: userId
+          id: userId,
         },
         select: {
-          tenantId: true
-        }
+          tenantId: true,
+        },
       });
       if (user?.tenantId) {
         return user.tenantId;
@@ -36,11 +36,11 @@ export class RuntimeTenantScopeResolverService {
     if (deviceId && isUuidLike(deviceId)) {
       const device = await this.prisma.notificationDevice.findUnique({
         where: {
-          id: deviceId
+          id: deviceId,
         },
         select: {
-          tenantId: true
-        }
+          tenantId: true,
+        },
       });
       if (device?.tenantId) {
         return device.tenantId;
@@ -48,7 +48,7 @@ export class RuntimeTenantScopeResolverService {
     }
 
     throw new NotFoundException({
-      message: "Could not resolve a runtime tenant id for diagnostics."
+      message: 'Could not resolve a runtime tenant id for diagnostics.',
     });
   }
 }

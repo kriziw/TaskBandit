@@ -1,18 +1,19 @@
-import { ValidationPipe } from "@nestjs/common";
-import { NestFactory } from "@nestjs/core";
-import type { NestExpressApplication } from "@nestjs/platform-express";
-import { DocumentBuilder, SwaggerModule } from "@nestjs/swagger";
-import type { NextFunction, Request, Response } from "express";
-import { existsSync } from "node:fs";
-import { join } from "node:path";
-import { AppModule } from "./app.module";
-import { AppConfigService } from "./common/config/app-config.service";
-import { rewriteHostedApiPath } from "./common/http/path-routing.util";
-import { AppLogService } from "./common/logging/app-log.service";
+import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from '@nestjs/core';
+import type { NestExpressApplication } from '@nestjs/platform-express';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import type { NextFunction, Request, Response } from 'express';
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import { AppModule } from './app.module';
+import { AppConfigService } from './common/config/app-config.service';
+import { HttpExceptionFilter } from './common/errors/http-exception.filter';
+import { rewriteHostedApiPath } from './common/http/path-routing.util';
+import { AppLogService } from './common/logging/app-log.service';
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, {
-    bufferLogs: true
+    bufferLogs: true,
   });
   const config = app.get(AppConfigService);
   const logger = app.get(AppLogService);
@@ -24,18 +25,19 @@ async function bootstrap() {
     app.enableCors({
       origin: (origin, callback) => {
         callback(null, !origin || corsAllowedOrigins.includes(origin));
-      }
+      },
     });
   } else {
     app.enableCors();
   }
   app.enableShutdownHooks();
+  app.useGlobalFilters(new HttpExceptionFilter());
   app.useGlobalPipes(
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidUnknownValues: true
-    })
+      forbidUnknownValues: true,
+    }),
   );
 
   const expressApp = app.getHttpAdapter().getInstance() as {
@@ -44,16 +46,19 @@ async function bootstrap() {
       path: string | RegExp,
       handler: (
         request: unknown,
-        response: { sendFile: (filePath: string) => void; redirect: (statusCode: number, location: string) => void }
-      ) => void
+        response: {
+          sendFile: (filePath: string) => void;
+          redirect: (statusCode: number, location: string) => void;
+        },
+      ) => void,
     ) => void;
   };
 
   if (config.reverseProxyEnabled) {
-    expressApp.set("trust proxy", true);
+    expressApp.set('trust proxy', true);
   }
 
-  if (config.hostedModeEnabled && config.hostedTenantRoutingMode === "path") {
+  if (config.hostedModeEnabled && config.hostedTenantRoutingMode === 'path') {
     app.use((request: Request, _response: Response, next: NextFunction) => {
       const rewrittenPath = rewriteHostedApiPath(request.url, config.tenantPathPrefix);
       if (rewrittenPath) {
@@ -66,56 +71,56 @@ async function bootstrap() {
 
   if (config.reverseProxyPathBase) {
     app.setGlobalPrefix(config.reverseProxyPathBase, {
-      exclude: ["health"]
+      exclude: ['health'],
     });
   }
 
   const swaggerConfig = new DocumentBuilder()
-    .setTitle("TaskBandit API")
-    .setDescription("TaskBandit household chores API")
+    .setTitle('TaskBandit API')
+    .setDescription('TaskBandit household chores API')
     .setVersion(config.releaseVersion)
     .build();
   const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup(config.withBasePath("docs"), app, swaggerDocument);
+  SwaggerModule.setup(config.withBasePath('docs'), app, swaggerDocument);
 
-  const webRoot = join(process.cwd(), "public");
-  const webIndex = join(webRoot, "index.html");
-  const webMountPath = config.reverseProxyPathBase ? `/${config.reverseProxyPathBase}` : "/";
+  const webRoot = join(process.cwd(), 'public');
+  const webIndex = join(webRoot, 'index.html');
+  const webMountPath = config.reverseProxyPathBase ? `/${config.reverseProxyPathBase}` : '/';
 
   if (config.serveEmbeddedWeb && existsSync(webIndex)) {
-    if (webMountPath === "/") {
+    if (webMountPath === '/') {
       app.useStaticAssets(webRoot);
     } else {
       app.useStaticAssets(webRoot, {
-        prefix: webMountPath
+        prefix: webMountPath,
       });
       expressApp.get(`${webMountPath}/`, (_request, response) => {
         response.sendFile(webIndex);
       });
     }
     expressApp.get(webMountPath, (_request, response) => {
-      if (webMountPath === "/") {
+      if (webMountPath === '/') {
         response.sendFile(webIndex);
         return;
       }
 
       response.redirect(308, `${webMountPath}/`);
     });
-    const excludedRoutes = ["/api(?:/|$)", "/docs(?:/|$)"];
-    if (webMountPath === "/") {
-      excludedRoutes.push("/health$");
+    const excludedRoutes = ['/api(?:/|$)', '/docs(?:/|$)'];
+    if (webMountPath === '/') {
+      excludedRoutes.push('/health$');
     }
 
     expressApp.get(
-      new RegExp(`^${webMountPath === "/" ? "" : webMountPath}(?!${excludedRoutes.join("|")}).+`),
+      new RegExp(`^${webMountPath === '/' ? '' : webMountPath}(?!${excludedRoutes.join('|')}).+`),
       (_request, response) => {
         response.sendFile(webIndex);
-      }
+      },
     );
   }
 
   await app.listen(config.port);
-  logger.log(`TaskBandit API listening on port ${config.port}.`, "Bootstrap");
+  logger.log(`TaskBandit API listening on port ${config.port}.`, 'Bootstrap');
 }
 
 void bootstrap();

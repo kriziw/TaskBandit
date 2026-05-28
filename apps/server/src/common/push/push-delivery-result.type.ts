@@ -1,9 +1,9 @@
 export type PushDeliveryResult =
   | {
-      status: "sent";
+      status: 'sent';
       providerMessageId?: string | null;
     }
   | {
-      status: "failed";
+      status: 'failed';
       errorMessage: string;
     };

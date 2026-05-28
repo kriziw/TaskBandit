@@ -9,14 +9,17 @@
     "start:dev": "nest start --watch",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev",
-    "test": "vitest run"
+    "test": "vitest run",
+    "lint": "eslint src",
+    "format": "prettier --write src",
+    "format:check": "prettier --check src"
   },
   "dependencies": {
-    "@nestjs/common": "^11.1.21",
+    "@nestjs/common": "^11.1.24",
     "@nestjs/config": "^4.0.4",
-    "@nestjs/core": "^11.1.21",
-    "@nestjs/platform-express": "^11.1.21",
-    "@nestjs/swagger": "^11.4.2",
+    "@nestjs/core": "^11.1.24",
+    "@nestjs/platform-express": "^11.1.24",
+    "@nestjs/swagger": "^11.4.4",
     "@prisma/client": "^5.22.0",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
@@ -24,7 +27,7 @@
     "firebase-admin": "^13.10.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
-    "nodemailer": "^8.0.7",
+    "nodemailer": "^8.0.9",
     "prisma": "^5.22.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
@@ -39,7 +42,11 @@
     "@types/node": "^25.9.1",
     "@types/nodemailer": "^8.0.0",
     "@types/web-push": "^3.6.4",
+    "eslint": "^10.4.0",
+    "eslint-config-prettier": "^10.1.8",
+    "prettier": "^3.8.3",
     "typescript": "^6.0.3",
+    "typescript-eslint": "^8.60.0",
     "vitest": "^4.1.7"
   },
   "overrides": {
@@ -47,6 +54,7 @@
     "@tootallnate/once": "3.0.1",
     "google-gax": "5.0.6",
     "retry-request": "8.0.2",
-    "teeny-request": "10.1.2"
+    "teeny-request": "10.1.2",
+    "uuid": "^11.1.1"
   }
 }

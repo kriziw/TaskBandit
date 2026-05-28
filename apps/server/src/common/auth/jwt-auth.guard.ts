@@ -1,39 +1,35 @@
-import {
-  CanActivate,
-  ExecutionContext,
-  Injectable,
-  UnauthorizedException
-} from "@nestjs/common";
-import { I18nService } from "../i18n/i18n.service";
-import { AuthService } from "../../modules/auth/auth.service";
-import { buildTenantRequestContext } from "../http/request-url.util";
+import { CanActivate, ExecutionContext, Injectable, UnauthorizedException } from '@nestjs/common';
+import { I18nService } from '../i18n/i18n.service';
+import { AuthService } from '../../modules/auth/auth.service';
+import type { TenantRequestContext } from '../http/request-url.util';
 
 @Injectable()
 export class JwtAuthGuard implements CanActivate {
   constructor(
     private readonly authService: AuthService,
-    private readonly i18nService: I18nService
+    private readonly i18nService: I18nService,
   ) {}
 
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest<{
       headers: Record<string, string | undefined>;
       get?: (header: string) => string | undefined;
+      tenantContext: TenantRequestContext;
       user?: unknown;
     }>();
-    const language = this.i18nService.resolveLanguage(request.headers["accept-language"]);
+    const language = this.i18nService.resolveLanguage(request.headers['accept-language']);
     const authorizationHeader = request.headers.authorization;
 
     if (!authorizationHeader) {
       throw new UnauthorizedException({
-        message: this.i18nService.translate("auth.unauthorized", language)
+        message: this.i18nService.translate('auth.unauthorized', language),
       });
     }
 
     request.user = await this.authService.getCurrentUser(
       authorizationHeader,
       language,
-      buildTenantRequestContext(request)
+      request.tenantContext,
     );
     return true;
   }

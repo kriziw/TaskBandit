@@ -1,15 +1,24 @@
-import { ApiPropertyOptional } from "@nestjs/swagger";
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, MaxLength, Min } from "class-validator";
+import { ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsBoolean,
+  IsInt,
+  IsOptional,
+  IsString,
+  IsUUID,
+  Max,
+  MaxLength,
+  Min,
+} from 'class-validator';
 
 export class QuickLogChoreDto {
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID("4")
+  @IsUUID('4')
   instanceId?: string;
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsUUID("4")
+  @IsUUID('4')
   templateId?: string;
 
   @ApiPropertyOptional()

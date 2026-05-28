@@ -61,6 +61,10 @@ class TaskBanditDashboardCacheStore(
 
     private fun normalizeBaseUrl(baseUrl: String): String = baseUrl.trim().trimEnd('/')
 
+    // -------------------------------------------------------------------------
+    // Serializers — convert model objects to JSON for storage
+    // -------------------------------------------------------------------------
+
     private fun dashboardToJson(dashboard: MobileDashboard): JSONObject {
         return JSONObject()
             .put("user", userToJson(dashboard.user))
@@ -77,29 +81,6 @@ class TaskBanditDashboardCacheStore(
             .put("compatibility", compatibilityToJson(dashboard.compatibility))
     }
 
-    private fun parseDashboard(entry: JSONObject): MobileDashboard? {
-        val user = entry.optJSONObject("user")?.let(::parseUser) ?: return null
-        return MobileDashboard(
-            user = user,
-            pendingApprovals = entry.optInt("pendingApprovals"),
-            activeChores = entry.optInt("activeChores"),
-            streakLeader = entry.optString("streakLeader"),
-            leaderboard = parseJsonArray(entry.optJSONArray("leaderboard"), ::parseLeaderboardEntry),
-            chores = parseJsonArray(entry.optJSONArray("chores"), ::parseChore),
-            takeoverRequests = parseJsonArray(entry.optJSONArray("takeoverRequests"), ::parseTakeoverRequest),
-            notifications = parseJsonArray(entry.optJSONArray("notifications"), ::parseNotification),
-            members = parseJsonArray(entry.optJSONArray("members"), ::parseMember),
-            templates = parseJsonArray(entry.optJSONArray("templates"), ::parseTemplate),
-            quickLogPointsDefault = if (entry.has("quickLogPointsDefault") && !entry.isNull("quickLogPointsDefault")) {
-                entry.optInt("quickLogPointsDefault")
-            } else {
-                null
-            },
-            compatibility = entry.optJSONObject("compatibility")?.let(::parseCompatibility)
-                ?: MobileDashboardCompatibility()
-        )
-    }
-
     private fun userToJson(user: MobileUser): JSONObject {
         return JSONObject()
             .put("id", user.id)
@@ -110,32 +91,12 @@ class TaskBanditDashboardCacheStore(
             .put("featureAccess", featureAccessToJson(user.featureAccess))
     }
 
-    private fun parseUser(entry: JSONObject): MobileUser {
-        return MobileUser(
-            id = entry.optString("id"),
-            displayName = entry.optString("displayName"),
-            role = entry.optString("role"),
-            points = entry.optInt("points"),
-            currentStreak = entry.optInt("currentStreak"),
-            featureAccess = entry.optJSONObject("featureAccess")?.let(::parseFeatureAccess) ?: MobileFeatureAccess()
-        )
-    }
-
     private fun leaderboardEntryToJson(entry: MobileLeaderboardEntry): JSONObject {
         return JSONObject()
             .put("displayName", entry.displayName)
             .put("role", entry.role)
             .put("points", entry.points)
             .put("currentStreak", entry.currentStreak)
-    }
-
-    private fun parseLeaderboardEntry(entry: JSONObject): MobileLeaderboardEntry {
-        return MobileLeaderboardEntry(
-            displayName = entry.optString("displayName"),
-            role = entry.optString("role"),
-            points = entry.optInt("points"),
-            currentStreak = entry.optInt("currentStreak")
-        )
     }
 
     private fun choreToJson(chore: MobileChore): JSONObject {
@@ -167,49 +128,11 @@ class TaskBanditDashboardCacheStore(
             .put("completionMilestone", chore.completionMilestone?.let(::completionMilestoneToJson))
     }
 
-    private fun parseChore(entry: JSONObject): MobileChore {
-        return MobileChore(
-            id = entry.optString("id"),
-            cycleId = entry.optNullableString("cycleId"),
-            occurrenceRootId = entry.optNullableString("occurrenceRootId"),
-            title = entry.optString("title"),
-            groupTitle = entry.optString("groupTitle").ifBlank { "General" },
-            typeTitle = entry.optString("typeTitle").ifBlank { entry.optString("title") },
-            subtypeLabel = entry.optNullableString("subtypeLabel"),
-            state = entry.optString("state"),
-            supportsOccurrenceCancellation = entry.optBoolean("supportsOccurrenceCancellation"),
-            supportsSeriesCancellation = entry.optBoolean("supportsSeriesCancellation"),
-            assigneeId = entry.optNullableString("assigneeId"),
-            assigneeDisplayName = entry.optNullableString("assigneeDisplayName"),
-            assignmentReason = entry.optNullableString("assignmentReason"),
-            dueAt = entry.optString("dueAt"),
-            completedAt = entry.optNullableString("completedAt"),
-            cancelledAt = entry.optNullableString("cancelledAt"),
-            isOverdue = entry.optBoolean("isOverdue"),
-            requirePhotoProof = entry.optBoolean("requirePhotoProof"),
-            basePoints = entry.optInt("basePoints"),
-            awardedPoints = entry.optInt("awardedPoints"),
-            checklist = parseJsonArray(entry.optJSONArray("checklist"), ::parseChecklistItem),
-            completedChecklistIds = parseStringArray(entry.optJSONArray("completedChecklistIds")),
-            variantId = entry.optNullableString("variantId"),
-            templateId = entry.optNullableString("templateId"),
-            completionMilestone = entry.optJSONObject("completionMilestone")?.let(::parseCompletionMilestone)
-        )
-    }
-
     private fun checklistItemToJson(item: MobileChecklistItem): JSONObject {
         return JSONObject()
             .put("id", item.id)
             .put("title", item.title)
             .put("required", item.required)
-    }
-
-    private fun parseChecklistItem(entry: JSONObject): MobileChecklistItem {
-        return MobileChecklistItem(
-            id = entry.optString("id"),
-            title = entry.optString("title"),
-            required = entry.optBoolean("required")
-        )
     }
 
     private fun completionMilestoneToJson(entry: MobileCompletionMilestone): JSONObject {
@@ -219,23 +142,6 @@ class TaskBanditDashboardCacheStore(
             .put("dayKey", entry.dayKey)
             .put("completedChoreCount", entry.completedChoreCount)
             .put("messageIndex", entry.messageIndex)
-    }
-
-    private fun parseCompletionMilestone(entry: JSONObject): MobileCompletionMilestone? {
-        val type = entry.optString("type")
-        val userId = entry.optString("userId")
-        val dayKey = entry.optString("dayKey")
-        if (type.isBlank() || userId.isBlank() || dayKey.isBlank()) {
-            return null
-        }
-
-        return MobileCompletionMilestone(
-            type = type,
-            userId = userId,
-            dayKey = dayKey,
-            completedChoreCount = entry.optInt("completedChoreCount"),
-            messageIndex = entry.optInt("messageIndex")
-        )
     }
 
     private fun takeoverRequestToJson(entry: MobileTakeoverRequest): JSONObject {
@@ -251,24 +157,6 @@ class TaskBanditDashboardCacheStore(
             .put("requested", memberToJson(entry.requested))
     }
 
-    private fun parseTakeoverRequest(entry: JSONObject): MobileTakeoverRequest {
-        val requester = entry.optJSONObject("requester")?.let(::parseMember)
-            ?: MobileHouseholdMember(id = "", displayName = "", role = "")
-        val requested = entry.optJSONObject("requested")?.let(::parseMember)
-            ?: MobileHouseholdMember(id = "", displayName = "", role = "")
-        return MobileTakeoverRequest(
-            id = entry.optString("id"),
-            choreId = entry.optString("choreId"),
-            choreTitle = entry.optString("choreTitle"),
-            status = entry.optString("status"),
-            note = entry.optNullableString("note"),
-            createdAt = entry.optString("createdAt"),
-            respondedAt = entry.optNullableString("respondedAt"),
-            requester = requester,
-            requested = requested
-        )
-    }
-
     private fun notificationToJson(entry: MobileNotification): JSONObject {
         return JSONObject()
             .put("id", entry.id)
@@ -281,32 +169,11 @@ class TaskBanditDashboardCacheStore(
             .put("createdAt", entry.createdAt)
     }
 
-    private fun parseNotification(entry: JSONObject): MobileNotification {
-        return MobileNotification(
-            id = entry.optString("id"),
-            type = entry.optString("type"),
-            title = entry.optString("title"),
-            message = entry.optString("message"),
-            entityType = entry.optNullableString("entityType"),
-            entityId = entry.optNullableString("entityId"),
-            isRead = entry.optBoolean("isRead"),
-            createdAt = entry.optString("createdAt")
-        )
-    }
-
     private fun memberToJson(entry: MobileHouseholdMember): JSONObject {
         return JSONObject()
             .put("id", entry.id)
             .put("displayName", entry.displayName)
             .put("role", entry.role)
-    }
-
-    private fun parseMember(entry: JSONObject): MobileHouseholdMember {
-        return MobileHouseholdMember(
-            id = entry.optString("id"),
-            displayName = entry.optString("displayName"),
-            role = entry.optString("role")
-        )
     }
 
     private fun templateToJson(entry: MobileChoreTemplate): JSONObject {
@@ -323,35 +190,11 @@ class TaskBanditDashboardCacheStore(
             .put("variants", JSONArray().apply { entry.variants.forEach { put(templateVariantToJson(it)) } })
     }
 
-    private fun parseTemplate(entry: JSONObject): MobileChoreTemplate {
-        return MobileChoreTemplate(
-            id = entry.optString("id"),
-            groupTitle = entry.optString("groupTitle").ifBlank { "General" },
-            title = entry.optString("title"),
-            description = entry.optString("description"),
-            assignmentStrategy = entry.optString("assignmentStrategy"),
-            recurrence = entry.optJSONObject("recurrence")?.let(::parseTemplateRecurrence)
-                ?: MobileTemplateRecurrence(type = "none", intervalDays = null, weekdays = emptyList()),
-            requirePhotoProof = entry.optBoolean("requirePhotoProof"),
-            stickyFollowUpAssignee = entry.optBoolean("stickyFollowUpAssignee"),
-            recurrenceStartStrategy = entry.optString("recurrenceStartStrategy").ifBlank { "due_at" },
-            variants = parseJsonArray(entry.optJSONArray("variants"), ::parseTemplateVariant)
-        )
-    }
-
     private fun templateRecurrenceToJson(entry: MobileTemplateRecurrence): JSONObject {
         return JSONObject()
             .put("type", entry.type)
             .put("intervalDays", entry.intervalDays)
             .put("weekdays", JSONArray().apply { entry.weekdays.forEach(::put) })
-    }
-
-    private fun parseTemplateRecurrence(entry: JSONObject): MobileTemplateRecurrence {
-        return MobileTemplateRecurrence(
-            type = entry.optString("type").ifBlank { "none" },
-            intervalDays = if (entry.has("intervalDays") && !entry.isNull("intervalDays")) entry.optInt("intervalDays") else null,
-            weekdays = parseStringArray(entry.optJSONArray("weekdays"))
-        )
     }
 
     private fun templateVariantToJson(entry: MobileTemplateVariant): JSONObject {
@@ -360,22 +203,9 @@ class TaskBanditDashboardCacheStore(
             .put("label", entry.label)
     }
 
-    private fun parseTemplateVariant(entry: JSONObject): MobileTemplateVariant {
-        return MobileTemplateVariant(
-            id = entry.optString("id"),
-            label = entry.optString("label")
-        )
-    }
-
     private fun compatibilityToJson(entry: MobileDashboardCompatibility): JSONObject {
         return JSONObject()
             .put("takeoverRequestsSupported", entry.takeoverRequestsSupported)
-    }
-
-    private fun parseCompatibility(entry: JSONObject): MobileDashboardCompatibility {
-        return MobileDashboardCompatibility(
-            takeoverRequestsSupported = entry.optBoolean("takeoverRequestsSupported", true)
-        )
     }
 
     private fun featureAccessToJson(entry: MobileFeatureAccess): JSONObject {
@@ -393,53 +223,31 @@ class TaskBanditDashboardCacheStore(
             .put("quickLog", entry.quickLog)
     }
 
-    private fun parseFeatureAccess(entry: JSONObject): MobileFeatureAccess {
-        return MobileFeatureAccess(
-            templatesManage = entry.optBoolean("templatesManage", true),
-            choresManage = entry.optBoolean("choresManage", true),
-            reassignment = entry.optBoolean("reassignment", true),
-            takeoverDirect = entry.optBoolean("takeoverDirect", true),
-            takeoverRequests = entry.optBoolean("takeoverRequests", true),
-            approvals = entry.optBoolean("approvals", true),
-            proofUploads = entry.optBoolean("proofUploads", true),
-            followUpAutomation = entry.optBoolean("followUpAutomation", true),
-            externalCompletion = entry.optBoolean("externalCompletion", true),
-            deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", true),
-            quickLog = entry.optBoolean("quickLog", true)
+    // -------------------------------------------------------------------------
+    // Deserializer — rebuild MobileDashboard from cached JSON
+    // Parse helpers are delegated to TaskBanditModelParsers (same package).
+    // -------------------------------------------------------------------------
+
+    private fun parseDashboard(entry: JSONObject): MobileDashboard? {
+        val user = entry.optJSONObject("user")?.let(::parseUser) ?: return null
+        return MobileDashboard(
+            user = user,
+            pendingApprovals = entry.optInt("pendingApprovals"),
+            activeChores = entry.optInt("activeChores"),
+            streakLeader = entry.optString("streakLeader"),
+            leaderboard = parseJsonArray(entry.optJSONArray("leaderboard"), ::parseLeaderboardEntry),
+            chores = parseJsonArray(entry.optJSONArray("chores"), ::parseChoreFromCache),
+            takeoverRequests = parseJsonArray(entry.optJSONArray("takeoverRequests"), ::parseTakeoverRequest),
+            notifications = parseJsonArray(entry.optJSONArray("notifications"), ::parseNotification),
+            members = parseJsonArray(entry.optJSONArray("members"), ::parseMember),
+            templates = parseFullTemplates(entry.optJSONArray("templates")),
+            quickLogPointsDefault = if (entry.has("quickLogPointsDefault") && !entry.isNull("quickLogPointsDefault")) {
+                entry.optInt("quickLogPointsDefault")
+            } else {
+                null
+            },
+            compatibility = entry.optJSONObject("compatibility")?.let(::parseCompatibility)
+                ?: MobileDashboardCompatibility()
         )
     }
-
-    private fun parseStringArray(entries: JSONArray?): List<String> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val value = entries.optString(index).trim()
-                if (value.isNotBlank()) {
-                    add(value)
-                }
-            }
-        }
-    }
-
-    private fun <T> parseJsonArray(entries: JSONArray?, mapper: (JSONObject) -> T): List<T> {
-        if (entries == null) {
-            return emptyList()
-        }
-
-        return buildList {
-            for (index in 0 until entries.length()) {
-                val item = entries.optJSONObject(index) ?: continue
-                add(mapper(item))
-            }
-        }
-    }
-}
-
-private fun JSONObject.optNullableString(key: String): String? {
-    return optString(key)
-        .trim()
-        .takeIf { it.isNotBlank() && !it.equals("null", ignoreCase = true) }
 }

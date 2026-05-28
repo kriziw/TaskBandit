@@ -1,6 +1,6 @@
-import { Injectable } from "@nestjs/common";
+import { Injectable } from '@nestjs/common';
 
-export type DifficultyValue = "easy" | "medium" | "hard";
+export type DifficultyValue = 'easy' | 'medium' | 'hard';
 
 @Injectable()
 export class PointsService {
@@ -10,12 +10,12 @@ export class PointsService {
   calculateForApprovedCompletion(
     difficulty: DifficultyValue,
     completedChecklistItems: number,
-    isOverdue: boolean
+    isOverdue: boolean,
   ) {
     const basePoints = this.getBasePoints(difficulty);
     const checklistBonus = Math.min(
       Math.max(0, completedChecklistItems) * PointsService.checklistItemBonus,
-      PointsService.checklistBonusCap
+      PointsService.checklistBonusCap,
     );
     const earnedBeforeTimingAdjustment = basePoints + checklistBonus;
     const finalAwardedPoints = isOverdue
@@ -27,7 +27,7 @@ export class PointsService {
       checklistBonus,
       earnedBeforeTimingAdjustment,
       finalAwardedPoints,
-      overduePenaltyPoints: this.getOverduePenalty(basePoints)
+      overduePenaltyPoints: this.getOverduePenalty(basePoints),
     };
   }
 
@@ -37,15 +37,14 @@ export class PointsService {
 
   private getBasePoints(difficulty: DifficultyValue) {
     switch (difficulty) {
-      case "easy":
+      case 'easy':
         return 10;
-      case "medium":
+      case 'medium':
         return 20;
-      case "hard":
+      case 'hard':
         return 40;
       default:
         return 10;
     }
   }
 }
-
