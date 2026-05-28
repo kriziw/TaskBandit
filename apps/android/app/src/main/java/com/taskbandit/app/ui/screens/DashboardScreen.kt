@@ -1042,7 +1042,7 @@ internal fun DashboardScreen(
                             ),
                             contentPadding = PaddingValues(0.dp)
                         ) {
-                            Text("Ã¢â‚¬â€", style = MaterialTheme.typography.titleMedium)
+                            Text("—", style = MaterialTheme.typography.titleMedium)
                         }
                         quickLogDrawableIconIds.forEach { iconId ->
                             val drawable = resolveChoreIconDrawableFromToken(iconId)
@@ -2307,7 +2307,7 @@ internal fun DashboardScreen(
                                             Text(r.rewardTitle, style = MaterialTheme.typography.bodyMedium, fontWeight = FontWeight.SemiBold)
                                             Text(r.status, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                         }
-                                        Text("-${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
+                                        Text("−${r.pointsDeducted} ${stringResource(R.string.mobile_rewards_pts)}", style = MaterialTheme.typography.labelMedium)
                                     }
                                 }
                             }
@@ -3591,7 +3591,7 @@ private fun ChoreActionSheet(
                     Text(
                         text = buildString {
                             append("After: ${trigger.title}")
-                            if (whenStr.isNotBlank()) append(" Ã‚Â· $whenStr")
+                            if (whenStr.isNotBlank()) append(" · $whenStr")
                             append(" by $completerName")
                         },
                         style = MaterialTheme.typography.bodySmall,
