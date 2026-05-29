@@ -1572,12 +1572,13 @@ internal fun DashboardScreen(
         }
     }
 
-    // Scroll to the release/update card when the banner is tapped on the home screen.
-    // The release card index depends on whether the hosted-plan card is visible.
+    // Scroll to the GitHub update card when the banner is tapped on the home screen.
+    // Items: 0=intro 1=appearance 2=device [3=plan (hosted+creator only)] 3/4=release 4/5=github-update (when visible) …
     LaunchedEffect(activeTab, shouldScrollToUpdate) {
         if (shouldScrollToUpdate && activeTab == MobileDashboardTab.MORE) {
             val releaseItemIndex = if (hostedSubscription.hostedMode && isCreatorRole) 4 else 3
-            dashboardListState.animateScrollToItem(releaseItemIndex)
+            val targetIndex = if (visibleGithubUpdate != null) releaseItemIndex + 1 else releaseItemIndex
+            dashboardListState.animateScrollToItem(targetIndex)
             shouldScrollToUpdate = false
         }
     }
@@ -2671,7 +2672,21 @@ internal fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Language, title = stringResource(R.string.mobile_settings_release)) {
-                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, visibleGithubUpdate = visibleGithubUpdate, githubCheckDone = githubCheckDone, githubCheckError = githubCheckError, githubLatestVersion = githubLatestVersion, isDownloadingUpdate = isDownloadingUpdate, downloadProgress = downloadProgress, downloadError = downloadError, onCheckForUpdates = onCheckForUpdates, onDismissGithubUpdate = onDismissGithubUpdate, onDownloadAndInstall = onDownloadAndInstall)
+                        SettingsReleaseContent(currentReleaseLabel = currentReleaseLabel, serverReleaseLabel = serverReleaseLabel, serverUrl = serverUrl, availableUpdate = availableUpdate, onDismissUpdate = onDismissUpdate, githubCheckDone = githubCheckDone, githubCheckError = githubCheckError, githubLatestVersion = githubLatestVersion, onCheckForUpdates = onCheckForUpdates)
+                    }
+                }
+                if (visibleGithubUpdate != null) {
+                    item {
+                        SettingsGithubUpdateCard(
+                            update = visibleGithubUpdate,
+                            currentReleaseLabel = currentReleaseLabel,
+                            isDownloadingUpdate = isDownloadingUpdate,
+                            downloadProgress = downloadProgress,
+                            downloadError = downloadError,
+                            onDismissGithubUpdate = onDismissGithubUpdate,
+                            onDownloadAndInstall = onDownloadAndInstall,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
                     }
                 }
                 item {
