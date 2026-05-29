@@ -1842,7 +1842,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const featureAccess = {
     ...fullFeatureAccess,
     ...(payload?.currentUser.featureAccess ?? {}),
-    ...(payload?.hostedSubscription.featureAccess ?? {}),
   };
   const hasFeature = (featureId: PackageFeatureId) => featureAccess[featureId];
   const showTemplateManager = Boolean(
@@ -3082,8 +3081,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         currentUser.role === 'admin' && activePage === 'admin'
           ? taskBanditApi.getRuntimeLogs(accessToken, language, 250)
           : Promise.resolve(runtimeLogs),
-        taskBanditApi.getRewards(accessToken, language),
-        taskBanditApi.getRedemptions(accessToken, language),
+        loadOptionalFeature(() => taskBanditApi.getRewards(accessToken, language), []),
+        loadOptionalFeature(() => taskBanditApi.getRedemptions(accessToken, language), []),
       ]);
 
       if (
@@ -3113,8 +3112,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         instances,
         takeoverRequests: takeoverRequestsResult.value,
         hostedSubscription: hostedSubscriptionResult.value,
-        rewards: rewardsResult,
-        redemptions: redemptionsResult,
+        rewards: rewardsResult.value,
+        redemptions: redemptionsResult.value,
         compatibility: {
           notificationDevices: notificationDevicesResult.supported,
           notificationHealth: householdNotificationHealthResult.supported,
