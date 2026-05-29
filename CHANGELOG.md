@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.0](https://github.com/kriziw/TaskBandit/compare/v1.2.1...v1.3.0) (2026-05-29)
+
+
+### Features
+
+* add TASKBANDIT_BETA_SIGNUP_URL for beta sign-up link on login page ([#551](https://github.com/kriziw/TaskBandit/issues/551)) ([7dce8cd](https://github.com/kriziw/TaskBandit/commit/7dce8cd9063b7d41fb63544545c1777675386177))
+* **rewards:** gate rewards behind rewards_manage feature flag; fix UI layout and access control ([#548](https://github.com/kriziw/TaskBandit/issues/548)) ([350affa](https://github.com/kriziw/TaskBandit/commit/350affac6c042e49f7605a7d0d45095e51f0f44a))
+
 ## [1.2.1](https://github.com/kriziw/TaskBandit/compare/v1.2.0...v1.2.1) (2026-05-29)
 
 
