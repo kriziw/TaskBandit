@@ -19,6 +19,7 @@ import com.taskbandit.app.mobile.MobileChore
 import com.taskbandit.app.mobile.MobileChoreSubmissionDraft
 import com.taskbandit.app.mobile.MobileChoreTemplate
 import com.taskbandit.app.mobile.MobileCompletionMilestone
+import com.taskbandit.app.mobile.MobileFeatureAccess
 import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
