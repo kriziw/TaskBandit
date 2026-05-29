@@ -427,7 +427,7 @@ internal fun DashboardScreen(
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val canUseQuickLog = isCreatorRole && featureAccess.quickLog
-    val canUseRewards = featureAccess.rewardsManage || hostedSubscription.featureAccess.rewardsManage
+    val canUseRewards = featureAccess.rewardsManage
     val isNewMobileUi = true
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
