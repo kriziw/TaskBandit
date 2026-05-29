@@ -735,6 +735,8 @@ export type CreateChoreInstanceInput = {
 export type BootstrapStatus = {
   isBootstrapped: boolean;
   householdCount: number;
+  /** URL of the control plane public-site register page. When set in hosted mode, the login panel shows a "Request access" link. */
+  betaSignupUrl?: string | null;
 };
 
 export type BootstrapHouseholdInput = {

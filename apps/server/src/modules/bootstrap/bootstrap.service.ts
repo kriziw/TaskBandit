@@ -22,14 +22,16 @@ export class BootstrapService implements OnModuleInit {
   }
 
   async getStatus() {
+    const betaSignupUrl = this.appConfigService.betaSignupUrl || null;
     if (this.appConfigService.hostedModeEnabled) {
       return {
         isBootstrapped: true,
         householdCount: 1,
+        betaSignupUrl,
       };
     }
 
-    return this.repository.getBootstrapStatus();
+    return { ...(await this.repository.getBootstrapStatus()), betaSignupUrl };
   }
 
   getStarterTemplateOptions(language: SupportedLanguage) {

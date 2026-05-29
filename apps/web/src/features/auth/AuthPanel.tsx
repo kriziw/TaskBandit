@@ -393,6 +393,15 @@ export function AuthPanel({ workspaceVariant, onNotice }: Props) {
                 {t('auth.sign_up')}
               </button>
             ) : null}
+            {bootstrapStatus?.betaSignupUrl ? (
+              <a
+                className="ghost-button"
+                href={bootstrapStatus.betaSignupUrl}
+                rel="noopener noreferrer"
+              >
+                Request access
+              </a>
+            ) : null}
           </div>
         </form>
       )}
