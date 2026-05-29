@@ -10978,7 +10978,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </div>
                   </div>
                 </article>
-              )}
+              ) : null}
 
               {/* Reject redemption dialog */}
               {rejectDialogRedemptionId && (
@@ -11010,7 +11010,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </div>
                   </div>
                 </dialog>
-              ) : null}
+              )}
 
               <article className="panel page-panel page-settings">
                 <div className="section-heading">
