@@ -262,11 +262,9 @@ internal fun resolveTemplateCreateCapabilities(
     userFeatureAccess: MobileFeatureAccess,
     hostedFeatureAccess: MobileFeatureAccess
 ): TemplateCreateCapabilities {
-    val canManageChores = userFeatureAccess.choresManage || hostedFeatureAccess.choresManage
-    val canManageTemplates = userFeatureAccess.templatesManage || hostedFeatureAccess.templatesManage
     return TemplateCreateCapabilities(
-        canOpenCreateTab = canManageChores,
-        canEditTemplates = canManageTemplates
+        canOpenCreateTab = userFeatureAccess.choresManage,
+        canEditTemplates = userFeatureAccess.templatesManage
     )
 }
 
