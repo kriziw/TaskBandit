@@ -821,7 +821,7 @@ internal fun SettingsReleaseContent(
     }
     OutlinedButton(
         onClick = onCheckForUpdates,
-        enabled = githubCheckDone && !isDownloadingUpdate,
+        enabled = githubCheckDone,
         modifier = Modifier.fillMaxWidth()
     ) {
         Text(
