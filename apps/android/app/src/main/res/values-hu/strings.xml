@@ -487,6 +487,17 @@
     <string name="mobile_rewards_field_eligibility">Jogosultság</string>
     <string name="mobile_rewards_field_max_per_child">Max. beváltás gyermekenként (0 = korlátlan)</string>
     <string name="mobile_rewards_field_cooldown">Várakozási idő (napok)</string>
+    <string name="mobile_rewards_field_workflow_type">Munkafolyamat típusa</string>
+    <string name="mobile_rewards_workflow_standard">Normál</string>
+    <string name="mobile_rewards_workflow_daily_exclusive">Napi exkluzív — dátumonként egy foglalás</string>
+    <string name="mobile_rewards_booked_for_date_by">%1$s le van foglalva – %2$s</string>
+    <string name="mobile_rewards_your_booking_for">A te foglalásod: %1$s</string>
+    <string name="mobile_rewards_reschedule">Átütemezés</string>
+    <string name="mobile_rewards_exclusive_date_taken">%1$s már lefoglalta ezt a dátumot</string>
+    <string name="mobile_rewards_confirm_choose_date">Válassz dátumot</string>
+    <string name="mobile_rewards_reschedule_dialog_title">Foglalás dátumának módosítása</string>
+    <string name="mobile_rewards_reschedule_dialog_new_date">Új dátum</string>
+    <string name="mobile_rewards_reschedule_dialog_confirm">Foglalás frissítése</string>
     <string name="mobile_rewards_operator_managed">Ezt a jutalmat az üzemeltető kezeli, nem szerkeszthető.</string>
     <string name="mobile_rewards_delete_confirm">Törli ezt a jutalmat? Ez nem vonható vissza.</string>
     <string name="mobile_rewards_delete">Jutalom törlése</string>

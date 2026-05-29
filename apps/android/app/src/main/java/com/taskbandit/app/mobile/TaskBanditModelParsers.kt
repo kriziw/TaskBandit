@@ -379,19 +379,37 @@ internal fun parseAchievement(json: JSONObject): MobileAchievement = MobileAchie
     timesEarned = json.optInt("timesEarned")
 )
 
-internal fun parseReward(json: JSONObject): MobileReward = MobileReward(
-    id = json.optString("id"),
-    catalogKey = json.optString("catalogKey").ifBlank { null },
-    isOperatorManaged = json.optBoolean("isOperatorManaged"),
-    isEnabled = json.optBoolean("isEnabled"),
-    title = json.optString("title"),
-    description = json.optString("description").ifBlank { null },
-    category = json.optString("category"),
-    icon = json.optString("icon").ifBlank { null },
-    pointCost = json.optInt("pointCost"),
-    maxRedemptionsPerChild = json.optInt("maxRedemptionsPerChild")
-        .takeIf { json.has("maxRedemptionsPerChild") && !json.isNull("maxRedemptionsPerChild") },
-    cooldownDays = json.optInt("cooldownDays")
-        .takeIf { json.has("cooldownDays") && !json.isNull("cooldownDays") },
-    eligibility = json.optString("eligibility").ifBlank { "ALL" }
-)
+internal fun parseReward(json: JSONObject): MobileReward {
+    val upcomingClaimsJson = json.optJSONArray("upcomingClaims")
+    val upcomingClaims = buildList {
+        if (upcomingClaimsJson != null) {
+            for (i in 0 until upcomingClaimsJson.length()) {
+                val c = upcomingClaimsJson.optJSONObject(i) ?: continue
+                add(MobileUpcomingClaim(
+                    redemptionId = c.optString("redemptionId"),
+                    userId = c.optString("userId"),
+                    displayName = c.optString("displayName"),
+                    targetDate = c.optString("targetDate")
+                ))
+            }
+        }
+    }
+    return MobileReward(
+        id = json.optString("id"),
+        catalogKey = json.optString("catalogKey").ifBlank { null },
+        isOperatorManaged = json.optBoolean("isOperatorManaged"),
+        isEnabled = json.optBoolean("isEnabled"),
+        title = json.optString("title"),
+        description = json.optString("description").ifBlank { null },
+        category = json.optString("category"),
+        icon = json.optString("icon").ifBlank { null },
+        pointCost = json.optInt("pointCost"),
+        maxRedemptionsPerChild = json.optInt("maxRedemptionsPerChild")
+            .takeIf { json.has("maxRedemptionsPerChild") && !json.isNull("maxRedemptionsPerChild") },
+        cooldownDays = json.optInt("cooldownDays")
+            .takeIf { json.has("cooldownDays") && !json.isNull("cooldownDays") },
+        eligibility = json.optString("eligibility").ifBlank { "ALL" },
+        workflowType = json.optString("workflowType").ifBlank { "STANDARD" },
+        upcomingClaims = upcomingClaims
+    )
+}

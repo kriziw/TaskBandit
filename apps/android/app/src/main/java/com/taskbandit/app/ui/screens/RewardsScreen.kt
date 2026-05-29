@@ -56,6 +56,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -147,7 +148,8 @@ internal fun RewardsManagerScreen(
     onToggleReward: (String) -> Unit,
     onApproveRedemption: (String) -> Unit,
     onRejectRedemption: (String, String?) -> Unit,
-    onRedeemReward: (String) -> Unit
+    onRedeemReward: (String, String?) -> Unit,
+    onRescheduleRedemption: (String, String) -> Unit
 ) {
     var activeTab by rememberSaveable { mutableStateOf("shop") }
     var selectedReward by remember { mutableStateOf<MobileReward?>(null) }
@@ -227,28 +229,55 @@ internal fun RewardsManagerScreen(
                     verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     shopRewards.forEach { reward ->
-                        Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
-                            Row(
-                                modifier = Modifier.padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)
-                            ) {
-                                if (!reward.icon.isNullOrBlank()) {
-                                    Text(reward.icon, style = MaterialTheme.typography.headlineSmall)
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(reward.title, style = MaterialTheme.typography.titleSmall)
-                                    Text(
-                                        text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-                                Button(
-                                    onClick = { onRedeemReward(reward.id) },
-                                    enabled = currentUserPoints >= reward.pointCost
+                        val isExclusive = reward.workflowType == "DAILY_EXCLUSIVE"
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            shape = RoundedCornerShape(16.dp)
+                        ) {
+                            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(10.dp)
                                 ) {
-                                    Text(stringResource(R.string.mobile_rewards_redeem))
+                                    if (!reward.icon.isNullOrBlank()) {
+                                        Text(reward.icon, style = MaterialTheme.typography.headlineSmall)
+                                    }
+                                    Column(modifier = Modifier.weight(1f)) {
+                                        Text(reward.title, style = MaterialTheme.typography.titleSmall)
+                                        Text(
+                                            text = "${reward.pointCost} ${stringResource(R.string.mobile_rewards_pts)}",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                    Button(
+                                        onClick = { onRedeemReward(reward.id, null) },
+                                        enabled = currentUserPoints >= reward.pointCost
+                                    ) {
+                                        Text(stringResource(R.string.mobile_rewards_redeem))
+                                    }
+                                }
+                                if (isExclusive) {
+                                    reward.upcomingClaims.forEach { claim ->
+                                        Row(
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.SpaceBetween,
+                                            modifier = Modifier.fillMaxWidth()
+                                        ) {
+                                            Text(
+                                                text = "${formatBookingDate(claim.targetDate)} · ${claim.displayName}",
+                                                style = MaterialTheme.typography.labelSmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                                modifier = Modifier.weight(1f)
+                                            )
+                                            TextButton(
+                                                onClick = { onRescheduleRedemption(claim.redemptionId, claim.targetDate) },
+                                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp)
+                                            ) {
+                                                Text(stringResource(R.string.mobile_rewards_reschedule), style = MaterialTheme.typography.labelSmall)
+                                            }
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -305,7 +334,8 @@ internal fun RewardsManagerScreen(
                             Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                                 Text(redemption.rewardTitle, style = MaterialTheme.typography.titleMedium)
                                 Text(
-                                    text = "${redemption.requestedByName} · ${redemption.pointsDeducted} pts",
+                                    text = "${redemption.requestedByName} · ${redemption.pointsDeducted} pts" +
+                                        (if (redemption.targetDate != null) " · ${formatBookingDate(redemption.targetDate)}" else ""),
                                     style = MaterialTheme.typography.bodySmall,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
@@ -343,7 +373,8 @@ internal fun RewardsManagerScreen(
                         pointCost = input.pointCost,
                         maxRedemptionsPerChild = input.maxRedemptionsPerChild,
                         cooldownDays = input.cooldownDays,
-                        eligibility = input.eligibility
+                        eligibility = input.eligibility,
+                        workflowType = input.workflowType
                     ))
                 } else {
                     onCreateReward(input)
@@ -400,6 +431,8 @@ internal fun RewardEditorSheet(
     var editEligibility by rememberSaveable { mutableStateOf(reward?.eligibility ?: "ALL") }
     var editMaxPerChild by rememberSaveable { mutableStateOf(reward?.maxRedemptionsPerChild?.toString() ?: "") }
     var editCooldownDays by rememberSaveable { mutableStateOf(reward?.cooldownDays?.toString() ?: "") }
+    var editWorkflowType by rememberSaveable { mutableStateOf(reward?.workflowType ?: "STANDARD") }
+    var workflowExpanded by remember { mutableStateOf(false) }
     var categoryExpanded by remember { mutableStateOf(false) }
     val isOperatorManaged = reward?.isOperatorManaged == true
 
@@ -573,6 +606,35 @@ internal fun RewardEditorSheet(
                 singleLine = true
             )
 
+            ExposedDropdownMenuBox(
+                expanded = workflowExpanded,
+                onExpandedChange = { if (!isOperatorManaged) workflowExpanded = it }
+            ) {
+                val workflowLabel = if (editWorkflowType == "DAILY_EXCLUSIVE")
+                    stringResource(R.string.mobile_rewards_workflow_daily_exclusive)
+                else
+                    stringResource(R.string.mobile_rewards_workflow_standard)
+                OutlinedTextField(
+                    value = workflowLabel,
+                    onValueChange = {},
+                    readOnly = true,
+                    label = { Text(stringResource(R.string.mobile_rewards_field_workflow_type)) },
+                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = workflowExpanded) },
+                    modifier = Modifier.fillMaxWidth().menuAnchor(),
+                    enabled = !isOperatorManaged
+                )
+                ExposedDropdownMenu(expanded = workflowExpanded, onDismissRequest = { workflowExpanded = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.mobile_rewards_workflow_standard)) },
+                        onClick = { editWorkflowType = "STANDARD"; workflowExpanded = false }
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.mobile_rewards_workflow_daily_exclusive)) },
+                        onClick = { editWorkflowType = "DAILY_EXCLUSIVE"; workflowExpanded = false }
+                    )
+                }
+            }
+
             if (!isOperatorManaged) {
                 Button(
                     onClick = {
@@ -586,7 +648,8 @@ internal fun RewardEditorSheet(
                                 maxRedemptionsPerChild = editMaxPerChild.toIntOrNull(),
                                 cooldownDays = editCooldownDays.toIntOrNull(),
                                 isEnabled = reward?.isEnabled ?: true,
-                                eligibility = editEligibility
+                                eligibility = editEligibility,
+                                workflowType = editWorkflowType
                             ))
                         }
                     },

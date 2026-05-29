@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { AuthService } from '../auth/auth.service';
 import { HouseholdModule } from '../household/household.module';
+import { RewardsModule } from '../rewards/rewards.module';
 import { SmtpService } from '../settings/smtp.service';
 import { DashboardController } from './dashboard.controller';
 import { DashboardSyncController } from './dashboard-sync.controller';
@@ -15,7 +16,7 @@ import { RuntimeTenantScopeResolverService } from './runtime-tenant-scope-resolv
 import { TenantDataManifestService } from './tenant-data-manifest.service';
 
 @Module({
-  imports: [HouseholdModule],
+  imports: [HouseholdModule, RewardsModule],
   controllers: [DashboardController, DashboardSyncController, HostedPushDiagnosticsController],
   providers: [
     DashboardSyncService,

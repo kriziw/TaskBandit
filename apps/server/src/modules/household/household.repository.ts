@@ -308,7 +308,7 @@ export class HouseholdRepository {
   }
 
   private async importStarterRewards(
-    tx: Prisma.TransactionClient,
+    tx: PrismaExecutor,
     householdId: string,
     locale: SupportedLanguage,
   ) {
@@ -326,13 +326,28 @@ export class HouseholdRepository {
           description: def.description[locale] ?? def.description['en'] ?? null,
           descriptionTranslations: def.description as unknown as Prisma.InputJsonValue,
           category: def.category,
+          eligibility: def.eligibility ?? 'ALL',
           icon: def.icon ?? null,
           pointCost: def.pointCost,
           maxRedemptionsPerChild: def.maxRedemptionsPerChild ?? null,
           cooldownDays: def.cooldownDays ?? null,
+          workflowType: def.workflowType ?? 'STANDARD',
         },
         update: {},
       });
+    }
+  }
+
+  /**
+   * Upserts the full starter-reward catalog for every existing household.
+   * Called at startup so that new catalog entries introduced in a release are
+   * automatically propagated to households that were created before the release.
+   * Uses `update: {}` so user-customised rewards are never overwritten.
+   */
+  async seedCatalogRewardsForAllHouseholds() {
+    const households = await this.prisma.household.findMany({ select: { id: true } });
+    for (const { id: householdId } of households) {
+      await this.importStarterRewards(this.prisma, householdId, fallbackLanguage);
     }
   }
 

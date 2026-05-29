@@ -18,6 +18,7 @@ export class BootstrapService implements OnModuleInit {
 
   async onModuleInit() {
     await this.repository.seedDemoDataIfNeeded(this.appConfigService.seedDemoData);
+    await this.repository.seedCatalogRewardsForAllHouseholds();
   }
 
   async getStatus() {

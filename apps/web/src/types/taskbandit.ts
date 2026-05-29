@@ -304,6 +304,7 @@ export type RewardCategory =
   | 'CUSTOM';
 export type RewardRedemptionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type RewardEligibility = 'CHILD_ONLY' | 'ALL' | 'ADULT_ONLY';
+export type RewardWorkflowType = 'STANDARD' | 'DAILY_EXCLUSIVE';
 
 export type Reward = {
   id: string;
@@ -318,6 +319,16 @@ export type Reward = {
   pointCost: number;
   maxRedemptionsPerChild: number | null;
   cooldownDays: number | null;
+  workflowType: RewardWorkflowType;
+  /** Approved bookings with targetDate >= today, sorted by date ascending. */
+  upcomingClaims: UpcomingClaim[];
+};
+
+export type UpcomingClaim = {
+  redemptionId: string;
+  userId: string;
+  displayName: string;
+  targetDate: string; // 'YYYY-MM-DD'
 };
 
 export type RewardRedemption = {
@@ -330,6 +341,7 @@ export type RewardRedemption = {
   resolvedBy: HouseholdMember | null;
   adminNote: string | null;
   pointsDeducted: number;
+  targetDate: string | null; // 'YYYY-MM-DD', present for DAILY_EXCLUSIVE
 };
 
 export type NotificationDevicePlatform = 'android' | 'web';

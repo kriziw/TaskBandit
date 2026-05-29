@@ -487,6 +487,17 @@
     <string name="mobile_rewards_field_eligibility">Berechtigung</string>
     <string name="mobile_rewards_field_max_per_child">Max. Einl�sungen pro Kind (0 = unbegrenzt)</string>
     <string name="mobile_rewards_field_cooldown">Wartezeit (Tage)</string>
+    <string name="mobile_rewards_field_workflow_type">Workflow-Typ</string>
+    <string name="mobile_rewards_workflow_standard">Standard</string>
+    <string name="mobile_rewards_workflow_daily_exclusive">Täglich exklusiv — eine Buchung pro Datum</string>
+    <string name="mobile_rewards_booked_for_date_by">%1$s gebucht von %2$s</string>
+    <string name="mobile_rewards_your_booking_for">Deine Buchung für %1$s</string>
+    <string name="mobile_rewards_reschedule">Umbuchen</string>
+    <string name="mobile_rewards_exclusive_date_taken">%1$s hat dieses Datum bereits gebucht</string>
+    <string name="mobile_rewards_confirm_choose_date">Datum wählen</string>
+    <string name="mobile_rewards_reschedule_dialog_title">Buchungsdatum ändern</string>
+    <string name="mobile_rewards_reschedule_dialog_new_date">Neues Datum</string>
+    <string name="mobile_rewards_reschedule_dialog_confirm">Buchung aktualisieren</string>
     <string name="mobile_rewards_operator_managed">Diese Belohnung wird vom Betreiber verwaltet und kann nicht bearbeitet werden.</string>
     <string name="mobile_rewards_delete_confirm">Diese Belohnung l�schen? Dies kann nicht r�ckg�ngig gemacht werden.</string>
     <string name="mobile_rewards_delete">Belohnung l�schen</string>

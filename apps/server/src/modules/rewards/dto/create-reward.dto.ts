@@ -1,4 +1,4 @@
-import { RewardCategory, RewardEligibility } from '@prisma/client';
+import { RewardCategory, RewardEligibility, RewardWorkflowType } from '@prisma/client';
 import {
   IsEnum,
   IsInt,
@@ -49,4 +49,8 @@ export class CreateRewardDto {
   @Min(0)
   @Max(365)
   cooldownDays?: number;
+
+  @IsOptional()
+  @IsEnum(RewardWorkflowType)
+  workflowType?: RewardWorkflowType;
 }

@@ -590,6 +590,17 @@
     <string name="mobile_rewards_field_eligibility">Eligibility</string>
     <string name="mobile_rewards_field_max_per_child">Max redemptions per child (0 = unlimited)</string>
     <string name="mobile_rewards_field_cooldown">Cooldown (days)</string>
+    <string name="mobile_rewards_field_workflow_type">Workflow type</string>
+    <string name="mobile_rewards_workflow_standard">Standard</string>
+    <string name="mobile_rewards_workflow_daily_exclusive">Daily exclusive — one booking per date</string>
+    <string name="mobile_rewards_booked_for_date_by">Booked for %1$s by %2$s</string>
+    <string name="mobile_rewards_your_booking_for">Your booking for %1$s</string>
+    <string name="mobile_rewards_reschedule">Reschedule</string>
+    <string name="mobile_rewards_exclusive_date_taken">%1$s already has this date</string>
+    <string name="mobile_rewards_confirm_choose_date">Choose a date</string>
+    <string name="mobile_rewards_reschedule_dialog_title">Change Booking Date</string>
+    <string name="mobile_rewards_reschedule_dialog_new_date">New date</string>
+    <string name="mobile_rewards_reschedule_dialog_confirm">Update Booking</string>
     <string name="mobile_rewards_operator_managed">This reward is managed by the operator and cannot be edited.</string>
     <string name="mobile_rewards_delete_confirm">Delete this reward? This cannot be undone.</string>
     <string name="mobile_rewards_delete">Delete Reward</string>

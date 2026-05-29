@@ -1145,12 +1145,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setRewardForm,
     redeemDialogRewardId,
     setRedeemDialogRewardId,
+    redeemTargetDate,
+    setRedeemTargetDate,
     rejectDialogRedemptionId,
     setRejectDialogRedemptionId,
     rejectDialogNote,
     setRejectDialogNote,
     showAllPointsLedger,
     setShowAllPointsLedger,
+    rescheduleRedemptionId,
+    setRescheduleRedemptionId,
+    rescheduleTargetDate,
+    setRescheduleTargetDate,
   } = useRewardStore();
   const mobileDueEditorInstance =
     payload?.instances.find((instance) => instance.id === mobileDueEditorInstanceId) ?? null;
@@ -1873,6 +1879,26 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     () => payload?.rewards.find((r) => r.id === redeemDialogRewardId) ?? null,
     [payload?.rewards, redeemDialogRewardId],
   );
+  const rescheduleRedemption = useMemo(
+    () => payload?.redemptions.find((r) => r.id === rescheduleRedemptionId) ?? null,
+    [payload?.redemptions, rescheduleRedemptionId],
+  );
+  const todayIso = new Date().toISOString().slice(0, 10);
+  const maxBookingDate = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10);
+
+  function formatBookingDate(dateStr: string): string {
+    const tomorrow = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
+    if (dateStr === todayIso) return t('common.today');
+    if (dateStr === tomorrow) return t('common.tomorrow');
+    const d = new Date(`${dateStr}T00:00:00.000Z`);
+    return d.toLocaleDateString('en-GB', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      timeZone: 'UTC',
+    });
+  }
+
   const rewardsByCategory = useMemo(() => {
     const categories: RewardCategory[] = [
       'SCREEN_TIME',
@@ -1941,6 +1967,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       pointCost: 50,
       maxRedemptionsPerChild: '',
       cooldownDays: '',
+      workflowType: 'STANDARD',
     });
   }
 
@@ -1956,6 +1983,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       maxRedemptionsPerChild:
         reward.maxRedemptionsPerChild != null ? String(reward.maxRedemptionsPerChild) : '',
       cooldownDays: reward.cooldownDays != null ? String(reward.cooldownDays) : '',
+      workflowType: reward.workflowType ?? 'STANDARD',
     });
   }
 
@@ -1972,6 +2000,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         ? Number(rewardForm.maxRedemptionsPerChild)
         : undefined,
       cooldownDays: rewardForm.cooldownDays ? Number(rewardForm.cooldownDays) : undefined,
+      workflowType: rewardForm.workflowType,
     };
     try {
       let updated: Reward;
@@ -2018,8 +2047,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   async function handleRedeemReward() {
     if (!token || !redeemDialogRewardId) return;
+    const isExclusive = redeemDialogReward?.workflowType === 'DAILY_EXCLUSIVE';
+    if (isExclusive && !redeemTargetDate) return;
     try {
-      const redemption = await taskBanditApi.redeemReward(token, language, redeemDialogRewardId);
+      const redemption = await taskBanditApi.redeemReward(
+        token,
+        language,
+        redeemDialogRewardId,
+        undefined,
+        isExclusive ? redeemTargetDate : undefined,
+      );
       updatePayload((c) => ({ ...c, redemptions: [...c.redemptions, redemption] }));
       if (redemption.status === 'APPROVED') {
         updatePayload((c) => ({
@@ -2031,6 +2068,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         }));
       }
       setRedeemDialogRewardId(null);
+      setRedeemTargetDate('');
     } catch (err) {
       setPageError(readErrorMessage(err, t('error.generic')));
     }
@@ -2065,6 +2103,39 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }));
       setRejectDialogRedemptionId(null);
       setRejectDialogNote('');
+    } catch (err) {
+      setPageError(readErrorMessage(err, t('error.generic')));
+    }
+  }
+
+  async function handleRescheduleRedemption() {
+    if (!token || !rescheduleRedemptionId || !rescheduleTargetDate) return;
+    try {
+      const result = await taskBanditApi.rescheduleRedemption(
+        token,
+        language,
+        rescheduleRedemptionId,
+        rescheduleTargetDate,
+      );
+      updatePayload((c) => {
+        const updatedRedemptions = c.redemptions.map((r) => {
+          if (r.id === rescheduleRedemptionId) {
+            // If same ID returned: PENDING→PENDING (date updated in-place)
+            // If different ID returned: APPROVED→CANCELLED (old gets cancelled)
+            return result && result.id === rescheduleRedemptionId
+              ? result
+              : { ...r, status: 'CANCELLED' as const };
+          }
+          return r;
+        });
+        // If the returned redemption is a newly created PENDING (different ID), add it
+        if (result && result.id !== rescheduleRedemptionId) {
+          updatedRedemptions.push(result);
+        }
+        return { ...c, redemptions: updatedRedemptions };
+      });
+      setRescheduleRedemptionId(null);
+      setRescheduleTargetDate('');
     } catch (err) {
       setPageError(readErrorMessage(err, t('error.generic')));
     }
@@ -10186,6 +10257,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         <p className="inline-message">{t('rewards.shop.empty')}</p>
                       ) : (
                         enabledRewards.map((reward) => {
+                          const isExclusive = reward.workflowType === 'DAILY_EXCLUSIVE';
                           const myRedemptionsForReward = myRedemptions.filter(
                             (r) =>
                               r.reward.id === reward.id &&
@@ -10200,13 +10272,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               ? Date.now() - new Date(lastApproved.requestedAtUtc).getTime() <
                                 reward.cooldownDays * 86400_000
                               : false;
-                          const hasPending = myRedemptionsForReward.some(
-                            (r) => r.status === 'PENDING',
-                          );
+                          // For DAILY_EXCLUSIVE, pending doesn't block (user can book multiple dates)
+                          const hasPending =
+                            !isExclusive &&
+                            myRedemptionsForReward.some((r) => r.status === 'PENDING');
                           const reachedLimit =
                             reward.maxRedemptionsPerChild != null &&
                             myRedemptionsForReward.filter((r) => r.status === 'APPROVED').length >=
                               reward.maxRedemptionsPerChild;
+                          const myUpcomingClaims = reward.upcomingClaims.filter(
+                            (c) => c.userId === payload.currentUser.id,
+                          );
+                          const othersUpcomingClaims = reward.upcomingClaims.filter(
+                            (c) => c.userId !== payload.currentUser.id,
+                          );
                           return (
                             <div
                               key={reward.id}
@@ -10247,6 +10326,44 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                   {t('rewards.limit_reached')}
                                 </span>
                               )}
+                              {isExclusive &&
+                                (myUpcomingClaims.length > 0 ||
+                                  othersUpcomingClaims.length > 0) && (
+                                  <div className="reward-upcoming-claims">
+                                    {myUpcomingClaims.map((claim) => (
+                                      <div
+                                        key={claim.redemptionId}
+                                        className="reward-booking-chip reward-booking-chip--mine"
+                                      >
+                                        <span>
+                                          {t('rewards.your_booking_for', {
+                                            date: formatBookingDate(claim.targetDate),
+                                          })}
+                                        </span>
+                                        <button
+                                          type="button"
+                                          className="ghost-button ghost-button--small"
+                                          onClick={() => {
+                                            setRescheduleRedemptionId(claim.redemptionId);
+                                            setRescheduleTargetDate(claim.targetDate);
+                                          }}
+                                        >
+                                          {t('rewards.reschedule')}
+                                        </button>
+                                      </div>
+                                    ))}
+                                    {othersUpcomingClaims.map((claim) => (
+                                      <div key={claim.redemptionId} className="reward-booking-chip">
+                                        <span>
+                                          {t('rewards.booked_for_date_by', {
+                                            date: formatBookingDate(claim.targetDate),
+                                            name: claim.displayName,
+                                          })}
+                                        </span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
                             </div>
                           );
                         })
@@ -10263,7 +10380,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           .sort((a, b) => b.requestedAtUtc.localeCompare(a.requestedAtUtc))
                           .map((r) => (
                             <div key={r.id} className="task-row">
-                              <span className="redemption-reward-title">{r.reward.title}</span>
+                              <span className="redemption-reward-title">
+                                {r.reward.title}
+                                {r.targetDate && (
+                                  <span className="redemption-date-label">
+                                    {' · '}
+                                    {formatBookingDate(r.targetDate)}
+                                  </span>
+                                )}
+                              </span>
                               <span className={`status-badge status-${r.status.toLowerCase()}`}>
                                 {t(`redemption.status.${r.status.toLowerCase()}`)}
                               </span>
@@ -10276,39 +10401,135 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </div>
                   )}
                   {/* Redeem confirmation dialog */}
-                  {redeemDialogReward && (
-                    <dialog className="modal-overlay" open>
-                      <div className="modal-card">
-                        <h3>{t('rewards.confirm_dialog.title')}</h3>
-                        <p>{redeemDialogReward.title}</p>
-                        <p>
-                          {t('rewards.confirm_dialog.cost')}: {redeemDialogReward.pointCost}{' '}
-                          {t('user.points_short')}
-                        </p>
-                        <p>
-                          {t('rewards.confirm_dialog.balance_after')}:{' '}
-                          {payload.currentUser.points - redeemDialogReward.pointCost}{' '}
-                          {t('user.points_short')}
-                        </p>
-                        <div className="modal-actions">
-                          <button
-                            type="button"
-                            className="ghost-button"
-                            onClick={() => setRedeemDialogRewardId(null)}
-                          >
-                            {t('common.cancel')}
-                          </button>
-                          <button
-                            type="button"
-                            className="primary-button"
-                            onClick={() => void handleRedeemReward()}
-                          >
-                            {t('rewards.confirm_dialog.confirm')}
-                          </button>
-                        </div>
-                      </div>
-                    </dialog>
-                  )}
+                  {redeemDialogReward &&
+                    (() => {
+                      const isExclusive = redeemDialogReward.workflowType === 'DAILY_EXCLUSIVE';
+                      const conflictingClaim =
+                        isExclusive && redeemTargetDate
+                          ? redeemDialogReward.upcomingClaims.find(
+                              (c) =>
+                                c.targetDate === redeemTargetDate &&
+                                c.userId !== payload.currentUser.id,
+                            )
+                          : undefined;
+                      return (
+                        <dialog className="modal-overlay" open>
+                          <div className="modal-card">
+                            <h3>{t('rewards.confirm_dialog.title')}</h3>
+                            <p>{redeemDialogReward.title}</p>
+                            {isExclusive && (
+                              <label className="form-field">
+                                <span>{t('rewards.confirm_dialog.choose_date')}</span>
+                                <input
+                                  type="date"
+                                  value={redeemTargetDate}
+                                  min={todayIso}
+                                  max={maxBookingDate}
+                                  onChange={(e) => setRedeemTargetDate(e.target.value)}
+                                />
+                              </label>
+                            )}
+                            {conflictingClaim && (
+                              <p className="inline-message inline-message--warning">
+                                {t('rewards.exclusive_date_taken', {
+                                  name: conflictingClaim.displayName,
+                                })}
+                              </p>
+                            )}
+                            <p>
+                              {t('rewards.confirm_dialog.cost')}: {redeemDialogReward.pointCost}{' '}
+                              {t('user.points_short')}
+                            </p>
+                            <p>
+                              {t('rewards.confirm_dialog.balance_after')}:{' '}
+                              {payload.currentUser.points - redeemDialogReward.pointCost}{' '}
+                              {t('user.points_short')}
+                            </p>
+                            <div className="modal-actions">
+                              <button
+                                type="button"
+                                className="ghost-button"
+                                onClick={() => {
+                                  setRedeemDialogRewardId(null);
+                                  setRedeemTargetDate('');
+                                }}
+                              >
+                                {t('common.cancel')}
+                              </button>
+                              <button
+                                type="button"
+                                className="primary-button"
+                                disabled={isExclusive && (!redeemTargetDate || !!conflictingClaim)}
+                                onClick={() => void handleRedeemReward()}
+                              >
+                                {t('rewards.confirm_dialog.confirm')}
+                              </button>
+                            </div>
+                          </div>
+                        </dialog>
+                      );
+                    })()}
+                  {/* Reschedule booking dialog */}
+                  {rescheduleRedemption &&
+                    (() => {
+                      const rescheduleReward = payload.rewards.find(
+                        (r) => r.id === rescheduleRedemption.reward.id,
+                      );
+                      const rescheduleConflict =
+                        rescheduleReward && rescheduleTargetDate
+                          ? rescheduleReward.upcomingClaims.find(
+                              (c) =>
+                                c.targetDate === rescheduleTargetDate &&
+                                c.userId !== payload.currentUser.id &&
+                                c.redemptionId !== rescheduleRedemptionId,
+                            )
+                          : undefined;
+                      return (
+                        <dialog className="modal-overlay" open>
+                          <div className="modal-card">
+                            <h3>{t('rewards.reschedule_dialog.title')}</h3>
+                            <p>{rescheduleRedemption.reward.title}</p>
+                            <label className="form-field">
+                              <span>{t('rewards.reschedule_dialog.new_date')}</span>
+                              <input
+                                type="date"
+                                value={rescheduleTargetDate}
+                                min={todayIso}
+                                max={maxBookingDate}
+                                onChange={(e) => setRescheduleTargetDate(e.target.value)}
+                              />
+                            </label>
+                            {rescheduleConflict && (
+                              <p className="inline-message inline-message--warning">
+                                {t('rewards.exclusive_date_taken', {
+                                  name: rescheduleConflict.displayName,
+                                })}
+                              </p>
+                            )}
+                            <div className="modal-actions">
+                              <button
+                                type="button"
+                                className="ghost-button"
+                                onClick={() => {
+                                  setRescheduleRedemptionId(null);
+                                  setRescheduleTargetDate('');
+                                }}
+                              >
+                                {t('common.cancel')}
+                              </button>
+                              <button
+                                type="button"
+                                className="primary-button"
+                                disabled={!rescheduleTargetDate || !!rescheduleConflict}
+                                onClick={() => void handleRescheduleRedemption()}
+                              >
+                                {t('rewards.reschedule_dialog.confirm')}
+                              </button>
+                            </div>
+                          </div>
+                        </dialog>
+                      );
+                    })()}
                 </article>
               ) : (
                 /* Parent / Admin view: Reward Manager */
@@ -10437,7 +10658,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               <div key={r.id} className="task-row redemption-row">
                                 <div className="redemption-row-info">
                                   <span className="member-name">{r.requestedBy.displayName}</span>
-                                  <span className="reward-title">{r.reward.title}</span>
+                                  <span className="reward-title">
+                                    {r.reward.title}
+                                    {r.targetDate && (
+                                      <span className="redemption-date-label">
+                                        {' · '}
+                                        {formatBookingDate(r.targetDate)}
+                                      </span>
+                                    )}
+                                  </span>
                                   <span className="redemption-cost">
                                     −{r.pointsDeducted} {t('user.points_short')}
                                   </span>
@@ -10478,33 +10707,83 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             </p>
                           ) : (
                             <div className="rewards-grid">
-                              {enabledRewards.map((reward) => (
-                                <div
-                                  key={reward.id}
-                                  className={`reward-card category-${reward.category.toLowerCase()}`}
-                                >
-                                  <span className="reward-category-icon">
-                                    {categoryEmoji(reward.category)}
-                                  </span>
-                                  <h3 className="reward-title">{reward.title}</h3>
-                                  {reward.description && (
-                                    <p className="reward-description">{reward.description}</p>
-                                  )}
-                                  <div className="reward-footer">
-                                    <span className="reward-cost-badge">
-                                      {reward.pointCost} {t('user.points_short')}
+                              {enabledRewards.map((reward) => {
+                                const isExclusive = reward.workflowType === 'DAILY_EXCLUSIVE';
+                                const myUpcomingClaims = reward.upcomingClaims.filter(
+                                  (c) => c.userId === payload.currentUser.id,
+                                );
+                                const othersUpcomingClaims = reward.upcomingClaims.filter(
+                                  (c) => c.userId !== payload.currentUser.id,
+                                );
+                                return (
+                                  <div
+                                    key={reward.id}
+                                    className={`reward-card category-${reward.category.toLowerCase()}`}
+                                  >
+                                    <span className="reward-category-icon">
+                                      {categoryEmoji(reward.category)}
                                     </span>
-                                    <button
-                                      type="button"
-                                      className="primary-button"
-                                      disabled={payload.currentUser.points < reward.pointCost}
-                                      onClick={() => setRedeemDialogRewardId(reward.id)}
-                                    >
-                                      {t('rewards.redeem')}
-                                    </button>
+                                    <h3 className="reward-title">{reward.title}</h3>
+                                    {reward.description && (
+                                      <p className="reward-description">{reward.description}</p>
+                                    )}
+                                    <div className="reward-footer">
+                                      <span className="reward-cost-badge">
+                                        {reward.pointCost} {t('user.points_short')}
+                                      </span>
+                                      <button
+                                        type="button"
+                                        className="primary-button"
+                                        disabled={payload.currentUser.points < reward.pointCost}
+                                        onClick={() => setRedeemDialogRewardId(reward.id)}
+                                      >
+                                        {t('rewards.redeem')}
+                                      </button>
+                                    </div>
+                                    {isExclusive &&
+                                      (myUpcomingClaims.length > 0 ||
+                                        othersUpcomingClaims.length > 0) && (
+                                        <div className="reward-upcoming-claims">
+                                          {myUpcomingClaims.map((claim) => (
+                                            <div
+                                              key={claim.redemptionId}
+                                              className="reward-booking-chip reward-booking-chip--mine"
+                                            >
+                                              <span>
+                                                {t('rewards.your_booking_for', {
+                                                  date: formatBookingDate(claim.targetDate),
+                                                })}
+                                              </span>
+                                              <button
+                                                type="button"
+                                                className="ghost-button ghost-button--small"
+                                                onClick={() => {
+                                                  setRescheduleRedemptionId(claim.redemptionId);
+                                                  setRescheduleTargetDate(claim.targetDate);
+                                                }}
+                                              >
+                                                {t('rewards.reschedule')}
+                                              </button>
+                                            </div>
+                                          ))}
+                                          {othersUpcomingClaims.map((claim) => (
+                                            <div
+                                              key={claim.redemptionId}
+                                              className="reward-booking-chip"
+                                            >
+                                              <span>
+                                                {t('rewards.booked_for_date_by', {
+                                                  date: formatBookingDate(claim.targetDate),
+                                                  name: claim.displayName,
+                                                })}
+                                              </span>
+                                            </div>
+                                          ))}
+                                        </div>
+                                      )}
                                   </div>
-                                </div>
-                              ))}
+                                );
+                              })}
                             </div>
                           )}
                         </div>
@@ -10641,6 +10920,25 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                   setRewardForm((c) => ({ ...c, cooldownDays: e.target.value }))
                                 }
                               />
+                            </label>
+                            <label>
+                              <span>{t('reward.field.workflow_type')}</span>
+                              <select
+                                value={rewardForm.workflowType}
+                                onChange={(e) =>
+                                  setRewardForm((c) => ({
+                                    ...c,
+                                    workflowType: e.target.value as 'STANDARD' | 'DAILY_EXCLUSIVE',
+                                  }))
+                                }
+                              >
+                                <option value="STANDARD">
+                                  {t('reward.workflow_type.standard')}
+                                </option>
+                                <option value="DAILY_EXCLUSIVE">
+                                  {t('reward.workflow_type.daily_exclusive')}
+                                </option>
+                              </select>
                             </label>
                           </fieldset>
                           {!(selectedReward?.isOperatorManaged ?? false) && (

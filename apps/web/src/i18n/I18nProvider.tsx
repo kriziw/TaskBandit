@@ -19,7 +19,7 @@ const storageKey = 'taskbandit-language';
 type I18nContextValue = {
   language: AppLanguage;
   setLanguage: (language: AppLanguage) => void;
-  t: (key: string) => string;
+  t: (key: string, vars?: Record<string, string>) => string;
 };
 
 const I18nContext = createContext<I18nContextValue | null>(null);
@@ -52,7 +52,15 @@ export function I18nProvider({ children }: { children: ReactNode }) {
   const value: I18nContextValue = {
     language,
     setLanguage,
-    t: (key: string) => dictionaries[language][key] ?? dictionaries[fallbackLanguage][key] ?? key,
+    t: (key: string, vars?: Record<string, string>) => {
+      let text = dictionaries[language][key] ?? dictionaries[fallbackLanguage][key] ?? key;
+      if (vars) {
+        for (const [k, v] of Object.entries(vars)) {
+          text = text.split(`{{${k}}}`).join(v);
+        }
+      }
+      return text;
+    },
   };
 
   return <I18nContext.Provider value={value}>{children}</I18nContext.Provider>;
