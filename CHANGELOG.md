@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.2.1](https://github.com/kriziw/TaskBandit/compare/v1.2.0...v1.2.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* **android:** scroll update banner tap directly to GitHub update card ([#546](https://github.com/kriziw/TaskBandit/issues/546)) ([acd7e0c](https://github.com/kriziw/TaskBandit/commit/acd7e0cf10b408f4bd610e92e68d20a60bbcb6f7))
+
 ## [1.2.0](https://github.com/kriziw/TaskBandit/compare/v1.1.4...v1.2.0) (2026-05-29)
 
 
