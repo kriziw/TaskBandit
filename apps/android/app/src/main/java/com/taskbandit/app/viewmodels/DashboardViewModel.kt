@@ -311,6 +311,7 @@ internal fun readAppVersion(context: android.content.Context): String? {
 
 internal data class DashboardUiState(
     val dashboard: MobileDashboard? = null,
+    val featureAccess: MobileFeatureAccess = MobileFeatureAccess(quickLog = false, rewardsManage = false),
     val hostedSubscription: MobileHostedSubscriptionOverview = MobileHostedSubscriptionOverview(),
     val serverReleaseInfo: MobileReleaseInfo? = null,
     val notificationDevices: List<MobileNotificationDevice> = emptyList(),
@@ -420,7 +421,7 @@ internal class DashboardViewModel(
     // ── Feature access helpers ───────────────────────────────────────────────
 
     private fun hasFeatureAccess(check: (com.taskbandit.app.mobile.MobileFeatureAccess) -> Boolean): Boolean {
-        return check(_uiState.value.dashboard?.user?.featureAccess ?: com.taskbandit.app.mobile.MobileFeatureAccess())
+        return check(_uiState.value.featureAccess)
     }
 
     private suspend fun handleUnauthorized(throwable: Throwable) {
@@ -488,9 +489,11 @@ internal class DashboardViewModel(
                 widgetStore.saveDashboard(loadedPayload.dashboard, 0)
                 TaskBanditWidgetProvider.refreshAllWidgets(app)
                 sessionStore.saveSession(resolvedBaseUrl, token)
+                val freshFeatureAccess = loadedPayload.dashboard.user.featureAccess
                 _uiState.update { state ->
                     state.copy(
                         dashboard = loadedPayload.dashboard,
+                        featureAccess = freshFeatureAccess,
                         hostedSubscription = loadedPayload.hostedSubscription,
                         serverReleaseInfo = loadedPayload.latestReleaseInfo,
                         notificationDevices = loadedPayload.notificationDevices,
@@ -571,7 +574,8 @@ internal class DashboardViewModel(
         _uiState.update { it.copy(
             dismissedUpdateKey = dismissed ?: "",
             dismissedGithubVersion = dismissedGithub ?: "",
-            dashboard = cached ?: it.dashboard
+            dashboard = cached ?: it.dashboard,
+            featureAccess = cached?.user?.featureAccess ?: it.featureAccess
         ) }
     }
 

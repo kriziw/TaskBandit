@@ -1028,6 +1028,7 @@ private fun TaskBanditApp(
             } else {
                 DashboardScreen(
                     dashboard = dashboardState.dashboard,
+                    featureAccess = dashboardState.featureAccess,
                     hostedSubscription = dashboardState.hostedSubscription,
                     serverUrl = dashboardState.serverUrl.ifBlank { normalizedServerUrl() },
                     currentReleaseLabel = currentReleaseLabel,

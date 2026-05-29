@@ -329,6 +329,7 @@ internal fun formatBookingDate(dateStr: String): String {
 @Composable
 internal fun DashboardScreen(
     dashboard: MobileDashboard?,
+    featureAccess: MobileFeatureAccess,
     hostedSubscription: MobileHostedSubscriptionOverview,
     serverUrl: String,
     currentReleaseLabel: String,
@@ -420,7 +421,6 @@ internal fun DashboardScreen(
 ) {
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
-    val featureAccess = dashboard?.user?.featureAccess ?: MobileFeatureAccess()
     val templateCreateCapabilities = resolveTemplateCreateCapabilities(featureAccess, hostedSubscription.featureAccess)
     val canManageChores = templateCreateCapabilities.canOpenCreateTab
     val canManageTemplates = templateCreateCapabilities.canEditTemplates
