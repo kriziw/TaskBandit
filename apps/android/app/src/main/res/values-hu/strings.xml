@@ -412,7 +412,7 @@
     <!-- Továbbiak lap és másodlagos menü -->
     <string name="mobile_tab_more">Több</string>
     <string name="mobile_more_templates">Sablonok</string>
-    <string name="mobile_more_rewards_manager">Jutalom-kezelő</string>
+    <string name="mobile_more_rewards_manager">Jutalmak</string>
 
     <!-- Sablon-kezelő -->
     <string name="mobile_template_manager_title">Sablon-kezelő</string>
@@ -470,7 +470,7 @@
     <string name="mobile_template_all_groups">Összes</string>
 
     <!-- Jutalom-kezelő (admin) -->
-    <string name="mobile_rewards_manager_title">Jutalom-kezelő</string>
+    <string name="mobile_rewards_manager_title">Jutalmak</string>
     <string name="mobile_rewards_feature_disabled">A jutalmak nem részei a jelenlegi csomagodnak. Vedd fel a kapcsolatot az adminisztrátoroddal a funkció engedélyezéséhez.</string>
     <string name="mobile_rewards_manager_shop_tab">Bolt</string>
     <string name="mobile_rewards_manager_shop_empty">Még nincsenek aktivált jutalmak. Lépj a Katalógus lapra, és aktiválj jutalmakat a háztartásodnak.</string>
