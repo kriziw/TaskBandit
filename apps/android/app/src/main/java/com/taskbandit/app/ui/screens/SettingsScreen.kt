@@ -746,16 +746,10 @@ internal fun SettingsReleaseContent(
     serverUrl: String,
     availableUpdate: MobileReleaseInfo?,
     onDismissUpdate: () -> Unit,
-    visibleGithubUpdate: GitHubReleaseInfo?,
     githubCheckDone: Boolean,
     githubCheckError: Boolean,
     githubLatestVersion: String?,
-    isDownloadingUpdate: Boolean,
-    downloadProgress: Float,
-    downloadError: Boolean,
     onCheckForUpdates: () -> Unit,
-    onDismissGithubUpdate: () -> Unit,
-    onDownloadAndInstall: (GitHubReleaseInfo) -> Unit
 ) {
     val isUpToDate = githubCheckDone &&
         !githubCheckError &&
@@ -846,57 +840,69 @@ internal fun SettingsReleaseContent(
             }
         }
     }
-    if (visibleGithubUpdate != null) {
-        Card(
-            colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
-            border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
-        ) {
-            Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(text = stringResource(R.string.mobile_github_update_available_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+}
+
+@Composable
+internal fun SettingsGithubUpdateCard(
+    update: GitHubReleaseInfo,
+    currentReleaseLabel: String,
+    isDownloadingUpdate: Boolean,
+    downloadProgress: Float,
+    downloadError: Boolean,
+    onDismissGithubUpdate: () -> Unit,
+    onDownloadAndInstall: (GitHubReleaseInfo) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Card(
+        modifier = modifier,
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.4f)),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+    ) {
+        Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(text = stringResource(R.string.mobile_github_update_available_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text(
+                text = stringResource(R.string.mobile_github_update_available_subtitle, "v${BuildConfig.TASKBANDIT_RELEASE_VERSION}", "v${update.version}"),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            if (update.body.isNotBlank()) {
                 Text(
-                    text = stringResource(R.string.mobile_github_update_available_subtitle, "v${BuildConfig.TASKBANDIT_RELEASE_VERSION}", "v${visibleGithubUpdate.version}"),
+                    text = update.body.trim(),
                     style = MaterialTheme.typography.bodySmall,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
-                if (visibleGithubUpdate.body.isNotBlank()) {
+            }
+            if (isDownloadingUpdate) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    LinearProgressIndicator(
+                        progress = { downloadProgress },
+                        modifier = Modifier.fillMaxWidth()
+                    )
                     Text(
-                        text = visibleGithubUpdate.body.trim(),
-                        style = MaterialTheme.typography.bodySmall,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                        text = stringResource(R.string.mobile_github_downloading, (downloadProgress * 100).toInt()),
+                        style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                 }
-                if (isDownloadingUpdate) {
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        LinearProgressIndicator(
-                            progress = { downloadProgress },
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                        Text(
-                            text = stringResource(R.string.mobile_github_downloading, (downloadProgress * 100).toInt()),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                        )
+            } else {
+                if (downloadError) {
+                    Text(
+                        text = stringResource(R.string.mobile_github_download_failed),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.error
+                    )
+                }
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Button(
+                        onClick = { onDownloadAndInstall(update) },
+                        modifier = Modifier.weight(1f)
+                    ) {
+                        Text(stringResource(R.string.mobile_github_download_install, "v${update.version}"))
                     }
-                } else {
-                    if (downloadError) {
-                        Text(
-                            text = stringResource(R.string.mobile_github_download_failed),
-                            style = MaterialTheme.typography.bodySmall,
-                            color = MaterialTheme.colorScheme.error
-                        )
-                    }
-                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Button(
-                            onClick = { onDownloadAndInstall(visibleGithubUpdate) },
-                            modifier = Modifier.weight(1f)
-                        ) {
-                            Text(stringResource(R.string.mobile_github_download_install, "v${visibleGithubUpdate.version}"))
-                        }
-                        TextButton(onClick = onDismissGithubUpdate) {
-                            Text(stringResource(R.string.mobile_update_dismiss))
-                        }
+                    TextButton(onClick = onDismissGithubUpdate) {
+                        Text(stringResource(R.string.mobile_update_dismiss))
                     }
                 }
             }
