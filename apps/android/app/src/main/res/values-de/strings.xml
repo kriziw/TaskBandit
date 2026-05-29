@@ -412,7 +412,7 @@
     <!-- Mehr-Tab und Sekund�rmen� -->
     <string name="mobile_tab_more">Mehr</string>
     <string name="mobile_more_templates">Vorlagen</string>
-    <string name="mobile_more_rewards_manager">Belohnungs-Manager</string>
+    <string name="mobile_more_rewards_manager">Belohnungen</string>
 
     <!-- Vorlagen-Manager -->
     <string name="mobile_template_manager_title">Vorlagen-Manager</string>
@@ -470,7 +470,7 @@
     <string name="mobile_template_all_groups">Alle</string>
 
     <!-- Belohnungs-Manager (Admin) -->
-    <string name="mobile_rewards_manager_title">Belohnungs-Manager</string>
+    <string name="mobile_rewards_manager_title">Belohnungen</string>
     <string name="mobile_rewards_feature_disabled">Belohnungen sind in deinem aktuellen Paket nicht enthalten. Wende dich an deinen Administrator, um diese Funktion zu aktivieren.</string>
     <string name="mobile_rewards_manager_shop_tab">Shop</string>
     <string name="mobile_rewards_manager_shop_empty">Noch keine Belohnungen aktiviert. Gehe zum Katalog, um Belohnungen f�r deinen Haushalt zu aktivieren.</string>
