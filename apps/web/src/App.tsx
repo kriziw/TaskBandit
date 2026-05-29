@@ -10547,7 +10547,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   className={`panel page-panel page-rewards${rewardsManagerTab === 'catalogue' ? ' panel-wide' : ''}`}
                 >
                   <div
-                    className={rewardsManagerTab === 'catalogue' ? 'template-admin-layout' : 'stack-list'}
+                    className={
+                      rewardsManagerTab === 'catalogue' ? 'template-admin-layout' : 'stack-list'
+                    }
                     data-has-selection={selectedReward || isCreatingNewReward ? 'true' : 'false'}
                   >
                     {/* Left: catalogue + approvals */}
