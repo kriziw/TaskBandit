@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.2.0](https://github.com/kriziw/TaskBandit/compare/v1.1.4...v1.2.0) (2026-05-29)
+
+
+### Features
+
+* **rewards:** DAILY_EXCLUSIVE workflow type + 20 new starter rewards ([#543](https://github.com/kriziw/TaskBandit/issues/543)) ([99f0914](https://github.com/kriziw/TaskBandit/commit/99f0914e1b19e20cd8f6c43d7f9baf3fb9e4d20e))
+
 ## [1.1.4](https://github.com/kriziw/TaskBandit/compare/v1.1.3...v1.1.4) (2026-05-28)
 
 
