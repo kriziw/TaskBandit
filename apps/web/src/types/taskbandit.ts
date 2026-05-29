@@ -40,6 +40,7 @@ export type AuthenticatedUser = {
     external_completion: boolean;
     deferred_follow_up_control: boolean;
     quick_log: boolean;
+    rewards_manage: boolean;
   };
 };
 

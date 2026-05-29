@@ -73,7 +73,8 @@ internal fun parseFeatureAccessCached(entry: JSONObject): MobileFeatureAccess = 
     followUpAutomation = entry.optBoolean("followUpAutomation", true),
     externalCompletion = entry.optBoolean("externalCompletion", true),
     deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", true),
-    quickLog = entry.optBoolean("quickLog", true)
+    quickLog = entry.optBoolean("quickLog", true),
+    rewardsManage = entry.optBoolean("rewardsManage", true)
 )
 
 internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess {
@@ -89,7 +90,8 @@ internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess 
         followUpAutomation = entry.optBoolean("follow_up_automation", true),
         externalCompletion = entry.optBoolean("external_completion", true),
         deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true),
-        quickLog = entry.optBoolean("quick_log", true)
+        quickLog = entry.optBoolean("quick_log", true),
+        rewardsManage = entry.optBoolean("rewards_manage", true)
     )
 }
 

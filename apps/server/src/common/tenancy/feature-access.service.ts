@@ -13,6 +13,7 @@ export const packageFeatureIds = [
   'external_completion',
   'deferred_follow_up_control',
   'quick_log',
+  'rewards_manage',
 ] as const;
 
 export type PackageFeatureId = (typeof packageFeatureIds)[number];
