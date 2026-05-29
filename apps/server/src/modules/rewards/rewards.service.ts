@@ -22,7 +22,12 @@ function formatDateLabel(dateStr: string): string {
   const tomorrowStr = new Date(Date.now() + 86_400_000).toISOString().slice(0, 10);
   if (dateStr === todayStr) return 'today';
   if (dateStr === tomorrowStr) return 'tomorrow';
-  return d.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: 'UTC' });
+  return d.toLocaleDateString('en-GB', {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    timeZone: 'UTC',
+  });
 }
 
 @Injectable()
@@ -255,7 +260,8 @@ export class RewardsService {
 
     // On admin approval of an exclusive reward, broadcast to all other household members
     if (dto.approved && redemption.reward.workflowType === RewardWorkflowType.DAILY_EXCLUSIVE) {
-      const rawTargetDate = (redemption as typeof redemption & { targetDate?: Date | null }).targetDate;
+      const rawTargetDate = (redemption as typeof redemption & { targetDate?: Date | null })
+        .targetDate;
       const label = rawTargetDate
         ? formatDateLabel(rawTargetDate.toISOString().slice(0, 10))
         : 'a date';
@@ -280,14 +286,20 @@ export class RewardsService {
     // Verify the redemption belongs to this household
     const redemption = await this.repository.getRedemptionById(redemptionId, user.householdId);
     if (!redemption) {
-      throw new NotFoundException({ code: 'redemption_not_found', message: 'Redemption not found.' });
+      throw new NotFoundException({
+        code: 'redemption_not_found',
+        message: 'Redemption not found.',
+      });
     }
 
     // Only the original claimer or an admin/parent can reschedule
     const isOwner = redemption.requestedById === user.id;
     const isAdminOrParent = user.role === 'admin' || user.role === 'parent';
     if (!isOwner && !isAdminOrParent) {
-      throw new ForbiddenException({ code: 'not_your_redemption', message: 'You can only reschedule your own bookings.' });
+      throw new ForbiddenException({
+        code: 'not_your_redemption',
+        message: 'You can only reschedule your own bookings.',
+      });
     }
 
     const tenantId = await this.repository.getTenantIdForHousehold(user.householdId);

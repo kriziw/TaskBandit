@@ -303,13 +303,25 @@ export class RewardsRepository {
       include: { reward: true },
     });
     if (!existing) {
-      throw new NotFoundException({ code: 'redemption_not_found', message: 'Redemption not found.' });
+      throw new NotFoundException({
+        code: 'redemption_not_found',
+        message: 'Redemption not found.',
+      });
     }
 
     // Check no other APPROVED booking already exists for the new date (excluding current).
-    const conflict = await this.getRedemptionForDate(existing.rewardId, input.householdId, input.newTargetDate);
+    const conflict = await this.getRedemptionForDate(
+      existing.rewardId,
+      input.householdId,
+      input.newTargetDate,
+    );
     if (conflict && conflict.id !== input.redemptionId) {
-      return { conflict: true, conflictOwner: conflict.requestedBy.displayName, redemption: null, needsApproval: false };
+      return {
+        conflict: true,
+        conflictOwner: conflict.requestedBy.displayName,
+        redemption: null,
+        needsApproval: false,
+      };
     }
 
     if (existing.status === RewardRedemptionStatus.PENDING) {
@@ -359,10 +371,18 @@ export class RewardsRepository {
           include: { reward: true, requestedBy: true },
         });
       });
-      return { conflict: false, conflictOwner: null, redemption: newRedemption, needsApproval: true };
+      return {
+        conflict: false,
+        conflictOwner: null,
+        redemption: newRedemption,
+        needsApproval: true,
+      };
     }
 
-    throw new NotFoundException({ code: 'redemption_not_reschedulable', message: 'Only PENDING or APPROVED redemptions can be rescheduled.' });
+    throw new NotFoundException({
+      code: 'redemption_not_reschedulable',
+      message: 'Only PENDING or APPROVED redemptions can be rescheduled.',
+    });
   }
 
   async countChildRedemptions(rewardId: string, userId: string): Promise<number> {
@@ -468,7 +488,15 @@ export class RewardsRepository {
     });
 
     for (const recipient of recipients) {
-      await this.enqueuePushNotification(recipient.tenantId, householdId, recipient.id, type, title, message, entityId);
+      await this.enqueuePushNotification(
+        recipient.tenantId,
+        householdId,
+        recipient.id,
+        type,
+        title,
+        message,
+        entityId,
+      );
     }
   }
 
@@ -484,7 +512,15 @@ export class RewardsRepository {
       select: { id: true, tenantId: true },
     });
     for (const member of members) {
-      await this.enqueuePushNotification(member.tenantId, householdId, member.id, type, title, message, entityId);
+      await this.enqueuePushNotification(
+        member.tenantId,
+        householdId,
+        member.id,
+        type,
+        title,
+        message,
+        entityId,
+      );
     }
   }
 

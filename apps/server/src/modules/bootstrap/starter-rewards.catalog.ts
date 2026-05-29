@@ -298,7 +298,7 @@ export const starterRewardCatalog: StarterRewardCatalog = [
       hu: 'Fürdés kihagyása',
     },
     description: {
-      en: "No bath or shower required tonight.",
+      en: 'No bath or shower required tonight.',
       de: 'Heute Abend musst du nicht baden oder duschen.',
       hu: 'Ma este kihagyhatod a fürdést.',
     },
