@@ -411,6 +411,7 @@ export class DashboardService {
         activeFallbackMemberCount: membersUsingEmailFallback,
         workerIntervalMs: this.appConfigService.emailDeliveryIntervalMs,
       },
+      betaSignupEnabled: this.appConfigService.betaSignupEnabled,
     };
   }
 

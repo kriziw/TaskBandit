@@ -3,8 +3,9 @@ import { useI18n } from '../../i18n/I18nProvider';
 import { taskBanditApi } from '../../api/taskbanditApi';
 import { useAuthStore, type WorkspaceVariant } from '../../stores/authStore';
 import type { SignupInput } from '../../types/taskbandit';
+import { BetaSignupForm } from '../beta-signup/BetaSignupForm';
 
-type AuthPanelMode = 'sign_in' | 'password_reset_request' | 'sign_up';
+type AuthPanelMode = 'sign_in' | 'password_reset_request' | 'sign_up' | 'request_access';
 
 interface Props {
   workspaceVariant: WorkspaceVariant;
@@ -171,9 +172,50 @@ export function AuthPanel({ workspaceVariant, onNotice }: Props) {
     );
   }
 
+  const betaSignupEnabled = bootstrapStatus?.betaSignupEnabled ?? false;
+  const [betaSignupSuccess, setBetaSignupSuccess] = useState(false);
+
   // Bootstrap form is handled by App.tsx; this component only renders the login panel
   if (bootstrapStatus?.isBootstrapped === false) {
     return null;
+  }
+
+  if (authPanelMode === 'request_access') {
+    return (
+      <article className="panel login-panel">
+        <div className="section-heading">
+          <h2>{betaSignupSuccess ? 'Request submitted' : 'Request access'}</h2>
+          {!betaSignupSuccess && (
+            <span className="section-kicker">Beta programme</span>
+          )}
+        </div>
+        {betaSignupSuccess ? (
+          <>
+            <p className="inline-message">
+              Thanks for signing up! We'll review your request and email you once a decision has
+              been made.
+            </p>
+            <div className="button-row">
+              <button
+                className="ghost-button"
+                type="button"
+                onClick={() => {
+                  setBetaSignupSuccess(false);
+                  setAuthPanelMode('sign_in');
+                }}
+              >
+                Back to sign in
+              </button>
+            </div>
+          </>
+        ) : (
+          <BetaSignupForm
+            onSuccess={() => setBetaSignupSuccess(true)}
+            onCancel={() => setAuthPanelMode('sign_in')}
+          />
+        )}
+      </article>
+    );
   }
 
   return (
@@ -391,6 +433,19 @@ export function AuthPanel({ workspaceVariant, onNotice }: Props) {
                 }}
               >
                 {t('auth.sign_up')}
+              </button>
+            ) : null}
+            {betaSignupEnabled ? (
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={isAuthenticating}
+                onClick={() => {
+                  setAuthPanelMode('request_access');
+                  setLoginError(null);
+                }}
+              >
+                Request access
               </button>
             ) : null}
           </div>

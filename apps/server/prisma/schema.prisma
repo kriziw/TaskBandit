@@ -162,6 +162,8 @@ model Tenant {
   slug         String               @unique
   displayName  String
   createdAtUtc DateTime             @default(now())
+  isBeta                Boolean  @default(false)
+  betaSignupRequestId   String?  @db.Uuid
   household    Household?
   members      User[]
   attachments  ChoreAttachment[]
@@ -643,4 +645,37 @@ model RewardRedemption {
   @@index([householdId, requestedAtUtc])
   @@index([requestedById, requestedAtUtc])
   @@index([tenantId, requestedAtUtc])
+}
+
+enum BetaSignupStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
+model BetaSignupRequest {
+  id                    String           @id @default(uuid()) @db.Uuid
+  email                 String           @unique
+  displayName           String
+  phone                 String
+  householdName         String
+  householdSizeEstimate Int?
+  billingAddressLine1   String
+  billingCity           String
+  billingPostalCode     String
+  billingCountry        String
+  message               String?
+  status                BetaSignupStatus @default(PENDING)
+  rejectionReason       String?
+  packageCode           String?
+  createdAtUtc          DateTime         @default(now())
+  reviewedAtUtc         DateTime?
+  provisionedTenantId   String?          @db.Uuid
+
+  @@index([status, createdAtUtc])
+}
+
+model BetaSignupSettings {
+  id                 Int    @id @default(1)
+  defaultPackageCode String @default("free")
 }

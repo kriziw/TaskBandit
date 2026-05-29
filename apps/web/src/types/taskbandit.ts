@@ -439,6 +439,7 @@ export type AdminSystemStatus = {
     activeFallbackMemberCount: number;
     workerIntervalMs: number;
   };
+  betaSignupEnabled: boolean;
 };
 
 export type BackupReadiness = {
@@ -735,6 +736,7 @@ export type CreateChoreInstanceInput = {
 export type BootstrapStatus = {
   isBootstrapped: boolean;
   householdCount: number;
+  betaSignupEnabled: boolean;
 };
 
 export type BootstrapHouseholdInput = {
@@ -791,4 +793,54 @@ export type DashboardPayload = {
   achievements: Achievement[];
   rewards: Reward[];
   redemptions: RewardRedemption[];
+};
+
+// ---------------------------------------------------------------------------
+// Beta signup
+// ---------------------------------------------------------------------------
+
+export type BetaSignupStatus = 'PENDING' | 'APPROVED' | 'REJECTED';
+
+export type BetaSignupRequest = {
+  id: string;
+  email: string;
+  displayName: string;
+  phone: string;
+  householdName: string;
+  householdSizeEstimate: number | null;
+  billingAddressLine1: string;
+  billingCity: string;
+  billingPostalCode: string;
+  billingCountry: string;
+  message: string | null;
+  status: BetaSignupStatus;
+  rejectionReason: string | null;
+  packageCode: string | null;
+  createdAtUtc: string;
+  reviewedAtUtc: string | null;
+  provisionedTenantId: string | null;
+};
+
+export type BetaSignupSettings = {
+  id: number;
+  defaultPackageCode: string;
+  availablePackages: string[];
+};
+
+export type BetaSignupSubmitInput = {
+  email: string;
+  displayName: string;
+  phone: string;
+  householdName: string;
+  householdSizeEstimate?: number;
+  billingAddressLine1: string;
+  billingCity: string;
+  billingPostalCode: string;
+  billingCountry: string;
+  message?: string;
+};
+
+export type GraduateBetaTenantsResult = {
+  succeeded: string[];
+  failed: Array<{ tenantId: string; reason: string }>;
 };

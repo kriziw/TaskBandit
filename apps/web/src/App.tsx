@@ -3,6 +3,7 @@ import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { taskBanditApi, TaskBanditApiError } from './api/taskbanditApi';
 import { DashboardCard } from './components/DashboardCard';
 import { AuthPanel } from './features/auth/AuthPanel';
+import { BetaSignupRequestsPanel } from './features/beta-signup/BetaSignupRequestsPanel';
 import { useAuthStore } from './stores/authStore';
 import { useDashboardStore } from './stores/dashboardStore';
 import {
@@ -570,6 +571,7 @@ function resolveWorkspaceRouteFromPage(page: WorkspacePage): WorkspaceRoute {
       return 'settings';
     case 'admin':
     case 'logs':
+    case 'beta-signup':
       return 'ops';
     default:
       return 'home';
@@ -2496,6 +2498,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     if (showAdminOps) {
       pages.push({ key: 'admin', label: t('nav.ops') });
     }
+    if (payload.systemStatus?.betaSignupEnabled) {
+      pages.push({ key: 'beta-signup', label: 'Beta Requests' });
+    }
     return pages;
   }, [canUseRewards, isClientMobileViewport, payload, showAdminOps, showTemplateManager, t]);
   const mobileBottomNavPages = useMemo<Array<{ key: string; label: string }>>(
@@ -2548,6 +2553,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     settings: t('page.settings_description'),
     admin: t('page.ops_description'),
     logs: t('page.ops_description'),
+    'beta-signup': t('page.ops_description'),
   };
   const activePageDescription = isAdminVariantAccessDenied
     ? t('workspace.admin_only_body')
@@ -3879,7 +3885,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         language,
         workspaceVariant,
       );
-      authSetBootstrapStatus({ isBootstrapped: true, householdCount: 1 });
+      authSetBootstrapStatus({ isBootstrapped: true, householdCount: 1, betaSignupEnabled: false });
       setNotice(t('bootstrap.created'));
     } catch (error) {
       setPageError(readErrorMessage(error, t('bootstrap.create_failed')));
@@ -8692,6 +8698,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </div>
                   )}
                 </article>
+              ) : null}
+
+              {activePage === 'beta-signup' && payload.systemStatus?.betaSignupEnabled ? (
+                <BetaSignupRequestsPanel internalToken="" />
               ) : null}
 
               {payload.currentUser.role === 'admin' && settingsDraft ? (

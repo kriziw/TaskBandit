@@ -8,5 +8,6 @@ import { BootstrapService } from './bootstrap.service';
   imports: [AuthModule, HouseholdModule],
   controllers: [BootstrapController],
   providers: [BootstrapService],
+  exports: [BootstrapService],
 })
 export class BootstrapModule {}

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { normalizeTenantPathPrefix } from '../http/path-routing.util';
 import { OidcConfig } from './oidc-config.type';
+import { SmtpSettings } from '../../modules/settings/smtp.service';
 
 type FirebaseServiceAccount = {
   projectId: string;
@@ -338,6 +339,37 @@ export class AppConfigService {
 
   get hostedModeEnabled(): boolean {
     return this.configService.get<string>('TASKBANDIT_HOSTED_MODE', 'false') === 'true';
+  }
+
+  get betaSignupEnabled(): boolean {
+    return this.configService.get<string>('TASKBANDIT_BETA_SIGNUP_ENABLED', 'false') === 'true';
+  }
+
+  get systemSmtpConfig(): SmtpSettings | null {
+    const host = this.configService.get<string>('TASKBANDIT_SYSTEM_SMTP_HOST', '').trim();
+    const fromEmail = this.configService
+      .get<string>('TASKBANDIT_SYSTEM_SMTP_FROM_EMAIL', '')
+      .trim();
+    if (!host || !fromEmail) return null;
+    const password = this.configService
+      .get<string>('TASKBANDIT_SYSTEM_SMTP_PASSWORD', '')
+      .trim();
+    return {
+      enabled: true,
+      host,
+      port: Number(this.configService.get('TASKBANDIT_SYSTEM_SMTP_PORT') ?? 587),
+      secure:
+        this.configService.get<string>('TASKBANDIT_SYSTEM_SMTP_SECURE', 'false') === 'true',
+      username: this.configService
+        .get<string>('TASKBANDIT_SYSTEM_SMTP_USERNAME', '')
+        .trim(),
+      password,
+      fromEmail,
+      fromName: this.configService
+        .get<string>('TASKBANDIT_SYSTEM_SMTP_FROM_NAME', 'TaskBandit')
+        .trim(),
+      passwordConfigured: Boolean(password),
+    };
   }
 
   get hostedTenantRoutingMode(): 'subdomain' | 'path' {

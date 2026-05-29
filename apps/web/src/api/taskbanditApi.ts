@@ -8,6 +8,10 @@ import type {
   AuthProviders,
   AuthResponse,
   BackupReadiness,
+  BetaSignupRequest,
+  BetaSignupSettings,
+  BetaSignupStatus,
+  BetaSignupSubmitInput,
   BootstrapHouseholdInput,
   BootstrapStarterTemplateOption,
   BootstrapStatus,
@@ -19,6 +23,7 @@ import type {
   CreateHouseholdMemberResult,
   DashboardSummary,
   DashboardSyncToken,
+  GraduateBetaTenantsResult,
   Household,
   HouseholdSettings,
   HostedSubscriptionOverview,
@@ -121,6 +126,30 @@ async function request<T>(path: string, options: RequestOptions): Promise<T> {
   }
 
   return await readJsonResponse<T>(response);
+}
+
+async function requestWithInternalToken<T>(
+  path: string,
+  internalToken: string,
+  options: { method?: 'GET' | 'POST' | 'PATCH'; body?: unknown } = {},
+): Promise<T> {
+  const headers = new Headers({
+    Accept: 'application/json',
+    'x-internal-service-token': internalToken,
+  });
+  if (options.body !== undefined) {
+    headers.set('Content-Type', 'application/json');
+  }
+  const response = await fetch(`${resolveApiBaseUrl()}${path}`, {
+    method: options.method ?? 'GET',
+    headers,
+    body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
+  });
+  if (!response.ok) {
+    const errorDetails = await readErrorDetails(response);
+    throw new TaskBanditApiError(errorDetails.message, response.status, errorDetails.code);
+  }
+  return readJsonResponse<T>(response);
 }
 
 async function readErrorDetails(response: Response): Promise<{ message: string; code?: string }> {
@@ -938,5 +967,78 @@ export const taskBanditApi = {
       language,
       body: { targetDate },
     });
+  },
+
+  // ---------------------------------------------------------------------------
+  // Beta signup — public
+  // ---------------------------------------------------------------------------
+
+  submitBetaSignup(data: BetaSignupSubmitInput) {
+    return request<{ id: string; status: BetaSignupStatus }>('/api/beta-signup', {
+      method: 'POST',
+      language: 'en',
+      body: data,
+    });
+  },
+
+  // ---------------------------------------------------------------------------
+  // Beta signup — admin (internal service token)
+  // ---------------------------------------------------------------------------
+
+  listBetaSignupRequests(internalToken: string, status?: BetaSignupStatus) {
+    const query = status ? `?status=${status}` : '';
+    return requestWithInternalToken<BetaSignupRequest[]>(
+      `/api/beta-signup${query}`,
+      internalToken,
+    );
+  },
+
+  reviewBetaSignupRequest(
+    internalToken: string,
+    id: string,
+    action: 'approve' | 'reject',
+    packageCode?: string,
+    rejectionReason?: string,
+  ) {
+    return requestWithInternalToken<BetaSignupRequest>(
+      `/api/beta-signup/${id}/review`,
+      internalToken,
+      { method: 'POST', body: { action, packageCode, rejectionReason } },
+    );
+  },
+
+  getBetaSignupSettings(internalToken: string) {
+    return requestWithInternalToken<BetaSignupSettings>(
+      '/api/beta-signup/settings',
+      internalToken,
+    );
+  },
+
+  updateBetaSignupSettings(internalToken: string, defaultPackageCode: string) {
+    return requestWithInternalToken<BetaSignupSettings>(
+      '/api/beta-signup/settings',
+      internalToken,
+      { method: 'PATCH', body: { defaultPackageCode } },
+    );
+  },
+
+  graduateBetaTenants(
+    internalToken: string,
+    targetPackageCode: string,
+    tenantIds?: string[],
+  ) {
+    return requestWithInternalToken<GraduateBetaTenantsResult>(
+      '/api/beta-signup/graduate',
+      internalToken,
+      { method: 'POST', body: { targetPackageCode, tenantIds } },
+    );
+  },
+
+  updateBetaTenantPackage(internalToken: string, requestId: string, packageCode: string) {
+    return requestWithInternalToken<BetaSignupRequest>(
+      `/api/beta-signup/${requestId}/package`,
+      internalToken,
+      { method: 'PATCH', body: { packageCode } },
+    );
   },
 };

@@ -4,6 +4,7 @@ import { FeatureAccessService } from '../tenancy/feature-access.service';
 import { HostedRuntimeConfigService } from '../tenancy/hosted-runtime-config.service';
 import { TenantRuntimePolicyService } from '../tenancy/tenant-runtime-policy.service';
 import { TenantContextService } from '../tenancy/tenant-context.service';
+import { ControlPlaneManagementService } from '../tenancy/control-plane-management.service';
 
 @Global()
 @Module({
@@ -13,6 +14,7 @@ import { TenantContextService } from '../tenancy/tenant-context.service';
     HostedRuntimeConfigService,
     FeatureAccessService,
     TenantRuntimePolicyService,
+    ControlPlaneManagementService,
   ],
   exports: [
     AppConfigService,
@@ -20,6 +22,7 @@ import { TenantContextService } from '../tenancy/tenant-context.service';
     HostedRuntimeConfigService,
     FeatureAccessService,
     TenantRuntimePolicyService,
+    ControlPlaneManagementService,
   ],
 })
 export class AppConfigModule {}

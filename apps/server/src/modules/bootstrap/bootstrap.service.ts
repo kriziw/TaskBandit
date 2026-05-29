@@ -22,14 +22,17 @@ export class BootstrapService implements OnModuleInit {
   }
 
   async getStatus() {
+    const betaSignupEnabled = this.appConfigService.betaSignupEnabled;
     if (this.appConfigService.hostedModeEnabled) {
       return {
         isBootstrapped: true,
         householdCount: 1,
+        betaSignupEnabled,
       };
     }
 
-    return this.repository.getBootstrapStatus();
+    const status = await this.repository.getBootstrapStatus();
+    return { ...status, betaSignupEnabled };
   }
 
   getStarterTemplateOptions(language: SupportedLanguage) {
@@ -54,6 +57,18 @@ export class BootstrapService implements OnModuleInit {
       });
     }
 
+    return this.provisionHousehold(dto, language);
+  }
+
+  /**
+   * Provisions a new tenant + household without the self-hosted-mode guards.
+   * Intended for internal callers such as the beta signup approval flow.
+   */
+  async provisionHostedHousehold(dto: BootstrapHouseholdDto, language: SupportedLanguage) {
+    return this.provisionHousehold(dto, language);
+  }
+
+  private async provisionHousehold(dto: BootstrapHouseholdDto, language: SupportedLanguage) {
     const passwordHash = await this.authService.hashPassword(dto.ownerPassword);
 
     return this.repository.bootstrapHousehold(

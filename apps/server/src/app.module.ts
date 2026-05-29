@@ -16,6 +16,7 @@ import { AchievementsModule } from './modules/achievements/achievements.module';
 import { HouseholdModule } from './modules/household/household.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
+import { BetaSignupModule } from './modules/beta-signup/beta-signup.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { RewardsModule } from './modules/rewards/rewards.module';
     GamificationModule,
     AchievementsModule,
     RewardsModule,
+    BetaSignupModule,
   ],
   controllers: [AppController],
 })

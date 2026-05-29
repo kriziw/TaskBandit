@@ -16,7 +16,8 @@ export type WorkspacePage =
   | 'notifications'
   | 'settings'
   | 'admin'
-  | 'logs';
+  | 'logs'
+  | 'beta-signup';
 
 export type OnboardingStep = string;
 export type OnboardingTourMode = 'admin' | 'client' | 'client-mobile';
