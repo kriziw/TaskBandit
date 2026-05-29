@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.1](https://github.com/kriziw/TaskBandit/compare/v1.3.0...v1.3.1) (2026-05-29)
+
+
+### Bug Fixes
+
+* rewards naming and package enforcement ([#552](https://github.com/kriziw/TaskBandit/issues/552)) ([37f7419](https://github.com/kriziw/TaskBandit/commit/37f7419b9d462c9a37dfc8ae003495d0fdf014fc))
+
 ## [1.3.0](https://github.com/kriziw/TaskBandit/compare/v1.2.1...v1.3.0) (2026-05-29)
 
 
