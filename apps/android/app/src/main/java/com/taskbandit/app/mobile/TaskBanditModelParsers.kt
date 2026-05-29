@@ -73,12 +73,12 @@ internal fun parseFeatureAccessCached(entry: JSONObject): MobileFeatureAccess = 
     followUpAutomation = entry.optBoolean("followUpAutomation", true),
     externalCompletion = entry.optBoolean("externalCompletion", true),
     deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", true),
-    quickLog = entry.optBoolean("quickLog", true),
-    rewardsManage = entry.optBoolean("rewardsManage", true)
+    quickLog = entry.optBoolean("quickLog", false),
+    rewardsManage = entry.optBoolean("rewardsManage", false)
 )
 
 internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess {
-    if (entry == null) return MobileFeatureAccess()
+    if (entry == null) return MobileFeatureAccess(quickLog = false, rewardsManage = false)
     return MobileFeatureAccess(
         templatesManage = entry.optBoolean("templates_manage", true),
         choresManage = entry.optBoolean("chores_manage", true),
@@ -90,8 +90,8 @@ internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess 
         followUpAutomation = entry.optBoolean("follow_up_automation", true),
         externalCompletion = entry.optBoolean("external_completion", true),
         deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true),
-        quickLog = entry.optBoolean("quick_log", true),
-        rewardsManage = entry.optBoolean("rewards_manage", true)
+        quickLog = entry.optBoolean("quick_log", false),
+        rewardsManage = entry.optBoolean("rewards_manage", false)
     )
 }
 
