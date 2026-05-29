@@ -340,6 +340,16 @@ export class AppConfigService {
     return this.configService.get<string>('TASKBANDIT_HOSTED_MODE', 'false') === 'true';
   }
 
+  /**
+   * When set, the login page shows a "Request access" link pointing to this URL.
+   * Intended to point to the control plane's public-site register page during
+   * the beta period (e.g. https://signup.taskbandit.app/register).
+   * Only relevant in hosted mode; ignored in self-hosted deployments.
+   */
+  get betaSignupUrl(): string {
+    return this.configService.get<string>('TASKBANDIT_BETA_SIGNUP_URL', '').trim();
+  }
+
   get hostedTenantRoutingMode(): 'subdomain' | 'path' {
     const configuredValue = this.configService
       .get<string>('TASKBANDIT_HOSTED_TENANT_ROUTING_MODE', '')

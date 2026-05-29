@@ -11,6 +11,7 @@ describe("BootstrapService", () => {
   let appConfigService: {
     hostedModeEnabled: boolean;
     seedDemoData: boolean;
+    betaSignupUrl: string;
   };
   let authService: {
     hashPassword: ReturnType<typeof vi.fn>;
@@ -30,7 +31,8 @@ describe("BootstrapService", () => {
     };
     appConfigService = {
       hostedModeEnabled: false,
-      seedDemoData: false
+      seedDemoData: false,
+      betaSignupUrl: '',
     };
     authService = {
       hashPassword: vi.fn().mockResolvedValue("hashed-password")
@@ -52,7 +54,8 @@ describe("BootstrapService", () => {
   it("delegates bootstrap status to the repository for self-hosted runtimes", async () => {
     await expect(service.getStatus()).resolves.toEqual({
       isBootstrapped: false,
-      householdCount: 0
+      householdCount: 0,
+      betaSignupUrl: null,
     });
 
     expect(repository.getBootstrapStatus).toHaveBeenCalledTimes(1);
@@ -63,7 +66,8 @@ describe("BootstrapService", () => {
 
     await expect(service.getStatus()).resolves.toEqual({
       isBootstrapped: true,
-      householdCount: 1
+      householdCount: 1,
+      betaSignupUrl: null,
     });
 
     expect(repository.getBootstrapStatus).not.toHaveBeenCalled();
