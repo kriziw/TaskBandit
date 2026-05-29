@@ -427,6 +427,7 @@ internal fun DashboardScreen(
     val canUseReassignment = featureAccess.reassignment
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val canUseQuickLog = isCreatorRole && featureAccess.quickLog
+    val canUseRewards = featureAccess.rewardsManage || hostedSubscription.featureAccess.rewardsManage
     val isNewMobileUi = true
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
@@ -495,6 +496,12 @@ internal fun DashboardScreen(
         if (activeTab != tab) {
             tabHistory.add(activeTab)
             activeTab = tab
+        }
+    }
+    // If rewards feature gets disabled mid-session, bounce back to chores
+    LaunchedEffect(canUseRewards) {
+        if (!canUseRewards && (activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER)) {
+            activeTab = MobileDashboardTab.CHORES
         }
     }
     fun backWithinDashboard(): Boolean {
@@ -1928,15 +1935,17 @@ internal fun DashboardScreen(
                                 expandedChoreIds = emptySet()
                             }
                         )
-                        MobileTabButton(
-                            modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
-                            label = stringResource(R.string.mobile_tab_rewards),
-                            iconRes = R.drawable.mobile_nav_rewards,
-                            showLabel = isNewMobileUi,
-                            badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
-                            onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
-                        )
+                        if (canUseRewards) {
+                            MobileTabButton(
+                                modifier = Modifier.weight(1f),
+                                selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
+                                label = stringResource(R.string.mobile_tab_rewards),
+                                iconRes = R.drawable.mobile_nav_rewards,
+                                showLabel = isNewMobileUi,
+                                badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
+                                onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
+                            )
+                        }
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
                             selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || showMoreSheet,
@@ -2932,6 +2941,7 @@ internal fun DashboardScreen(
                             allRewards = dashboard?.rewards.orEmpty(),
                             pendingRedemptions = dashboard?.redemptions.orEmpty().filter { it.status == "PENDING" },
                             currentUserPoints = currentUserPoints,
+                            isAdmin = dashboard?.user?.role == "admin",
                             onCreateReward = onCreateReward,
                             onUpdateReward = onUpdateReward,
                             onDeleteReward = onDeleteReward,
@@ -3320,8 +3330,8 @@ private fun ChoreConnectionBanner(message: String) {
 }
 
 @Composable
-internal fun SectionIntro(title: String, body: String, compact: Boolean = false) {
-    Column(verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
+internal fun SectionIntro(title: String, body: String, compact: Boolean = false, modifier: Modifier = Modifier) {
+    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(if (compact) 4.dp else 6.dp)) {
         Text(
             text = title,
             style = if (compact) MaterialTheme.typography.titleMedium else MaterialTheme.typography.titleLarge,

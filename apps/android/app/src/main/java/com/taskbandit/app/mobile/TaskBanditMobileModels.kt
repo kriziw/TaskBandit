@@ -89,7 +89,8 @@ data class MobileFeatureAccess(
     val followUpAutomation: Boolean = true,
     val externalCompletion: Boolean = true,
     val deferredFollowUpControl: Boolean = true,
-    val quickLog: Boolean = true
+    val quickLog: Boolean = true,
+    val rewardsManage: Boolean = true
 )
 
 data class MobileHostedQuotas(

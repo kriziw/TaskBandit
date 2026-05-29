@@ -471,6 +471,7 @@
 
     <!-- Jutalom-kezelő (admin) -->
     <string name="mobile_rewards_manager_title">Jutalom-kezelő</string>
+    <string name="mobile_rewards_feature_disabled">A jutalmak nem részei a jelenlegi csomagodnak. Vedd fel a kapcsolatot az adminisztrátoroddal a funkció engedélyezéséhez.</string>
     <string name="mobile_rewards_manager_shop_tab">Bolt</string>
     <string name="mobile_rewards_manager_shop_empty">Még nincsenek aktivált jutalmak. Lépj a Katalógus lapra, és aktiválj jutalmakat a háztartásodnak.</string>
     <string name="mobile_rewards_your_balance">Egyenleged: %1$d pont</string>

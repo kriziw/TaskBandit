@@ -142,6 +142,7 @@ internal fun RewardsManagerScreen(
     allRewards: List<MobileReward>,
     pendingRedemptions: List<MobileRedemption>,
     currentUserPoints: Int,
+    isAdmin: Boolean = true,
     onCreateReward: (CreateRewardInput) -> Unit,
     onUpdateReward: (String, UpdateRewardInput) -> Unit,
     onDeleteReward: (String) -> Unit,
@@ -171,39 +172,46 @@ internal fun RewardsManagerScreen(
         SectionIntro(
             title = stringResource(R.string.mobile_rewards_manager_title),
             body = stringResource(R.string.mobile_rewards_manager_hint),
-            compact = true
+            compact = true,
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp)
         )
 
-        // Tab row — Shop | Catalogue | Approvals
+        // Tab row — Shop | Catalogue (admin only) | Approvals
         Row(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             if (activeTab == "shop") {
                 Button(onClick = {}, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
                 }
             } else {
                 OutlinedButton(onClick = { activeTab = "shop" }, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab))
+                    Text(stringResource(R.string.mobile_rewards_manager_shop_tab), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
                 }
             }
-            if (activeTab == "catalogue") {
-                Button(onClick = {}, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
-                }
-            } else {
-                OutlinedButton(onClick = { activeTab = "catalogue" }, modifier = Modifier.weight(1f)) {
-                    Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab))
+            if (isAdmin) {
+                if (activeTab == "catalogue") {
+                    Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
+                    }
+                } else {
+                    OutlinedButton(onClick = { activeTab = "catalogue" }, modifier = Modifier.weight(1f)) {
+                        Text(stringResource(R.string.mobile_rewards_manager_catalogue_tab), maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
+                    }
                 }
             }
             val approvalsText = if (pendingRedemptions.isNotEmpty())
                 "${stringResource(R.string.mobile_rewards_manager_approvals_tab)} (${pendingRedemptions.size})"
             else stringResource(R.string.mobile_rewards_manager_approvals_tab)
             if (activeTab == "approvals") {
-                Button(onClick = {}, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+                Button(onClick = {}, modifier = Modifier.weight(1f)) {
+                    Text(approvalsText, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
+                }
             } else {
-                OutlinedButton(onClick = { activeTab = "approvals" }, modifier = Modifier.weight(1f)) { Text(approvalsText) }
+                OutlinedButton(onClick = { activeTab = "approvals" }, modifier = Modifier.weight(1f)) {
+                    Text(approvalsText, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis, softWrap = false)
+                }
             }
         }
 

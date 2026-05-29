@@ -471,6 +471,7 @@
 
     <!-- Belohnungs-Manager (Admin) -->
     <string name="mobile_rewards_manager_title">Belohnungs-Manager</string>
+    <string name="mobile_rewards_feature_disabled">Belohnungen sind in deinem aktuellen Paket nicht enthalten. Wende dich an deinen Administrator, um diese Funktion zu aktivieren.</string>
     <string name="mobile_rewards_manager_shop_tab">Shop</string>
     <string name="mobile_rewards_manager_shop_empty">Noch keine Belohnungen aktiviert. Gehe zum Katalog, um Belohnungen f�r deinen Haushalt zu aktivieren.</string>
     <string name="mobile_rewards_your_balance">Dein Guthaben: %1$d Punkte</string>

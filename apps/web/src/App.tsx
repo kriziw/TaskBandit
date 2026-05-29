@@ -161,6 +161,7 @@ const fullFeatureAccess: AuthenticatedUser['featureAccess'] = {
   external_completion: true,
   deferred_follow_up_control: true,
   quick_log: true,
+  rewards_manage: true,
 };
 
 const historicChoreStates: ChoreState[] = ['completed', 'cancelled'];
@@ -1849,6 +1850,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   );
 
   const isParentOrAdmin = payload?.currentUser.role !== 'child';
+  const isAdmin = payload?.currentUser.role === 'admin';
+  const canUseRewards = hasFeature('rewards_manage');
 
   const enabledRewards = useMemo(() => {
     const all = payload?.rewards ?? [];
@@ -1875,6 +1878,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     () => payload?.rewards.find((r) => r.id === selectedRewardId) ?? null,
     [payload?.rewards, selectedRewardId],
   );
+
+  // Redirect parent off the catalogue tab — they have no access to it
+  useEffect(() => {
+    if (!isAdmin && rewardsManagerTab === 'catalogue') {
+      setRewardsManagerTab('my_shop');
+    }
+  }, [isAdmin, rewardsManagerTab, setRewardsManagerTab]);
   const redeemDialogReward = useMemo(
     () => payload?.rewards.find((r) => r.id === redeemDialogRewardId) ?? null,
     [payload?.rewards, redeemDialogRewardId],
@@ -2460,7 +2470,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       const pages: Array<{ key: WorkspacePage; label: string }> = [
         { key: 'chores', label: t('nav.chores') },
         { key: 'leaderboard', label: t('nav.leaderboard') },
-        { key: 'rewards', label: t('nav.rewards') },
+        ...(canUseRewards ? [{ key: 'rewards' as WorkspacePage, label: t('nav.rewards') }] : []),
         { key: 'settings', label: t('nav.settings') },
       ];
       if (showTemplateManager) {
@@ -2474,7 +2484,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       { key: 'chores', label: t('nav.plan') },
       { key: 'household', label: t('nav.household') },
       { key: 'leaderboard', label: t('nav.leaderboard') },
-      { key: 'rewards', label: t('nav.rewards') },
+      ...(canUseRewards ? [{ key: 'rewards' as WorkspacePage, label: t('nav.rewards') }] : []),
       ...(!payload.hostedSubscription.hostedMode
         ? [{ key: 'notifications' as WorkspacePage, label: t('nav.notifications') }]
         : []),
@@ -2487,15 +2497,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       pages.push({ key: 'admin', label: t('nav.ops') });
     }
     return pages;
-  }, [isClientMobileViewport, payload, showAdminOps, showTemplateManager, t]);
+  }, [canUseRewards, isClientMobileViewport, payload, showAdminOps, showTemplateManager, t]);
   const mobileBottomNavPages = useMemo<Array<{ key: string; label: string }>>(
     () => [
       { key: 'chores', label: t('nav.chores') },
       { key: 'leaderboard', label: t('nav.leaderboard') },
-      { key: 'rewards', label: t('nav.rewards') },
+      ...(canUseRewards ? [{ key: 'rewards', label: t('nav.rewards') }] : []),
       { key: 'more', label: t('nav.more') },
     ],
-    [t],
+    [canUseRewards, t],
   );
 
   useEffect(() => {
@@ -10226,7 +10236,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               ) : null}
 
               {/* ── Rewards page ── */}
-              {!isParentOrAdmin ? (
+              {canUseRewards && !isParentOrAdmin ? (
                 /* Child view: Rewards Shop */
                 <article className="panel page-panel page-rewards">
                   <div className="section-heading">
@@ -10531,11 +10541,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       );
                     })()}
                 </article>
-              ) : (
+              ) : canUseRewards ? (
                 /* Parent / Admin view: Reward Manager */
-                <article className="panel panel-wide page-panel page-rewards">
+                <article
+                  className={`panel page-panel page-rewards${rewardsManagerTab === 'catalogue' ? ' panel-wide' : ''}`}
+                >
                   <div
-                    className="template-admin-layout"
+                    className={rewardsManagerTab === 'catalogue' ? 'template-admin-layout' : 'stack-list'}
                     data-has-selection={selectedReward || isCreatingNewReward ? 'true' : 'false'}
                   >
                     {/* Left: catalogue + approvals */}
@@ -10556,13 +10568,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         >
                           {t('rewards.manager.tab.my_shop')}
                         </button>
-                        <button
-                          type="button"
-                          className={rewardsManagerTab === 'catalogue' ? 'active' : ''}
-                          onClick={() => setRewardsManagerTab('catalogue')}
-                        >
-                          {t('rewards.manager.tab.catalogue')}
-                        </button>
+                        {isAdmin && (
+                          <button
+                            type="button"
+                            className={rewardsManagerTab === 'catalogue' ? 'active' : ''}
+                            onClick={() => setRewardsManagerTab('catalogue')}
+                          >
+                            {t('rewards.manager.tab.catalogue')}
+                          </button>
+                        )}
                         <button
                           type="button"
                           className={rewardsManagerTab === 'approvals' ? 'active' : ''}
@@ -10996,7 +11010,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </div>
                   </div>
                 </dialog>
-              )}
+              ) : null}
 
               <article className="panel page-panel page-settings">
                 <div className="section-heading">
