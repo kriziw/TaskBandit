@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.2](https://github.com/kriziw/TaskBandit/compare/v1.3.1...v1.3.2) (2026-05-29)
+
+
+### Bug Fixes
+
+* enforce package feature restrictions across all clients ([#554](https://github.com/kriziw/TaskBandit/issues/554)) ([b014208](https://github.com/kriziw/TaskBandit/commit/b0142087361ed3fcafd59de86d643ef37ad9b297))
+
 ## [1.3.1](https://github.com/kriziw/TaskBandit/compare/v1.3.0...v1.3.1) (2026-05-29)
 
 
