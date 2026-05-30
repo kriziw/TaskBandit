@@ -259,12 +259,11 @@ internal data class TemplateCreateCapabilities(
 )
 
 internal fun resolveTemplateCreateCapabilities(
-    userFeatureAccess: MobileFeatureAccess,
-    hostedFeatureAccess: MobileFeatureAccess
+    featureAccess: MobileFeatureAccess
 ): TemplateCreateCapabilities {
     return TemplateCreateCapabilities(
-        canOpenCreateTab = userFeatureAccess.choresManage,
-        canEditTemplates = userFeatureAccess.templatesManage
+        canOpenCreateTab = featureAccess.choresManage,
+        canEditTemplates = featureAccess.templatesManage
     )
 }
 

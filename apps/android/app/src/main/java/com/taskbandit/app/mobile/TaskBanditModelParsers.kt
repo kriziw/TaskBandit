@@ -63,33 +63,33 @@ internal fun parseLeaderboardEntry(entry: JSONObject): MobileLeaderboardEntry = 
 // ---------------------------------------------------------------------------
 
 internal fun parseFeatureAccessCached(entry: JSONObject): MobileFeatureAccess = MobileFeatureAccess(
-    templatesManage = entry.optBoolean("templatesManage", true),
-    choresManage = entry.optBoolean("choresManage", true),
-    reassignment = entry.optBoolean("reassignment", true),
-    takeoverDirect = entry.optBoolean("takeoverDirect", true),
-    takeoverRequests = entry.optBoolean("takeoverRequests", true),
-    approvals = entry.optBoolean("approvals", true),
-    proofUploads = entry.optBoolean("proofUploads", true),
-    followUpAutomation = entry.optBoolean("followUpAutomation", true),
-    externalCompletion = entry.optBoolean("externalCompletion", true),
-    deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", true),
+    templatesManage = entry.optBoolean("templatesManage", false),
+    choresManage = entry.optBoolean("choresManage", false),
+    reassignment = entry.optBoolean("reassignment", false),
+    takeoverDirect = entry.optBoolean("takeoverDirect", false),
+    takeoverRequests = entry.optBoolean("takeoverRequests", false),
+    approvals = entry.optBoolean("approvals", false),
+    proofUploads = entry.optBoolean("proofUploads", false),
+    followUpAutomation = entry.optBoolean("followUpAutomation", false),
+    externalCompletion = entry.optBoolean("externalCompletion", false),
+    deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", false),
     quickLog = entry.optBoolean("quickLog", false),
     rewardsManage = entry.optBoolean("rewardsManage", false)
 )
 
 internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess {
-    if (entry == null) return MobileFeatureAccess(quickLog = false, rewardsManage = false)
+    if (entry == null) return MobileFeatureAccess()
     return MobileFeatureAccess(
-        templatesManage = entry.optBoolean("templates_manage", true),
-        choresManage = entry.optBoolean("chores_manage", true),
-        reassignment = entry.optBoolean("reassignment", true),
-        takeoverDirect = entry.optBoolean("takeover_direct", true),
-        takeoverRequests = entry.optBoolean("takeover_requests", true),
-        approvals = entry.optBoolean("approvals", true),
-        proofUploads = entry.optBoolean("proof_uploads", true),
-        followUpAutomation = entry.optBoolean("follow_up_automation", true),
-        externalCompletion = entry.optBoolean("external_completion", true),
-        deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", true),
+        templatesManage = entry.optBoolean("templates_manage", false),
+        choresManage = entry.optBoolean("chores_manage", false),
+        reassignment = entry.optBoolean("reassignment", false),
+        takeoverDirect = entry.optBoolean("takeover_direct", false),
+        takeoverRequests = entry.optBoolean("takeover_requests", false),
+        approvals = entry.optBoolean("approvals", false),
+        proofUploads = entry.optBoolean("proof_uploads", false),
+        followUpAutomation = entry.optBoolean("follow_up_automation", false),
+        externalCompletion = entry.optBoolean("external_completion", false),
+        deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", false),
         quickLog = entry.optBoolean("quick_log", false),
         rewardsManage = entry.optBoolean("rewards_manage", false)
     )

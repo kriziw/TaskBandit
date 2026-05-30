@@ -79,18 +79,18 @@ data class MobileUser(
 )
 
 data class MobileFeatureAccess(
-    val templatesManage: Boolean = true,
-    val choresManage: Boolean = true,
-    val reassignment: Boolean = true,
-    val takeoverDirect: Boolean = true,
-    val takeoverRequests: Boolean = true,
-    val approvals: Boolean = true,
-    val proofUploads: Boolean = true,
-    val followUpAutomation: Boolean = true,
-    val externalCompletion: Boolean = true,
-    val deferredFollowUpControl: Boolean = true,
-    val quickLog: Boolean = true,
-    val rewardsManage: Boolean = true
+    val templatesManage: Boolean = false,
+    val choresManage: Boolean = false,
+    val reassignment: Boolean = false,
+    val takeoverDirect: Boolean = false,
+    val takeoverRequests: Boolean = false,
+    val approvals: Boolean = false,
+    val proofUploads: Boolean = false,
+    val followUpAutomation: Boolean = false,
+    val externalCompletion: Boolean = false,
+    val deferredFollowUpControl: Boolean = false,
+    val quickLog: Boolean = false,
+    val rewardsManage: Boolean = false
 )
 
 data class MobileHostedQuotas(

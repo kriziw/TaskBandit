@@ -892,7 +892,7 @@
   "rewards.reschedule_dialog.new_date": "New date",
   "rewards.reschedule_dialog.confirm": "Update Booking",
 
-  "rewards.manager.title": "Reward Manager",
+  "rewards.manager.title": "Rewards",
   "rewards.manager.tab.catalogue": "Catalogue",
   "rewards.manager.tab.approvals": "Approvals",
   "rewards.manager.add_custom": "Add custom reward",

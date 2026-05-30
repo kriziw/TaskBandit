@@ -702,8 +702,26 @@ function formatReleaseDetails(release: ReleaseInfo) {
   return [commit, image].filter(Boolean).join(' | ');
 }
 
+const featureLabelMap: Record<string, string> = {
+  templates_manage: 'Template management',
+  chores_manage: 'Chore management',
+  reassignment: 'Reassignment',
+  takeover_direct: 'Direct takeover',
+  takeover_requests: 'Takeover requests',
+  approvals: 'Approvals',
+  proof_uploads: 'Proof uploads',
+  follow_up_automation: 'Follow-up automation',
+  external_completion: 'External completion',
+  deferred_follow_up_control: 'Deferred follow-up control',
+  quick_log: 'Quick log',
+  rewards_manage: 'Rewards',
+};
+
 function formatFeatureLabel(featureId: string) {
-  return featureId.replace(/_/g, ' ').replace(/\b\w/g, (value: string) => value.toUpperCase());
+  return (
+    featureLabelMap[featureId] ??
+    featureId.replace(/_/g, ' ').replace(/\b\w/g, (value: string) => value.toUpperCase())
+  );
 }
 
 function formatSubscriptionStatusLabel(status: string | null | undefined) {
@@ -10541,7 +10559,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     })()}
                 </article>
               ) : canUseRewards ? (
-                /* Parent / Admin view: Reward Manager */
+                /* Parent / Admin view: Rewards */
                 <article
                   className={`panel page-panel page-rewards${rewardsManagerTab === 'catalogue' ? ' panel-wide' : ''}`}
                 >
