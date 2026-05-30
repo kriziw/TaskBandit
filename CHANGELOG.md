@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.3](https://github.com/kriziw/TaskBandit/compare/v1.3.2...v1.3.3) (2026-05-30)
+
+
+### Bug Fixes
+
+* feature enforcement hardening — deny-by-default and naming cleanup ([#556](https://github.com/kriziw/TaskBandit/issues/556)) ([220f3cd](https://github.com/kriziw/TaskBandit/commit/220f3cd01c9e3a119bc7a89188182ee10dcb7f87))
+
 ## [1.3.2](https://github.com/kriziw/TaskBandit/compare/v1.3.1...v1.3.2) (2026-05-29)
 
 
