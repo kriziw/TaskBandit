@@ -889,7 +889,7 @@
   "rewards.reschedule_dialog.title": "Foglalás dátumának módosítása",
   "rewards.reschedule_dialog.new_date": "Új dátum",
   "rewards.reschedule_dialog.confirm": "Foglalás frissítése",
-  "rewards.manager.title": "Jutalmak kezelése",
+  "rewards.manager.title": "Jutalmak",
   "rewards.manager.tab.catalogue": "Katalógus",
   "rewards.manager.tab.approvals": "Jóváhagyások",
   "rewards.manager.add_custom": "Egyéni jutalom hozzáadása",

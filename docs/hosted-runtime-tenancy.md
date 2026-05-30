@@ -65,6 +65,20 @@ Hosted push diagnostics note:
   - `POST /internal/runtime/tenants/:tenantId/push/device-tests`
 - targeted device test push requests validate tenant/user/device ownership before enqueueing delivery.
 
+## Package Feature Access
+
+Each hosted tenant's subscription package includes a set of boolean feature flags (`featureAccess`) that gate specific product capabilities. The control plane is the authoritative source; the runtime enforces these flags on every guarded API request.
+
+Key properties of the mechanism:
+
+- **Server-side**: `FeatureGuard` and `@RequiresFeature('feature_id')` decorators re-fetch the tenant's current feature access from the control plane on every request in hosted mode. Plan downgrades take effect immediately — no re-login required.
+- **Client-side (web)**: `currentUser.featureAccess` from `/api/auth/me` is the sole source of truth. The `hostedSubscription` endpoint is informational only and is never used as a gating source.
+- **Client-side (Android)**: `MobileFeatureAccess` is stored as a first-class field in `DashboardUiState` with all flags defaulting to `false`. The app is in a deny-by-default state until the first successful server response arrives.
+- **Caching**: the app server caches the runtime config for up to 5 minutes. A 5-minute stale window follows expiry before the cache is invalidated.
+- **Self-hosted mode**: all 12 features are enabled by default; no control-plane dependency.
+
+See [Package Feature Access](feature-access.md) for the full chain-of-custody documentation including the 12 feature flag IDs, the enforcement architecture, and the steps for adding a new feature.
+
 ## Hosted Template Availability
 
 Hosted tenants should always have starter templates available for chore creation.
