@@ -421,7 +421,7 @@ internal fun DashboardScreen(
 ) {
     val context = LocalContext.current
     val isCreatorRole = dashboard?.user?.role == "admin" || dashboard?.user?.role == "parent"
-    val templateCreateCapabilities = resolveTemplateCreateCapabilities(featureAccess, hostedSubscription.featureAccess)
+    val templateCreateCapabilities = resolveTemplateCreateCapabilities(featureAccess)
     val canManageChores = templateCreateCapabilities.canOpenCreateTab
     val canManageTemplates = templateCreateCapabilities.canEditTemplates
     val canUseReassignment = featureAccess.reassignment

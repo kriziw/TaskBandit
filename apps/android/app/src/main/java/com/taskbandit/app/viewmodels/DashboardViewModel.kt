@@ -312,7 +312,7 @@ internal fun readAppVersion(context: android.content.Context): String? {
 
 internal data class DashboardUiState(
     val dashboard: MobileDashboard? = null,
-    val featureAccess: MobileFeatureAccess = MobileFeatureAccess(quickLog = false, rewardsManage = false),
+    val featureAccess: MobileFeatureAccess = MobileFeatureAccess(),
     val hostedSubscription: MobileHostedSubscriptionOverview = MobileHostedSubscriptionOverview(),
     val serverReleaseInfo: MobileReleaseInfo? = null,
     val notificationDevices: List<MobileNotificationDevice> = emptyList(),
