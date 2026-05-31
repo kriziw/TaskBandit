@@ -223,7 +223,27 @@ import androidx.core.content.FileProvider
 
 // ── Shared composition locals (used throughout the dashboard composable tree) ─
 
-internal val LocalMobileFeatureAccess = compositionLocalOf { MobileFeatureAccess() }
+internal val LocalMobileFeatureAccess = compositionLocalOf {
+    // Default is all-true so Composables that read this ambient outside of a
+    // CompositionLocalProvider (e.g. ChoresScreen previews and standalone use)
+    // are permissive. The actual deny-by-default policy lives in DashboardUiState
+    // (whose initial MobileFeatureAccess() is all-false) and is pushed into this
+    // ambient via the CompositionLocalProvider in DashboardScreen.
+    MobileFeatureAccess(
+        templatesManage = true,
+        choresManage = true,
+        reassignment = true,
+        takeoverDirect = true,
+        takeoverRequests = true,
+        approvals = true,
+        proofUploads = true,
+        followUpAutomation = true,
+        externalCompletion = true,
+        deferredFollowUpControl = true,
+        quickLog = true,
+        rewardsManage = true,
+    )
+}
 internal val LocalIsNewMobileUi = compositionLocalOf { true }
 
 // ── Private types used only within DashboardScreen ───────────────────────────
