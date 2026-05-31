@@ -1699,11 +1699,7 @@ internal fun ChoreCard(
                         }
                     }
                 } else {
-                    Text(
-                        text = stringResource(R.string.mobile_feature_approvals_disabled),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
+                    return@Column
                 }
                 return@Column
             }
@@ -1763,7 +1759,9 @@ internal fun ChoreCard(
                         modifier = Modifier.fillMaxWidth().padding(10.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        if (!canManageTask) {
+                        val isTakeoverPossible = !isAssignedToCurrentUser && !isUnassigned &&
+                            (canUseDirectTakeover || canUseTakeoverRequests)
+                        if (!canManageTask && isTakeoverPossible) {
                             Text(
                                 text = stringResource(R.string.mobile_chore_read_only_hint),
                                 style = MaterialTheme.typography.bodySmall,
@@ -1790,14 +1788,8 @@ internal fun ChoreCard(
                                 }
                             }
                         }
-                        if (chore.requirePhotoProof) {
-                            if (!canUploadProofs) {
-                                Text(
-                                    text = stringResource(R.string.mobile_feature_proof_uploads_disabled),
-                                    style = MaterialTheme.typography.bodySmall,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                                )
-                            } else if (selectedProofCount > 0) {
+                        if (chore.requirePhotoProof && canUploadProofs) {
+                            if (selectedProofCount > 0) {
                                 Text(
                                     text = stringResource(R.string.mobile_selected_photos, selectedProofCount),
                                     style = MaterialTheme.typography.bodySmall,
