@@ -7272,7 +7272,7 @@ export class HouseholdRepository {
       id: request.id,
       choreId: request.choreInstanceId,
       choreTitle: this.composeChoreTitle(localizedTypeTitle, localizedSubtypeLabel),
-      status: request.status.toLowerCase(),
+      status: request.status,
       note: request.note,
       createdAt: request.createdAtUtc,
       respondedAt: request.respondedAtUtc,
@@ -7287,6 +7287,59 @@ export class HouseholdRepository {
         role: request.requested.role.toLowerCase(),
       },
     };
+  }
+
+  async expireStaleTakeoverRequests(input: {
+    now: Date;
+    expiryWindowHours: number;
+    tenantIds: string[];
+  }): Promise<{ expiredCount: number; affectedHouseholdIds: string[] }> {
+    const expiryThreshold = new Date(
+      input.now.getTime() - input.expiryWindowHours * 60 * 60 * 1000,
+    );
+
+    const staleRequests = await this.prisma.choreTakeoverRequest.findMany({
+      where: {
+        householdId: { in: input.tenantIds },
+        status: ChoreTakeoverRequestStatus.PENDING,
+        createdAtUtc: { lte: expiryThreshold },
+      },
+      include: {
+        choreInstance: {
+          include: { template: true, variant: true },
+        },
+        requester: { select: { id: true, displayName: true, role: true } },
+        requested: { select: { id: true, displayName: true, role: true } },
+      },
+    });
+
+    const affectedHouseholdIds = new Set<string>();
+
+    for (const request of staleRequests) {
+      await this.prisma.$transaction(async (tx) => {
+        await tx.choreTakeoverRequest.update({
+          where: { id: request.id },
+          data: {
+            status: ChoreTakeoverRequestStatus.CANCELLED,
+            respondedAtUtc: input.now,
+          },
+        });
+
+        await this.recordNotification(tx, {
+          householdId: request.householdId,
+          recipientUserId: request.requesterUserId,
+          type: NotificationType.CHORE_TAKEOVER_EXPIRED,
+          title: 'Takeover request expired',
+          message: `Your request for "${request.requested.displayName}" to take over "${request.choreInstance.title}" was not answered in time.`,
+          entityType: 'chore_instance',
+          entityId: request.choreInstanceId,
+        });
+      });
+
+      affectedHouseholdIds.add(request.householdId);
+    }
+
+    return { expiredCount: staleRequests.length, affectedHouseholdIds: [...affectedHouseholdIds] };
   }
 
   private mapNotificationPreference(preference: Prisma.NotificationPreferenceGetPayload<object>) {

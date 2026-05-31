@@ -3,6 +3,7 @@ import { AppConfigService } from '../../common/config/app-config.service';
 import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
 import { HouseholdRepository } from '../household/household.repository';
 import { RewardsRepository } from '../rewards/rewards.repository';
+import { DashboardSyncService } from './dashboard-sync.service';
 
 @Injectable()
 export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDestroy {
@@ -16,6 +17,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
     private readonly rewardsRepository: RewardsRepository,
     private readonly appConfigService: AppConfigService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
+    private readonly dashboardSyncService: DashboardSyncService,
   ) {}
 
   async onApplicationBootstrap() {
@@ -120,12 +122,28 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
         now,
         tenantIds: allowedTenantIds,
       });
+      const expiryResult = await this.repository.expireStaleTakeoverRequests({
+        now,
+        expiryWindowHours: 24,
+        tenantIds: allowedTenantIds,
+      });
+      for (const householdId of expiryResult.affectedHouseholdIds) {
+        this.dashboardSyncService.publishChoreUpdate({
+          householdId,
+          action: 'takeover_request.expired',
+          entityType: 'takeover_request',
+        });
+      }
+
       const reminderCount = reminderResult.createdCount + bookingReminderResult.createdCount;
       const dailySummaryCount = dailySummaryResult.createdCount;
       const createdCount = reminderCount + dailySummaryCount;
 
       if (createdCount > 0) {
         this.logger.log(`Generated ${createdCount} automated notification(s).`);
+      }
+      if (expiryResult.expiredCount > 0) {
+        this.logger.log(`Expired ${expiryResult.expiredCount} stale takeover request(s).`);
       }
 
       return {
