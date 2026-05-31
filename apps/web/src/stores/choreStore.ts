@@ -65,6 +65,11 @@ interface ChoreStore {
   quickLogPointsOverride: string;
   quickLogIcon: string | null;
 
+  // Takeover request dialog
+  takeoverRequestInstanceId: string | null;
+  takeoverRequestMemberId: string;
+  takeoverRequestNote: string;
+
   // Visibility toggles
   showMobileCompletedChores: boolean;
   showDesktopChoreHistory: boolean;
@@ -118,6 +123,10 @@ interface ChoreStore {
   setQuickLogPointsOverride: (v: string) => void;
   setQuickLogIcon: (v: string | null) => void;
 
+  setTakeoverRequestInstanceId: (v: string | null) => void;
+  setTakeoverRequestMemberId: (v: string) => void;
+  setTakeoverRequestNote: (v: string) => void;
+
   setShowMobileCompletedChores: (v: boolean) => void;
   setShowDesktopChoreHistory: (v: boolean) => void;
 
@@ -168,6 +177,10 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
   quickLogPointsOverride: '',
   quickLogIcon: null,
 
+  takeoverRequestInstanceId: null,
+  takeoverRequestMemberId: '',
+  takeoverRequestNote: '',
+
   showMobileCompletedChores: false,
   showDesktopChoreHistory: false,
 
@@ -213,6 +226,10 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
   setQuickLogUsePointsOverride: (v) => set({ quickLogUsePointsOverride: v }),
   setQuickLogPointsOverride: (v) => set({ quickLogPointsOverride: v }),
   setQuickLogIcon: (v) => set({ quickLogIcon: v }),
+
+  setTakeoverRequestInstanceId: (v) => set({ takeoverRequestInstanceId: v }),
+  setTakeoverRequestMemberId: (v) => set({ takeoverRequestMemberId: v }),
+  setTakeoverRequestNote: (v) => set({ takeoverRequestNote: v }),
 
   setShowMobileCompletedChores: (v) => set({ showMobileCompletedChores: v }),
   setShowDesktopChoreHistory: (v) => set({ showDesktopChoreHistory: v }),

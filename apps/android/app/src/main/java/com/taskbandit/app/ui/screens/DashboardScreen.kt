@@ -3992,6 +3992,24 @@ private fun ChoreActionSheet(
                 }
             }
         }
+
+        if (hasPendingOutgoingTakeover && outgoingTakeoverRequest != null) {
+            val recipientName = firstNameFromDisplayName(outgoingTakeoverRequest.requested.displayName)
+                ?: outgoingTakeoverRequest.requested.displayName
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(10.dp),
+                color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.72f)
+            ) {
+                Text(
+                    text = stringResource(R.string.mobile_takeover_pending_with_name, recipientName),
+                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSecondaryContainer,
+                    fontWeight = FontWeight.Medium
+                )
+            }
+        }
     }
 }
 

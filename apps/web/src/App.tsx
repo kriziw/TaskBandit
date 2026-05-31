@@ -1129,6 +1129,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setQuickLogPointsOverride,
     quickLogIcon,
     setQuickLogIcon,
+    takeoverRequestInstanceId,
+    setTakeoverRequestInstanceId,
+    takeoverRequestMemberId,
+    setTakeoverRequestMemberId,
+    takeoverRequestNote,
+    setTakeoverRequestNote,
     showMobileCompletedChores,
     setShowMobileCompletedChores,
     showDesktopChoreHistory,
@@ -3452,6 +3458,23 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </button>
               </>
             ) : null}
+            {hasFeature('takeover_requests') &&
+            instance.assigneeId === payload?.currentUser.id &&
+            instance.state !== 'pending_approval' &&
+            instance.state !== 'deferred' ? (
+              <button
+                className="ghost-button"
+                type="button"
+                disabled={busyAction === `takeover-request:${instance.id}`}
+                onClick={() => {
+                  setTakeoverRequestInstanceId(instance.id);
+                  setTakeoverRequestMemberId('');
+                  setTakeoverRequestNote('');
+                }}
+              >
+                {t('takeover.request_action')}
+              </button>
+            ) : null}
             {instance.state !== 'pending_approval' &&
             canManageChores &&
             !(workspaceVariant === 'client' && isClientMobileViewport) ? (
@@ -4203,6 +4226,26 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       await refreshDashboard(token, { silent: true });
     } catch (error) {
       setPageError(readErrorMessage(error, t('takeover.action_failed')));
+    } finally {
+      setBusyAction(null);
+    }
+  }
+
+  async function handleRequestTakeover() {
+    if (!token || !takeoverRequestInstanceId || !takeoverRequestMemberId) return;
+    setBusyAction(`takeover-request:${takeoverRequestInstanceId}`);
+    try {
+      await taskBanditApi.requestTakeover(token, language, takeoverRequestInstanceId, {
+        requestedUserId: takeoverRequestMemberId,
+        note: takeoverRequestNote.trim() || undefined,
+      });
+      setNotice(t('takeover.request_sent_notice'));
+      setTakeoverRequestInstanceId(null);
+      setTakeoverRequestMemberId('');
+      setTakeoverRequestNote('');
+      await refreshDashboard(token, { silent: true });
+    } catch (error) {
+      setPageError(readErrorMessage(error, t('takeover.request_failed')));
     } finally {
       setBusyAction(null);
     }
@@ -10989,6 +11032,63 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     </div>
                   </div>
                 </article>
+              ) : null}
+
+              {/* Request takeover dialog */}
+              {takeoverRequestInstanceId && payload ? (
+                <dialog className="modal-overlay" open>
+                  <div className="modal-card">
+                    <h3>{t('takeover.request_dialog_title')}</h3>
+                    <p>{t('takeover.request_dialog_body')}</p>
+                    <label className="form-field">
+                      <span>{t('takeover.request_select_member')}</span>
+                      <select
+                        value={takeoverRequestMemberId}
+                        onChange={(e) => setTakeoverRequestMemberId(e.target.value)}
+                      >
+                        <option value="">—</option>
+                        {payload.household.members
+                          .filter((m) => m.id !== payload.currentUser.id)
+                          .map((member) => (
+                            <option key={member.id} value={member.id}>
+                              {member.displayName}
+                            </option>
+                          ))}
+                      </select>
+                    </label>
+                    <label className="form-field">
+                      <span>{t('takeover.request_note_label')}</span>
+                      <textarea
+                        value={takeoverRequestNote}
+                        maxLength={240}
+                        placeholder={t('takeover.request_note_placeholder')}
+                        onChange={(e) => setTakeoverRequestNote(e.target.value)}
+                      />
+                    </label>
+                    <div className="modal-actions">
+                      <button
+                        type="button"
+                        className="ghost-button"
+                        onClick={() => setTakeoverRequestInstanceId(null)}
+                      >
+                        {t('common.cancel')}
+                      </button>
+                      <button
+                        type="button"
+                        className="primary-button"
+                        disabled={
+                          !takeoverRequestMemberId ||
+                          busyAction === `takeover-request:${takeoverRequestInstanceId}`
+                        }
+                        onClick={() => void handleRequestTakeover()}
+                      >
+                        {busyAction === `takeover-request:${takeoverRequestInstanceId}`
+                          ? t('takeover.request_sending')
+                          : t('takeover.request_send')}
+                      </button>
+                    </div>
+                  </div>
+                </dialog>
               ) : null}
 
               {/* Reject redemption dialog */}
