@@ -221,6 +221,7 @@ class TaskBanditDashboardCacheStore(
             .put("externalCompletion", entry.externalCompletion)
             .put("deferredFollowUpControl", entry.deferredFollowUpControl)
             .put("quickLog", entry.quickLog)
+            .put("rewardsManage", entry.rewardsManage)
     }
 
     // -------------------------------------------------------------------------
