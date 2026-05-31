@@ -86,15 +86,14 @@ internal val numberFormatter: NumberFormat = NumberFormat.getIntegerInstance()
 
 @Composable
 internal fun SettingsSectionCard(modifier: Modifier = Modifier, icon: ImageVector, title: String, content: @Composable () -> Unit) {
-    val isNewMobileUi = LocalIsNewMobileUi.current
     Card(
         modifier = modifier,
-        shape = RoundedCornerShape(if (isNewMobileUi) 16.dp else 24.dp),
-        border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
+        shape = RoundedCornerShape(16.dp),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     ) {
         Column(
-            modifier = Modifier.padding(horizontal = if (isNewMobileUi) 10.dp else 12.dp, vertical = if (isNewMobileUi) 9.dp else 10.dp),
-            verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 8.dp else 10.dp)
+            modifier = Modifier.padding(horizontal = 10.dp, vertical = 9.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 Icon(imageVector = icon, contentDescription = null)

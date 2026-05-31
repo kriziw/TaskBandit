@@ -244,8 +244,6 @@ internal val LocalMobileFeatureAccess = compositionLocalOf {
         rewardsManage = true,
     )
 }
-internal val LocalIsNewMobileUi = compositionLocalOf { true }
-
 // ── Private types used only within DashboardScreen ───────────────────────────
 
 private enum class MobileDashboardTab {
@@ -448,7 +446,6 @@ internal fun DashboardScreen(
     val canUseTakeoverRequestsFeature = featureAccess.takeoverRequests
     val canUseQuickLog = isCreatorRole && featureAccess.quickLog
     val canUseRewards = featureAccess.rewardsManage
-    val isNewMobileUi = true
     val currentUserId = dashboard?.user?.id
     val currentUserRole = dashboard?.user?.role
     var activeTab by rememberSaveable { mutableStateOf(MobileDashboardTab.CHORES) }
@@ -1771,70 +1768,67 @@ internal fun DashboardScreen(
     }
 
     CompositionLocalProvider(
-        LocalMobileFeatureAccess provides featureAccess,
-        LocalIsNewMobileUi provides true
+        LocalMobileFeatureAccess provides featureAccess
     ) {
         Scaffold(
         topBar = {
-            if (isNewMobileUi) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    color = MaterialTheme.colorScheme.background
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                color = MaterialTheme.colorScheme.background
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 20.dp, top = 8.dp, bottom = 4.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
+                        modifier = Modifier.weight(1f),
+                        horizontalArrangement = Arrangement.spacedBy(0.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            modifier = Modifier.weight(1f),
-                            horizontalArrangement = Arrangement.spacedBy(0.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Image(
-                                painter = painterResource(R.drawable.taskbandit_logo),
-                                contentDescription = stringResource(R.string.brand_mark_description),
-                                modifier = Modifier
-                                    .widthIn(max = 186.dp)
-                                    .heightIn(max = 48.dp)
-                            )
-                        }
-                        Surface(
-                            modifier = Modifier.size(46.dp),
-                            shape = CircleShape,
-                            color = MaterialTheme.colorScheme.primaryContainer,
-                            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
-                        ) {
-                            IconButton(onClick = { showProfileDialog = true }) {
-                                when {
-                                    selectedAvatarUploadImageBitmap != null -> {
-                                        Image(
-                                            bitmap = selectedAvatarUploadImageBitmap,
-                                            contentDescription = dashboard?.user?.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                        Image(
+                            painter = painterResource(R.drawable.taskbandit_logo),
+                            contentDescription = stringResource(R.string.brand_mark_description),
+                            modifier = Modifier
+                                .widthIn(max = 186.dp)
+                                .heightIn(max = 48.dp)
+                        )
+                    }
+                    Surface(
+                        modifier = Modifier.size(46.dp),
+                        shape = CircleShape,
+                        color = MaterialTheme.colorScheme.primaryContainer,
+                        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.14f))
+                    ) {
+                        IconButton(onClick = { showProfileDialog = true }) {
+                            when {
+                                selectedAvatarUploadImageBitmap != null -> {
+                                    Image(
+                                        bitmap = selectedAvatarUploadImageBitmap,
+                                        contentDescription = dashboard?.user?.displayName,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
 
-                                    selectedAvatarPreset != null -> {
-                                        Image(
-                                            painter = painterResource(selectedAvatarPreset.drawableRes),
-                                            contentDescription = dashboard?.user?.displayName,
-                                            contentScale = ContentScale.Crop,
-                                            modifier = Modifier.fillMaxSize()
-                                        )
-                                    }
+                                selectedAvatarPreset != null -> {
+                                    Image(
+                                        painter = painterResource(selectedAvatarPreset.drawableRes),
+                                        contentDescription = dashboard?.user?.displayName,
+                                        contentScale = ContentScale.Crop,
+                                        modifier = Modifier.fillMaxSize()
+                                    )
+                                }
 
-                                    else -> {
-                                        Text(
-                                            text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.onPrimaryContainer,
-                                            fontWeight = FontWeight.ExtraBold
-                                        )
-                                    }
+                                else -> {
+                                    Text(
+                                        text = initialsFromDisplayName(dashboard?.user?.displayName.orEmpty()),
+                                        style = MaterialTheme.typography.labelLarge,
+                                        color = MaterialTheme.colorScheme.onPrimaryContainer,
+                                        fontWeight = FontWeight.ExtraBold
+                                    )
                                 }
                             }
                         }
@@ -1843,7 +1837,7 @@ internal fun DashboardScreen(
             }
         },
         floatingActionButton = {
-            if (isNewMobileUi && activeTab == MobileDashboardTab.CHORES && canManageChores) {
+            if (activeTab == MobileDashboardTab.CHORES && canManageChores) {
                 if (canUseQuickLog) {
                     // Speed dial: two actions available (Quick Log + Create Chore)
                     Column(
@@ -1922,118 +1916,57 @@ internal fun DashboardScreen(
             }
         },
         bottomBar = {
-            if (isNewMobileUi) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
-                    color = MaterialTheme.colorScheme.surface
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(topStart = 30.dp, topEnd = 30.dp),
+                color = MaterialTheme.colorScheme.surface
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = 14.dp, vertical = 8.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = 14.dp, vertical = 8.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        MobileTabButton(
-                            modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.CHORES,
-                            label = stringResource(R.string.mobile_tab_chores),
-                            iconRes = R.drawable.mobile_nav_chores,
-                            showLabel = isNewMobileUi,
-                            onClick = {
-                                openTab(MobileDashboardTab.CHORES)
-                                expandedChoreIds = emptySet()
-                            }
-                        )
-                        MobileTabButton(
-                            modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.LEADERBOARD,
-                            label = stringResource(R.string.mobile_leaderboard),
-                            iconRes = R.drawable.mobile_nav_leaderboard,
-                            showLabel = isNewMobileUi,
-                            onClick = {
-                                openTab(MobileDashboardTab.LEADERBOARD)
-                                expandedChoreIds = emptySet()
-                            }
-                        )
-                        if (canUseRewards) {
-                            MobileTabButton(
-                                modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
-                                label = stringResource(R.string.mobile_tab_rewards),
-                                iconRes = R.drawable.mobile_nav_rewards,
-                                showLabel = isNewMobileUi,
-                                badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
-                                onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
-                            )
+                    MobileTabButton(
+                        modifier = Modifier.weight(1f),
+                        selected = activeTab == MobileDashboardTab.CHORES,
+                        label = stringResource(R.string.mobile_tab_chores),
+                        iconRes = R.drawable.mobile_nav_chores,
+                        showLabel = true,
+                        onClick = {
+                            openTab(MobileDashboardTab.CHORES)
+                            expandedChoreIds = emptySet()
                         }
+                    )
+                    MobileTabButton(
+                        modifier = Modifier.weight(1f),
+                        selected = activeTab == MobileDashboardTab.LEADERBOARD,
+                        label = stringResource(R.string.mobile_leaderboard),
+                        iconRes = R.drawable.mobile_nav_leaderboard,
+                        showLabel = true,
+                        onClick = {
+                            openTab(MobileDashboardTab.LEADERBOARD)
+                            expandedChoreIds = emptySet()
+                        }
+                    )
+                    if (canUseRewards) {
                         MobileTabButton(
                             modifier = Modifier.weight(1f),
-                            selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || showMoreSheet,
-                            label = stringResource(R.string.mobile_tab_more),
-                            iconRes = R.drawable.mobile_nav_more,
-                            showLabel = isNewMobileUi,
-                            onClick = { showMoreSheet = true }
+                            selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
+                            label = stringResource(R.string.mobile_tab_rewards),
+                            iconRes = R.drawable.mobile_nav_rewards,
+                            showLabel = true,
+                            badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
+                            onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
                         )
                     }
-                }
-            } else {
-                BoxWithConstraints(
-                    modifier = Modifier.fillMaxWidth(),
-                    contentAlignment = Alignment.Center
-                ) {
-                    val isTablet = isTabletWidth(maxWidth)
-                    Card(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .then(if (isTablet) Modifier.widthIn(max = 760.dp) else Modifier),
-                        shape = RoundedCornerShape(topStart = 24.dp, topEnd = 24.dp)
-                    ) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            MobileTabButton(
-                                modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.CHORES,
-                                label = stringResource(R.string.mobile_tab_chores),
-                                iconRes = R.drawable.mobile_nav_chores,
-                                showLabel = isNewMobileUi,
-                                onClick = {
-                                    openTab(MobileDashboardTab.CHORES)
-                                    expandedChoreIds = emptySet()
-                                }
-                            )
-                            MobileTabButton(
-                                modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.LEADERBOARD,
-                                label = stringResource(R.string.mobile_leaderboard),
-                                iconRes = R.drawable.mobile_nav_leaderboard,
-                                showLabel = isNewMobileUi,
-                                onClick = {
-                                    openTab(MobileDashboardTab.LEADERBOARD)
-                                    expandedChoreIds = emptySet()
-                                }
-                            )
-                            MobileTabButton(
-                                modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.REWARDS || activeTab == MobileDashboardTab.REWARDS_MANAGER,
-                                label = stringResource(R.string.mobile_tab_rewards),
-                                iconRes = R.drawable.mobile_nav_rewards,
-                                showLabel = isNewMobileUi,
-                                badge = if (isParentOrAdmin) pendingRedemptions.size else 0,
-                                onClick = { openTab(if (isCreatorRole) MobileDashboardTab.REWARDS_MANAGER else MobileDashboardTab.REWARDS) }
-                            )
-                            MobileTabButton(
-                                modifier = Modifier.weight(1f),
-                                selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || showMoreSheet,
-                                label = stringResource(R.string.mobile_tab_more),
-                                iconRes = R.drawable.mobile_nav_more,
-                                showLabel = isNewMobileUi,
-                                onClick = { showMoreSheet = true }
-                            )
-                        }
-                    }
+                    MobileTabButton(
+                        modifier = Modifier.weight(1f),
+                        selected = activeTab == MobileDashboardTab.MORE || activeTab == MobileDashboardTab.TEMPLATE_MANAGER || showMoreSheet,
+                        label = stringResource(R.string.mobile_tab_more),
+                        iconRes = R.drawable.mobile_nav_more,
+                        showLabel = true,
+                        onClick = { showMoreSheet = true }
+                    )
                 }
             }
         }
@@ -2044,7 +1977,7 @@ internal fun DashboardScreen(
                 .background(
                     Brush.verticalGradient(
                         listOf(
-                            if (isNewMobileUi) MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f) else MaterialTheme.colorScheme.primaryContainer,
+                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f),
                             MaterialTheme.colorScheme.background
                         )
                     )
@@ -2057,16 +1990,15 @@ internal fun DashboardScreen(
                     state = dashboardListState,
                     modifier = Modifier
                         .fillMaxSize()
-                        .padding(horizontal = if (isTablet) 28.dp else if (isNewMobileUi) 6.dp else 20.dp, vertical = 16.dp)
+                        .padding(horizontal = if (isTablet) 28.dp else 6.dp, vertical = 16.dp)
                         .then(if (isTablet) Modifier.widthIn(max = 1280.dp).align(Alignment.TopCenter) else Modifier),
-                    verticalArrangement = Arrangement.spacedBy(if (isNewMobileUi) 10.dp else 16.dp)
+                    verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
             if (activeTab == MobileDashboardTab.CHORES) {
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = noChoresLabel, style = MaterialTheme.typography.bodyMedium) }
                 }
-                if (isNewMobileUi && !isTablet) {
-                    if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
+                if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
                         item {
                             TakeoverRequestsPanel(
                                 requests = incomingTakeoverRequests,
@@ -2251,96 +2183,6 @@ internal fun DashboardScreen(
                             )
                         }
                     }
-                } else if (isTablet) {
-                    item {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(18.dp),
-                            verticalAlignment = Alignment.Top
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1.55f),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
-                                    TakeoverRequestsPanel(
-                                        requests = incomingTakeoverRequests,
-                                        activeTakeoverRequestAction = activeTakeoverRequestAction,
-                                        onApproveRequest = { requestId -> onRespondToTakeoverRequest(requestId, true) },
-                                        onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
-                                    )
-                                }
-                                ChoreSectionColumn(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
-                                ChoreSectionColumn(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                                ChoreSectionColumn(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                            }
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(16.dp)
-                            ) {
-                                HistoricChoreSectionColumn(
-                                    chores = historicChores,
-                                    title = choresHistoryLabel,
-                                    expandedChoreIds = expandedHistoricChoreIds,
-                                    onExpandedChange = { choreId ->
-                                        expandedHistoricChoreIds = if (expandedHistoricChoreIds.contains(choreId))
-                                            expandedHistoricChoreIds - choreId else expandedHistoricChoreIds + choreId
-                                    }
-                                )
-                                if (showStatusCard) {
-                                    DashboardStatusCard(
-                                        modifier = Modifier.fillMaxWidth(),
-                                        isSyncingQueue = isSyncingQueue,
-                                        errorMessage = errorMessage,
-                                        noticeMessage = noticeMessage,
-                                        pendingReconnectActionLabel = pendingReconnectActionLabel,
-                                        queuedSubmissionCount = queuedSubmissionCount
-                                    )
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    if (canUseTakeoverRequests && incomingTakeoverRequests.isNotEmpty()) {
-                        item {
-                            TakeoverRequestsPanel(
-                                requests = incomingTakeoverRequests,
-                                activeTakeoverRequestAction = activeTakeoverRequestAction,
-                                onApproveRequest = { requestId -> onRespondToTakeoverRequest(requestId, true) },
-                                onDeclineRequest = { requestId -> onRespondToTakeoverRequest(requestId, false) }
-                            )
-                        }
-                    }
-                    choreSection(chores = myChoresOverdue, title = choresOverdueLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore, toneOverride = MobileChoreSectionTone.OVERDUE)
-                    choreSection(chores = myChoresDueToday, title = choresDueTodayLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = myChoresDueThisWeek, title = choresDueThisWeekLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = myChoresDueLater, title = choresDueLaterLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = unassignedChores, title = choresUnassignedLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    choreSection(chores = otherChores, title = choresOthersLabel, currentUserId = currentUserId, currentUserRole = currentUserRole, supportsTakeoverRequests = canUseTakeoverRequests, expandedChoreIds = expandedChoreIds, onExpandedChange = { choreId -> expandedChoreIds = if (expandedChoreIds.contains(choreId)) expandedChoreIds - choreId else expandedChoreIds + choreId }, activeReviewAction = activeReviewAction, activeStartAction = activeStartAction, activeSubmitAction = activeSubmitAction, activeCloseCycleAction = activeCloseCycleAction, activeCancelChoreAction = activeCancelChoreAction, activeTakeoverRequestAction = activeTakeoverRequestAction, outgoingTakeoverRequestsByChoreId = outgoingTakeoverRequestsByChoreId, submitSelections = submitSelections, selectedProofUris = selectedProofUris, onApprove = onApprove, onReject = onReject, onToggleChecklistItem = onToggleChecklistItem, onPickProofs = onPickProofs, onTakeProofPhoto = onTakeProofPhoto, onStartChore = { choreId -> startConfirmationChoreId = choreId }, onCancelChoreOccurrence = onCancelChoreOccurrence, onCloseChoreCycle = onCloseChoreCycle, onCancelChore = onCancelChore, onTakeOverChore = { choreId -> takeoverConfirmationChoreId = choreId }, onRequestTakeover = { choreId -> requestTakeoverChoreId = choreId; requestTakeoverMemberId = null }, onSubmitChore = { choreId -> submitConfirmationChoreId = choreId }, activeDueAtAction = activeDueAtAction, onEditChoreDueAt = onEditChoreDueAt, templateVariantsByTemplateId = templateVariantsByTemplateId, activeExternalCompleteAction = activeExternalCompleteAction, onCompleteExternalChore = onCompleteExternalChore)
-                    historicChoreSection(
-                        chores = historicChores,
-                        title = choresHistoryLabel,
-                        expandedChoreIds = expandedHistoricChoreIds,
-                        onExpandedChange = { choreId ->
-                            expandedHistoricChoreIds = if (expandedHistoricChoreIds.contains(choreId))
-                                expandedHistoricChoreIds - choreId else expandedHistoricChoreIds + choreId
-                        }
-                    )
-                    if (showStatusCard) {
-                        item {
-                            DashboardStatusCard(
-                                isSyncingQueue = isSyncingQueue,
-                                errorMessage = errorMessage,
-                                noticeMessage = noticeMessage,
-                                pendingReconnectActionLabel = pendingReconnectActionLabel,
-                                queuedSubmissionCount = queuedSubmissionCount
-                            )
-                        }
-                    }
-                }
             }
 
             if (activeTab == MobileDashboardTab.LEADERBOARD) {
@@ -3004,7 +2846,7 @@ internal fun DashboardScreen(
                         // hidden behind the circular create FAB (60dp + 16dp margin + 8dp gap).
                         .padding(
                             start = 16.dp,
-                            end = if (isNewMobileUi && canManageChores && !isTablet) 92.dp else 16.dp,
+                            end = if (canManageChores && !isTablet) 92.dp else 16.dp,
                             top = 16.dp,
                             bottom = 16.dp
                         )
@@ -3366,7 +3208,6 @@ private fun LeaderboardEntryRow(
     rank: Int,
     entry: MobileLeaderboardEntry
 ) {
-    val isNewMobileUi = LocalIsNewMobileUi.current
     val trophyTint = when (rank) {
         1 -> Color(0xFFD4AF37)
         2 -> Color(0xFFC0C0C0)
@@ -3374,13 +3215,9 @@ private fun LeaderboardEntryRow(
         else -> MaterialTheme.colorScheme.onSurfaceVariant
     }
     Surface(
-        shape = RoundedCornerShape(if (isNewMobileUi) 14.dp else 16.dp),
-        color = if (isNewMobileUi) {
-            MaterialTheme.colorScheme.surface
-        } else {
-            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.35f)
-        },
-        border = if (isNewMobileUi) BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)) else null
+        shape = RoundedCornerShape(14.dp),
+        color = MaterialTheme.colorScheme.surface,
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.2f))
     ) {
         Row(
             modifier = Modifier
