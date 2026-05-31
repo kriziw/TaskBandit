@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.5](https://github.com/kriziw/TaskBandit/compare/v1.3.4...v1.3.5) (2026-05-31)
+
+
+### Bug Fixes
+
+* remove all disabled-feature hints and grayed-out controls ([#560](https://github.com/kriziw/TaskBandit/issues/560)) ([2aa1b41](https://github.com/kriziw/TaskBandit/commit/2aa1b4195e9d90d10cae664cff4ae0bd1994ebc1))
+
 ## [1.3.4](https://github.com/kriziw/TaskBandit/compare/v1.3.3...v1.3.4) (2026-05-31)
 
 
