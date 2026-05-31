@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.6](https://github.com/kriziw/TaskBandit/compare/v1.3.5...v1.3.6) (2026-05-31)
+
+
+### Bug Fixes
+
+* **android:** restore all-true default for LocalMobileFeatureAccess; remove remaining feature hints ([#562](https://github.com/kriziw/TaskBandit/issues/562)) ([a35f6fd](https://github.com/kriziw/TaskBandit/commit/a35f6fd75a676b71b9bcbcd609ab47d6cf344ba7))
+
 ## [1.3.5](https://github.com/kriziw/TaskBandit/compare/v1.3.4...v1.3.5) (2026-05-31)
 
 
