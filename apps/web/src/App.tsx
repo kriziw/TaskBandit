@@ -3421,7 +3421,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             {instance.state !== 'pending_approval' &&
             instance.state !== 'deferred' &&
             instance.assigneeId !== payload?.currentUser.id &&
-            canManageChores ? (
+            canManageChores &&
+            (instance.assigneeId == null || hasFeature('takeover_direct')) ? (
               <button
                 className="secondary-button"
                 type="button"
