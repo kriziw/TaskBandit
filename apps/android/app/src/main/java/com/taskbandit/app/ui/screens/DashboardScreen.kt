@@ -3879,7 +3879,9 @@ private fun ChoreActionSheet(
             }
         }
 
-        if (!hasAnyPrimaryAction && !hasSecondaryActions) {
+        val isTakeoverPossible = !isAssignedToCurrentUser && !isUnassigned &&
+            (canUseDirectTakeover || canUseTakeoverRequestsLocal)
+        if (!hasAnyPrimaryAction && !hasSecondaryActions && isTakeoverPossible) {
             Text(
                 text = stringResource(R.string.mobile_chore_read_only_hint),
                 style = MaterialTheme.typography.bodySmall,
