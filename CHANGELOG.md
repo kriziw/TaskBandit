@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.4](https://github.com/kriziw/TaskBandit/compare/v1.3.3...v1.3.4) (2026-05-31)
+
+
+### Bug Fixes
+
+* takeover button and hint respect takeover_direct feature flag ([#558](https://github.com/kriziw/TaskBandit/issues/558)) ([422aee5](https://github.com/kriziw/TaskBandit/commit/422aee5efd8b3444c828648cbb3456273a6ded16))
+
 ## [1.3.3](https://github.com/kriziw/TaskBandit/compare/v1.3.2...v1.3.3) (2026-05-30)
 
 
