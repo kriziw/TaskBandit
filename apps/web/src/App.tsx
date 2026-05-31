@@ -3612,9 +3612,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </div>
           ) : null}
         </div>
-        {instance.requirePhotoProof && !canUploadProofs ? (
-          <p className="inline-message">{t('feature.proof_uploads_disabled')}</p>
-        ) : instance.requirePhotoProof ? (
+        {instance.requirePhotoProof && canUploadProofs ? (
           <p className="inline-message">{t('submission.photo_hint_required')}</p>
         ) : null}
         {instance.requirePhotoProof && instance.attachments.length > 0
@@ -5951,9 +5949,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           className={`login-form member-form schedule-form ${isMobileCompact ? 'schedule-form-mobile-compact' : ''}`}
           onSubmit={handleCreateInstance}
         >
-          {!hasFeature('chores_manage') ? (
-            <p className="inline-message">{t('feature.chores_manage_disabled')}</p>
-          ) : null}
           <label>
             <span>{t('instances.group')}</span>
             <select
@@ -6027,7 +6022,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               </label>
             );
           })()}
-          {isMobileCompact ? (
+          {editingInstanceId && !hasFeature('reassignment') ? null : isMobileCompact ? (
             <details className="schedule-collapsible">
               <summary>{t('instances.assignee')}</summary>
               <div className="schedule-collapsible-content">
@@ -6035,7 +6030,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <span>{t('instances.assignee')}</span>
                   <select
                     value={instanceForm.assigneeId ?? ''}
-                    disabled={!hasFeature('reassignment')}
                     onChange={(event) =>
                       setInstanceForm((current) => ({
                         ...current,
@@ -6078,7 +6072,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <span>{t('instances.assignee')}</span>
                 <select
                   value={instanceForm.assigneeId ?? ''}
-                  disabled={!hasFeature('reassignment')}
                   onChange={(event) =>
                     setInstanceForm((current) => ({
                       ...current,
@@ -10031,126 +10024,124 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           </button>
                         </div>
                       </details>
-                      <details className="template-advanced-panel">
-                        <summary className="template-advanced-summary">
-                          <span>{t('templates.follow_ups')}</span>
-                          <span className="section-kicker">
-                            {selectedTemplateDependencyRules.length}
-                          </span>
-                        </summary>
-                        <div className="stack-list template-advanced-body">
-                          {!hasFeature('follow_up_automation') ? (
-                            <p className="inline-message">
-                              {t('feature.follow_up_automation_disabled')}
-                            </p>
-                          ) : null}
-                          {!templateForm.groupTitle.trim() ? (
-                            <p className="inline-message">
-                              {t('templates.follow_up_group_required')}
-                            </p>
-                          ) : sameGroupFollowUpCandidates.length === 0 ? (
-                            <p className="inline-message">
-                              {t('templates.follow_up_same_group_empty')}
-                            </p>
-                          ) : (
-                            <>
-                              <details className="multi-select-menu">
-                                <summary>
-                                  {t('templates.follow_up_summary').replace(
-                                    '{count}',
-                                    String(selectedTemplateDependencyRules.length),
-                                  )}
-                                </summary>
-                                <div className="stack-list compact-stack">
-                                  {sameGroupFollowUpCandidates.map((template) => {
-                                    const selected = selectedTemplateDependencyRules.some(
-                                      (dependencyRule) => dependencyRule.templateId === template.id,
-                                    );
-                                    return (
-                                      <label className="toggle-row" key={template.id}>
-                                        <span>{template.title}</span>
-                                        <input
-                                          type="checkbox"
-                                          checked={selected}
-                                          disabled={!hasFeature('follow_up_automation')}
-                                          onChange={(event) =>
-                                            toggleTemplateDependencyRule(
-                                              template.id,
-                                              event.target.checked,
-                                            )
-                                          }
-                                        />
-                                      </label>
-                                    );
-                                  })}
-                                </div>
-                              </details>
-                              {selectedTemplateDependencyRules.length === 0 ? (
-                                <p className="inline-message">{t('templates.no_follow_ups')}</p>
-                              ) : (
-                                selectedTemplateDependencyRules.map((selectedRule) => {
-                                  const followUpTemplate = sameGroupFollowUpCandidates.find(
-                                    (template) => template.id === selectedRule.templateId,
-                                  );
-                                  return (
-                                    <div
-                                      className="task-row compact template-follow-up-rule"
-                                      key={selectedRule.templateId}
-                                    >
-                                      <strong>
-                                        {followUpTemplate?.title ?? t('common.unknown')}
-                                      </strong>
-                                      <div className="button-row">
-                                        <label>
-                                          <span>{t('templates.follow_up_delay')}</span>
+                      {hasFeature('follow_up_automation') ? (
+                        <details className="template-advanced-panel">
+                          <summary className="template-advanced-summary">
+                            <span>{t('templates.follow_ups')}</span>
+                            <span className="section-kicker">
+                              {selectedTemplateDependencyRules.length}
+                            </span>
+                          </summary>
+                          <div className="stack-list template-advanced-body">
+                            {!templateForm.groupTitle.trim() ? (
+                              <p className="inline-message">
+                                {t('templates.follow_up_group_required')}
+                              </p>
+                            ) : sameGroupFollowUpCandidates.length === 0 ? (
+                              <p className="inline-message">
+                                {t('templates.follow_up_same_group_empty')}
+                              </p>
+                            ) : (
+                              <>
+                                <details className="multi-select-menu">
+                                  <summary>
+                                    {t('templates.follow_up_summary').replace(
+                                      '{count}',
+                                      String(selectedTemplateDependencyRules.length),
+                                    )}
+                                  </summary>
+                                  <div className="stack-list compact-stack">
+                                    {sameGroupFollowUpCandidates.map((template) => {
+                                      const selected = selectedTemplateDependencyRules.some(
+                                        (dependencyRule) =>
+                                          dependencyRule.templateId === template.id,
+                                      );
+                                      return (
+                                        <label className="toggle-row" key={template.id}>
+                                          <span>{template.title}</span>
                                           <input
-                                            type="number"
-                                            min={1}
-                                            max={365}
-                                            value={selectedRule.delayValue}
-                                            disabled={!hasFeature('follow_up_automation')}
+                                            type="checkbox"
+                                            checked={selected}
+                                            disabled={false}
                                             onChange={(event) =>
-                                              updateTemplateDependencyRule(
-                                                selectedRule.templateId,
-                                                {
-                                                  delayValue: Number(event.target.value || 1),
-                                                },
+                                              toggleTemplateDependencyRule(
+                                                template.id,
+                                                event.target.checked,
                                               )
                                             }
                                           />
                                         </label>
-                                        <label>
-                                          <span>{t('templates.follow_up_delay_unit')}</span>
-                                          <select
-                                            value={selectedRule.delayUnit}
-                                            disabled={!hasFeature('follow_up_automation')}
-                                            onChange={(event) =>
-                                              updateTemplateDependencyRule(
-                                                selectedRule.templateId,
-                                                {
-                                                  delayUnit: event.target
-                                                    .value as FollowUpDelayUnit,
-                                                },
-                                              )
-                                            }
-                                          >
-                                            <option value="hours">
-                                              {t('templates.delay_hours')}
-                                            </option>
-                                            <option value="days">
-                                              {t('templates.delay_days')}
-                                            </option>
-                                          </select>
-                                        </label>
+                                      );
+                                    })}
+                                  </div>
+                                </details>
+                                {selectedTemplateDependencyRules.length === 0 ? (
+                                  <p className="inline-message">{t('templates.no_follow_ups')}</p>
+                                ) : (
+                                  selectedTemplateDependencyRules.map((selectedRule) => {
+                                    const followUpTemplate = sameGroupFollowUpCandidates.find(
+                                      (template) => template.id === selectedRule.templateId,
+                                    );
+                                    return (
+                                      <div
+                                        className="task-row compact template-follow-up-rule"
+                                        key={selectedRule.templateId}
+                                      >
+                                        <strong>
+                                          {followUpTemplate?.title ?? t('common.unknown')}
+                                        </strong>
+                                        <div className="button-row">
+                                          <label>
+                                            <span>{t('templates.follow_up_delay')}</span>
+                                            <input
+                                              type="number"
+                                              min={1}
+                                              max={365}
+                                              value={selectedRule.delayValue}
+                                              disabled={false}
+                                              onChange={(event) =>
+                                                updateTemplateDependencyRule(
+                                                  selectedRule.templateId,
+                                                  {
+                                                    delayValue: Number(event.target.value || 1),
+                                                  },
+                                                )
+                                              }
+                                            />
+                                          </label>
+                                          <label>
+                                            <span>{t('templates.follow_up_delay_unit')}</span>
+                                            <select
+                                              value={selectedRule.delayUnit}
+                                              disabled={false}
+                                              onChange={(event) =>
+                                                updateTemplateDependencyRule(
+                                                  selectedRule.templateId,
+                                                  {
+                                                    delayUnit: event.target
+                                                      .value as FollowUpDelayUnit,
+                                                  },
+                                                )
+                                              }
+                                            >
+                                              <option value="hours">
+                                                {t('templates.delay_hours')}
+                                              </option>
+                                              <option value="days">
+                                                {t('templates.delay_days')}
+                                              </option>
+                                            </select>
+                                          </label>
+                                        </div>
                                       </div>
-                                    </div>
-                                  );
-                                })
-                              )}
-                            </>
-                          )}
-                        </div>
-                      </details>
+                                    );
+                                  })
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </details>
+                      ) : null}
                       <details className="template-advanced-panel">
                         <summary className="template-advanced-summary">
                           <span>{t('templates.checklist')}</span>
