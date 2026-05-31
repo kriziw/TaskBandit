@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.7](https://github.com/kriziw/TaskBandit/compare/v1.3.6...v1.3.7) (2026-05-31)
+
+
+### Bug Fixes
+
+* **takeover:** fix status case bug, add 24h expiry, web request UI, Android pending indicator ([#573](https://github.com/kriziw/TaskBandit/issues/573)) ([a27aa8f](https://github.com/kriziw/TaskBandit/commit/a27aa8f62ac589b10b1582ab321b3b2713fd182d))
+
 ## [1.3.6](https://github.com/kriziw/TaskBandit/compare/v1.3.5...v1.3.6) (2026-05-31)
 
 
