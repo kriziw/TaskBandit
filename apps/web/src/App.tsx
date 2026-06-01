@@ -53,6 +53,7 @@ import type {
   HostedSubscriptionOverview,
   HouseholdSettings,
   LocalizedTemplateTranslation,
+  MasteryStats,
   NotificationDevice,
   NotificationRecovery,
   Reward,
@@ -162,6 +163,7 @@ const fullFeatureAccess: AuthenticatedUser['featureAccess'] = {
   deferred_follow_up_control: true,
   quick_log: true,
   rewards_manage: true,
+  mastery: true,
 };
 
 const historicChoreStates: ChoreState[] = ['completed', 'cancelled'];
@@ -3042,6 +3044,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         notificationPreferences,
         pointsLedger,
         achievementsResult,
+        masteryStatsResult,
         templates,
         instances,
         takeoverRequestsResult,
@@ -3090,6 +3093,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           () => taskBanditApi.getAchievements(accessToken, language),
           [] as Achievement[],
         ),
+        loadOptionalFeature(
+          () => taskBanditApi.getMasteryStats(accessToken, language),
+          [] as MasteryStats[],
+        ),
         currentUser.role === 'child'
           ? Promise.resolve([])
           : taskBanditApi.getTemplates(accessToken, language),
@@ -3132,6 +3139,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         notificationPreferences,
         pointsLedger,
         achievements: achievementsResult.value,
+        masteryStats: masteryStatsResult.value,
         templates,
         instances,
         takeoverRequests: takeoverRequestsResult.value,
@@ -3261,6 +3269,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const choreTitleText = stripLeadingChoreIconToken(
       stripLeadingQuickLogIcon(instance.typeTitle || instance.title),
     );
+    const masteryLevel = instance.userMasteryLevel ?? 0;
+    const masteryBadge =
+      masteryLevel >= 2 ? (
+        <span className="mastery-badge mastery-badge--level2" title="Mastery level 2">
+          🏆
+        </span>
+      ) : masteryLevel === 1 ? (
+        <span className="mastery-badge mastery-badge--level1" title="Mastery level 1">
+          ⭐
+        </span>
+      ) : null;
+
     const choreHeading = (
       <div>
         <p className="inline-message task-row-group-title">{instance.groupTitle}</p>
@@ -3269,6 +3289,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             {choreIcon}
           </span>{' '}
           {choreTitleText}
+          {masteryBadge}
         </strong>
         {instance.subtypeLabel ? (
           <p className="inline-message task-row-subtype-label">{instance.subtypeLabel}</p>
@@ -5443,6 +5464,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         title: item.title,
         required: item.required,
       })),
+      masteryDisabled: template.mastery?.disabled ?? false,
+      masteryLevel1Threshold: template.mastery?.level1Threshold ?? 5,
+      masteryLevel2Threshold: template.mastery?.level2Threshold ?? 10,
+      masteryLevel2BonusPercentage: template.mastery?.level2BonusPercentage ?? 10,
     });
   }
 
@@ -10267,6 +10292,73 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           </button>
                         </div>
                       </details>
+                      {hasFeature('mastery') ? (
+                        <details className="template-editor-section">
+                          <summary>Mastery</summary>
+                          <label className="toggle-row">
+                            <span>Disable mastery for this chore</span>
+                            <input
+                              type="checkbox"
+                              checked={Boolean(templateForm.masteryDisabled)}
+                              onChange={(event) =>
+                                setTemplateForm((current) => ({
+                                  ...current,
+                                  masteryDisabled: event.target.checked,
+                                }))
+                              }
+                            />
+                          </label>
+                          {!templateForm.masteryDisabled ? (
+                            <>
+                              <label>
+                                <span>Level 1 badge — completions needed</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={100}
+                                  value={templateForm.masteryLevel1Threshold ?? 5}
+                                  onChange={(event) =>
+                                    setTemplateForm((current) => ({
+                                      ...current,
+                                      masteryLevel1Threshold: Number(event.target.value || 5),
+                                    }))
+                                  }
+                                />
+                              </label>
+                              <label>
+                                <span>Level 2 bonus — completions needed</span>
+                                <input
+                                  type="number"
+                                  min={1}
+                                  max={200}
+                                  value={templateForm.masteryLevel2Threshold ?? 10}
+                                  onChange={(event) =>
+                                    setTemplateForm((current) => ({
+                                      ...current,
+                                      masteryLevel2Threshold: Number(event.target.value || 10),
+                                    }))
+                                  }
+                                />
+                              </label>
+                              <label>
+                                <span>Level 2 point bonus (%)</span>
+                                <input
+                                  type="number"
+                                  min={0}
+                                  max={100}
+                                  value={templateForm.masteryLevel2BonusPercentage ?? 10}
+                                  onChange={(event) =>
+                                    setTemplateForm((current) => ({
+                                      ...current,
+                                      masteryLevel2BonusPercentage: Number(event.target.value),
+                                    }))
+                                  }
+                                />
+                              </label>
+                            </>
+                          ) : null}
+                        </details>
+                      ) : null}
                       <div className="template-editor-actions">
                         <button
                           className="primary-button"
@@ -11555,6 +11647,37 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         />
                       </li>
                     ))}
+                  </ul>
+                </div>
+              ) : null}
+              {hasFeature('mastery') && payload.masteryStats.length > 0 ? (
+                <div className="mobile-profile-mastery">
+                  <h3 className="mobile-profile-achievements-heading">My Mastery</h3>
+                  <ul className="achievement-list">
+                    {payload.masteryStats.map((s) => {
+                      const maxProgress =
+                        s.masteryLevel >= 2 ? s.masteryLevel2Threshold : s.masteryLevel1Threshold;
+                      const progressValue = Math.min(s.completionCount, maxProgress);
+                      const badge = s.masteryLevel >= 2 ? '🏆' : s.masteryLevel === 1 ? '⭐' : null;
+                      return (
+                        <li key={s.templateId} className="achievement-row achievement-row--mastery">
+                          <div className="achievement-row-info">
+                            <span className="achievement-name">
+                              {badge ? <span className="mastery-badge">{badge}</span> : null}
+                              {s.templateTitle}
+                            </span>
+                            <span className="achievement-progress-text">
+                              {s.completionCount}/{maxProgress}
+                            </span>
+                          </div>
+                          <progress
+                            className="achievement-progress-bar"
+                            value={progressValue}
+                            max={maxProgress}
+                          />
+                        </li>
+                      );
+                    })}
                   </ul>
                 </div>
               ) : null}
