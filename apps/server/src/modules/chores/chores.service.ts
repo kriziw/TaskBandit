@@ -22,6 +22,7 @@ import { RespondChoreTakeoverDto } from './dto/respond-chore-takeover.dto';
 import { SnoozeDeferredChoreDto } from './dto/snooze-deferred-chore.dto';
 import { SubmitChoreDto } from './dto/submit-chore.dto';
 import { QuickLogChoreDto } from './dto/quick-log-chore.dto';
+import { MasteryService } from './mastery.service';
 import { ProofStorageService } from './proof-storage.service';
 
 @Injectable()
@@ -36,6 +37,7 @@ export class ChoresService {
     private readonly proofStorageService: ProofStorageService,
     private readonly dashboardSyncService: DashboardSyncService,
     private readonly achievementsService: AchievementsService,
+    private readonly masteryService: MasteryService,
   ) {}
 
   async getTemplates(user: AuthenticatedUser, language: SupportedLanguage) {
@@ -764,24 +766,40 @@ export class ChoresService {
     this.publishSyncEvent(user, 'instance.approved', 'instance', instanceId);
 
     const beneficiaryId = instance.assigneeId ?? null;
+    let newlyUnlocked: Awaited<ReturnType<typeof this.achievementsService.evaluateForUser>> = [];
+    let masteryResult: { earned: boolean; newLevel: number; bonusPoints: number } | undefined;
+
     if (beneficiaryId) {
-      const newlyUnlocked = await this.achievementsService.evaluateForUser({
-        userId: beneficiaryId,
-        householdId: user.householdId,
-        tenantId: user.tenantId,
-        choreCompleted: true,
-        difficulty: instance.difficulty as 'easy' | 'medium' | 'hard',
-        choreGroupTitle: instance.groupTitle ?? null,
-        isPerfectDay:
-          'completionMilestone' in reviewedInstance &&
-          reviewedInstance.completionMilestone?.type === 'perfect_day',
-      });
-      if (newlyUnlocked.length > 0) {
-        return { ...reviewedInstance, newlyUnlockedAchievements: newlyUnlocked };
-      }
+      [newlyUnlocked, masteryResult] = await Promise.all([
+        this.achievementsService.evaluateForUser({
+          userId: beneficiaryId,
+          householdId: user.householdId,
+          tenantId: user.tenantId,
+          choreCompleted: true,
+          difficulty: instance.difficulty as 'easy' | 'medium' | 'hard',
+          choreGroupTitle: instance.groupTitle ?? null,
+          isPerfectDay:
+            'completionMilestone' in reviewedInstance &&
+            reviewedInstance.completionMilestone?.type === 'perfect_day',
+        }),
+        instance.templateId
+          ? this.masteryService.evaluateMasteryAfterApproval({
+              userId: beneficiaryId,
+              householdId: user.householdId,
+              tenantId: user.tenantId,
+              templateId: instance.templateId,
+              basePoints: awardedPoints,
+            })
+          : Promise.resolve({ earned: false, newLevel: 0, bonusPoints: 0 }),
+      ]);
     }
 
-    return reviewedInstance;
+    const extras = {
+      ...(newlyUnlocked.length > 0 ? { newlyUnlockedAchievements: newlyUnlocked } : {}),
+      ...(masteryResult ? { masteryResult } : {}),
+    };
+
+    return Object.keys(extras).length > 0 ? { ...reviewedInstance, ...extras } : reviewedInstance;
   }
 
   async rejectInstance(
@@ -875,6 +893,10 @@ export class ChoresService {
       ? await this.featureAccessService.getFeatureAccessForTenant(user.tenantId)
       : user.featureAccess;
     this.featureAccessService.assertEnabled(effectiveFeatureAccess, featureId);
+  }
+
+  getMasteryStats(user: AuthenticatedUser) {
+    return this.masteryService.getMasteryStatsForUser(user.id, user.householdId);
   }
 
   private hasFollowUpAutomation(dto: CreateChoreTemplateDto) {

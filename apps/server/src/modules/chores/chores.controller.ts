@@ -117,6 +117,11 @@ export class ChoresController {
     );
   }
 
+  @Get('mastery')
+  masteryStats(@CurrentUser() user: AuthenticatedUser) {
+    return this.choresService.getMasteryStats(user);
+  }
+
   @Get('instances')
   instances(
     @CurrentUser() user: AuthenticatedUser,

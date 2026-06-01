@@ -26,6 +26,7 @@ describe("SettingsService", () => {
       deferred_follow_up_control: true,
       quick_log: true,
       rewards_manage: true,
+      mastery: true,
     },
   };
 

@@ -250,4 +250,33 @@ export class CreateChoreTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => CreateLocalizedTemplateTranslationDto)
   translations?: CreateLocalizedTemplateTranslationDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  masteryDisabled?: boolean;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(100)
+  masteryLevel1Threshold?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(1)
+  @Max(200)
+  masteryLevel2Threshold?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @Type(() => Number)
+  @IsInt()
+  @Min(0)
+  @Max(100)
+  masteryLevel2BonusPercentage?: number;
 }

@@ -14,6 +14,7 @@ export const packageFeatureIds = [
   'deferred_follow_up_control',
   'quick_log',
   'rewards_manage',
+  'mastery',
 ] as const;
 
 export type PackageFeatureId = (typeof packageFeatureIds)[number];

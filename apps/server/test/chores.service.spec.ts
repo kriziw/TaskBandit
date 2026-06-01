@@ -25,6 +25,7 @@ describe("ChoresService", () => {
       deferred_follow_up_control: true,
       quick_log: true,
       rewards_manage: true,
+      mastery: true,
     },
   };
 
@@ -89,6 +90,7 @@ describe("ChoresService", () => {
       {
         publishChoreUpdate: vi.fn()
       } as never,
+      {} as never,
       {} as never,
     );
   });
