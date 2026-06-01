@@ -1,6 +1,19 @@
 -- Add MASTERY_EARNED notification type
 ALTER TYPE "NotificationType" ADD VALUE 'MASTERY_EARNED';
 
+-- Add leaderboardPoints to User so mastery bonuses are tracked separately
+-- from the redeemable points balance. Uses IF NOT EXISTS so the migration
+-- is safe whether or not the leaderboard-reset PR (migration 0046) has
+-- already run.
+ALTER TABLE "User"
+  ADD COLUMN IF NOT EXISTS "leaderboardPoints" INTEGER NOT NULL DEFAULT 0;
+
+-- Backfill existing users: start leaderboardPoints equal to their current
+-- points balance so the leaderboard looks identical to today for deployments
+-- that haven't configured periodic resets.
+UPDATE "User" SET "leaderboardPoints" = "points"
+  WHERE "leaderboardPoints" = 0 AND "points" > 0;
+
 -- Add mastery configuration fields to ChoreTemplate
 ALTER TABLE "ChoreTemplate"
   ADD COLUMN "masteryDisabled" BOOLEAN NOT NULL DEFAULT false,

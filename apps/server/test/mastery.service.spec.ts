@@ -116,7 +116,12 @@ describe('MasteryService', () => {
     expect(result.bonusPoints).toBe(2); // 10% of 20
     expect(prisma.pointsLedgerEntry.create).toHaveBeenCalledOnce();
     expect(prisma.user.update).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { points: { increment: 2 } } }),
+      expect.objectContaining({
+        data: expect.objectContaining({
+          points: { increment: 2 },
+          leaderboardPoints: { increment: 2 },
+        }),
+      }),
     );
     const notif = (prisma._notifications[0] as any).data;
     expect(notif.type).toBe('MASTERY_EARNED');

@@ -86,7 +86,10 @@ export class MasteryService {
       await Promise.all([
         this.prisma.user.update({
           where: { id: input.userId },
-          data: { points: { increment: bonusPoints } },
+          data: {
+            points: { increment: bonusPoints },
+            leaderboardPoints: { increment: bonusPoints },
+          },
         }),
         this.prisma.pointsLedgerEntry.create({
           data: {
