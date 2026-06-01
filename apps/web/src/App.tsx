@@ -9193,12 +9193,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               <option value="never">Never (all-time)</option>
                               <option value="weekly">Weekly (resets each Monday)</option>
                               <option value="monthly">Monthly (resets on the 1st)</option>
-                              <option value="quarterly">Quarterly (resets Jan, Apr, Jul, Oct)</option>
+                              <option value="quarterly">
+                                Quarterly (resets Jan, Apr, Jul, Oct)
+                              </option>
                             </select>
                           </label>
                           <p className="inline-message">
-                            Controls how often the leaderboard ranking resets to zero. Points balance
-                            is never affected — only the leaderboard score resets.
+                            Controls how often the leaderboard ranking resets to zero. Points
+                            balance is never affected — only the leaderboard score resets.
                             {settingsDraft.lastLeaderboardResetAt
                               ? ` Last reset: ${new Date(settingsDraft.lastLeaderboardResetAt).toLocaleDateString()}.`
                               : null}

@@ -65,9 +65,7 @@ export class LeaderboardResetService {
       case LeaderboardResetMode.WEEKLY: {
         // Align to most recent Monday (UTC).
         const daysFromMonday = (utcDay + 6) % 7; // Mon=0, Tue=1, …
-        const monday = new Date(
-          Date.UTC(utcYear, utcMonth, utcDate - daysFromMonday),
-        );
+        const monday = new Date(Date.UTC(utcYear, utcMonth, utcDate - daysFromMonday));
         return monday;
       }
       case LeaderboardResetMode.MONTHLY: {

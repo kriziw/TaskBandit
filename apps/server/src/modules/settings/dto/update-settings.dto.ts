@@ -121,9 +121,7 @@ export class UpdateSettingsDto {
   smtpFromName?: string;
 
   @ApiPropertyOptional({ enum: LeaderboardResetMode, enumName: 'LeaderboardResetMode' })
-  @Transform(({ value }) =>
-    typeof value === 'string' ? value.trim().toUpperCase() : value,
-  )
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsOptional()
   @IsEnum(LeaderboardResetMode)
   leaderboardResetMode?: LeaderboardResetMode;
