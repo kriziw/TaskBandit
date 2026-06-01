@@ -486,6 +486,10 @@ export class HouseholdRepository {
           dto.smtpFromName !== undefined
             ? dto.smtpFromName.trim() || null
             : (household.settings?.smtpFromName ?? null),
+        timezone:
+          dto.timezone !== undefined
+            ? dto.timezone.trim() || 'UTC'
+            : (household.settings?.timezone ?? 'UTC'),
       },
     });
 
@@ -1842,6 +1846,25 @@ export class HouseholdRepository {
     });
   }
 
+  private async getActiveHolidayBlock(householdId: string) {
+    const now = new Date();
+    const windowStart = new Date(now);
+    windowStart.setUTCDate(windowStart.getUTCDate() - 1);
+    windowStart.setUTCHours(0, 0, 0, 0);
+    const windowEnd = new Date(now);
+    windowEnd.setUTCDate(windowEnd.getUTCDate() + 1);
+    windowEnd.setUTCHours(23, 59, 59, 999);
+    return this.prisma.householdHolidayBlock.findFirst({
+      where: {
+        householdId,
+        startDate: { lte: windowEnd },
+        endDate: { gte: windowStart },
+        appliedAt: { not: null },
+      },
+      select: { id: true },
+    });
+  }
+
   async processOverduePenalties(householdId: string, actorUserId?: string) {
     const householdSettings = await this.prisma.householdSettings.findUnique({
       where: {
@@ -1854,6 +1877,12 @@ export class HouseholdRepository {
         processedCount: 0,
         totalPenaltyPoints: 0,
       };
+    }
+
+    // Suspend penalties for all instances while any holiday block is active.
+    const activeBlock = await this.getActiveHolidayBlock(householdId);
+    if (activeBlock) {
+      return { processedCount: 0, totalPenaltyPoints: 0 };
     }
 
     const overdueInstances = await this.prisma.choreInstance.findMany({
@@ -6068,6 +6097,24 @@ export class HouseholdRepository {
         nextDueAt = advanced;
         attempts++;
       }
+    }
+
+    // Holiday block guard: if nextDueAt falls within an active block, push it to
+    // endDate + 1 so no new occurrence lands during the holiday. This avoids a
+    // catch-up flood — we schedule exactly one occurrence from after the block.
+    const blockCoveringNext = await this.prisma.householdHolidayBlock.findFirst({
+      where: {
+        householdId: instance.householdId,
+        startDate: { lte: nextDueAt },
+        endDate: { gte: nextDueAt },
+        appliedAt: { not: null },
+      },
+      select: { endDate: true },
+    });
+    if (blockCoveringNext) {
+      const dayAfterBlock = new Date(blockCoveringNext.endDate);
+      dayAfterBlock.setUTCDate(dayAfterBlock.getUTCDate() + 1);
+      nextDueAt = dayAfterBlock;
     }
 
     const variantId = (instance as any).variantId ?? null;

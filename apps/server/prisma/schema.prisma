@@ -85,6 +85,11 @@ enum RecurrenceEndMode {
   ON_DATE
 }
 
+enum HolidayExistingMode {
+  DEFER
+  LEAVE
+}
+
 enum NotificationType {
   CHORE_ASSIGNED
   CHORE_TAKEOVER_REQUEST
@@ -106,6 +111,8 @@ enum NotificationType {
   REWARD_REDEMPTION_REJECTED
   REWARD_CLAIMED_EXCLUSIVE
   REWARD_BOOKING_REMINDER
+  HOLIDAY_BLOCK_STARTED
+  HOLIDAY_BLOCK_ENDED
 }
 
 enum NotificationDevicePlatform {
@@ -202,6 +209,7 @@ model Household {
   userTemplateStats UserTemplateStats[]
   rewards        Reward[]
   rewardRedemptions RewardRedemption[]
+  holidayBlocks  HouseholdHolidayBlock[]
 }
 
 model HouseholdSettings {
@@ -231,6 +239,7 @@ model HouseholdSettings {
   requireRewardApproval                  Boolean   @default(true)
   leaderboardResetMode                   LeaderboardResetMode @default(NEVER)
   lastLeaderboardResetAt                 DateTime?
+  timezone                               String    @default("UTC")
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 
@@ -684,4 +693,19 @@ model RewardRedemption {
   @@index([householdId, requestedAtUtc])
   @@index([requestedById, requestedAtUtc])
   @@index([tenantId, requestedAtUtc])
+}
+
+model HouseholdHolidayBlock {
+  id           String              @id @default(uuid()) @db.Uuid
+  householdId  String              @db.Uuid
+  name         String
+  startDate    DateTime            @db.Date
+  endDate      DateTime            @db.Date
+  existingMode HolidayExistingMode
+  createdBy    String              @db.Uuid
+  appliedAt    DateTime?
+  createdAt    DateTime            @default(now())
+  household    Household           @relation(fields: [householdId], references: [id], onDelete: Cascade)
+
+  @@index([householdId, startDate])
 }
