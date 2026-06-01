@@ -90,7 +90,8 @@ data class MobileFeatureAccess(
     val externalCompletion: Boolean = false,
     val deferredFollowUpControl: Boolean = false,
     val quickLog: Boolean = false,
-    val rewardsManage: Boolean = false
+    val rewardsManage: Boolean = false,
+    val mastery: Boolean = false
 )
 
 data class MobileHostedQuotas(
@@ -184,7 +185,15 @@ data class MobileChore(
     val templateId: String? = null,
     val completionMilestone: MobileCompletionMilestone? = null,
     val newlyUnlockedAchievements: List<MobileUnlockedAchievement> = emptyList(),
-    val triggerInfo: MobileTriggerInfo? = null
+    val triggerInfo: MobileTriggerInfo? = null,
+    val userMasteryLevel: Int = 0,
+    val masteryResult: MobileMasteryResult? = null
+)
+
+data class MobileMasteryResult(
+    val earned: Boolean,
+    val newLevel: Int,
+    val bonusPoints: Int
 )
 
 data class MobileChecklistItem(

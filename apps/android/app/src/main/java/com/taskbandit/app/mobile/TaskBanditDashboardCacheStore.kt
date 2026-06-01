@@ -126,6 +126,7 @@ class TaskBanditDashboardCacheStore(
             .put("variantId", chore.variantId)
             .put("templateId", chore.templateId)
             .put("completionMilestone", chore.completionMilestone?.let(::completionMilestoneToJson))
+            .put("userMasteryLevel", chore.userMasteryLevel)
     }
 
     private fun checklistItemToJson(item: MobileChecklistItem): JSONObject {
@@ -222,6 +223,7 @@ class TaskBanditDashboardCacheStore(
             .put("deferredFollowUpControl", entry.deferredFollowUpControl)
             .put("quickLog", entry.quickLog)
             .put("rewardsManage", entry.rewardsManage)
+            .put("mastery", entry.mastery)
     }
 
     // -------------------------------------------------------------------------

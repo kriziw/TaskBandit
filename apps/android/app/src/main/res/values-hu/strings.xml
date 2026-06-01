@@ -310,6 +310,14 @@
     <string name="mobile_celebration_perfect_day_phrase_1">Minden mara kijelolt feladat kesz. Bandit tiszteletkort fut.</string>
     <string name="mobile_celebration_perfect_day_phrase_2">A napi lista ragyog. Egy kis mosomedve-konfetti teljesen jogos.</string>
     <string name="mobile_celebration_perfect_day_phrase_3">Nem maradt mara feladat hatra. Ez igazi haztartasi hosmunka.</string>
+    <string name="mobile_celebration_mastery_level1_title">Mesterség Jelvény!</string>
+    <string name="mobile_celebration_mastery_level1_eyebrow">⭐ 1. szintű mesterség</string>
+    <string name="mobile_celebration_mastery_level1_phrase_1">Megszerezted a mesterség jelvényt ezen a feladaton. A háztartás tudja, hogy komolyan veszed.</string>
+    <string name="mobile_celebration_mastery_level1_phrase_2">Jelvény feloldva. Bandit aranycsillagot tűz a nyilvántartásodba.</string>
+    <string name="mobile_celebration_mastery_level2_title">Mesterség Bónusz!</string>
+    <string name="mobile_celebration_mastery_level2_eyebrow">🏆 2. szintű mesterség</string>
+    <string name="mobile_celebration_mastery_level2_phrase_1">Maximális mesterség elérve. Minden jövőbeli teljesítés extra bónuszt hoz — a szakértelem kifizetődik.</string>
+    <string name="mobile_celebration_mastery_level2_phrase_2">2. szint feloldva. Ettől fogva ez a feladat hűséges bónuszt fizet. Bandit tiszteleg az elkötelezettség előtt.</string>
     <string name="mobile_queued_submissions">%1$d sorba állított beküldés vár szinkronizálásra</string>
     <string name="mobile_syncing_queue">A sorba állított feladatok szinkronizálása folyamatban...</string>
     <string name="mobile_queue_synced">%1$d sorba állított feladat szinkronizálva lett.</string>

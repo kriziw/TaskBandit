@@ -1156,14 +1156,26 @@ internal fun ChoreCard(
                     if (!subtypeLabel.isNullOrBlank()) 1.dp else 4.dp
                 )
             ) {
-                Text(
-                    text = typeTitle,
-                    style = MaterialTheme.typography.titleSmall,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Text(
+                        text = typeTitle,
+                        style = MaterialTheme.typography.titleSmall,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        modifier = Modifier.weight(1f, fill = false)
+                    )
+                    if (chore.userMasteryLevel >= 1) {
+                        Text(
+                            text = if (chore.userMasteryLevel >= 2) "🏆" else "⭐",
+                            style = MaterialTheme.typography.labelSmall
+                        )
+                    }
+                }
                 if (!subtypeLabel.isNullOrBlank()) {
                     Text(
                         text = subtypeLabel,
