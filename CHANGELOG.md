@@ -2,6 +2,21 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.4.0](https://github.com/kriziw/TaskBandit/compare/v1.3.8...v1.4.0) (2026-06-01)
+
+
+### Features
+
+* **leaderboard:** separate leaderboard score from points with configurable resets ([#583](https://github.com/kriziw/TaskBandit/issues/583)) ([89d21ef](https://github.com/kriziw/TaskBandit/commit/89d21ef2edf033cd7fbc5abe8f1426598588dc9a))
+* **mastery:** android display ([#582](https://github.com/kriziw/TaskBandit/issues/582)) ([f0b1019](https://github.com/kriziw/TaskBandit/commit/f0b1019ad3b4f392e7980df3803e4b38b2811847))
+* **mastery:** schema migration and server core ([#580](https://github.com/kriziw/TaskBandit/issues/580)) ([b3eac39](https://github.com/kriziw/TaskBandit/commit/b3eac396a724267e208a24ca76654930eab0e693))
+* **mastery:** web client UI ([#581](https://github.com/kriziw/TaskBandit/issues/581)) ([fd27554](https://github.com/kriziw/TaskBandit/commit/fd275545934d52ec01e398a8be06c00e6700c81c))
+
+
+### Bug Fixes
+
+* **android:** clean up stale APKs before each update download ([#578](https://github.com/kriziw/TaskBandit/issues/578)) ([8fc3fd6](https://github.com/kriziw/TaskBandit/commit/8fc3fd6f415df5378253e0971cd6af7de7a87743))
+
 ## [1.3.8](https://github.com/kriziw/TaskBandit/compare/v1.3.7...v1.3.8) (2026-06-01)
 
 
