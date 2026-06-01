@@ -331,8 +331,8 @@
     <string name="mobile_assignment_reason_rebalanced">Rebalanced</string>
     <string name="mobile_takeover_requests_title">Needs your approval</string>
     <string name="mobile_takeover_request_card_body">%1$s asked you to take over this chore.</string>
-    <string name="mobile_takeover_request_approve">Approve takeover</string>
-    <string name="mobile_takeover_request_approving">Approving...</string>
+    <string name="mobile_takeover_request_approve">Accept</string>
+    <string name="mobile_takeover_request_approving">Accepting...</string>
     <string name="mobile_takeover_request_decline">Decline</string>
     <string name="mobile_takeover_request_declining">Declining...</string>
     <string name="mobile_takeover_request_sent">Takeover request sent.</string>
