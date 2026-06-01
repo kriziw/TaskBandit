@@ -41,6 +41,7 @@ export type AuthenticatedUser = {
     deferred_follow_up_control: boolean;
     quick_log: boolean;
     rewards_manage: boolean;
+    mastery: boolean;
   };
 };
 
@@ -536,6 +537,13 @@ export type ChoreTemplateDependencyRule = {
   delayUnit: FollowUpDelayUnit;
 };
 
+export type ChoreTemplateMastery = {
+  disabled: boolean;
+  level1Threshold: number;
+  level2Threshold: number;
+  level2BonusPercentage: number;
+};
+
 export type ChoreTemplate = {
   id: string;
   groupTitle: string;
@@ -558,6 +566,7 @@ export type ChoreTemplate = {
   checklist: ChoreTemplateChecklistItem[];
   dependencyTemplateIds: string[];
   dependencyRules: ChoreTemplateDependencyRule[];
+  mastery?: ChoreTemplateMastery;
 };
 
 export type ChoreAttachment = {
@@ -620,6 +629,8 @@ export type ChoreInstance = {
   checklist: ChoreTemplateChecklistItem[];
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
+  userMasteryLevel?: number;
+  masteryResult?: { earned: boolean; newLevel: number; bonusPoints: number };
   completionMilestone?: CompletionMilestone | null;
   newlyUnlockedAchievements?: UnlockedAchievement[];
   triggerInfo?: {
@@ -688,6 +699,20 @@ export type UpdateHouseholdMemberInput = {
   password?: string;
 };
 
+export type MasteryStats = {
+  templateId: string;
+  templateTitle: string;
+  groupTitle: string;
+  completionCount: number;
+  masteryLevel: number;
+  level1AwardedAt: string | null;
+  level2AwardedAt: string | null;
+  masteryLevel1Threshold: number;
+  masteryLevel2Threshold: number;
+  masteryLevel2BonusPercentage: number;
+  masteryDisabled: boolean;
+};
+
 export type CreateChoreTemplateInput = {
   defaultLocale?: TemplateTranslationLocale;
   groupTitle: string;
@@ -713,6 +738,10 @@ export type CreateChoreTemplateInput = {
     title: string;
     required: boolean;
   }>;
+  masteryDisabled?: boolean;
+  masteryLevel1Threshold?: number;
+  masteryLevel2Threshold?: number;
+  masteryLevel2BonusPercentage?: number;
 };
 
 export type CreateChoreInstanceInput = {
@@ -791,6 +820,7 @@ export type DashboardPayload = {
   hostedSubscription: HostedSubscriptionOverview;
   compatibility: ServerCompatibility;
   achievements: Achievement[];
+  masteryStats: MasteryStats[];
   rewards: Reward[];
   redemptions: RewardRedemption[];
 };

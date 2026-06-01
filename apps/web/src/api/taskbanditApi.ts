@@ -41,6 +41,7 @@ import type {
   UpdateHouseholdMemberInput,
   UploadedProof,
   WebPushPublicKeyResponse,
+  MasteryStats,
 } from '../types/taskbandit';
 import type { AppLanguage } from '../i18n/I18nProvider';
 import { resolveApiBaseUrl } from '../runtimeConfig';
@@ -242,6 +243,9 @@ export const taskBanditApi = {
   },
   getHouseholdAchievements(token: string, language: AppLanguage) {
     return request<AchievementHouseholdEntry[]>('/api/achievements/household', { token, language });
+  },
+  getMasteryStats(token: string, language: AppLanguage) {
+    return request<MasteryStats[]>('/api/chores/mastery', { token, language });
   },
   resetAchievements(token: string, language: AppLanguage) {
     return request('/api/achievements/reset', { method: 'DELETE', token, language });

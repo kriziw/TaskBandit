@@ -33,6 +33,7 @@ const makePayload = (overrides: Partial<DashboardPayload> = {}): DashboardPayloa
   hostedSubscription: {} as DashboardPayload['hostedSubscription'],
   compatibility: {} as DashboardPayload['compatibility'],
   achievements: [],
+  masteryStats: [],
   rewards: [],
   redemptions: [],
   ...overrides,
