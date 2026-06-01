@@ -2,7 +2,6 @@
 
 package com.taskbandit.app.ui.screens
 
-import android.content.Intent
 import android.os.Build
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
@@ -69,7 +68,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import java.time.Instant
 import java.util.Locale
-import androidx.core.content.FileProvider
 import androidx.core.os.LocaleListCompat
 import com.taskbandit.app.BuildConfig
 import com.taskbandit.app.R
@@ -1090,51 +1088,6 @@ internal fun fetchGitHubLatestRelease(): GitHubReleaseInfo? {
         null
     } finally {
         connection.disconnect()
-    }
-}
-
-internal fun downloadAndInstallApk(
-    context: android.content.Context,
-    url: String,
-    version: String,
-    onProgress: (Float) -> Unit,
-    onDone: () -> Unit,
-    onError: () -> Unit
-) {
-    val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
-    try {
-        val dir = java.io.File(context.cacheDir, "apk-downloads").also { it.mkdirs() }
-        val file = java.io.File(dir, "taskbandit-$version.apk")
-        val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
-        connection.connectTimeout = 15_000
-        connection.readTimeout = 120_000
-        connection.connect()
-        val total = connection.contentLengthLong
-        var downloaded = 0L
-        connection.inputStream.use { input ->
-            file.outputStream().use { output ->
-                val buffer = ByteArray(8192)
-                var read: Int
-                while (input.read(buffer).also { read = it } != -1) {
-                    output.write(buffer, 0, read)
-                    downloaded += read
-                    if (total > 0) {
-                        val progress = downloaded.toFloat() / total
-                        mainHandler.post { onProgress(progress) }
-                    }
-                }
-            }
-        }
-        mainHandler.post { onDone() }
-        val fileUri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
-        val installIntent = Intent(Intent.ACTION_VIEW).apply {
-            setDataAndType(fileUri, "application/vnd.android.package-archive")
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(installIntent)
-    } catch (_: Exception) {
-        mainHandler.post { onError() }
     }
 }
 

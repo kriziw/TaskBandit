@@ -1458,7 +1458,10 @@ internal fun downloadAndInstallApk(
 ) {
     val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
     try {
-        val dir = java.io.File(context.cacheDir, "apk-downloads").also { it.mkdirs() }
+        val dir = java.io.File(context.cacheDir, "apk-downloads").also {
+            it.deleteRecursively()
+            it.mkdirs()
+        }
         val file = java.io.File(dir, "taskbandit-$version.apk")
         val connection = java.net.URL(url).openConnection() as java.net.HttpURLConnection
         connection.connectTimeout = 15_000
