@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.5.0](https://github.com/kriziw/TaskBandit/compare/v1.4.0...v1.5.0) (2026-06-01)
+
+
+### Features
+
+* **holiday-blocks:** server implementation ([#587](https://github.com/kriziw/TaskBandit/issues/587)) ([512110d](https://github.com/kriziw/TaskBandit/commit/512110d9b8c469841e4d9dda506f985c8cf27840))
+* **holiday-blocks:** web and Android client ([#588](https://github.com/kriziw/TaskBandit/issues/588)) ([dc48436](https://github.com/kriziw/TaskBandit/commit/dc48436957a3ee7964c1021afd027b3fe6acd1ad))
+
 ## [1.4.0](https://github.com/kriziw/TaskBandit/compare/v1.3.8...v1.4.0) (2026-06-01)
 
 
