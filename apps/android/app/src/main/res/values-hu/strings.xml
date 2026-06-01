@@ -533,6 +533,7 @@
     <string name="mobile_common_delete">Törlés</string>
     <string name="mobile_back_label">Vissza</string>
     <string name="mobile_rewards_icon_none">Nincs ikon</string>
+    <string name="mobile_holiday_banner_active">Szabadságmód aktív — feladatok szünetelnek</string>
 </resources>
 
 

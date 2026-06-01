@@ -42,6 +42,8 @@ import type {
   UploadedProof,
   WebPushPublicKeyResponse,
   MasteryStats,
+  HolidayBlock,
+  CreateHolidayBlockPayload,
 } from '../types/taskbandit';
 import type { AppLanguage } from '../i18n/I18nProvider';
 import { resolveApiBaseUrl } from '../runtimeConfig';
@@ -941,6 +943,30 @@ export const taskBanditApi = {
       token,
       language,
       body: { targetDate },
+    });
+  },
+
+  // ── Holiday blocks ────────────────────────────────────────────────────────
+
+  getHolidayBlocks(token: string, language: AppLanguage) {
+    return request<HolidayBlock[]>('/api/holiday-blocks', { token, language });
+  },
+  createHolidayBlock(token: string, language: AppLanguage, payload: CreateHolidayBlockPayload) {
+    return request<HolidayBlock>('/api/holiday-blocks', {
+      method: 'POST',
+      token,
+      language,
+      body: payload,
+    });
+  },
+  deleteHolidayBlock(token: string, language: AppLanguage, id: string) {
+    return request<void>(`/api/holiday-blocks/${id}`, { method: 'DELETE', token, language });
+  },
+  endHolidayBlockEarly(token: string, language: AppLanguage, id: string) {
+    return request<HolidayBlock>(`/api/holiday-blocks/${id}/end-early`, {
+      method: 'POST',
+      token,
+      language,
     });
   },
 };

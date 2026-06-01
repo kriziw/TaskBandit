@@ -36,6 +36,7 @@ const makePayload = (overrides: Partial<DashboardPayload> = {}): DashboardPayloa
   masteryStats: [],
   rewards: [],
   redemptions: [],
+  holidayBlocks: [],
   ...overrides,
 });
 

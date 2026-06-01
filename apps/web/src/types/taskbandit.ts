@@ -292,6 +292,7 @@ export type HouseholdSettings = {
   smtpPasswordConfigured: boolean;
   smtpFromEmail: string;
   smtpFromName: string;
+  timezone: string;
 };
 
 export type NotificationPreferences = {
@@ -828,4 +829,30 @@ export type DashboardPayload = {
   masteryStats: MasteryStats[];
   rewards: Reward[];
   redemptions: RewardRedemption[];
+  holidayBlocks: HolidayBlock[];
+};
+
+// ── Holiday blocks ─────────────────────────────────────────────────────────────
+
+export type HolidayExistingMode = 'DEFER' | 'LEAVE';
+export type HolidayBlockStatus = 'upcoming' | 'active' | 'past';
+
+export type HolidayBlock = {
+  id: string;
+  householdId: string;
+  name: string;
+  startDate: string;
+  endDate: string;
+  existingMode: HolidayExistingMode;
+  createdBy: string;
+  appliedAt: string | null;
+  createdAt: string;
+  status: HolidayBlockStatus;
+};
+
+export type CreateHolidayBlockPayload = {
+  name: string;
+  startDate: string;
+  endDate: string;
+  existingMode: HolidayExistingMode;
 };

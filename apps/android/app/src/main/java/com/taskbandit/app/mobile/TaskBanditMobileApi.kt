@@ -372,8 +372,10 @@ class TaskBanditMobileApi {
 
         val rewardsJson = runCatching { requestJsonArray(baseUrl, "/api/rewards", token = token) }.getOrNull()
         val redemptionsJson = runCatching { requestJsonArray(baseUrl, "/api/rewards/redemptions", token = token) }.getOrNull()
+        val holidayBlocksJson = runCatching { requestJsonArray(baseUrl, "/api/holiday-blocks", token = token) }.getOrNull()
 
         val rewards = parseJsonArray(rewardsJson, ::parseReward)
+        val holidayBlocks = parseJsonArray(holidayBlocksJson, ::parseHolidayBlock)
 
         val redemptions = buildList {
             val arr = redemptionsJson ?: JSONArray()
@@ -417,7 +419,8 @@ class TaskBanditMobileApi {
             leaderboardResetMode = leaderboardResetMode,
             lastLeaderboardResetAt = lastLeaderboardResetAt,
             rewards = rewards,
-            redemptions = redemptions
+            redemptions = redemptions,
+            holidayBlocks = holidayBlocks
         )
     }
 

@@ -945,5 +945,28 @@
 
   "rewards.manager.tab.my_shop": "My Shop",
   "rewards.manager.shop.empty_for_admin": "No rewards are enabled yet. Go to Catalogue to enable rewards for your household.",
-  "settings.require_reward_approval": "Require approval for reward redemptions"
+  "settings.require_reward_approval": "Require approval for reward redemptions",
+  "settings.timezone": "Household timezone",
+  "settings.timezone_hint": "Used to evaluate holiday block boundaries in local time.",
+
+  "holiday.section_title": "Holiday Blocks",
+  "holiday.section_hint": "Define date ranges during which new chore instances are not generated.",
+  "holiday.status.upcoming": "Upcoming",
+  "holiday.status.active": "Active",
+  "holiday.status.past": "Past",
+  "holiday.create_block": "New holiday block",
+  "holiday.field.name": "Block name",
+  "holiday.field.name_placeholder": "e.g. Summer holiday",
+  "holiday.field.start_date": "Start date",
+  "holiday.field.end_date": "End date",
+  "holiday.field.existing_mode": "Open chores when block starts",
+  "holiday.mode.defer": "Defer them to after the holiday (recommended)",
+  "holiday.mode.leave": "Leave them open",
+  "holiday.action.delete": "Delete",
+  "holiday.action.end_early": "End early",
+  "holiday.action.create": "Create block",
+  "holiday.action.cancel": "Cancel",
+  "holiday.error.overlap": "A holiday block already exists for this date range.",
+  "holiday.error.past_date": "Start date cannot be in the past.",
+  "holiday.banner": "🏖️ Holiday mode — {{name}} — chores paused until {{endDate}}."
 }
