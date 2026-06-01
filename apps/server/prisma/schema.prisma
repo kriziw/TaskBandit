@@ -43,6 +43,13 @@ enum AssignmentStrategyType {
   MANUAL_DEFAULT_ASSIGNEE
 }
 
+enum LeaderboardResetMode {
+  NEVER
+  WEEKLY
+  MONTHLY
+  QUARTERLY
+}
+
 enum AssignmentReasonType {
   ROUND_ROBIN
   LEAST_COMPLETED_RECENTLY
@@ -219,6 +226,8 @@ model HouseholdSettings {
   smtpFromName                           String?
   enableAchievements                     Boolean   @default(true)
   requireRewardApproval                  Boolean   @default(true)
+  leaderboardResetMode                   LeaderboardResetMode @default(NEVER)
+  lastLeaderboardResetAt                 DateTime?
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 
@@ -229,6 +238,7 @@ model User {
   displayName   String
   role          HouseholdRole
   points        Int           @default(0)
+  leaderboardPoints Int       @default(0)
   currentStreak Int           @default(0)
   createdAtUtc  DateTime      @default(now())
   tenant        Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)

@@ -1,5 +1,7 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsBoolean, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { LeaderboardResetMode } from '@prisma/client';
 
 export class UpdateSettingsDto {
   @ApiPropertyOptional()
@@ -117,4 +119,10 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsString()
   smtpFromName?: string;
+
+  @ApiPropertyOptional({ enum: LeaderboardResetMode, enumName: 'LeaderboardResetMode' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsOptional()
+  @IsEnum(LeaderboardResetMode)
+  leaderboardResetMode?: LeaderboardResetMode;
 }

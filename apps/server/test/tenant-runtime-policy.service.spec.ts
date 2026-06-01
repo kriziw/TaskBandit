@@ -56,8 +56,9 @@ describe("TenantRuntimePolicyService", () => {
   });
 
   it("blocks suspended tenants from proof uploads", async () => {
+    const baseConfig = await (hostedRuntimeConfigService.getTenantRuntimeConfig as unknown as () => Promise<Record<string, unknown>>)();
     hostedRuntimeConfigService.getTenantRuntimeConfig.mockResolvedValue({
-      ...(await hostedRuntimeConfigService.getTenantRuntimeConfig()),
+      ...baseConfig,
       lifecycleState: "suspended",
       entitlementState: "suspended",
       suspensionReason: "payment overdue"

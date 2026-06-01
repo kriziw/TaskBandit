@@ -112,6 +112,6 @@ describe("PushDeliveryService", () => {
     });
 
     expect(result.status).toBe("failed");
-    expect(result.errorMessage).toBe("Firebase Admin SDK is not available in the server runtime.");
+    expect(result.status === "failed" && result.errorMessage).toBe("Firebase Admin SDK is not available in the server runtime.");
   });
 });

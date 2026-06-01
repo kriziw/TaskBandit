@@ -8,6 +8,7 @@ import { DashboardSyncController } from './dashboard-sync.controller';
 import { DashboardSyncService } from './dashboard-sync.service';
 import { DashboardService } from './dashboard.service';
 import { EmailDeliveryWorkerService } from './email-delivery-worker.service';
+import { LeaderboardResetService } from './leaderboard-reset.service';
 import { HostedPushDiagnosticsController } from './hosted-push-diagnostics.controller';
 import { HostedPushDiagnosticsService } from './hosted-push-diagnostics.service';
 import { PushDeliveryWorkerService } from './push-delivery-worker.service';
@@ -21,6 +22,7 @@ import { TenantDataManifestService } from './tenant-data-manifest.service';
   providers: [
     DashboardSyncService,
     DashboardService,
+    LeaderboardResetService,
     HostedPushDiagnosticsService,
     RuntimeTenantScopeResolverService,
     AuthService,

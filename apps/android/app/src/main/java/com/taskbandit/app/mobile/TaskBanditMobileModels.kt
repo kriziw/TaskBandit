@@ -137,6 +137,7 @@ data class MobileLeaderboardEntry(
     val displayName: String,
     val role: String,
     val points: Int,
+    val leaderboardPoints: Int = points,
     val currentStreak: Int,
     val isExternal: Boolean = false
 )
@@ -425,6 +426,8 @@ data class MobileDashboard(
     val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility(),
     val achievements: List<MobileAchievement> = emptyList(),
     val enableAchievements: Boolean = true,
+    val leaderboardResetMode: String = "never",
+    val lastLeaderboardResetAt: String? = null,
     val rewards: List<MobileReward> = emptyList(),
     val redemptions: List<MobileRedemption> = emptyList()
 )

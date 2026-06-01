@@ -12,7 +12,21 @@ describe("SettingsService", () => {
     role: "admin",
     email: "alex@example.com",
     points: 0,
-    currentStreak: 0
+    currentStreak: 0,
+    featureAccess: {
+      templates_manage: true,
+      chores_manage: true,
+      reassignment: true,
+      takeover_direct: true,
+      takeover_requests: true,
+      approvals: true,
+      proof_uploads: true,
+      follow_up_automation: true,
+      external_completion: true,
+      deferred_follow_up_control: true,
+      quick_log: true,
+      rewards_manage: true,
+    },
   };
 
   const householdFixture = {
@@ -544,7 +558,7 @@ describe("SettingsService", () => {
     expect(response.hostedMode).toBe(true);
     expect(response.packageCode).toBe("family_plus");
     expect(response.packageDisplayName).toBe("Family Plus");
-    expect(response.featureAccess.templates_manage).toBe(false);
+    expect(response.featureAccess?.templates_manage).toBe(false);
     expect(response.usage).toEqual({
       membersUsed: 3,
       storageBytesUsed: 128 * 1024 * 1024,

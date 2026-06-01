@@ -3277,7 +3277,7 @@ private fun LeaderboardEntryRow(
                 color = MaterialTheme.colorScheme.primaryContainer
             ) {
                 Text(
-                    text = stringResource(R.string.mobile_points_value, entry.points),
+                    text = stringResource(R.string.mobile_points_value, entry.leaderboardPoints),
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
                     style = MaterialTheme.typography.labelLarge,
                     color = MaterialTheme.colorScheme.onPrimaryContainer,
