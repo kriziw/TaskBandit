@@ -1,6 +1,6 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
 import { Transform } from 'class-transformer';
-import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, Min } from 'class-validator';
+import { IsBoolean, IsEnum, IsInt, IsOptional, IsString, Max, MaxLength, Min } from 'class-validator';
 import { LeaderboardResetMode } from '@prisma/client';
 
 export class UpdateSettingsDto {
@@ -125,4 +125,10 @@ export class UpdateSettingsDto {
   @IsOptional()
   @IsEnum(LeaderboardResetMode)
   leaderboardResetMode?: LeaderboardResetMode;
+
+  @ApiPropertyOptional({ description: 'IANA timezone name, e.g. "Europe/Berlin"' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(64)
+  timezone?: string;
 }

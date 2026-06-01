@@ -2,6 +2,7 @@ import { Injectable, Logger, OnApplicationBootstrap, OnModuleDestroy } from '@ne
 import { AppConfigService } from '../../common/config/app-config.service';
 import { TenantRuntimePolicyService } from '../../common/tenancy/tenant-runtime-policy.service';
 import { HouseholdRepository } from '../household/household.repository';
+import { HolidayBlocksRepository } from '../holiday-blocks/holiday-blocks.repository';
 import { RewardsRepository } from '../rewards/rewards.repository';
 import { DashboardSyncService } from './dashboard-sync.service';
 
@@ -15,6 +16,7 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
   constructor(
     private readonly repository: HouseholdRepository,
     private readonly rewardsRepository: RewardsRepository,
+    private readonly holidayBlocksRepository: HolidayBlocksRepository,
     private readonly appConfigService: AppConfigService,
     private readonly tenantRuntimePolicyService: TenantRuntimePolicyService,
     private readonly dashboardSyncService: DashboardSyncService,
@@ -99,6 +101,20 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
         }
       }
 
+      const now = new Date();
+
+      // Holiday block maintenance runs for ALL tenants (self-hosted + SaaS) so
+      // that DEFER processing fires regardless of push-notification settings.
+      // Notifications are gated to allowedTenantIds only.
+      await this.holidayBlocksRepository.processBlockStart({
+        now,
+        notificationTenantIds: allowedTenantIds,
+      });
+      await this.holidayBlocksRepository.processBlockEnd({
+        now,
+        notificationTenantIds: allowedTenantIds,
+      });
+
       if (allowedTenantIds.length === 0) {
         return {
           reminderCount: 0,
@@ -106,7 +122,6 @@ export class ReminderWorkerService implements OnApplicationBootstrap, OnModuleDe
         };
       }
 
-      const now = new Date();
       const reminderResult = await this.repository.processReminderNotifications({
         now,
         dueSoonWindowHours: this.appConfigService.dueSoonReminderWindowHours,
