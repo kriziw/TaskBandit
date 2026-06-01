@@ -6,11 +6,12 @@ ALTER TABLE "HouseholdSettings"
   ADD COLUMN "leaderboardResetMode" "LeaderboardResetMode" NOT NULL DEFAULT 'NEVER',
   ADD COLUMN "lastLeaderboardResetAt" TIMESTAMP(3);
 
--- Add leaderboard score column to User
+-- Add leaderboard score column to User (IF NOT EXISTS: mastery migration 0045
+-- adds this column first if it runs before this one; both are safe in either order).
 ALTER TABLE "User"
-  ADD COLUMN "leaderboardPoints" INTEGER NOT NULL DEFAULT 0;
+  ADD COLUMN IF NOT EXISTS "leaderboardPoints" INTEGER NOT NULL DEFAULT 0;
 
--- Backfill existing users: leaderboardPoints starts equal to points balance.
--- Since the default mode is NEVER (no resets), existing users should see the
--- same leaderboard ranking as before — all-time cumulative points.
-UPDATE "User" SET "leaderboardPoints" = "points";
+-- Backfill: only update rows where leaderboardPoints is still 0 and points > 0
+-- so we don't overwrite data that a previous migration already backfilled.
+UPDATE "User" SET "leaderboardPoints" = "points"
+  WHERE "leaderboardPoints" = 0 AND "points" > 0;
