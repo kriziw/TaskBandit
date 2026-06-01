@@ -1096,11 +1096,7 @@ function HolidayBlocksSection({
           </div>
         ))}
         {!isCreating ? (
-          <button
-            className="btn btn-secondary"
-            onClick={() => setIsCreating(true)}
-            disabled={busy}
-          >
+          <button className="btn btn-secondary" onClick={() => setIsCreating(true)} disabled={busy}>
             {t('holiday.create_block')}
           </button>
         ) : (
@@ -1117,19 +1113,11 @@ function HolidayBlocksSection({
             </label>
             <label>
               <span>{t('holiday.field.start_date')}</span>
-              <input
-                type="date"
-                value={startDate}
-                onChange={(e) => setStartDate(e.target.value)}
-              />
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
             </label>
             <label>
               <span>{t('holiday.field.end_date')}</span>
-              <input
-                type="date"
-                value={endDate}
-                onChange={(e) => setEndDate(e.target.value)}
-              />
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
             </label>
             <fieldset>
               <legend>{t('holiday.field.existing_mode')}</legend>
@@ -9488,10 +9476,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                       <HolidayBlocksSection
                         blocks={payload.holidayBlocks}
                         onRefresh={async () => {
-                          const blocks = await taskBanditApi.getHolidayBlocks(
-                            token!,
-                            language,
-                          );
+                          const blocks = await taskBanditApi.getHolidayBlocks(token!, language);
                           updatePayload((prev) => ({ ...prev, holidayBlocks: blocks }));
                         }}
                         token={token!}
