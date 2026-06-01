@@ -2711,6 +2711,16 @@ export class HouseholdRepository {
           requirePhotoProof: dto.requirePhotoProof,
           stickyFollowUpAssignee: dto.stickyFollowUpAssignee ?? false,
           recurrenceStartStrategy: dto.recurrenceStartStrategy ?? RecurrenceStartStrategy.DUE_AT,
+          ...(dto.masteryDisabled !== undefined ? { masteryDisabled: dto.masteryDisabled } : {}),
+          ...(dto.masteryLevel1Threshold !== undefined
+            ? { masteryLevel1Threshold: dto.masteryLevel1Threshold }
+            : {}),
+          ...(dto.masteryLevel2Threshold !== undefined
+            ? { masteryLevel2Threshold: dto.masteryLevel2Threshold }
+            : {}),
+          ...(dto.masteryLevel2BonusPercentage !== undefined
+            ? { masteryLevel2BonusPercentage: dto.masteryLevel2BonusPercentage }
+            : {}),
           checklistItems: {
             create:
               dto.checklist?.map((item, index) => ({
@@ -2919,6 +2929,16 @@ export class HouseholdRepository {
           requirePhotoProof: dto.requirePhotoProof,
           stickyFollowUpAssignee: dto.stickyFollowUpAssignee ?? false,
           recurrenceStartStrategy: dto.recurrenceStartStrategy ?? RecurrenceStartStrategy.DUE_AT,
+          ...(dto.masteryDisabled !== undefined ? { masteryDisabled: dto.masteryDisabled } : {}),
+          ...(dto.masteryLevel1Threshold !== undefined
+            ? { masteryLevel1Threshold: dto.masteryLevel1Threshold }
+            : {}),
+          ...(dto.masteryLevel2Threshold !== undefined
+            ? { masteryLevel2Threshold: dto.masteryLevel2Threshold }
+            : {}),
+          ...(dto.masteryLevel2BonusPercentage !== undefined
+            ? { masteryLevel2BonusPercentage: dto.masteryLevel2BonusPercentage }
+            : {}),
           checklistItems: {
             create:
               dto.checklist?.map((item, index) => ({
@@ -3273,8 +3293,19 @@ export class HouseholdRepository {
       });
     }
 
-    const mappedInstances = instances.map((instance) =>
-      this.mapInstance(
+    const masteryStatsRaw =
+      assigneeIds.length > 0
+        ? await this.prisma.userTemplateStats.findMany({
+            where: { userId: { in: assigneeIds }, householdId: user.householdId },
+            select: { userId: true, templateId: true, masteryLevel: true },
+          })
+        : [];
+    const masteryMap = new Map(
+      masteryStatsRaw.map((s) => [`${s.userId}:${s.templateId}`, s.masteryLevel]),
+    );
+
+    const mappedInstances = instances.map((instance) => ({
+      ...this.mapInstance(
         instance,
         {
           redactDetails: shouldRestrictOtherChores && instance.assigneeId !== user.id,
@@ -3284,7 +3315,11 @@ export class HouseholdRepository {
         },
         language,
       ),
-    );
+      userMasteryLevel:
+        instance.assigneeId && instance.templateId
+          ? (masteryMap.get(`${instance.assigneeId}:${instance.templateId}`) ?? 0)
+          : 0,
+    }));
 
     // Enrich follow-up chores with trigger info (who completed the previous step and when)
     const sourceIds = Array.from(
@@ -6474,6 +6509,12 @@ export class HouseholdRepository {
           ),
           translations: this.serializeVariantTranslations(v),
         })),
+      mastery: {
+        disabled: template.masteryDisabled,
+        level1Threshold: template.masteryLevel1Threshold,
+        level2Threshold: template.masteryLevel2Threshold,
+        level2BonusPercentage: template.masteryLevel2BonusPercentage,
+      },
     };
   }
 

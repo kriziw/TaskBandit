@@ -100,6 +100,7 @@ enum NotificationType {
   DAILY_SUMMARY
   OVERDUE_PENALTY
   ACHIEVEMENT_UNLOCKED
+  MASTERY_EARNED
   REWARD_REDEMPTION_REQUESTED
   REWARD_REDEMPTION_APPROVED
   REWARD_REDEMPTION_REJECTED
@@ -180,6 +181,7 @@ model Tenant {
   notificationDevices NotificationDevice[]
   pushDeliveries NotificationPushDelivery[]
   userAchievements UserAchievement[]
+  userTemplateStats UserTemplateStats[]
 }
 
 model Household {
@@ -197,6 +199,7 @@ model Household {
   notifications  Notification[]
   choreTakeoverRequests ChoreTakeoverRequest[]
   userAchievements UserAchievement[]
+  userTemplateStats UserTemplateStats[]
   rewards        Reward[]
   rewardRedemptions RewardRedemption[]
 }
@@ -252,6 +255,7 @@ model User {
   takeoverRequestsRequested ChoreTakeoverRequest[] @relation("TakeoverRequester")
   takeoverRequestsReceived ChoreTakeoverRequest[] @relation("TakeoverRequested")
   userAchievements UserAchievement[]
+  userTemplateStats UserTemplateStats[]
   redemptionsRequested RewardRedemption[] @relation("RedemptionRequester")
   redemptionsResolved  RewardRedemption[] @relation("RedemptionResolver")
 
@@ -308,12 +312,17 @@ model ChoreTemplate {
   recurrenceStartStrategy RecurrenceStartStrategy @default(DUE_AT)
   catalogKey         String?
   isOperatorManaged  Boolean                      @default(false)
+  masteryDisabled              Boolean            @default(false)
+  masteryLevel1Threshold       Int                @default(5)
+  masteryLevel2Threshold       Int                @default(10)
+  masteryLevel2BonusPercentage Int                @default(10)
   createdAtUtc       DateTime                     @default(now())
   household          Household                    @relation(fields: [householdId], references: [id], onDelete: Cascade)
   checklistItems     ChoreTemplateChecklistItem[]
   dependencies       ChoreTemplateDependency[]
   choreInstances     ChoreInstance[]
   variants           ChoreTemplateVariant[]
+  userTemplateStats  UserTemplateStats[]
 
   @@unique([householdId, catalogKey])
   @@index([householdId])
@@ -605,6 +614,27 @@ model UserAchievement {
 
   @@unique([userId, achievementKey])
   @@index([householdId, achievementKey])
+  @@index([userId, updatedAtUtc])
+}
+
+model UserTemplateStats {
+  id              String        @id @default(uuid()) @db.Uuid
+  tenantId        String        @db.Uuid
+  householdId     String        @db.Uuid
+  userId          String        @db.Uuid
+  templateId      String        @db.Uuid
+  completionCount Int           @default(0)
+  masteryLevel    Int           @default(0)
+  level1AwardedAt DateTime?
+  level2AwardedAt DateTime?
+  updatedAtUtc    DateTime      @updatedAt
+  tenant          Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  household       Household     @relation(fields: [householdId], references: [id], onDelete: Cascade)
+  user            User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  template        ChoreTemplate @relation(fields: [templateId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, templateId])
+  @@index([tenantId, householdId])
   @@index([userId, updatedAtUtc])
 }
 
