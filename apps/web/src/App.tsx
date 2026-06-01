@@ -11621,9 +11621,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <h3 className="mobile-profile-achievements-heading">My Mastery</h3>
                   <ul className="achievement-list">
                     {payload.masteryStats.map((s) => {
-                      const maxProgress = s.masteryLevel >= 2
-                        ? s.masteryLevel2Threshold
-                        : s.masteryLevel1Threshold;
+                      const maxProgress =
+                        s.masteryLevel >= 2 ? s.masteryLevel2Threshold : s.masteryLevel1Threshold;
                       const progressValue = Math.min(s.completionCount, maxProgress);
                       const badge = s.masteryLevel >= 2 ? '🏆' : s.masteryLevel === 1 ? '⭐' : null;
                       return (

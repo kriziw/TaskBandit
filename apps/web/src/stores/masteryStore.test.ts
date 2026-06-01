@@ -25,7 +25,11 @@ describe('MasteryStats type', () => {
   });
 
   it('correctly represents a template at level 1', () => {
-    const stats = makeStats({ masteryLevel: 1, completionCount: 5, level1AwardedAt: '2026-01-01T00:00:00Z' });
+    const stats = makeStats({
+      masteryLevel: 1,
+      completionCount: 5,
+      level1AwardedAt: '2026-01-01T00:00:00Z',
+    });
     expect(stats.masteryLevel).toBe(1);
     expect(stats.level1AwardedAt).not.toBeNull();
     expect(stats.level2AwardedAt).toBeNull();
@@ -46,7 +50,8 @@ describe('MasteryStats type', () => {
 
   it('progress value is capped at maxThreshold', () => {
     const stats = makeStats({ masteryLevel: 0, completionCount: 7 });
-    const maxProgress = stats.masteryLevel >= 2 ? stats.masteryLevel2Threshold : stats.masteryLevel1Threshold;
+    const maxProgress =
+      stats.masteryLevel >= 2 ? stats.masteryLevel2Threshold : stats.masteryLevel1Threshold;
     const progressValue = Math.min(stats.completionCount, maxProgress);
     expect(progressValue).toBe(5); // capped at level1Threshold=5
   });
