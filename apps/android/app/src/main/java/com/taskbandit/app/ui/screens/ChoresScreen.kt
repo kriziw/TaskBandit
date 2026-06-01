@@ -614,8 +614,12 @@ internal fun TakeoverRequestsPanel(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = firstNameFromDisplayName(request.requester.displayName)
-                            ?: request.requester.displayName,
+                        text = buildString {
+                            append(firstNameFromDisplayName(request.requester.displayName)
+                                ?: request.requester.displayName)
+                            append(" · ")
+                            append(formatApiTimestamp(request.createdAt))
+                        },
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )

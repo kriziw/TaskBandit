@@ -3827,7 +3827,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         <div className="task-row-header">
           <strong>{request.choreTitle}</strong>
           <span className="inline-message">
-            {firstNameFromDisplayName(request.requester.displayName)}
+            {firstNameFromDisplayName(request.requester.displayName)} · {formatDate(request.createdAt)}
           </span>
         </div>
         {request.note ? (
