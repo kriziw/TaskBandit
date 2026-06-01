@@ -603,10 +603,10 @@ internal fun TakeoverRequestsPanel(
         tone = MobileChoreSectionTone.OTHERS
     ) {
         for (request in requests) {
-            Card(shape = RoundedCornerShape(20.dp)) {
+            Card(shape = RoundedCornerShape(12.dp)) {
                 Column(
-                    modifier = Modifier.fillMaxWidth().padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(10.dp)
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)
                 ) {
                     Text(
                         text = request.choreTitle,
@@ -614,25 +614,20 @@ internal fun TakeoverRequestsPanel(
                         fontWeight = FontWeight.SemiBold
                     )
                     Text(
-                        text = stringResource(
-                            R.string.mobile_takeover_request_card_body,
-                            firstNameFromDisplayName(request.requester.displayName) ?: request.requester.displayName
-                        ),
-                        style = MaterialTheme.typography.bodyMedium
-                    )
-                    Text(
-                        text = stringResource(R.string.mobile_requested_at, formatApiTimestamp(request.createdAt)),
+                        text = firstNameFromDisplayName(request.requester.displayName)
+                            ?: request.requester.displayName,
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         Button(
                             onClick = { approveConfirmRequestId = request.id },
                             enabled = activeTakeoverRequestAction == null,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 stringResource(
@@ -647,7 +642,8 @@ internal fun TakeoverRequestsPanel(
                         OutlinedButton(
                             onClick = { declineConfirmRequestId = request.id },
                             enabled = activeTakeoverRequestAction == null,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            contentPadding = PaddingValues(horizontal = 10.dp, vertical = 6.dp)
                         ) {
                             Text(
                                 stringResource(

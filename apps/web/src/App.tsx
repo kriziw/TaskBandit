@@ -3826,17 +3826,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       <div className="task-row compact takeover-request-card" key={request.id}>
         <div className="task-row-header">
           <strong>{request.choreTitle}</strong>
-          <span className="status-pill state-pending_approval">{t('takeover.awaiting_reply')}</span>
+          <span className="inline-message">
+            {firstNameFromDisplayName(request.requester.displayName)}
+          </span>
         </div>
-        <p>
-          {t('takeover.requested_by').replace(
-            '{name}',
-            firstNameFromDisplayName(request.requester.displayName),
-          )}
-        </p>
-        <p>
-          {t('takeover.requested_at')}: {formatDate(request.createdAt)}
-        </p>
         {request.note ? (
           <p>
             {t('task.note')}: {request.note}
