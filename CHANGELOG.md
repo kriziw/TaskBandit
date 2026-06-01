@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.3.8](https://github.com/kriziw/TaskBandit/compare/v1.3.7...v1.3.8) (2026-06-01)
+
+
+### Bug Fixes
+
+* **takeover:** compact request card, shorter button labels ([#576](https://github.com/kriziw/TaskBandit/issues/576)) ([a55dcc5](https://github.com/kriziw/TaskBandit/commit/a55dcc56fe7029c5ca307b62209fb4be6a467b2e))
+
 ## [1.3.7](https://github.com/kriziw/TaskBandit/compare/v1.3.6...v1.3.7) (2026-05-31)
 
 
