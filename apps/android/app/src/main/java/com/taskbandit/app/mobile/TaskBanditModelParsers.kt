@@ -427,3 +427,14 @@ internal fun parseReward(json: JSONObject): MobileReward {
         upcomingClaims = upcomingClaims
     )
 }
+
+internal fun parseHolidayBlock(json: JSONObject): MobileHolidayBlock = MobileHolidayBlock(
+    id = json.optString("id"),
+    name = json.optString("name"),
+    startDate = json.optString("startDate"),
+    endDate = json.optString("endDate"),
+    existingMode = json.optString("existingMode"),
+    status = json.optString("status"),
+    appliedAt = json.optString("appliedAt").ifBlank { null }
+)
+

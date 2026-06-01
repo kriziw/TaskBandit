@@ -1995,6 +1995,23 @@ internal fun DashboardScreen(
                     verticalArrangement = Arrangement.spacedBy(10.dp)
                 ) {
             if (activeTab == MobileDashboardTab.CHORES) {
+                val activeHolidayBlock = dashboard?.holidayBlocks?.firstOrNull { it.status == "active" }
+                if (activeHolidayBlock != null) {
+                    item {
+                        Card(
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = CardDefaults.cardColors(
+                                containerColor = MaterialTheme.colorScheme.secondaryContainer
+                            )
+                        ) {
+                            Text(
+                                text = "🏖️ Holiday mode — ${activeHolidayBlock.name} — chores paused until ${activeHolidayBlock.endDate}",
+                                modifier = Modifier.padding(12.dp),
+                                style = MaterialTheme.typography.bodyMedium
+                            )
+                        }
+                    }
+                }
                 if (sortedChores.isEmpty() && historicChores.isEmpty()) {
                     item { Text(text = noChoresLabel, style = MaterialTheme.typography.bodyMedium) }
                 }

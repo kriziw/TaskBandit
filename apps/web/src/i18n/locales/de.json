@@ -945,5 +945,28 @@
 
   "rewards.manager.tab.my_shop": "Mein Shop",
   "rewards.manager.shop.empty_for_admin": "Noch keine Belohnungen aktiviert. Gehe zum Katalog, um Belohnungen für deinen Haushalt zu aktivieren.",
-  "settings.require_reward_approval": "Genehmigung für Belohnungseinlösungen erforderlich"
+  "settings.require_reward_approval": "Genehmigung für Belohnungseinlösungen erforderlich",
+  "settings.timezone": "Haushalt-Zeitzone",
+  "settings.timezone_hint": "Wird verwendet, um Feiertagsblock-Grenzen in Ortszeit auszuwerten.",
+
+  "holiday.section_title": "Urlaubsblöcke",
+  "holiday.section_hint": "Definiere Zeiträume, in denen keine neuen Aufgaben erstellt werden.",
+  "holiday.status.upcoming": "Geplant",
+  "holiday.status.active": "Aktiv",
+  "holiday.status.past": "Vergangen",
+  "holiday.create_block": "Neuer Urlaubsblock",
+  "holiday.field.name": "Blockname",
+  "holiday.field.name_placeholder": "z.B. Sommerurlaub",
+  "holiday.field.start_date": "Startdatum",
+  "holiday.field.end_date": "Enddatum",
+  "holiday.field.existing_mode": "Offene Aufgaben bei Blockstart",
+  "holiday.mode.defer": "Auf nach dem Urlaub verschieben (empfohlen)",
+  "holiday.mode.leave": "Offen lassen",
+  "holiday.action.delete": "Löschen",
+  "holiday.action.end_early": "Früher beenden",
+  "holiday.action.create": "Block erstellen",
+  "holiday.action.cancel": "Abbrechen",
+  "holiday.error.overlap": "Für diesen Zeitraum existiert bereits ein Urlaubsblock.",
+  "holiday.error.past_date": "Startdatum kann nicht in der Vergangenheit liegen.",
+  "holiday.banner": "🏖️ Urlaubsmodus — {{name}} — Aufgaben pausiert bis {{endDate}}."
 }

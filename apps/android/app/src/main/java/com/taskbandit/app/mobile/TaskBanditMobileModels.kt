@@ -438,7 +438,8 @@ data class MobileDashboard(
     val leaderboardResetMode: String = "never",
     val lastLeaderboardResetAt: String? = null,
     val rewards: List<MobileReward> = emptyList(),
-    val redemptions: List<MobileRedemption> = emptyList()
+    val redemptions: List<MobileRedemption> = emptyList(),
+    val holidayBlocks: List<MobileHolidayBlock> = emptyList()
 )
 
 data class MobileReward(
@@ -470,4 +471,14 @@ data class MobileRedemption(
     val adminNote: String?,
     val pointsDeducted: Int,
     val targetDate: String? = null  // 'YYYY-MM-DD', present for DAILY_EXCLUSIVE
+)
+
+data class MobileHolidayBlock(
+    val id: String,
+    val name: String,
+    val startDate: String,
+    val endDate: String,
+    val existingMode: String,
+    val status: String,
+    val appliedAt: String? = null
 )

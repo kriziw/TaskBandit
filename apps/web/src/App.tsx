@@ -1,4 +1,4 @@
-﻿import { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+﻿import React, { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { taskBanditApi, TaskBanditApiError } from './api/taskbanditApi';
 import { DashboardCard } from './components/DashboardCard';
@@ -64,6 +64,7 @@ import type {
   FollowUpDelayUnit,
   TakeoverRequestEntry,
   TemplateTranslationLocale,
+  HolidayBlock,
 } from './types/taskbandit';
 
 const workspacePageStorageKey = 'taskbandit-active-page';
@@ -979,6 +980,192 @@ const currentWebReleaseInfo: ReleaseInfo = {
   imageTag: import.meta.env.VITE_TASKBANDIT_WEB_IMAGE_TAG ?? null,
 };
 const releaseInfoRefreshIntervalMs = 60 * 60 * 1000;
+
+// ── Holiday Blocks admin section ───────────────────────────────────────────────
+
+function HolidayBlocksSection({
+  blocks,
+  onRefresh,
+  token,
+  language,
+  t,
+}: {
+  blocks: HolidayBlock[];
+  onRefresh: () => Promise<void>;
+  token: string;
+  language: AppLanguage;
+  t: (key: string) => string;
+}) {
+  const [isCreating, setIsCreating] = React.useState(false);
+  const [name, setName] = React.useState('');
+  const [startDate, setStartDate] = React.useState('');
+  const [endDate, setEndDate] = React.useState('');
+  const [existingMode, setExistingMode] = React.useState<'DEFER' | 'LEAVE'>('DEFER');
+  const [error, setError] = React.useState<string | null>(null);
+  const [busy, setBusy] = React.useState(false);
+
+  async function handleCreate() {
+    if (!name.trim() || !startDate || !endDate) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await taskBanditApi.createHolidayBlock(token, language, {
+        name: name.trim(),
+        startDate,
+        endDate,
+        existingMode,
+      });
+      setIsCreating(false);
+      setName('');
+      setStartDate('');
+      setEndDate('');
+      setExistingMode('DEFER');
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof TaskBanditApiError ? err.message : t('holiday.error.overlap'));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleDelete(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await taskBanditApi.deleteHolidayBlock(token, language, id);
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof TaskBanditApiError ? err.message : 'Could not delete block.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function handleEndEarly(id: string) {
+    setBusy(true);
+    setError(null);
+    try {
+      await taskBanditApi.endHolidayBlockEarly(token, language, id);
+      await onRefresh();
+    } catch (err) {
+      setError(err instanceof TaskBanditApiError ? err.message : 'Could not end block early.');
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <section className="settings-section settings-section-holiday-blocks">
+      <div className="section-heading section-heading-compact">
+        <h3>{t('holiday.section_title')}</h3>
+      </div>
+      <div className="settings-list">
+        <p className="inline-message">{t('holiday.section_hint')}</p>
+        {error ? <p className="inline-message inline-message-error">{error}</p> : null}
+        {blocks.map((block) => (
+          <div key={block.id} className="task-row compact">
+            <span>
+              <strong>{block.name}</strong>{' '}
+              <span className={`status-badge status-badge-${block.status}`}>
+                {t(`holiday.status.${block.status}`)}
+              </span>
+              <br />
+              <small>
+                {block.startDate} – {block.endDate}
+              </small>
+            </span>
+            <span className="row-actions">
+              {block.status === 'active' ? (
+                <button
+                  className="btn btn-sm btn-secondary"
+                  onClick={() => handleEndEarly(block.id)}
+                  disabled={busy}
+                >
+                  {t('holiday.action.end_early')}
+                </button>
+              ) : block.status === 'upcoming' ? (
+                <button
+                  className="btn btn-sm btn-danger"
+                  onClick={() => handleDelete(block.id)}
+                  disabled={busy}
+                >
+                  {t('holiday.action.delete')}
+                </button>
+              ) : null}
+            </span>
+          </div>
+        ))}
+        {!isCreating ? (
+          <button className="btn btn-secondary" onClick={() => setIsCreating(true)} disabled={busy}>
+            {t('holiday.create_block')}
+          </button>
+        ) : (
+          <div className="stack-list">
+            <label>
+              <span>{t('holiday.field.name')}</span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder={t('holiday.field.name_placeholder')}
+                maxLength={200}
+              />
+            </label>
+            <label>
+              <span>{t('holiday.field.start_date')}</span>
+              <input type="date" value={startDate} onChange={(e) => setStartDate(e.target.value)} />
+            </label>
+            <label>
+              <span>{t('holiday.field.end_date')}</span>
+              <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)} />
+            </label>
+            <fieldset>
+              <legend>{t('holiday.field.existing_mode')}</legend>
+              <label className="toggle-row">
+                <input
+                  type="radio"
+                  name="existingMode"
+                  value="DEFER"
+                  checked={existingMode === 'DEFER'}
+                  onChange={() => setExistingMode('DEFER')}
+                />
+                <span>{t('holiday.mode.defer')}</span>
+              </label>
+              <label className="toggle-row">
+                <input
+                  type="radio"
+                  name="existingMode"
+                  value="LEAVE"
+                  checked={existingMode === 'LEAVE'}
+                  onChange={() => setExistingMode('LEAVE')}
+                />
+                <span>{t('holiday.mode.leave')}</span>
+              </label>
+            </fieldset>
+            <div className="row-actions">
+              <button
+                className="btn btn-primary"
+                onClick={handleCreate}
+                disabled={busy || !name.trim() || !startDate || !endDate}
+              >
+                {t('holiday.action.create')}
+              </button>
+              <button
+                className="btn btn-secondary"
+                onClick={() => {
+                  setIsCreating(false);
+                  setError(null);
+                }}
+              >
+                {t('holiday.action.cancel')}
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+    </section>
+  );
+}
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
@@ -3052,6 +3239,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         nextRuntimeLogs,
         rewardsResult,
         redemptionsResult,
+        holidayBlocksResult,
       ] = await Promise.all([
         taskBanditApi.getDashboardSummary(accessToken, language),
         taskBanditApi.getHousehold(accessToken, language),
@@ -3114,6 +3302,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           : Promise.resolve(runtimeLogs),
         loadOptionalFeature(() => taskBanditApi.getRewards(accessToken, language), []),
         loadOptionalFeature(() => taskBanditApi.getRedemptions(accessToken, language), []),
+        currentUser.role === 'admin'
+          ? loadOptionalFeature(() => taskBanditApi.getHolidayBlocks(accessToken, language), [])
+          : Promise.resolve({ value: [], supported: true }),
       ]);
 
       if (
@@ -3146,6 +3337,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         hostedSubscription: hostedSubscriptionResult.value,
         rewards: rewardsResult.value,
         redemptions: redemptionsResult.value,
+        holidayBlocks: holidayBlocksResult.value,
         compatibility: {
           notificationDevices: notificationDevicesResult.supported,
           notificationHealth: householdNotificationHealthResult.supported,
@@ -7488,6 +7680,16 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 className={`panel panel-wide page-panel ${showClientMobileShell ? 'page-chores' : 'page-household page-household-chores'}`}
                 ref={householdChoresRef}
               >
+                {(() => {
+                  const activeBlock = payload.holidayBlocks.find((b) => b.status === 'active');
+                  return activeBlock ? (
+                    <div className="inline-message holiday-mode-banner">
+                      {t('holiday.banner')
+                        .replace('{{name}}', activeBlock.name)
+                        .replace('{{endDate}}', activeBlock.endDate)}
+                    </div>
+                  ) : null;
+                })()}
                 <div className="section-heading">
                   <h2>
                     {showNewClientMobileShell ? 'Due this week' : t('panel.household_chores')}
@@ -9230,6 +9432,21 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               ? ` Last reset: ${new Date(settingsDraft.lastLeaderboardResetAt).toLocaleDateString()}.`
                               : null}
                           </p>
+                          <label>
+                            <span>{t('settings.timezone')}</span>
+                            <input
+                              type="text"
+                              list="iana-timezones"
+                              value={settingsDraft.timezone ?? 'UTC'}
+                              onChange={(event) =>
+                                setSettingsDraft((current) =>
+                                  current ? { ...current, timezone: event.target.value } : current,
+                                )
+                              }
+                              placeholder="UTC"
+                            />
+                          </label>
+                          <p className="inline-message">{t('settings.timezone_hint')}</p>
                           {!isHostedSaas ? (
                             <>
                               <label className="toggle-row">
@@ -9255,6 +9472,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           ) : null}
                         </div>
                       </section>
+
+                      <HolidayBlocksSection
+                        blocks={payload.holidayBlocks}
+                        onRefresh={async () => {
+                          const blocks = await taskBanditApi.getHolidayBlocks(token!, language);
+                          updatePayload((prev) => ({ ...prev, holidayBlocks: blocks }));
+                        }}
+                        token={token!}
+                        language={language}
+                        t={t}
+                      />
 
                       {!isHostedSaas ? (
                         <section className="settings-section settings-section-recovery">
