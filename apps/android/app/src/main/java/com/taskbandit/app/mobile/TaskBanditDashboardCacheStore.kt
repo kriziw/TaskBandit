@@ -96,6 +96,7 @@ class TaskBanditDashboardCacheStore(
             .put("displayName", entry.displayName)
             .put("role", entry.role)
             .put("points", entry.points)
+            .put("leaderboardPoints", entry.leaderboardPoints)
             .put("currentStreak", entry.currentStreak)
     }
 

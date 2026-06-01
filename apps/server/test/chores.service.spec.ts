@@ -11,7 +11,21 @@ describe("ChoresService", () => {
     role: "admin",
     email: "alex@example.com",
     points: 0,
-    currentStreak: 0
+    currentStreak: 0,
+    featureAccess: {
+      templates_manage: true,
+      chores_manage: true,
+      reassignment: true,
+      takeover_direct: true,
+      takeover_requests: true,
+      approvals: true,
+      proof_uploads: true,
+      follow_up_automation: true,
+      external_completion: true,
+      deferred_follow_up_control: true,
+      quick_log: true,
+      rewards_manage: true,
+    },
   };
 
   let repository: {
@@ -74,7 +88,8 @@ describe("ChoresService", () => {
       {} as never,
       {
         publishChoreUpdate: vi.fn()
-      } as never
+      } as never,
+      {} as never,
     );
   });
 

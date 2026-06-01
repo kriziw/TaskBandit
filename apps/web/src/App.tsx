@@ -7221,7 +7221,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         </p>
                       </div>
                       <strong>
-                        {formatNumber(member.points)} {t('user.points')}
+                        {formatNumber(member.leaderboardPoints ?? member.points)} {t('user.points')}
                       </strong>
                     </div>
                   ))}
@@ -9170,6 +9170,38 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                           <p className="inline-message">
                             This value is used by quick log by default. Users can still override
                             points per entry.
+                          </p>
+                          <label>
+                            <span>Leaderboard reset</span>
+                            <select
+                              value={settingsDraft.leaderboardResetMode ?? 'never'}
+                              onChange={(event) =>
+                                setSettingsDraft((current) =>
+                                  current
+                                    ? {
+                                        ...current,
+                                        leaderboardResetMode: event.target.value as
+                                          | 'never'
+                                          | 'weekly'
+                                          | 'monthly'
+                                          | 'quarterly',
+                                      }
+                                    : current,
+                                )
+                              }
+                            >
+                              <option value="never">Never (all-time)</option>
+                              <option value="weekly">Weekly (resets each Monday)</option>
+                              <option value="monthly">Monthly (resets on the 1st)</option>
+                              <option value="quarterly">Quarterly (resets Jan, Apr, Jul, Oct)</option>
+                            </select>
+                          </label>
+                          <p className="inline-message">
+                            Controls how often the leaderboard ranking resets to zero. Points balance
+                            is never affected — only the leaderboard score resets.
+                            {settingsDraft.lastLeaderboardResetAt
+                              ? ` Last reset: ${new Date(settingsDraft.lastLeaderboardResetAt).toLocaleDateString()}.`
+                              : null}
                           </p>
                           {!isHostedSaas ? (
                             <>

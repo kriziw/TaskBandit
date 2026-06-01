@@ -52,6 +52,7 @@ internal fun parseLeaderboardEntry(entry: JSONObject): MobileLeaderboardEntry = 
     displayName = entry.optString("displayName"),
     role = entry.optString("role"),
     points = entry.optInt("points"),
+    leaderboardPoints = entry.optInt("leaderboardPoints", entry.optInt("points")),
     currentStreak = entry.optInt("currentStreak"),
     isExternal = entry.optBoolean("isExternal", false)
 )

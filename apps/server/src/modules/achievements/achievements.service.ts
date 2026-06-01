@@ -248,7 +248,10 @@ export class AchievementsService implements OnModuleInit {
           });
           await this.prisma.user.update({
             where: { id: input.userId },
-            data: { points: { increment: achievement.bonusPoints } },
+            data: {
+              points: { increment: achievement.bonusPoints },
+              leaderboardPoints: { increment: achievement.bonusPoints },
+            },
           });
         }
 

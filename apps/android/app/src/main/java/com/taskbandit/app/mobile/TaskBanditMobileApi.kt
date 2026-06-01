@@ -359,6 +359,9 @@ class TaskBanditMobileApi {
             }
         }
         val enableAchievements = householdSettings?.optBoolean("enableAchievements", true) ?: true
+        val leaderboardResetMode = householdSettings?.optString("leaderboardResetMode", "never") ?: "never"
+        val lastLeaderboardResetAt = householdSettings?.takeIf { it.has("lastLeaderboardResetAt") && !it.isNull("lastLeaderboardResetAt") }
+            ?.optString("lastLeaderboardResetAt")
 
         val achievementsJson = if (enableAchievements) {
             runCatching { requestJsonArray(baseUrl, "/api/achievements", token = token) }.getOrNull()
@@ -411,6 +414,8 @@ class TaskBanditMobileApi {
             ),
             achievements = achievements,
             enableAchievements = enableAchievements,
+            leaderboardResetMode = leaderboardResetMode,
+            lastLeaderboardResetAt = lastLeaderboardResetAt,
             rewards = rewards,
             redemptions = redemptions
         )

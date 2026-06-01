@@ -220,6 +220,7 @@ export type HouseholdMember = {
   authProviders: Array<'local' | 'oidc'>;
   localAuthConfigured: boolean;
   points: number;
+  leaderboardPoints: number;
   currentStreak: number;
 };
 
@@ -256,6 +257,8 @@ export type UnlockedAchievement = {
   timesEarned: number;
 };
 
+export type LeaderboardResetMode = 'never' | 'weekly' | 'monthly' | 'quarterly';
+
 export type HouseholdSettings = {
   selfSignupEnabled: boolean;
   onboardingCompleted: boolean;
@@ -266,6 +269,8 @@ export type HouseholdSettings = {
   enableAchievements: boolean;
   requireRewardApproval: boolean;
   takeoverPointsDelta: number;
+  leaderboardResetMode: LeaderboardResetMode;
+  lastLeaderboardResetAt: string | null;
   localAuthEnabled: boolean;
   localAuthForcedByConfig: boolean;
   localAuthEffective: boolean;

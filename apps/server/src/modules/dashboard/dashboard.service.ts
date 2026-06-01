@@ -10,6 +10,7 @@ import { HouseholdRepository } from '../household/household.repository';
 import { EmailDeliveryWorkerService } from './email-delivery-worker.service';
 import { PushDeliveryWorkerService } from './push-delivery-worker.service';
 import { ReminderWorkerService } from './reminder-worker.service';
+import { LeaderboardResetService } from './leaderboard-reset.service';
 import { TenantDataManifestService } from './tenant-data-manifest.service';
 import { access, mkdir } from 'node:fs/promises';
 import { constants } from 'node:fs';
@@ -30,9 +31,13 @@ export class DashboardService {
     private readonly emailDeliveryWorkerService: EmailDeliveryWorkerService,
     private readonly pushDeliveryWorkerService: PushDeliveryWorkerService,
     private readonly tenantDataManifestService: TenantDataManifestService,
+    private readonly leaderboardResetService: LeaderboardResetService,
   ) {}
 
-  getSummary(user: AuthenticatedUser) {
+  async getSummary(user: AuthenticatedUser) {
+    // Run leaderboard reset check before returning summary so the caller
+    // always sees up-to-date leaderboard data after a period boundary.
+    await this.leaderboardResetService.checkAndReset(user.householdId);
     return this.repository.getDashboardSummary(user.householdId);
   }
 

@@ -443,6 +443,8 @@ export class HouseholdRepository {
           dto.enableAchievements ?? household.settings?.enableAchievements ?? true,
         takeoverPointsDelta:
           dto.takeoverPointsDelta ?? household.settings?.takeoverPointsDelta ?? 0,
+        leaderboardResetMode:
+          dto.leaderboardResetMode ?? household.settings?.leaderboardResetMode ?? 'NEVER',
         localAuthEnabled: dto.localAuthEnabled ?? household.settings?.localAuthEnabled ?? true,
         oidcEnabled: dto.oidcEnabled ?? household.settings?.oidcEnabled ?? false,
         oidcAuthority:
@@ -1902,9 +1904,8 @@ export class HouseholdRepository {
               id: beneficiaryUserId,
             },
             data: {
-              points: {
-                decrement: appliedPenaltyPoints,
-              },
+              points: { decrement: appliedPenaltyPoints },
+              leaderboardPoints: { decrement: appliedPenaltyPoints },
             },
           });
 
@@ -2243,17 +2244,22 @@ export class HouseholdRepository {
         displayName: entry.externalCompleterName!,
         role: 'external' as const,
         points: entry._sum.awardedPoints ?? 0,
+        leaderboardPoints: entry._sum.awardedPoints ?? 0,
         currentStreak: 0,
         isExternal: true,
       }));
 
     const leaderboard = [...memberLeaderboard, ...externalEntries].sort(
-      (left, right) => right.points - left.points || right.currentStreak - left.currentStreak,
+      (left, right) =>
+        right.leaderboardPoints - left.leaderboardPoints ||
+        right.currentStreak - left.currentStreak,
     );
 
     const streakLeader =
       [...memberLeaderboard].sort(
-        (left, right) => right.currentStreak - left.currentStreak || right.points - left.points,
+        (left, right) =>
+          right.currentStreak - left.currentStreak ||
+          right.leaderboardPoints - left.leaderboardPoints,
       )[0]?.displayName ?? 'Nobody';
 
     return {
@@ -3931,9 +3937,8 @@ export class HouseholdRepository {
               id: input.requesterUserId,
             },
             data: {
-              points: {
-                decrement: appliedPenalty,
-              },
+              points: { decrement: appliedPenalty },
+              leaderboardPoints: { decrement: appliedPenalty },
             },
           });
 
@@ -4101,9 +4106,8 @@ export class HouseholdRepository {
             id: input.actingUserId,
           },
           data: {
-            points: {
-              increment: takeoverPointsDelta,
-            },
+            points: { increment: takeoverPointsDelta },
+            leaderboardPoints: { increment: takeoverPointsDelta },
           },
         });
 
@@ -4457,12 +4461,9 @@ export class HouseholdRepository {
             id: beneficiaryUserId,
           },
           data: {
-            points: {
-              increment: input.awardedPoints,
-            },
-            currentStreak: {
-              increment: 1,
-            },
+            points: { increment: input.awardedPoints },
+            leaderboardPoints: { increment: input.awardedPoints },
+            currentStreak: { increment: 1 },
           },
         });
 
@@ -4647,12 +4648,9 @@ export class HouseholdRepository {
             id: beneficiaryUserId,
           },
           data: {
-            points: {
-              increment: input.awardedPoints,
-            },
-            currentStreak: {
-              increment: 1,
-            },
+            points: { increment: input.awardedPoints },
+            leaderboardPoints: { increment: input.awardedPoints },
+            currentStreak: { increment: 1 },
           },
         });
 
@@ -6355,6 +6353,13 @@ export class HouseholdRepository {
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
         enableAchievements: household.settings?.enableAchievements ?? true,
         takeoverPointsDelta: household.settings?.takeoverPointsDelta ?? 0,
+        leaderboardResetMode:
+          (household.settings?.leaderboardResetMode?.toLowerCase() as
+            | 'never'
+            | 'weekly'
+            | 'monthly'
+            | 'quarterly') ?? 'never',
+        lastLeaderboardResetAt: household.settings?.lastLeaderboardResetAt ?? null,
         localAuthEnabled: household.settings?.localAuthEnabled ?? true,
         localAuthForcedByConfig: false,
         localAuthEffective: household.settings?.localAuthEnabled ?? true,
@@ -6407,6 +6412,7 @@ export class HouseholdRepository {
       authProviders,
       localAuthConfigured: Boolean(localIdentity?.passwordHash),
       points: member.points,
+      leaderboardPoints: member.leaderboardPoints,
       currentStreak: member.currentStreak,
     };
   }
