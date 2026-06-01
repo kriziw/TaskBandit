@@ -91,6 +91,16 @@ private val mobileRareCelebrationPhraseResources = listOf(
     R.string.mobile_celebration_rare_phrase_3
 )
 
+private val mobileMasteryLevel1PhraseResources = listOf(
+    R.string.mobile_celebration_mastery_level1_phrase_1,
+    R.string.mobile_celebration_mastery_level1_phrase_2
+)
+
+private val mobileMasteryLevel2PhraseResources = listOf(
+    R.string.mobile_celebration_mastery_level2_phrase_1,
+    R.string.mobile_celebration_mastery_level2_phrase_2
+)
+
 private val mobilePerfectDayCelebrationPhraseResources = listOf(
     R.string.mobile_celebration_perfect_day_phrase_1,
     R.string.mobile_celebration_perfect_day_phrase_2,
@@ -160,6 +170,22 @@ internal fun buildMobileCompletionCelebration(
                 chore.completionMilestone.messageIndex
             ),
             variant = MobileCompletionCelebrationVariant.PERFECT
+        )
+        chore.masteryResult?.earned == true && chore.masteryResult.newLevel >= 2 -> MobileCompletionCelebration(
+            points = chore.awardedPoints.coerceAtLeast(0),
+            choreTitle = chore.typeTitle.ifBlank { chore.title },
+            titleResource = R.string.mobile_celebration_mastery_level2_title,
+            eyebrowResource = R.string.mobile_celebration_mastery_level2_eyebrow,
+            phraseResource = pickRandomCelebrationResource(mobileMasteryLevel2PhraseResources, previousPhraseResource),
+            variant = MobileCompletionCelebrationVariant.RARE
+        )
+        chore.masteryResult?.earned == true && chore.masteryResult.newLevel >= 1 -> MobileCompletionCelebration(
+            points = chore.awardedPoints.coerceAtLeast(0),
+            choreTitle = chore.typeTitle.ifBlank { chore.title },
+            titleResource = R.string.mobile_celebration_mastery_level1_title,
+            eyebrowResource = R.string.mobile_celebration_mastery_level1_eyebrow,
+            phraseResource = pickRandomCelebrationResource(mobileMasteryLevel1PhraseResources, previousPhraseResource),
+            variant = MobileCompletionCelebrationVariant.RARE
         )
         rareVariant -> MobileCompletionCelebration(
             points = chore.awardedPoints.coerceAtLeast(0),
@@ -602,7 +628,9 @@ internal class DashboardViewModel(
                     }
                 }
             }.onSuccess { reviewedChore ->
-                if (reviewedChore.completionMilestone?.type == "perfect_day") {
+                val shouldCelebrate = reviewedChore.completionMilestone?.type == "perfect_day" ||
+                    reviewedChore.masteryResult?.earned == true
+                if (shouldCelebrate) {
                     val prev = _uiState.value.lastCompletionCelebrationPhraseResource
                     val celebration = buildMobileCompletionCelebration(reviewedChore, prev)
                     _uiState.update { it.copy(

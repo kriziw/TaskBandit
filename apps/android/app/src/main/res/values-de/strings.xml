@@ -319,6 +319,14 @@
     <string name="mobile_celebration_perfect_day_phrase_1">Alle zugewiesenen Aufgaben fuer heute sind erledigt. Bandit dreht eine Ehrenrunde.</string>
     <string name="mobile_celebration_perfect_day_phrase_2">Die Tagesliste ist blitzblank. Kleine Waschbaer-Konfetti ist absolut verdient.</string>
     <string name="mobile_celebration_perfect_day_phrase_3">Keine heutige Aufgabe blieb liegen. Das ist echte Haushaltsheldenarbeit.</string>
+    <string name="mobile_celebration_mastery_level1_title">Meisterschaft-Abzeichen!</string>
+    <string name="mobile_celebration_mastery_level1_eyebrow">⭐ Meisterschaft Stufe 1</string>
+    <string name="mobile_celebration_mastery_level1_phrase_1">Du hast dein Meisterschafts-Abzeichen für diese Aufgabe verdient. Der Haushalt weiß, dass du es ernst meinst.</string>
+    <string name="mobile_celebration_mastery_level1_phrase_2">Abzeichen freigeschaltet. Bandit heftet dir einen goldenen Stern an deine Akte.</string>
+    <string name="mobile_celebration_mastery_level2_title">Meisterschaft-Bonus!</string>
+    <string name="mobile_celebration_mastery_level2_eyebrow">🏆 Meisterschaft Stufe 2</string>
+    <string name="mobile_celebration_mastery_level2_phrase_1">Maximale Meisterschaft erreicht. Jede künftige Ausführung bringt einen Extra-Bonus — Expertise zahlt sich aus.</string>
+    <string name="mobile_celebration_mastery_level2_phrase_2">Stufe 2 freigeschaltet. Ab sofort zahlt diese Aufgabe einen Treue-Bonus. Bandit salutiert der Hingabe.</string>
     <string name="mobile_queued_submissions">%1$d vorgemerkte Aufgabe(n) warten auf Synchronisierung</string>
     <string name="mobile_syncing_queue">Vorgemerkte Aufgaben werden synchronisiert...</string>
     <string name="mobile_queue_synced">%1$d vorgemerkte Aufgabe(n) wurden synchronisiert.</string>

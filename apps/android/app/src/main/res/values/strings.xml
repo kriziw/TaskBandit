@@ -449,6 +449,14 @@
     <string name="mobile_celebration_perfect_day_phrase_1">Every assigned chore due today is clear. Bandit is doing a victory lap.</string>
     <string name="mobile_celebration_perfect_day_phrase_2">The daily list is spotless. Tiny raccoon confetti is absolutely justified.</string>
     <string name="mobile_celebration_perfect_day_phrase_3">No same-day chores left behind. That is household hero work.</string>
+    <string name="mobile_celebration_mastery_level1_title">Mastery Badge!</string>
+    <string name="mobile_celebration_mastery_level1_eyebrow">⭐ Level 1 Mastery</string>
+    <string name="mobile_celebration_mastery_level1_phrase_1">You have earned your mastery badge on this chore. The household knows you mean business.</string>
+    <string name="mobile_celebration_mastery_level1_phrase_2">Badge unlocked. Bandit is pinning a gold star to your record.</string>
+    <string name="mobile_celebration_mastery_level2_title">Mastery Bonus!</string>
+    <string name="mobile_celebration_mastery_level2_eyebrow">🏆 Level 2 Mastery</string>
+    <string name="mobile_celebration_mastery_level2_phrase_1">Maximum mastery reached. Every future completion earns an extra bonus — expertise has its rewards.</string>
+    <string name="mobile_celebration_mastery_level2_phrase_2">Level 2 unlocked. From now on this chore pays a loyalty bonus. Bandit salutes the dedication.</string>
     <string name="mobile_queued_submissions">%1$d queued submission(s) waiting to sync</string>
     <string name="mobile_syncing_queue">Syncing queued chores...</string>
     <string name="mobile_queue_synced">Synced %1$d queued chore(s).</string>

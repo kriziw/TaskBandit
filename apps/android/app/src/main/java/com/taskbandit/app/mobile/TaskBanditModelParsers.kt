@@ -75,7 +75,8 @@ internal fun parseFeatureAccessCached(entry: JSONObject): MobileFeatureAccess = 
     externalCompletion = entry.optBoolean("externalCompletion", false),
     deferredFollowUpControl = entry.optBoolean("deferredFollowUpControl", false),
     quickLog = entry.optBoolean("quickLog", false),
-    rewardsManage = entry.optBoolean("rewardsManage", false)
+    rewardsManage = entry.optBoolean("rewardsManage", false),
+    mastery = entry.optBoolean("mastery", false)
 )
 
 internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess {
@@ -92,7 +93,8 @@ internal fun parseFeatureAccessFromApi(entry: JSONObject?): MobileFeatureAccess 
         externalCompletion = entry.optBoolean("external_completion", false),
         deferredFollowUpControl = entry.optBoolean("deferred_follow_up_control", false),
         quickLog = entry.optBoolean("quick_log", false),
-        rewardsManage = entry.optBoolean("rewards_manage", false)
+        rewardsManage = entry.optBoolean("rewards_manage", false),
+        mastery = entry.optBoolean("mastery", false)
     )
 }
 
@@ -157,6 +159,14 @@ internal fun parseChoreFromApi(entry: JSONObject): MobileChore = MobileChore(
             completedByExternal = tj.optBoolean("completedByExternal"),
             externalCompleterName = tj.optNullableString("externalCompleterName")
         )
+    },
+    userMasteryLevel = entry.optInt("userMasteryLevel", 0),
+    masteryResult = entry.optJSONObject("masteryResult")?.let { mr ->
+        MobileMasteryResult(
+            earned = mr.optBoolean("earned"),
+            newLevel = mr.optInt("newLevel"),
+            bonusPoints = mr.optInt("bonusPoints")
+        )
     }
 )
 
@@ -186,7 +196,8 @@ internal fun parseChoreFromCache(entry: JSONObject): MobileChore = MobileChore(
     completedChecklistIds = parseStringArray(entry.optJSONArray("completedChecklistIds")),
     variantId = entry.optNullableString("variantId"),
     templateId = entry.optNullableString("templateId"),
-    completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone"))
+    completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone")),
+    userMasteryLevel = entry.optInt("userMasteryLevel", 0)
 )
 
 // ---------------------------------------------------------------------------
