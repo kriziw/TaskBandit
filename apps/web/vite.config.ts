@@ -1,7 +1,8 @@
 import fs from "node:fs";
 import path from "node:path";
 import { defineConfig } from "vite";
-import react from "@vitejs/plugin-react";
+import react, { reactCompilerPreset } from "@vitejs/plugin-react";
+import babelPlugin from "@rolldown/plugin-babel";
 /// <reference types="vitest" />
 
 const repositoryVersionPath = path.resolve(__dirname, "..", "..", "version.txt");
@@ -28,7 +29,13 @@ export default defineConfig(({ mode }) => {
   const outDir = mode === "admin" ? "dist-admin" : mode === "client" ? "dist-client" : "dist";
 
   return {
-    plugins: [react()],
+    plugins: [
+      babelPlugin({
+        include: /\.[jt]sx?$/,
+        babelConfig: reactCompilerPreset(),
+      }),
+      react(),
+    ],
     define: {
       "import.meta.env.VITE_TASKBANDIT_RELEASE_VERSION": JSON.stringify(releaseVersion),
       "import.meta.env.VITE_TASKBANDIT_BUILD_NUMBER": JSON.stringify(buildNumber),
