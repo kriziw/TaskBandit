@@ -6,7 +6,7 @@ import {
   NotificationEmailDeliveryStatus,
   NotificationPushDeliveryStatus,
   NotificationType,
-} from '@prisma/client';
+} from '../../generated/prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { CreateHolidayBlockDto } from './dto/create-holiday-block.dto';
 
