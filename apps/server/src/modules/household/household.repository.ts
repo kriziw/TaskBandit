@@ -13,6 +13,7 @@ import {
   ChoreChecklistCompletion,
   ChoreTakeoverRequestStatus,
   ChoreState,
+  CoCompleterRole,
   Difficulty,
   FollowUpDelayUnit,
   HouseholdRole,
@@ -3686,10 +3687,13 @@ export class HouseholdRepository {
         variant: true,
         checklistCompletions: true,
         attachments: true,
+        coCompleters: {
+          include: { user: { select: { id: true, displayName: true, role: true } } },
+        },
       },
     });
 
-    return instance ? this.mapInstance(instance, undefined, language) : null;
+    return instance ? this.mapInstance(instance as any, undefined, language) : null;
   }
 
   async getAttachmentForViewer(
@@ -6838,6 +6842,13 @@ export class HouseholdRepository {
         sizeBytes: attachment.sizeBytes,
         createdAt: attachment.createdAtUtc,
       })),
+      coCompleters: ((instance as any).coCompleters ?? []).map((cc: any) => ({
+        id: cc.id,
+        userId: cc.userId,
+        role: cc.role,
+        joinedAt: cc.joinedAtUtc,
+        user: cc.user ?? null,
+      })),
     };
   }
 
@@ -7888,6 +7899,177 @@ export class HouseholdRepository {
       default:
         return NotificationDeviceProvider.GENERIC;
     }
+  }
+
+  async getHouseholdSettings(householdId: string) {
+    return this.prisma.householdSettings.findUnique({ where: { householdId } });
+  }
+
+  async getCoCompletersForInstance(instanceId: string, householdId: string) {
+    return this.prisma.choreInstanceCoCompleter.findMany({
+      where: { choreInstanceId: instanceId, choreInstance: { householdId } },
+      include: { user: { select: { id: true, displayName: true, role: true } } },
+    });
+  }
+
+  async addCoCompleter(input: {
+    instanceId: string;
+    userId: string;
+    householdId: string;
+    language: SupportedLanguage;
+  }) {
+    const existing = await this.prisma.choreInstanceCoCompleter.findUnique({
+      where: {
+        choreInstanceId_userId: { choreInstanceId: input.instanceId, userId: input.userId },
+      },
+    });
+    if (existing) {
+      throw new BadRequestException({
+        code: 'already_co_completer',
+        message: 'You have already joined this chore as a co-completer.',
+      });
+    }
+
+    const record = await this.prisma.choreInstanceCoCompleter.create({
+      data: {
+        choreInstanceId: input.instanceId,
+        userId: input.userId,
+        role: CoCompleterRole.HELPER,
+      },
+      include: { user: { select: { id: true, displayName: true, role: true } } },
+    });
+
+    // Notify the assignee that someone joined
+    const instance = await this.prisma.choreInstance.findFirst({
+      where: { id: input.instanceId, householdId: input.householdId },
+      select: { assigneeId: true, title: true, household: { select: { tenantId: true } } },
+    });
+    const joiner = record.user;
+    if (instance?.assigneeId && instance.assigneeId !== input.userId) {
+      const tenantId = instance.household.tenantId;
+      const notification = await this.prisma.notification.create({
+        data: {
+          tenantId,
+          householdId: input.householdId,
+          recipientUserId: instance.assigneeId,
+          type: NotificationType.CHORE_CO_COMPLETER_JOINED,
+          title: 'Co-completer joined',
+          message: `${joiner.displayName} is helping with "${instance.title}".`,
+          entityType: 'chore_instance',
+          entityId: input.instanceId,
+          emailDeliveryStatus: 'SKIPPED',
+        },
+      });
+      await this.enqueueNotificationPushDeliveries(
+        tenantId,
+        input.householdId,
+        instance.assigneeId,
+        notification.id,
+      );
+    }
+
+    return record;
+  }
+
+  async removeCoCompleter(input: {
+    instanceId: string;
+    userId: string;
+    householdId: string;
+    language: SupportedLanguage;
+  }) {
+    const existing = await this.prisma.choreInstanceCoCompleter.findUnique({
+      where: {
+        choreInstanceId_userId: { choreInstanceId: input.instanceId, userId: input.userId },
+      },
+    });
+    if (!existing) {
+      throw new BadRequestException({
+        code: 'co_completer_not_found',
+        message: 'You are not listed as a co-completer for this chore.',
+      });
+    }
+    await this.prisma.choreInstanceCoCompleter.delete({
+      where: {
+        choreInstanceId_userId: { choreInstanceId: input.instanceId, userId: input.userId },
+      },
+    });
+    return { success: true };
+  }
+
+  async markSupervised(input: {
+    instanceId: string;
+    supervisorId: string;
+    householdId: string;
+    note?: string;
+    language: SupportedLanguage;
+  }) {
+    const existing = await this.prisma.choreInstanceCoCompleter.findFirst({
+      where: { choreInstanceId: input.instanceId, role: CoCompleterRole.SUPERVISOR },
+    });
+    if (existing) {
+      throw new BadRequestException({
+        code: 'supervised_already_set',
+        message: 'A supervisor has already been recorded for this chore.',
+      });
+    }
+    return this.prisma.choreInstanceCoCompleter.create({
+      data: {
+        choreInstanceId: input.instanceId,
+        userId: input.supervisorId,
+        role: CoCompleterRole.SUPERVISOR,
+      },
+      include: { user: { select: { id: true, displayName: true, role: true } } },
+    });
+  }
+
+  async awardCoCompleterPoints(input: {
+    instanceId: string;
+    userId: string;
+    householdId: string;
+    tenantId: string;
+    points: number;
+    choreTitle: string;
+  }) {
+    if (input.points <= 0) return;
+    await Promise.all([
+      this.prisma.user.update({
+        where: { id: input.userId },
+        data: {
+          points: { increment: input.points },
+          leaderboardPoints: { increment: input.points },
+          currentStreak: { increment: 1 },
+        },
+      }),
+      this.recordPointsLedgerEntry(this.prisma, {
+        householdId: input.householdId,
+        userId: input.userId,
+        choreInstanceId: input.instanceId,
+        amount: input.points,
+        reason: `Helped with approved chore "${input.choreTitle}".`,
+      }),
+    ]);
+  }
+
+  private async enqueueNotificationPushDeliveries(
+    tenantId: string,
+    householdId: string,
+    recipientUserId: string,
+    notificationId: string,
+  ) {
+    const devices = await this.prisma.notificationDevice.findMany({
+      where: { userId: recipientUserId, notificationsEnabled: true },
+      select: { id: true },
+    });
+    if (devices.length === 0) return;
+    await this.prisma.notificationPushDelivery.createMany({
+      data: devices.map((d) => ({
+        tenantId,
+        notificationId,
+        notificationDeviceId: d.id,
+        status: NotificationPushDeliveryStatus.PENDING,
+      })),
+      skipDuplicates: true,
+    });
   }
 
   private mapRecurrenceType(recurrenceType: RecurrenceType) {

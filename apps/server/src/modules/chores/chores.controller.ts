@@ -35,6 +35,7 @@ import { RespondChoreTakeoverDto } from './dto/respond-chore-takeover.dto';
 import { SnoozeDeferredChoreDto } from './dto/snooze-deferred-chore.dto';
 import { SubmitChoreDto } from './dto/submit-chore.dto';
 import { QuickLogChoreDto } from './dto/quick-log-chore.dto';
+import { MarkSupervisedDto } from './dto/mark-supervised.dto';
 import { memoryStorage } from 'multer';
 
 const proofUploadMaxBytes = 10 * 1024 * 1024;
@@ -472,6 +473,50 @@ export class ChoresController {
     @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.choresService.rejectInstance(
+      instanceId,
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
+  @Post('instances/:id/co-complete')
+  @Roles('admin', 'parent', 'child')
+  joinCoComplete(
+    @Param('id') instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.choresService.joinAsCoCompleter(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
+  @Delete('instances/:id/co-complete')
+  @Roles('admin', 'parent', 'child')
+  leaveCoComplete(
+    @Param('id') instanceId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.choresService.leaveAsCoCompleter(
+      instanceId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
+  @Post('instances/:id/supervised')
+  @Roles('admin', 'parent')
+  markSupervised(
+    @Param('id') instanceId: string,
+    @Body() dto: MarkSupervisedDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.choresService.markAsSupervised(
       instanceId,
       dto,
       user,

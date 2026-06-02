@@ -46,5 +46,12 @@
   "members.invite_email_email": "Email",
   "members.invite_email_password": "Ideiglenes jelszo",
   "members.invite_email_footer": "Bejelentkezes utan a jelszo-visszaallitas folyamattal lecserelheted a jelszavadat egy sajatra, ha szeretned.",
-  "members.invite_unavailable": "Meghivo email csak akkor kuldheto, ha az SMTP be van allitva ehhez a haztartashoz."
+  "members.invite_unavailable": "Meghivo email csak akkor kuldheto, ha az SMTP be van allitva ehhez a haztartashoz.",
+  "chores.joint_completion_disabled": "A kozos feladatelveges nincs bekapcsolva ennél a haztartasnal.",
+  "chores.already_co_completer": "Mar csatlakoztál ehhez a feladathoz tarsteljesitokent.",
+  "chores.co_completer_not_found": "Nem szerepelsz tarsteljesitokent ennel a feladatnal.",
+  "chores.cannot_join_own_chore": "Az elsorendű megbizott nem csatlakozhat egyben tarsteljesitokent is.",
+  "chores.join_not_active": "Tarsteljesitok csak aktiv feladatokhoz csatlakozhatnak.",
+  "chores.supervised_already_set": "Ehhez a feladathoz mar rogzittek felugyelot.",
+  "chores.supervisor_must_be_parent_or_admin": "Csak szulo vagy administrator jelolhet meg egy feladatot felugyeltkent."
 }

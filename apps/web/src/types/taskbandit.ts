@@ -260,6 +260,17 @@ export type UnlockedAchievement = {
 
 export type LeaderboardResetMode = 'never' | 'weekly' | 'monthly' | 'quarterly';
 
+export type JointPointsMode = 'FULL_TO_EACH' | 'SPLIT_EQUALLY' | 'PRIMARY_PLUS_BONUS';
+export type CoCompleterRole = 'HELPER' | 'SUPERVISOR';
+
+export type ChoreCoCompleter = {
+  id: string;
+  userId: string;
+  role: CoCompleterRole;
+  joinedAt: string;
+  user: { id: string; displayName: string; role: string };
+};
+
 export type HouseholdSettings = {
   selfSignupEnabled: boolean;
   onboardingCompleted: boolean;
@@ -293,6 +304,10 @@ export type HouseholdSettings = {
   smtpFromEmail: string;
   smtpFromName: string;
   timezone: string;
+  jointCompletionEnabled: boolean;
+  jointCompletionPointsMode: JointPointsMode;
+  jointCompletionHelperBonus: number;
+  jointCompletionOpenJoin: boolean;
 };
 
 export type NotificationPreferences = {
@@ -635,6 +650,7 @@ export type ChoreInstance = {
   checklist: ChoreTemplateChecklistItem[];
   checklistCompletionIds: string[];
   attachments: ChoreAttachment[];
+  coCompleters?: ChoreCoCompleter[];
   userMasteryLevel?: number;
   masteryResult?: { earned: boolean; newLevel: number; bonusPoints: number };
   completionMilestone?: CompletionMilestone | null;
