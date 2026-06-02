@@ -363,11 +363,6 @@ private fun TaskBanditApp(
             pets = emptyList(), cookingStyle = "", gamificationStyle = ""
         ))
     }
-    // Pre-fill wizard from server draft when dashboard first loads
-    val dashboardDraft = dashboardState.dashboard?.onboardingDraft
-    if (dashboardDraft != null && setupWizardAnswers.householdType.isBlank()) {
-        setupWizardAnswers = dashboardDraft
-    }
     var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
     var authProvidersCheckedBaseUrl by remember { mutableStateOf<String?>(null) }
     var isAuthProvidersLoading by remember { mutableStateOf(false) }
@@ -409,6 +404,12 @@ private fun TaskBanditApp(
         factory = DashboardViewModel.factory(api, sessionStore, dashboardCacheStore, widgetStore, installationId)
     )
     val dashboardState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Pre-fill wizard from server draft when dashboard first loads (must be after dashboardState)
+    val dashboardDraft = dashboardState.dashboard?.onboardingDraft
+    if (dashboardDraft != null && setupWizardAnswers.householdType.isBlank()) {
+        setupWizardAnswers = dashboardDraft
+    }
 
     // ── Local helpers ─────────────────────────────────────────────────────────
 
