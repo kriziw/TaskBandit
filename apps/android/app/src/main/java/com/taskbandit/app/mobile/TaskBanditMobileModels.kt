@@ -188,7 +188,16 @@ data class MobileChore(
     val newlyUnlockedAchievements: List<MobileUnlockedAchievement> = emptyList(),
     val triggerInfo: MobileTriggerInfo? = null,
     val userMasteryLevel: Int = 0,
-    val masteryResult: MobileMasteryResult? = null
+    val masteryResult: MobileMasteryResult? = null,
+    val coCompleters: List<MobileCoCompleter> = emptyList()
+)
+
+data class MobileCoCompleter(
+    val id: String,
+    val userId: String,
+    val role: String,
+    val joinedAt: String,
+    val displayName: String
 )
 
 data class MobileMasteryResult(

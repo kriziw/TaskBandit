@@ -167,6 +167,15 @@ internal fun parseChoreFromApi(entry: JSONObject): MobileChore = MobileChore(
             newLevel = mr.optInt("newLevel"),
             bonusPoints = mr.optInt("bonusPoints")
         )
+    },
+    coCompleters = parseJsonArray(entry.optJSONArray("coCompleters")) { cc ->
+        MobileCoCompleter(
+            id = cc.optString("id"),
+            userId = cc.optString("userId"),
+            role = cc.optString("role"),
+            joinedAt = cc.optString("joinedAt"),
+            displayName = cc.optJSONObject("user")?.optString("displayName") ?: ""
+        )
     }
 )
 
@@ -197,7 +206,16 @@ internal fun parseChoreFromCache(entry: JSONObject): MobileChore = MobileChore(
     variantId = entry.optNullableString("variantId"),
     templateId = entry.optNullableString("templateId"),
     completionMilestone = parseCompletionMilestone(entry.optJSONObject("completionMilestone")),
-    userMasteryLevel = entry.optInt("userMasteryLevel", 0)
+    userMasteryLevel = entry.optInt("userMasteryLevel", 0),
+    coCompleters = parseJsonArray(entry.optJSONArray("coCompleters")) { cc ->
+        MobileCoCompleter(
+            id = cc.optString("id"),
+            userId = cc.optString("userId"),
+            role = cc.optString("role"),
+            joinedAt = cc.optString("joinedAt"),
+            displayName = cc.optJSONObject("user")?.optString("displayName") ?: ""
+        )
+    }
 )
 
 // ---------------------------------------------------------------------------

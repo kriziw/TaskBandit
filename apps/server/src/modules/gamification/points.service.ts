@@ -31,6 +31,24 @@ export class PointsService {
     };
   }
 
+  calculateHelperPoints(
+    primaryPoints: number,
+    helperCount: number,
+    mode: 'FULL_TO_EACH' | 'SPLIT_EQUALLY' | 'PRIMARY_PLUS_BONUS',
+    helperBonus: number,
+  ): number {
+    switch (mode) {
+      case 'FULL_TO_EACH':
+        return primaryPoints;
+      case 'SPLIT_EQUALLY':
+        return Math.floor(primaryPoints / (helperCount + 1));
+      case 'PRIMARY_PLUS_BONUS':
+        return helperBonus;
+      default:
+        return primaryPoints;
+    }
+  }
+
   getOverduePenalty(basePoints: number) {
     return Math.ceil(basePoints * 0.3);
   }

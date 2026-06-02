@@ -13,6 +13,7 @@ import { AchievementsService } from '../achievements/achievements.service';
 import { PointsService } from '../gamification/points.service';
 import { HouseholdRepository } from '../household/household.repository';
 import { CompleteExternalChoreDto } from './dto/complete-external-chore.dto';
+import { MarkSupervisedDto } from './dto/mark-supervised.dto';
 import { CreateChoreInstanceDto } from './dto/create-chore-instance.dto';
 import { CreateChoreTemplateDto } from './dto/create-chore-template.dto';
 import { RequestChoreTakeoverDto } from './dto/request-chore-takeover.dto';
@@ -794,6 +795,49 @@ export class ChoresService {
       ]);
     }
 
+    // Award points and mastery to co-completers (helpers only — supervisors get nothing)
+    const [coCompleters, settings] = await Promise.all([
+      this.repository.getCoCompletersForInstance(instanceId, user.householdId),
+      this.repository.getHouseholdSettings(user.householdId),
+    ]);
+    const helpers = coCompleters.filter((cc) => cc.role === 'HELPER');
+    if (helpers.length > 0 && settings) {
+      const helperPoints = this.pointsService.calculateHelperPoints(
+        awardedPoints,
+        helpers.length,
+        settings.jointCompletionPointsMode as
+          | 'FULL_TO_EACH'
+          | 'SPLIT_EQUALLY'
+          | 'PRIMARY_PLUS_BONUS',
+        settings.jointCompletionHelperBonus,
+      );
+      await Promise.all(
+        helpers.map((cc) =>
+          this.repository.awardCoCompleterPoints({
+            instanceId,
+            userId: cc.userId,
+            householdId: user.householdId,
+            tenantId: user.tenantId,
+            points: helperPoints,
+            choreTitle: instance.title,
+          }),
+        ),
+      );
+      if (instance.templateId) {
+        await Promise.all(
+          helpers.map((cc) =>
+            this.masteryService.evaluateMasteryAfterApproval({
+              userId: cc.userId,
+              householdId: user.householdId,
+              tenantId: user.tenantId,
+              templateId: instance.templateId!,
+              basePoints: helperPoints,
+            }),
+          ),
+        );
+      }
+    }
+
     const extras = {
       ...(newlyUnlocked.length > 0 ? { newlyUnlockedAchievements: newlyUnlocked } : {}),
       ...(masteryResult ? { masteryResult } : {}),
@@ -871,6 +915,109 @@ export class ChoresService {
     });
     this.publishSyncEvent(user, 'instance.snoozed', 'instance', instanceId);
     return snoozedInstance;
+  }
+
+  async joinAsCoCompleter(
+    instanceId: string,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
+    if (!instance)
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
+
+    const settings = await this.repository.getHouseholdSettings(user.householdId);
+    if (!settings?.jointCompletionEnabled) {
+      throw new BadRequestException({
+        message: this.i18nService.translate('chores.joint_completion_disabled', language),
+      });
+    }
+
+    const activeStates = ['open', 'assigned', 'in_progress'];
+    if (!activeStates.includes(instance.state)) {
+      throw new BadRequestException({
+        message: this.i18nService.translate('chores.join_not_active', language),
+      });
+    }
+
+    if (instance.assigneeId === user.id) {
+      throw new BadRequestException({
+        message: this.i18nService.translate('chores.cannot_join_own_chore', language),
+      });
+    }
+
+    const result = await this.repository.addCoCompleter({
+      instanceId,
+      userId: user.id,
+      householdId: user.householdId,
+      language,
+    });
+    this.publishSyncEvent(user, 'instance.co_completer_joined', 'instance', instanceId);
+    return result;
+  }
+
+  async leaveAsCoCompleter(
+    instanceId: string,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
+    if (!instance)
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
+
+    const result = await this.repository.removeCoCompleter({
+      instanceId,
+      userId: user.id,
+      householdId: user.householdId,
+      language,
+    });
+    this.publishSyncEvent(user, 'instance.co_completer_left', 'instance', instanceId);
+    return result;
+  }
+
+  async markAsSupervised(
+    instanceId: string,
+    dto: MarkSupervisedDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    if (user.role === 'child') {
+      throw new BadRequestException({
+        message: this.i18nService.translate('chores.supervisor_must_be_parent_or_admin', language),
+      });
+    }
+
+    const instance = await this.repository.getInstanceForHousehold(
+      instanceId,
+      user.householdId,
+      language,
+    );
+    if (!instance)
+      return this.repository.throwNotFound(
+        this.i18nService.translate('chores.not_found', language),
+      );
+
+    const result = await this.repository.markSupervised({
+      instanceId,
+      supervisorId: user.id,
+      householdId: user.householdId,
+      note: dto.note,
+      language,
+    });
+    this.publishSyncEvent(user, 'instance.supervised', 'instance', instanceId);
+    return result;
   }
 
   private publishSyncEvent(

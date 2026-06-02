@@ -46,5 +46,12 @@
   "members.invite_email_email": "E-Mail",
   "members.invite_email_password": "Temporaeres Passwort",
   "members.invite_email_footer": "Nach der Anmeldung kannst du dein Passwort ueber den Zuruecksetzen-Ablauf aendern, wenn du ein eigenes moechtest.",
-  "members.invite_unavailable": "Die Einladungs-E-Mail kann erst gesendet werden, wenn SMTP fuer diesen Haushalt eingerichtet wurde."
+  "members.invite_unavailable": "Die Einladungs-E-Mail kann erst gesendet werden, wenn SMTP fuer diesen Haushalt eingerichtet wurde.",
+  "chores.joint_completion_disabled": "Die gemeinsame Aufgabenerledigung ist fuer diesen Haushalt nicht aktiviert.",
+  "chores.already_co_completer": "Du bist dieser Aufgabe bereits als Mithelfer beigetreten.",
+  "chores.co_completer_not_found": "Du bist nicht als Mithelfer fuer diese Aufgabe eingetragen.",
+  "chores.cannot_join_own_chore": "Der primaere Zugewiesene kann nicht gleichzeitig als Mithelfer beitreten.",
+  "chores.join_not_active": "Mithelfer koennen nur bei aktiven Aufgaben beitreten.",
+  "chores.supervised_already_set": "Fuer diese Aufgabe wurde bereits ein Betreuer eingetragen.",
+  "chores.supervisor_must_be_parent_or_admin": "Nur ein Elternteil oder Administrator kann eine Aufgabe als beaufsichtigt markieren."
 }

@@ -46,5 +46,12 @@
   "members.invite_email_email": "Email",
   "members.invite_email_password": "Temporary password",
   "members.invite_email_footer": "After signing in, you can change your password from the password reset flow if you want a private one.",
-  "members.invite_unavailable": "Invite email cannot be sent until SMTP is configured for this household."
+  "members.invite_unavailable": "Invite email cannot be sent until SMTP is configured for this household.",
+  "chores.joint_completion_disabled": "Joint chore completion is not enabled for this household.",
+  "chores.already_co_completer": "You have already joined this chore as a co-completer.",
+  "chores.co_completer_not_found": "You are not listed as a co-completer for this chore.",
+  "chores.cannot_join_own_chore": "The primary assignee cannot also join as a co-completer.",
+  "chores.join_not_active": "Co-completers can only join active chores.",
+  "chores.supervised_already_set": "A supervisor has already been recorded for this chore.",
+  "chores.supervisor_must_be_parent_or_admin": "Only a parent or admin can mark a chore as supervised."
 }
