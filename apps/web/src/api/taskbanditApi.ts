@@ -839,11 +839,14 @@ export const taskBanditApi = {
     });
   },
   joinCoComplete(token: string, language: AppLanguage, instanceId: string) {
-    return request<{ id: string; role: string }>(`/api/chores/instances/${instanceId}/co-complete`, {
-      method: 'POST',
-      token,
-      language,
-    });
+    return request<{ id: string; role: string }>(
+      `/api/chores/instances/${instanceId}/co-complete`,
+      {
+        method: 'POST',
+        token,
+        language,
+      },
+    );
   },
   leaveCoComplete(token: string, language: AppLanguage, instanceId: string) {
     return request<{ success: boolean }>(`/api/chores/instances/${instanceId}/co-complete`, {
