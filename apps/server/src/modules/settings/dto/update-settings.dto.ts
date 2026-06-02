@@ -10,7 +10,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { LeaderboardResetMode } from '@prisma/client';
+import { LeaderboardResetMode } from '../../../generated/prisma/client';
 
 export class UpdateSettingsDto {
   @ApiPropertyOptional()

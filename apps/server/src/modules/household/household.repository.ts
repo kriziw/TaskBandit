@@ -25,7 +25,7 @@ import {
   RecurrenceStartStrategy,
   RecurrenceType,
   Prisma,
-} from '@prisma/client';
+} from '../../generated/prisma/client';
 import { hash } from 'bcryptjs';
 import { randomUUID } from 'crypto';
 import {

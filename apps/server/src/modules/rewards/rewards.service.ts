@@ -4,7 +4,11 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { NotificationType, RewardRedemptionStatus, RewardWorkflowType } from '@prisma/client';
+import {
+  NotificationType,
+  RewardRedemptionStatus,
+  RewardWorkflowType,
+} from '../../generated/prisma/client';
 import { AuthenticatedUser } from '../../common/auth/authenticated-user.type';
 import { SupportedLanguage } from '../../common/i18n/supported-languages';
 import { RewardsRepository } from './rewards.repository';

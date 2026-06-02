@@ -1,4 +1,4 @@
-import { NotificationDeviceProvider } from "@prisma/client";
+import { NotificationDeviceProvider } from "../src/generated/prisma/client";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { PushDeliveryService } from "../src/common/push/push-delivery.service";
 

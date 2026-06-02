@@ -1,4 +1,8 @@
-import { RewardCategory, RewardEligibility, RewardWorkflowType } from '@prisma/client';
+import {
+  RewardCategory,
+  RewardEligibility,
+  RewardWorkflowType,
+} from '../../../generated/prisma/client';
 import {
   IsEnum,
   IsInt,

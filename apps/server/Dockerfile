@@ -13,7 +13,7 @@ RUN apt-get update \
 COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci
 
-COPY apps/server/tsconfig.json apps/server/tsconfig.build.json apps/server/nest-cli.json ./
+COPY apps/server/tsconfig.json apps/server/tsconfig.build.json apps/server/nest-cli.json apps/server/prisma.config.ts ./
 COPY apps/server/prisma ./prisma
 RUN npx prisma generate
 
@@ -35,6 +35,7 @@ RUN apt-get update \
 COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci --omit=dev
 
+COPY apps/server/prisma.config.ts ./
 COPY apps/server/prisma ./prisma
 RUN npx prisma generate
 

@@ -7,7 +7,7 @@ import {
   Prisma,
   RewardRedemptionStatus,
   RewardWorkflowType,
-} from '@prisma/client';
+} from '../../generated/prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 import { SupportedLanguage } from '../../common/i18n/supported-languages';
 import { StarterRewardDefinition } from '../bootstrap/starter-rewards.catalog';

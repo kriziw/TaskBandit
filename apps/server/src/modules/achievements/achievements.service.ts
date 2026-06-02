@@ -1,5 +1,5 @@
 import { Injectable, OnModuleInit } from '@nestjs/common';
-import { NotificationType } from '@prisma/client';
+import { NotificationType } from '../../generated/prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 const ACHIEVEMENT_DEFINITIONS = [
