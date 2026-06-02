@@ -253,7 +253,7 @@ model HouseholdSettings {
   lastLeaderboardResetAt                 DateTime?
   timezone                               String    @default("UTC")
   jointCompletionEnabled                 Boolean   @default(true)
-  jointCompletionPointsMode              JointPointsMode @default(FULL_TO_EACH)
+  jointCompletionPointsMode              JointPointsMode @default(SPLIT_EQUALLY)
   jointCompletionHelperBonus             Int       @default(5)
   jointCompletionOpenJoin                Boolean   @default(true)
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)

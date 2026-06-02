@@ -10,7 +10,7 @@ ALTER TYPE "NotificationType" ADD VALUE 'CHORE_CO_COMPLETER_JOINED';
 -- AlterTable: HouseholdSettings joint completion settings
 ALTER TABLE "HouseholdSettings"
   ADD COLUMN "jointCompletionEnabled" BOOLEAN NOT NULL DEFAULT true,
-  ADD COLUMN "jointCompletionPointsMode" "JointPointsMode" NOT NULL DEFAULT 'FULL_TO_EACH',
+  ADD COLUMN "jointCompletionPointsMode" "JointPointsMode" NOT NULL DEFAULT 'SPLIT_EQUALLY',
   ADD COLUMN "jointCompletionHelperBonus" INTEGER NOT NULL DEFAULT 5,
   ADD COLUMN "jointCompletionOpenJoin" BOOLEAN NOT NULL DEFAULT true;
 
