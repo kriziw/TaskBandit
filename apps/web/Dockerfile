@@ -17,7 +17,7 @@ ENV VITE_TASKBANDIT_COMMIT_SHA=${TASKBANDIT_COMMIT_SHA}
 ENV VITE_TASKBANDIT_WEB_IMAGE_TAG=${TASKBANDIT_IMAGE_TAG}
 
 COPY apps/web/package.json apps/web/package-lock.json ./
-RUN npm ci
+RUN npm install --legacy-peer-deps
 
 COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html apps/web/admin.html apps/web/client.html ./
 COPY apps/web/public ./public
