@@ -2674,9 +2674,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   const showSetupWizard = Boolean(
     payload &&
-      !payload.household.settings.onboardingCompleted &&
-      (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
-      workspaceVariant === 'client',
+    !payload.household.settings.onboardingCompleted &&
+    (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
+    workspaceVariant === 'client',
   );
 
   async function advanceWizardStep(newAnswers: Partial<OnboardingAnswers>) {
@@ -2697,7 +2697,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       appliances: merged.appliances ?? [],
       pets: merged.pets ?? [],
       cookingStyle: (merged.cookingStyle ?? 'mixed') as OnboardingAnswers['cookingStyle'],
-      gamificationStyle: (merged.gamificationStyle ?? 'default') as OnboardingAnswers['gamificationStyle'],
+      gamificationStyle: (merged.gamificationStyle ??
+        'default') as OnboardingAnswers['gamificationStyle'],
     };
     try {
       await taskBanditApi.submitOnboarding(token, language, answers);
@@ -6579,14 +6580,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       data-variant={workspaceVariant}
     >
       {showSetupWizard ? (
-        <div className="setup-wizard-overlay" role="dialog" aria-modal="true" aria-label={t('wizard.title')}>
+        <div
+          className="setup-wizard-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('wizard.title')}
+        >
           <div className="setup-wizard-panel">
             <header className="setup-wizard-header">
               <h2>{t('wizard.title')}</h2>
               <p>{t('wizard.subtitle')}</p>
               <div className="setup-wizard-progress">
                 {[0, 1, 2, 3, 4, 5].map((i) => (
-                  <span key={i} className={`setup-wizard-dot ${setupWizardStep >= i ? 'active' : ''}`} />
+                  <span
+                    key={i}
+                    className={`setup-wizard-dot ${setupWizardStep >= i ? 'active' : ''}`}
+                  />
                 ))}
               </div>
               <p className="setup-wizard-step-label">
@@ -6630,23 +6639,25 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 <fieldset>
                   <legend>{t('wizard.appliances.question')}</legend>
                   <p className="setup-wizard-hint">{t('wizard.appliances.hint')}</p>
-                  {(['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const).map((v) => (
-                    <label key={v} className="setup-wizard-option">
-                      <input
-                        type="checkbox"
-                        checked={(setupWizardAnswers.appliances ?? []).includes(v)}
-                        onChange={(e) =>
-                          setSetupWizardAnswers((a) => ({
-                            ...a,
-                            appliances: e.target.checked
-                              ? [...(a.appliances ?? []), v]
-                              : (a.appliances ?? []).filter((x) => x !== v),
-                          }))
-                        }
-                      />
-                      {t(`wizard.appliances.${v}`)}
-                    </label>
-                  ))}
+                  {(['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const).map(
+                    (v) => (
+                      <label key={v} className="setup-wizard-option">
+                        <input
+                          type="checkbox"
+                          checked={(setupWizardAnswers.appliances ?? []).includes(v)}
+                          onChange={(e) =>
+                            setSetupWizardAnswers((a) => ({
+                              ...a,
+                              appliances: e.target.checked
+                                ? [...(a.appliances ?? []), v]
+                                : (a.appliances ?? []).filter((x) => x !== v),
+                            }))
+                          }
+                        />
+                        {t(`wizard.appliances.${v}`)}
+                      </label>
+                    ),
+                  )}
                 </fieldset>
               )}
               {setupWizardStep === 3 && (
@@ -6697,7 +6708,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                         type="radio"
                         name="gamificationStyle"
                         checked={setupWizardAnswers.gamificationStyle === v}
-                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))}
+                        onChange={() =>
+                          setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))
+                        }
                       />
                       {t(`wizard.gamification.${v}`)}
                     </label>
@@ -6707,7 +6720,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </div>
             <footer className="setup-wizard-footer">
               {setupWizardStep > 0 && (
-                <button type="button" className="ghost-button" onClick={() => setSetupWizardStep((s) => s - 1)}>
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setSetupWizardStep((s) => s - 1)}
+                >
                   {t('wizard.back')}
                 </button>
               )}
