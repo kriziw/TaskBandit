@@ -6462,6 +6462,7 @@ export class HouseholdRepository {
         smtpPasswordConfigured: Boolean(household.settings?.smtpPassword),
         smtpFromEmail: household.settings?.smtpFromEmail ?? '',
         smtpFromName: household.settings?.smtpFromName ?? '',
+        onboardingAnswers: household.settings?.onboardingAnswers ?? null,
       },
       members: household.members
         .map((member) => this.mapMember(member, options?.redactMemberEmails ?? false))
@@ -7890,6 +7891,13 @@ export class HouseholdRepository {
     }
   }
 
+  async saveOnboardingDraft(householdId: string, answers: Record<string, unknown>) {
+    await this.prisma.householdSettings.update({
+      where: { householdId },
+      data: { onboardingAnswers: answers as Prisma.InputJsonValue },
+    });
+  }
+
   async applyOnboarding(input: {
     householdId: string;
     actorUserId: string;
@@ -7956,7 +7964,7 @@ export class HouseholdRepository {
 
       await tx.householdSettings.update({
         where: { householdId: input.householdId },
-        data: input.settingsOverrides,
+        data: { ...input.settingsOverrides, onboardingAnswers: Prisma.DbNull },
       });
 
       const household = await tx.household.findUniqueOrThrow({

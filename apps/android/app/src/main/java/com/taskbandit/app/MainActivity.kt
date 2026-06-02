@@ -357,10 +357,17 @@ private fun TaskBanditApp(
     var onboardingDeepLink by remember { mutableStateOf<MobileOnboardingDeepLink?>(null) }
     var onboardingInvite by remember { mutableStateOf<MobileResolvedInvite?>(null) }
     var setupWizardStep by remember { mutableIntStateOf(0) }
-    var setupWizardAnswers by remember { mutableStateOf(MobileOnboardingAnswers(
-        householdType = "", homeType = "", appliances = emptyList(),
-        pets = emptyList(), cookingStyle = "", gamificationStyle = ""
-    )) }
+    var setupWizardAnswers by remember {
+        mutableStateOf(MobileOnboardingAnswers(
+            householdType = "", homeType = "", appliances = emptyList(),
+            pets = emptyList(), cookingStyle = "", gamificationStyle = ""
+        ))
+    }
+    // Pre-fill wizard from server draft when dashboard first loads
+    val dashboardDraft = dashboardState.dashboard?.onboardingDraft
+    if (dashboardDraft != null && setupWizardAnswers.householdType.isBlank()) {
+        setupWizardAnswers = dashboardDraft
+    }
     var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
     var authProvidersCheckedBaseUrl by remember { mutableStateOf<String?>(null) }
     var isAuthProvidersLoading by remember { mutableStateOf(false) }
@@ -1040,7 +1047,13 @@ private fun TaskBanditApp(
                     step = setupWizardStep,
                     answers = setupWizardAnswers,
                     onAnswersChange = { setupWizardAnswers = it },
-                    onNext = { setupWizardStep++ },
+                    onNext = {
+                        setupWizardStep++
+                        // Save draft so the user can resume if they close the app
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.saveOnboardingDraft(baseUrl, token, setupWizardAnswers)
+                        }
+                    },
                     onBack = { if (setupWizardStep > 0) setupWizardStep-- },
                     onFinish = { finalAnswers ->
                         withAuth { baseUrl, token ->

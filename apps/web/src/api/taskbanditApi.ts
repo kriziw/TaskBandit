@@ -436,6 +436,14 @@ export const taskBanditApi = {
       language,
     });
   },
+  saveOnboardingDraft(token: string, language: AppLanguage, answers: Partial<OnboardingAnswers>) {
+    return request<{ saved: boolean }>('/api/settings/onboarding/draft', {
+      method: 'PATCH',
+      token,
+      language,
+      body: { answers },
+    });
+  },
   submitOnboarding(token: string, language: AppLanguage, answers: OnboardingAnswers) {
     return request<OnboardingResult>('/api/settings/onboarding', {
       method: 'POST',

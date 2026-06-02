@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  Patch,
   Post,
   Put,
   Req,
@@ -28,6 +29,7 @@ import { UpdateNotificationPreferencesDto } from './dto/update-notification-pref
 import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SubmitOnboardingDto } from './dto/submit-onboarding.dto';
+import { SaveOnboardingDraftDto } from './dto/save-onboarding-draft.dto';
 
 @ApiTags('settings')
 @Controller('api/settings')
@@ -80,6 +82,12 @@ export class SettingsController {
   @Roles('admin')
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {
     return this.settingsService.updateSettings(dto, user);
+  }
+
+  @Patch('onboarding/draft')
+  @Roles('admin', 'parent')
+  saveOnboardingDraft(@Body() dto: SaveOnboardingDraftDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.saveOnboardingDraft(dto, user);
   }
 
   @Post('onboarding')

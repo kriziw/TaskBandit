@@ -23,18 +23,20 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
+import com.taskbandit.app.R
 import com.taskbandit.app.mobile.MobileOnboardingAnswers
 
-private val TOTAL_STEPS = 6
+private const val TOTAL_STEPS = 6
 
 @Composable
 fun OnboardingWizardScreen(
     step: Int,
     answers: MobileOnboardingAnswers,
     onAnswersChange: (MobileOnboardingAnswers) -> Unit,
-    onNext: () -> Unit,
+    onNext: () -> Unit,      // caller saves draft then increments step
     onBack: () -> Unit,
     onFinish: (MobileOnboardingAnswers) -> Unit,
     onSkip: () -> Unit
@@ -51,13 +53,18 @@ fun OnboardingWizardScreen(
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             Text(
-                text = "Set up your household",
+                text = stringResource(R.string.wizard_title),
                 style = MaterialTheme.typography.headlineMedium
             )
             Text(
-                text = "Step ${step + 1} of $TOTAL_STEPS — every question is skippable.",
+                text = stringResource(R.string.wizard_subtitle),
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = stringResource(R.string.wizard_step, step + 1, TOTAL_STEPS),
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.primary
             )
 
             Spacer(Modifier.height(8.dp))
@@ -79,14 +86,22 @@ fun OnboardingWizardScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 if (step > 0) {
-                    OutlinedButton(onClick = onBack) { Text("Back") }
+                    OutlinedButton(onClick = onBack) {
+                        Text(stringResource(R.string.wizard_back))
+                    }
                 }
                 Spacer(Modifier.weight(1f))
-                TextButton(onClick = onSkip) { Text("Skip setup") }
+                TextButton(onClick = onSkip) {
+                    Text(stringResource(R.string.wizard_skip))
+                }
                 if (isLastStep) {
-                    Button(onClick = { onFinish(filledAnswers(answers)) }) { Text("Finish") }
+                    Button(onClick = { onFinish(filledAnswers(answers)) }) {
+                        Text(stringResource(R.string.wizard_finish))
+                    }
                 } else {
-                    Button(onClick = onNext) { Text("Next") }
+                    Button(onClick = onNext) {
+                        Text(stringResource(R.string.wizard_next))
+                    }
                 }
             }
         }
@@ -101,149 +116,206 @@ private fun filledAnswers(a: MobileOnboardingAnswers) = a.copy(
 )
 
 @Composable
-private fun HouseholdTypeStep(answers: MobileOnboardingAnswers, onChange: (MobileOnboardingAnswers) -> Unit) {
-    Text("Who lives here?", style = MaterialTheme.typography.titleMedium)
+private fun HouseholdTypeStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_household_type_question), style = MaterialTheme.typography.titleMedium)
     val options = listOf(
-        "solo" to "Just me",
-        "couple" to "Two adults / couple",
-        "family" to "Family with children",
-        "flatmates" to "Shared house / flatmates"
+        "solo" to R.string.wizard_household_type_solo,
+        "couple" to R.string.wizard_household_type_couple,
+        "family" to R.string.wizard_household_type_family,
+        "flatmates" to R.string.wizard_household_type_flatmates
     )
     Column(Modifier.selectableGroup()) {
-        options.forEach { (value, label) ->
+        options.forEach { (value, labelRes) ->
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .selectable(selected = answers.householdType == value, onClick = { onChange(answers.copy(householdType = value)) }, role = Role.RadioButton)
+                    .selectable(
+                        selected = answers.householdType == value,
+                        onClick = { onChange(answers.copy(householdType = value)) },
+                        role = Role.RadioButton
+                    )
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(selected = answers.householdType == value, onClick = null)
-                Text(label, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }
 }
 
 @Composable
-private fun HomeTypeStep(answers: MobileOnboardingAnswers, onChange: (MobileOnboardingAnswers) -> Unit) {
-    Text("What kind of home?", style = MaterialTheme.typography.titleMedium)
+private fun HomeTypeStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_home_type_question), style = MaterialTheme.typography.titleMedium)
     val options = listOf(
-        "flat" to "Flat / apartment",
-        "house" to "House (no garden)",
-        "house_garden" to "House with garden",
-        "house_garden_lawn" to "House with garden and lawn"
+        "flat" to R.string.wizard_home_type_flat,
+        "house" to R.string.wizard_home_type_house,
+        "house_garden" to R.string.wizard_home_type_house_garden,
+        "house_garden_lawn" to R.string.wizard_home_type_house_garden_lawn
     )
     Column(Modifier.selectableGroup()) {
-        options.forEach { (value, label) ->
+        options.forEach { (value, labelRes) ->
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .selectable(selected = answers.homeType == value, onClick = { onChange(answers.copy(homeType = value)) }, role = Role.RadioButton)
+                    .selectable(
+                        selected = answers.homeType == value,
+                        onClick = { onChange(answers.copy(homeType = value)) },
+                        role = Role.RadioButton
+                    )
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(selected = answers.homeType == value, onClick = null)
-                Text(label, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }
 }
 
 @Composable
-private fun AppliancesStep(answers: MobileOnboardingAnswers, onChange: (MobileOnboardingAnswers) -> Unit) {
-    Text("Which appliances do you have?", style = MaterialTheme.typography.titleMedium)
-    val options = listOf(
-        "dishwasher" to "Dishwasher",
-        "tumble_dryer" to "Tumble dryer",
-        "washing_machine" to "Washing machine",
-        "robot_vacuum" to "Robot vacuum / Roomba"
+private fun AppliancesStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_appliances_question), style = MaterialTheme.typography.titleMedium)
+    Text(
+        stringResource(R.string.wizard_appliances_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
     )
-    options.forEach { (value, label) ->
+    val options = listOf(
+        "dishwasher" to R.string.wizard_appliances_dishwasher,
+        "tumble_dryer" to R.string.wizard_appliances_tumble_dryer,
+        "washing_machine" to R.string.wizard_appliances_washing_machine,
+        "robot_vacuum" to R.string.wizard_appliances_robot_vacuum
+    )
+    options.forEach { (value, labelRes) ->
         val checked = value in answers.appliances
         Row(
             Modifier
                 .fillMaxWidth()
-                .selectable(selected = checked, onClick = {
-                    val next = if (checked) answers.appliances - value else answers.appliances + value
-                    onChange(answers.copy(appliances = next))
-                }, role = Role.Checkbox)
+                .selectable(
+                    selected = checked,
+                    onClick = {
+                        val next = if (checked) answers.appliances - value else answers.appliances + value
+                        onChange(answers.copy(appliances = next))
+                    },
+                    role = Role.Checkbox
+                )
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(checked = checked, onCheckedChange = null)
-            Text(label, modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
 
 @Composable
-private fun PetsStep(answers: MobileOnboardingAnswers, onChange: (MobileOnboardingAnswers) -> Unit) {
-    Text("Do you have pets?", style = MaterialTheme.typography.titleMedium)
-    val options = listOf("none" to "No pets", "dog" to "Dog(s)", "cat" to "Cat(s)", "other" to "Other")
-    options.forEach { (value, label) ->
+private fun PetsStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_pets_question), style = MaterialTheme.typography.titleMedium)
+    Text(
+        stringResource(R.string.wizard_pets_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    val options = listOf(
+        "none" to R.string.wizard_pets_none,
+        "dog" to R.string.wizard_pets_dog,
+        "cat" to R.string.wizard_pets_cat,
+        "other" to R.string.wizard_pets_other
+    )
+    options.forEach { (value, labelRes) ->
         val checked = value in answers.pets
         Row(
             Modifier
                 .fillMaxWidth()
-                .selectable(selected = checked, onClick = {
-                    val next = if (checked) answers.pets - value else answers.pets + value
-                    onChange(answers.copy(pets = next))
-                }, role = Role.Checkbox)
+                .selectable(
+                    selected = checked,
+                    onClick = {
+                        val next = if (checked) answers.pets - value else answers.pets + value
+                        onChange(answers.copy(pets = next))
+                    },
+                    role = Role.Checkbox
+                )
                 .padding(vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
             Checkbox(checked = checked, onCheckedChange = null)
-            Text(label, modifier = Modifier.padding(start = 8.dp))
+            Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
 
 @Composable
-private fun CookingStep(answers: MobileOnboardingAnswers, onChange: (MobileOnboardingAnswers) -> Unit) {
-    Text("How does cooking work?", style = MaterialTheme.typography.titleMedium)
+private fun CookingStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_cooking_question), style = MaterialTheme.typography.titleMedium)
     val options = listOf(
-        "one_person" to "One person mostly cooks",
-        "take_turns" to "We take turns",
-        "mostly_takeout" to "Mostly eat out / order in",
-        "mixed" to "Mixed"
+        "one_person" to R.string.wizard_cooking_one_person,
+        "take_turns" to R.string.wizard_cooking_take_turns,
+        "mostly_takeout" to R.string.wizard_cooking_mostly_takeout,
+        "mixed" to R.string.wizard_cooking_mixed
     )
     Column(Modifier.selectableGroup()) {
-        options.forEach { (value, label) ->
+        options.forEach { (value, labelRes) ->
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .selectable(selected = answers.cookingStyle == value, onClick = { onChange(answers.copy(cookingStyle = value)) }, role = Role.RadioButton)
+                    .selectable(
+                        selected = answers.cookingStyle == value,
+                        onClick = { onChange(answers.copy(cookingStyle = value)) },
+                        role = Role.RadioButton
+                    )
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(selected = answers.cookingStyle == value, onClick = null)
-                Text(label, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }
 }
 
 @Composable
-private fun GamificationStep(answers: MobileOnboardingAnswers, onChange: (MobileOnboardingAnswers) -> Unit) {
-    Text("How do you want to motivate your household?", style = MaterialTheme.typography.titleMedium)
+private fun GamificationStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_gamification_question), style = MaterialTheme.typography.titleMedium)
     val options = listOf(
-        "track_only" to "Just track who's done what (no points pressure)",
-        "light" to "Light gamification (streaks + leaderboard)",
-        "full" to "Full rewards (points → prizes, achievements, mastery)",
-        "default" to "Use defaults"
+        "track_only" to R.string.wizard_gamification_track_only,
+        "light" to R.string.wizard_gamification_light,
+        "full" to R.string.wizard_gamification_full,
+        "default" to R.string.wizard_gamification_default
     )
     Column(Modifier.selectableGroup()) {
-        options.forEach { (value, label) ->
+        options.forEach { (value, labelRes) ->
             Row(
                 Modifier
                     .fillMaxWidth()
-                    .selectable(selected = answers.gamificationStyle == value, onClick = { onChange(answers.copy(gamificationStyle = value)) }, role = Role.RadioButton)
+                    .selectable(
+                        selected = answers.gamificationStyle == value,
+                        onClick = { onChange(answers.copy(gamificationStyle = value)) },
+                        role = Role.RadioButton
+                    )
                     .padding(vertical = 4.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 RadioButton(selected = answers.gamificationStyle == value, onClick = null)
-                Text(label, modifier = Modifier.padding(start = 8.dp))
+                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
             }
         }
     }

@@ -240,6 +240,7 @@ model HouseholdSettings {
   leaderboardResetMode                   LeaderboardResetMode @default(NEVER)
   lastLeaderboardResetAt                 DateTime?
   timezone                               String    @default("UTC")
+  onboardingAnswers                      Json?
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 

@@ -309,6 +309,7 @@ export type HouseholdSettings = {
   smtpFromEmail: string;
   smtpFromName: string;
   timezone: string;
+  onboardingAnswers: Record<string, unknown> | null;
 };
 
 export type NotificationPreferences = {

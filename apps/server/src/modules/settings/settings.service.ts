@@ -22,6 +22,7 @@ import {
   HouseholdType,
   SubmitOnboardingDto,
 } from './dto/submit-onboarding.dto';
+import { SaveOnboardingDraftDto } from './dto/save-onboarding-draft.dto';
 import { SmtpService, type SmtpSettings } from './smtp.service';
 
 @Injectable()
@@ -527,6 +528,11 @@ export class SettingsService {
         'Hosted identity and delivery settings are managed by the control plane for SaaS tenants.',
       );
     }
+  }
+
+  async saveOnboardingDraft(dto: SaveOnboardingDraftDto, user: AuthenticatedUser) {
+    await this.repository.saveOnboardingDraft(user.householdId, dto.answers);
+    return { saved: true };
   }
 
   async submitOnboarding(

@@ -440,7 +440,8 @@ data class MobileDashboard(
     val rewards: List<MobileReward> = emptyList(),
     val redemptions: List<MobileRedemption> = emptyList(),
     val holidayBlocks: List<MobileHolidayBlock> = emptyList(),
-    val onboardingCompleted: Boolean = true
+    val onboardingCompleted: Boolean = true,
+    val onboardingDraft: MobileOnboardingAnswers? = null
 )
 
 data class MobileOnboardingAnswers(

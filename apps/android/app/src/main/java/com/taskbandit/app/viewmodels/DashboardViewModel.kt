@@ -550,6 +550,15 @@ internal class DashboardViewModel(
         }
     }
 
+    fun saveOnboardingDraft(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.saveOnboardingDraft(baseUrl, token, answers) }
+            }
+            // Draft save is fire-and-forget; silently ignore errors
+        }
+    }
+
     fun submitOnboarding(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
         viewModelScope.launch {
             runCatching {
