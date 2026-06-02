@@ -7890,6 +7890,94 @@ export class HouseholdRepository {
     }
   }
 
+  async applyOnboarding(input: {
+    householdId: string;
+    actorUserId: string;
+    templateKeys: string[];
+    settingsOverrides: Record<string, unknown>;
+    language: SupportedLanguage;
+  }) {
+    const definitions = getStarterTemplateDefinitionsByKey(input.templateKeys);
+
+    await this.prisma.$transaction(async (tx) => {
+      const existingKeys = await tx.choreTemplate
+        .findMany({
+          where: { householdId: input.householdId, catalogKey: { not: null } },
+          select: { catalogKey: true },
+        })
+        .then((rows) => new Set(rows.map((r) => r.catalogKey)));
+
+      const toCreate = definitions.filter((d) => !existingKeys.has(d.key));
+
+      for (const template of toCreate) {
+        await tx.choreTemplate.create({
+          data: {
+            householdId: input.householdId,
+            defaultLocale: input.language,
+            catalogKey: template.key,
+            groupTitle: template.groupTitle[input.language] ?? template.groupTitle.en,
+            groupTitleTranslations: this.toPrismaJsonOrNull(
+              this.mapStarterLocalizedText(template.groupTitle, input.language),
+            ),
+            title: template.title[input.language] ?? template.title.en,
+            titleTranslations: this.toPrismaJsonOrNull(
+              this.mapStarterLocalizedText(template.title, input.language),
+            ),
+            description: template.description[input.language] ?? template.description.en,
+            descriptionTranslations: this.toPrismaJsonOrNull(
+              this.mapStarterLocalizedText(template.description, input.language),
+            ),
+            difficulty: template.difficulty,
+            basePoints: this.getBasePoints(template.difficulty),
+            assignmentStrategy: template.assignmentStrategy,
+            recurrenceType: template.recurrenceType,
+            recurrenceIntervalDays:
+              template.recurrenceType === RecurrenceType.EVERY_X_DAYS
+                ? (template.recurrenceIntervalDays ?? 1)
+                : null,
+            recurrenceWeekdays:
+              template.recurrenceType === RecurrenceType.CUSTOM_WEEKLY
+                ? (template.recurrenceWeekdays ?? [])
+                : [],
+            requirePhotoProof: template.requirePhotoProof,
+            recurrenceStartStrategy: template.recurrenceStartStrategy,
+            stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
+            checklistItems: {
+              create:
+                template.checklist?.map((item, index) => ({
+                  title: item.title[input.language] ?? item.title.en,
+                  required: item.required,
+                  sortOrder: index + 1,
+                })) ?? [],
+            },
+          },
+        });
+      }
+
+      await tx.householdSettings.update({
+        where: { householdId: input.householdId },
+        data: input.settingsOverrides,
+      });
+
+      const household = await tx.household.findUniqueOrThrow({
+        where: { id: input.householdId },
+        select: { tenantId: true },
+      });
+
+      await tx.auditLog.create({
+        data: {
+          tenantId: household.tenantId,
+          householdId: input.householdId,
+          actorUserId: input.actorUserId,
+          action: 'onboarding.completed',
+          entityType: 'household',
+          entityId: input.householdId,
+          summary: `Onboarding wizard completed. ${toCreate.length} template(s) added.`,
+        },
+      });
+    });
+  }
+
   private mapRecurrenceType(recurrenceType: RecurrenceType) {
     switch (recurrenceType) {
       case RecurrenceType.DAILY:

@@ -27,6 +27,7 @@ import { TestSmtpSettingsDto } from './dto/test-smtp-settings.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { SubmitOnboardingDto } from './dto/submit-onboarding.dto';
 
 @ApiTags('settings')
 @Controller('api/settings')
@@ -79,6 +80,20 @@ export class SettingsController {
   @Roles('admin')
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {
     return this.settingsService.updateSettings(dto, user);
+  }
+
+  @Post('onboarding')
+  @Roles('admin', 'parent')
+  submitOnboarding(
+    @Body() dto: SubmitOnboardingDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.settingsService.submitOnboarding(
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
   }
 
   @Put('notifications')

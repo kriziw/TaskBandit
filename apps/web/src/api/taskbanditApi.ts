@@ -44,6 +44,8 @@ import type {
   MasteryStats,
   HolidayBlock,
   CreateHolidayBlockPayload,
+  OnboardingAnswers,
+  OnboardingResult,
 } from '../types/taskbandit';
 import type { AppLanguage } from '../i18n/I18nProvider';
 import { resolveApiBaseUrl } from '../runtimeConfig';
@@ -432,6 +434,14 @@ export const taskBanditApi = {
     return request<AuditLogEntry[]>('/api/settings/audit-log', {
       token,
       language,
+    });
+  },
+  submitOnboarding(token: string, language: AppLanguage, answers: OnboardingAnswers) {
+    return request<OnboardingResult>('/api/settings/onboarding', {
+      method: 'POST',
+      token,
+      language,
+      body: answers,
     });
   },
   updateHousehold(token: string, language: AppLanguage, settings: Partial<HouseholdSettings>) {
