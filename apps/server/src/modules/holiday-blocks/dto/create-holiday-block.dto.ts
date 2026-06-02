@@ -1,5 +1,5 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { HolidayExistingMode } from '@prisma/client';
+import { HolidayExistingMode } from '../../../generated/prisma/client';
 import { IsDateString, IsEnum, IsNotEmpty, IsString, MaxLength } from 'class-validator';
 
 export class CreateHolidayBlockDto {

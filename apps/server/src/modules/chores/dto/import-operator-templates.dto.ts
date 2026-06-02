@@ -4,7 +4,7 @@ import {
   FollowUpDelayUnit,
   RecurrenceStartStrategy,
   RecurrenceType,
-} from '@prisma/client';
+} from '../../../generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,

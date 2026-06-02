@@ -1,4 +1,8 @@
-import { AssignmentStrategyType, RecurrenceEndMode, RecurrenceType } from '@prisma/client';
+import {
+  AssignmentStrategyType,
+  RecurrenceEndMode,
+  RecurrenceType,
+} from '../../../generated/prisma/client';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { Type } from 'class-transformer';
 import { Transform } from 'class-transformer';

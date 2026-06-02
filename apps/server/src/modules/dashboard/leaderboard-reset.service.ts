@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { LeaderboardResetMode } from '@prisma/client';
+import { LeaderboardResetMode } from '../../generated/prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 /**

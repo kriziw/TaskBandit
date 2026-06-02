@@ -1,6 +1,6 @@
 import { readFileSync, existsSync } from 'fs';
 import { join } from 'path';
-import { RewardCategory, RewardWorkflowType } from '@prisma/client';
+import { RewardCategory, RewardWorkflowType } from '../../generated/prisma/client';
 import { SupportedLanguage, fallbackLanguage } from '../../common/i18n/supported-languages';
 
 type LocalizedText = Record<SupportedLanguage, string>;

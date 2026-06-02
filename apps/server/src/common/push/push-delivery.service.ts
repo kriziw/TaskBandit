@@ -1,5 +1,5 @@
 import { Injectable } from '@nestjs/common';
-import { NotificationDeviceProvider } from '@prisma/client';
+import { NotificationDeviceProvider } from '../../generated/prisma/client';
 import { AppConfigService } from '../config/app-config.service';
 import { AppLogService } from '../logging/app-log.service';
 import { HostedRuntimeConfigService } from '../tenancy/hosted-runtime-config.service';

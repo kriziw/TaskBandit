@@ -1,4 +1,4 @@
-import { RewardCategory } from '@prisma/client';
+import { RewardCategory } from '../../../generated/prisma/client';
 import { Type } from 'class-transformer';
 import {
   ArrayMaxSize,

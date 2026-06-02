@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, NotFoundException } from "@nestjs/common";
-import { AuthProvider, HouseholdRole } from "@prisma/client";
+import { AuthProvider, HouseholdRole } from "../src/generated/prisma/client";
 import { createHash } from "node:crypto";
 import { sign } from "jsonwebtoken";
 import { beforeEach, describe, expect, it, vi } from "vitest";

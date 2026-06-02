@@ -6,7 +6,7 @@ import {
   NotFoundException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { AuthProvider, HouseholdRole } from '@prisma/client';
+import { AuthProvider, HouseholdRole } from '../../generated/prisma/client';
 import { compare, hash } from 'bcryptjs';
 import { Secret, sign, SignOptions, verify } from 'jsonwebtoken';
 import { createHash, randomBytes, randomUUID } from 'node:crypto';
