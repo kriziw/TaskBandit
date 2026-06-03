@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.9.0](https://github.com/kriziw/TaskBandit/compare/v1.8.1...v1.9.0) (2026-06-03)
+
+
+### Features
+
+* **chores:** replace quick log points override with difficulty selection ([#604](https://github.com/kriziw/TaskBandit/issues/604)) ([b857c42](https://github.com/kriziw/TaskBandit/commit/b857c427792815b424cf69fc269024c02772bffb))
+
+
+### Bug Fixes
+
+* **android:** add fixed_assignee to chore creation assignment panel ([#601](https://github.com/kriziw/TaskBandit/issues/601)) ([17da088](https://github.com/kriziw/TaskBandit/commit/17da088add3c9c0abd4a82a5804dae4deca41d5e))
+
 ## [1.8.1](https://github.com/kriziw/TaskBandit/compare/v1.8.0...v1.8.1) (2026-06-03)
 
 
