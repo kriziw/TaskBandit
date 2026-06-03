@@ -73,6 +73,7 @@ import com.taskbandit.app.BuildConfig
 import com.taskbandit.app.R
 import com.taskbandit.app.compareReleaseVersions
 import com.taskbandit.app.formatReleaseLabel
+import com.taskbandit.app.mobile.ChoreConstants
 import com.taskbandit.app.mobile.MobileBetaStatus
 import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
 import com.taskbandit.app.mobile.MobileNotificationDevice
@@ -295,7 +296,7 @@ internal fun CreateRecurrencePanel(
                 expanded = recurrenceTypeDropdownExpanded,
                 onDismissRequest = { onRecurrenceDropdownExpandedChange(false) }
             ) {
-                listOf("none", "daily", "weekly", "custom_weekly", "every_x_days", "monthly", "template").forEach { type ->
+                ChoreConstants.INSTANCE_RECURRENCE_TYPES.forEach { type ->
                     DropdownMenuItem(
                         text = { Text(recurrenceTypeLabel(type)) },
                         onClick = { onRecurrenceTypeSelected(type) }
@@ -471,7 +472,7 @@ internal fun CreateAssignmentPanel(
                 expanded = assignmentStrategyDropdownExpanded,
                 onDismissRequest = { onAssignmentDropdownExpandedChange(false) }
             ) {
-                listOf("round_robin", "least_completed_recently", "highest_streak", "fixed_assignee").forEach { strategy ->
+                ChoreConstants.ASSIGNMENT_STRATEGIES.forEach { strategy ->
                     DropdownMenuItem(
                         text = { Text(assignmentStrategyLabel(strategy)) },
                         onClick = { onAssignmentStrategySelected(strategy) }

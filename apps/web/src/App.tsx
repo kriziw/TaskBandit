@@ -37,6 +37,13 @@ import {
   syncClientWebPushRegistration,
 } from './pwa/clientPush';
 import { resolveApiBaseUrl, setApiBaseUrlOverride } from './runtimeConfig';
+import {
+  ASSIGNMENT_STRATEGIES,
+  DIFFICULTIES,
+  RECURRENCE_TYPES,
+  TEMPLATE_LOCALES,
+  WEEKDAY_ORDER,
+} from './constants';
 import type {
   Achievement,
   AdminSystemStatus,
@@ -172,19 +179,11 @@ const historicChoreStates: ChoreState[] = ['completed', 'cancelled'];
 const choreHistoryPageSize = 25;
 const clientMobileBreakpointPx = 820;
 
-const recurrenceWeekdayOrder = [
-  'SUNDAY',
-  'MONDAY',
-  'TUESDAY',
-  'WEDNESDAY',
-  'THURSDAY',
-  'FRIDAY',
-  'SATURDAY',
-] as const;
+const recurrenceWeekdayOrder = WEEKDAY_ORDER;
 
 const defaultDependencyDelayValue = 1;
 const defaultDependencyDelayUnit: FollowUpDelayUnit = 'hours';
-const templateTranslationLocales: AppLanguage[] = ['en', 'de', 'hu'];
+const templateTranslationLocales: AppLanguage[] = [...TEMPLATE_LOCALES];
 const completionCelebrationPhraseKeys = [
   'celebration.phrase_1',
   'celebration.phrase_2',
@@ -3279,23 +3278,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     });
   }, [exportAssigneeFilter, exportDateFrom, exportDateTo, exportStatusFilter, payload]);
 
-  const assignmentStrategyOptions: Array<{
-    value: TemplateFormState['assignmentStrategy'];
-    label: string;
-  }> = [
-    { value: 'round_robin', label: t('assignment.round_robin') },
-    { value: 'least_completed_recently', label: t('assignment.least_completed_recently') },
-    { value: 'highest_streak', label: t('assignment.highest_streak') },
-    { value: 'fixed_assignee', label: t('assignment.fixed_assignee') },
-  ];
+  const assignmentStrategyOptions = ASSIGNMENT_STRATEGIES.map((value) => ({
+    value,
+    label: t(`assignment.${value}`),
+  }));
 
-  const recurrenceOptions: Array<{ value: RecurrenceType; label: string }> = [
-    { value: 'none', label: t('recurrence.none') },
-    { value: 'daily', label: t('recurrence.daily') },
-    { value: 'weekly', label: t('recurrence.weekly') },
-    { value: 'every_x_days', label: t('recurrence.every_x_days') },
-    { value: 'custom_weekly', label: t('recurrence.custom_weekly') },
-  ];
+  const recurrenceOptions = RECURRENCE_TYPES.map((value) => ({
+    value,
+    label: t(`recurrence.${value}`),
+  }));
 
   const recurrenceWeekdayOptions = recurrenceWeekdayOrder.map((weekday) => ({
     value: weekday,
@@ -10396,9 +10387,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               }))
                             }
                           >
-                            <option value="easy">{t('difficulty.easy')}</option>
-                            <option value="medium">{t('difficulty.medium')}</option>
-                            <option value="hard">{t('difficulty.hard')}</option>
+                            {DIFFICULTIES.map((d) => (
+                              <option key={d} value={d}>
+                                {t(`difficulty.${d}`)}
+                              </option>
+                            ))}
                           </select>
                         </label>
                         <label>
