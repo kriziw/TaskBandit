@@ -1181,6 +1181,7 @@ function BetaEndBanner({
     : null;
   const daysLeft = useMemo(() => {
     if (!endDate) return null;
+    // eslint-disable-next-line react-hooks/purity -- Date.now() is a valid single-render read for days-until-date
     return Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400_000);
   }, [endDate]);
   if (!betaStatus?.isBeta || !endDate || daysLeft === null) return null;
