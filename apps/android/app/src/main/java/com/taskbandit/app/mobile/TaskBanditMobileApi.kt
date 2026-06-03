@@ -304,7 +304,14 @@ class TaskBanditMobileApi {
             ),
             featureAccess = parseFeatureAccessFromApi(responseJson.optJSONObject("featureAccess")),
             canonicalApiBaseUrl = responseJson.optNullableString("canonicalApiBaseUrl"),
-            canonicalWebBaseUrl = responseJson.optNullableString("canonicalWebBaseUrl")
+            canonicalWebBaseUrl = responseJson.optNullableString("canonicalWebBaseUrl"),
+            betaStatus = responseJson.optJSONObject("betaStatus")?.let { b ->
+                MobileBetaStatus(
+                    isBeta = b.optBoolean("isBeta", false),
+                    endDate = b.optNullableString("endDate"),
+                    tenantBetaEndsAt = b.optNullableString("tenantBetaEndsAt")
+                )
+            }
         )
     }
 

@@ -99,6 +99,11 @@ export type HostedSubscriptionOverview = {
   featureAccess?: AuthenticatedUser['featureAccess'];
   canonicalApiBaseUrl?: string | null;
   canonicalWebBaseUrl?: string | null;
+  betaStatus?: {
+    isBeta: boolean;
+    endDate: string | null;
+    tenantBetaEndsAt: string | null;
+  } | null;
 };
 
 export type ApiStatusResponse = {

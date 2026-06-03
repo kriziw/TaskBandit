@@ -1169,6 +1169,49 @@ function HolidayBlocksSection({
   );
 }
 
+function BetaEndBanner({
+  betaStatus,
+  migrationUrl,
+}: {
+  betaStatus:
+    | { isBeta: boolean; endDate: string | null; tenantBetaEndsAt: string | null }
+    | null
+    | undefined;
+  migrationUrl: string | null;
+}) {
+  const endDate = betaStatus?.isBeta ? (betaStatus.tenantBetaEndsAt ?? betaStatus.endDate) : null;
+  const daysLeft = useMemo(() => {
+    if (!endDate) return null;
+    // eslint-disable-next-line react-hooks/purity -- Date.now() is a valid single-render read for days-until-date
+    return Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400_000);
+  }, [endDate]);
+  if (!betaStatus?.isBeta || !endDate || daysLeft === null) return null;
+  const isUrgent = daysLeft <= 7;
+  const migrationHref = migrationUrl ? `${migrationUrl.replace(/\/+$/, '')}/beta-migration` : null;
+  return (
+    <div
+      className={`beta-end-banner ${isUrgent ? 'beta-end-banner--urgent' : 'beta-end-banner--warning'}`}
+      role="alert"
+    >
+      <span className="beta-end-banner__message">
+        {isUrgent
+          ? `⚠️ The TaskBandit beta ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''} — action required.`
+          : `The TaskBandit beta ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}.`}
+      </span>
+      {migrationHref ? (
+        <a
+          className="beta-end-banner__cta"
+          href={migrationHref}
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          Choose what happens to your household →
+        </a>
+      ) : null}
+    </div>
+  );
+}
+
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
   const brandIconAssetPath = '/brand/logo-dark.png';
@@ -7297,6 +7340,14 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
             </aside>
           ) : null}
           <div className="workspace-main" data-page={activePage}>
+            {payload.hostedSubscription.hostedMode &&
+            payload.hostedSubscription.betaStatus?.isBeta &&
+            (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') ? (
+              <BetaEndBanner
+                betaStatus={payload.hostedSubscription.betaStatus}
+                migrationUrl={payload.hostedSubscription.canonicalWebBaseUrl ?? null}
+              />
+            ) : null}
             {!showClientMobileShell ? (
               <section className="panel workspace-page-header">
                 <div>

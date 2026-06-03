@@ -73,6 +73,11 @@ export type HostedTenantRuntimeConfig = {
   tenantId: string;
   trialEndsAt: string | null;
   updatedAt: string;
+  betaStatus: {
+    isBeta: boolean;
+    endDate: string | null;
+    tenantBetaEndsAt: string | null;
+  } | null;
 };
 
 type CachedRuntimeConfig = {
