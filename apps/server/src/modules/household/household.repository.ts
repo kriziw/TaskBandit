@@ -8041,6 +8041,117 @@ export class HouseholdRepository {
     return this.prisma.householdSettings.findUnique({ where: { householdId } });
   }
 
+  /**
+   * Sync missing catalog templates to an existing household.
+   *
+   * Uses the stored onboardingAnswers (if present) to derive the same key set
+   * that the onboarding wizard would have selected.  For households created
+   * before the wizard existed (onboardingAnswers is null) a generic/full key
+   * set is passed in by the caller instead.
+   *
+   * The method is idempotent: it only creates templates and dependencies that
+   * are not already present.  Existing templates are never modified.
+   *
+   * Returns the keys of newly created templates.
+   */
+  async syncCatalogTemplates(input: {
+    householdId: string;
+    templateKeys: string[];
+    language: SupportedLanguage;
+  }): Promise<{ added: string[] }> {
+    const definitions = getStarterTemplateDefinitionsByKey(input.templateKeys);
+    const added: string[] = [];
+
+    await this.prisma.$transaction(async (tx) => {
+      // Build a key→id map from templates that are already in this household
+      const existing = await tx.choreTemplate.findMany({
+        where: { householdId: input.householdId, catalogKey: { not: null } },
+        select: { id: true, catalogKey: true },
+      });
+      const templateIdByKey = new Map<string, string>(
+        existing
+          .filter((t): t is typeof t & { catalogKey: string } => t.catalogKey !== null)
+          .map((t) => [t.catalogKey, t.id]),
+      );
+
+      // Create missing templates
+      const toCreate = definitions.filter((d) => !templateIdByKey.has(d.key));
+      for (const template of toCreate) {
+        const created = await tx.choreTemplate.create({
+          data: {
+            householdId: input.householdId,
+            defaultLocale: input.language,
+            catalogKey: template.key,
+            groupTitle: template.groupTitle[input.language] ?? template.groupTitle.en,
+            groupTitleTranslations: this.toPrismaJsonOrNull(
+              this.mapStarterLocalizedText(template.groupTitle, input.language),
+            ),
+            title: template.title[input.language] ?? template.title.en,
+            titleTranslations: this.toPrismaJsonOrNull(
+              this.mapStarterLocalizedText(template.title, input.language),
+            ),
+            description: template.description[input.language] ?? template.description.en,
+            descriptionTranslations: this.toPrismaJsonOrNull(
+              this.mapStarterLocalizedText(template.description, input.language),
+            ),
+            difficulty: template.difficulty,
+            basePoints: this.getBasePoints(template.difficulty),
+            assignmentStrategy: template.assignmentStrategy,
+            recurrenceType: template.recurrenceType,
+            recurrenceIntervalDays:
+              template.recurrenceType === RecurrenceType.EVERY_X_DAYS
+                ? (template.recurrenceIntervalDays ?? 1)
+                : null,
+            recurrenceWeekdays:
+              template.recurrenceType === RecurrenceType.CUSTOM_WEEKLY
+                ? (template.recurrenceWeekdays ?? [])
+                : [],
+            requirePhotoProof: template.requirePhotoProof,
+            recurrenceStartStrategy: template.recurrenceStartStrategy,
+            stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
+            checklistItems: {
+              create:
+                template.checklist?.map((item, index) => ({
+                  title: item.title[input.language] ?? item.title.en,
+                  required: item.required,
+                  sortOrder: index + 1,
+                })) ?? [],
+            },
+          },
+          select: { id: true },
+        });
+        templateIdByKey.set(template.key, created.id);
+        added.push(template.key);
+      }
+
+      // Wire any follow-up chains that are newly completable
+      for (const template of toCreate) {
+        if (!template.followUps?.length) continue;
+        const templateId = templateIdByKey.get(template.key);
+        if (!templateId) continue;
+
+        const deps = template.followUps
+          .map((followUp) => {
+            const followUpTemplateId = templateIdByKey.get(followUp.key);
+            if (!followUpTemplateId) return null;
+            return {
+              templateId,
+              followUpTemplateId,
+              followUpDelayValue: followUp.delayValue,
+              followUpDelayUnit: followUp.delayUnit,
+            };
+          })
+          .filter((entry): entry is NonNullable<typeof entry> => entry !== null);
+
+        if (deps.length > 0) {
+          await tx.choreTemplateDependency.createMany({ data: deps, skipDuplicates: true });
+        }
+      }
+    });
+
+    return { added };
+  }
+
   async getCoCompletersForInstance(instanceId: string, householdId: string) {
     return this.prisma.choreInstanceCoCompleter.findMany({
       where: { choreInstanceId: instanceId, choreInstance: { householdId } },

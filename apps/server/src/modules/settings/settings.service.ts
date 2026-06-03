@@ -572,12 +572,14 @@ export class SettingsService {
     keys.add('bedroom_make_bed');
     keys.add('bedroom_change_towels');
     keys.add('bedroom_strip_sheets');
+    keys.add('bedroom_put_on_sheets'); // follow-up target of bedroom_strip_sheets
     keys.add('kitchen_clean_fridge');
 
     const hasDishwasher = dto.appliances.includes('dishwasher');
     const hasDryer = dto.appliances.includes('tumble_dryer');
     const hasWashingMachine = dto.appliances.includes('washing_machine');
     const hasRobotVacuum = dto.appliances.includes('robot_vacuum');
+    const hasChildren = dto.householdType === HouseholdType.FAMILY;
 
     // Kitchen
     keys.add('kitchen_evening_cleanup');
@@ -592,7 +594,9 @@ export class SettingsService {
       keys.add('laundry_run_machine');
       keys.add('laundry_fold_clothes');
       keys.add('laundry_put_away');
-      if (!hasDryer) {
+      if (hasDryer) {
+        keys.add('laundry_run_dryer');
+      } else {
         keys.add('laundry_hang_clothes');
       }
     }
@@ -632,7 +636,51 @@ export class SettingsService {
       keys.add('shopping_grocery_run');
     }
 
+    // Kids' room — family households
+    if (hasChildren) {
+      keys.add('kids_room_tidy');
+      keys.add('kids_room_strip_sheets');
+      keys.add('kids_room_put_on_sheets');
+    }
+
     return [...keys];
+  }
+
+  /**
+   * Sync missing catalog templates to an existing household.
+   *
+   * If the household has stored onboardingAnswers from a previous wizard run,
+   * they are used to derive the same appliance/profile-aware key set.  If the
+   * household pre-dates the wizard (no stored answers), the full generic
+   * baseline is seeded instead — the admin can always delete unwanted templates
+   * afterwards.
+   */
+  async syncCatalog(user: AuthenticatedUser, language: SupportedLanguage) {
+    const settings = await this.repository.getHouseholdSettings(user.householdId);
+    const storedAnswers = settings?.onboardingAnswers as Record<string, unknown> | null;
+
+    let templateKeys: string[];
+    if (storedAnswers) {
+      // Re-derive the same key set the wizard would have produced
+      const dto = storedAnswers as unknown as SubmitOnboardingDto;
+      templateKeys = this.selectTemplateKeys(dto);
+    } else {
+      // Pre-wizard household — seed the generic baseline (no appliance filtering)
+      templateKeys = this.selectTemplateKeys({
+        householdType: HouseholdType.FAMILY,
+        homeType: HomeType.FLAT,
+        appliances: [],
+        pets: [],
+        cookingStyle: 'mixed',
+        gamificationStyle: 'default',
+      } as SubmitOnboardingDto);
+    }
+
+    return this.repository.syncCatalogTemplates({
+      householdId: user.householdId,
+      templateKeys,
+      language,
+    });
   }
 
   private buildSettingsOverrides(dto: SubmitOnboardingDto): Record<string, unknown> {

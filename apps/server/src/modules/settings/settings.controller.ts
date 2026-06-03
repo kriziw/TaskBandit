@@ -104,6 +104,24 @@ export class SettingsController {
     );
   }
 
+  /**
+   * Sync any catalog templates that are missing from this household.
+   * Safe to call multiple times — idempotent.
+   * Uses stored onboardingAnswers to preserve appliance-aware seeding.
+   * Falls back to generic baseline for households created before the wizard.
+   */
+  @Post('catalog-sync')
+  @Roles('admin')
+  syncCatalog(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.settingsService.syncCatalog(
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
   @Put('notifications')
   updateNotificationPreferences(
     @Body() dto: UpdateNotificationPreferencesDto,
