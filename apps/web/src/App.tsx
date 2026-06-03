@@ -3286,6 +3286,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     { value: 'round_robin', label: t('assignment.round_robin') },
     { value: 'least_completed_recently', label: t('assignment.least_completed_recently') },
     { value: 'highest_streak', label: t('assignment.highest_streak') },
+    { value: 'fixed_assignee', label: t('assignment.fixed_assignee') },
   ];
 
   const recurrenceOptions: Array<{ value: RecurrenceType; label: string }> = [
@@ -5725,6 +5726,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       translations: template.translations?.map((entry) => ({ ...entry })) ?? [],
       difficulty: template.difficulty,
       assignmentStrategy: template.assignmentStrategy,
+      fixedAssigneeId: template.fixedAssigneeId ?? null,
       recurrenceType: template.recurrence.type,
       recurrenceIntervalDays: template.recurrence.intervalDays ?? 2,
       recurrenceWeekdays: template.recurrence.weekdays,
@@ -10408,6 +10410,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                 ...current,
                                 assignmentStrategy: event.target
                                   .value as TemplateFormState['assignmentStrategy'],
+                                fixedAssigneeId:
+                                  event.target.value === 'fixed_assignee'
+                                    ? current.fixedAssigneeId
+                                    : null,
                               }))
                             }
                           >
@@ -10418,6 +10424,27 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                             ))}
                           </select>
                         </label>
+                        {templateForm.assignmentStrategy === 'fixed_assignee' && (
+                          <label>
+                            <span>{t('assignment.fixed_assignee_member')}</span>
+                            <select
+                              value={templateForm.fixedAssigneeId ?? ''}
+                              onChange={(event) =>
+                                setTemplateForm((current) => ({
+                                  ...current,
+                                  fixedAssigneeId: event.target.value || null,
+                                }))
+                              }
+                            >
+                              <option value="">—</option>
+                              {(payload?.household.members ?? []).map((member) => (
+                                <option key={member.id} value={member.id}>
+                                  {member.displayName}
+                                </option>
+                              ))}
+                            </select>
+                          </label>
+                        )}
                       </div>
                       <div className="template-editor-grid">
                         <label>

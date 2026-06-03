@@ -2729,6 +2729,7 @@ export class HouseholdRepository {
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
           assignmentStrategy: dto.assignmentStrategy,
+          fixedAssigneeId: dto.fixedAssigneeId ?? null,
           recurrenceType: dto.recurrenceType ?? RecurrenceType.NONE,
           recurrenceIntervalDays:
             dto.recurrenceType === RecurrenceType.EVERY_X_DAYS
@@ -2947,6 +2948,7 @@ export class HouseholdRepository {
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
           assignmentStrategy: dto.assignmentStrategy,
+          fixedAssigneeId: dto.fixedAssigneeId ?? null,
           recurrenceType: dto.recurrenceType ?? RecurrenceType.NONE,
           recurrenceIntervalDays:
             dto.recurrenceType === RecurrenceType.EVERY_X_DAYS
@@ -3546,6 +3548,7 @@ export class HouseholdRepository {
               currentInstanceId: instanceId,
               dueAt: dto.dueAt,
               isRebalance: true,
+              fixedAssigneeId: template.fixedAssigneeId,
             },
           )
         : {
@@ -5475,6 +5478,8 @@ export class HouseholdRepository {
         return AssignmentReasonType.LEAST_COMPLETED_RECENTLY;
       case AssignmentStrategyType.HIGHEST_STREAK:
         return AssignmentReasonType.HIGHEST_STREAK;
+      case AssignmentStrategyType.FIXED_ASSIGNEE:
+        return AssignmentReasonType.FIXED_ASSIGNEE;
       case AssignmentStrategyType.ROUND_ROBIN:
       default:
         return AssignmentReasonType.ROUND_ROBIN;
@@ -5504,6 +5509,7 @@ export class HouseholdRepository {
       stickyFollowUp?: boolean;
       isRebalance?: boolean;
       dueAt?: Date;
+      fixedAssigneeId?: string | null;
     },
   ): Promise<AssignmentDecision> {
     const assigneeId = await this.resolveAssigneeForTemplate(
@@ -5513,6 +5519,7 @@ export class HouseholdRepository {
       strategy,
       {
         currentInstanceId: options?.currentInstanceId,
+        fixedAssigneeId: options?.fixedAssigneeId,
       },
     );
 
@@ -5614,8 +5621,18 @@ export class HouseholdRepository {
     strategy: AssignmentStrategyType,
     options?: {
       currentInstanceId?: string;
+      fixedAssigneeId?: string | null;
     },
   ) {
+    const normalizedStrategy = this.normalizeAssignmentStrategy(strategy);
+
+    if (normalizedStrategy === AssignmentStrategyType.FIXED_ASSIGNEE) {
+      if (!options?.fixedAssigneeId) return null;
+      return await this.validateAssignee(executor, options.fixedAssigneeId, householdId).catch(
+        () => null,
+      );
+    }
+
     const members = await executor.user.findMany({
       where: {
         householdId,
@@ -5627,7 +5644,6 @@ export class HouseholdRepository {
       return null;
     }
 
-    const normalizedStrategy = this.normalizeAssignmentStrategy(strategy);
     const loadByUserId = await this.getActiveAssignmentLoadMap(
       executor,
       householdId,
@@ -5768,6 +5784,7 @@ export class HouseholdRepository {
           select: {
             id: true,
             assignmentStrategy: true,
+            fixedAssigneeId: true,
           },
         },
       },
@@ -5788,6 +5805,7 @@ export class HouseholdRepository {
           currentInstanceId: candidate.id,
           isRebalance: true,
           dueAt: candidate.dueAtUtc,
+          fixedAssigneeId: candidate.template.fixedAssigneeId,
         },
       );
       const nextState = assignmentDecision.assigneeId ? ChoreState.ASSIGNED : ChoreState.OPEN;
@@ -5928,6 +5946,7 @@ export class HouseholdRepository {
                     template.assignmentStrategy,
                     {
                       stickyFollowUp: true,
+                      fixedAssigneeId: template.fixedAssigneeId,
                     },
                   ),
                 )
@@ -5938,6 +5957,7 @@ export class HouseholdRepository {
                 template.assignmentStrategy,
                 {
                   stickyFollowUp: false,
+                  fixedAssigneeId: template.fixedAssigneeId,
                 },
               );
         const matchingVariant = carriedSubtypeLabel
@@ -6141,6 +6161,7 @@ export class HouseholdRepository {
         instance.householdId,
         template.id,
         effectiveAssignmentStrategy,
+        { fixedAssigneeId: template.fixedAssigneeId },
       );
 
       const createdInstance = await tx.choreInstance.create({
@@ -6529,6 +6550,7 @@ export class HouseholdRepository {
       difficulty: template.difficulty.toLowerCase(),
       basePoints: template.basePoints,
       assignmentStrategy: this.mapAssignmentStrategy(template.assignmentStrategy),
+      fixedAssigneeId: template.fixedAssigneeId ?? null,
       recurrence: {
         type: this.mapRecurrenceType(template.recurrenceType),
         intervalDays: template.recurrenceIntervalDays,
@@ -7852,6 +7874,8 @@ export class HouseholdRepository {
         return 'least_completed_recently';
       case AssignmentStrategyType.HIGHEST_STREAK:
         return 'highest_streak';
+      case AssignmentStrategyType.FIXED_ASSIGNEE:
+        return 'fixed_assignee';
       case AssignmentStrategyType.MANUAL_DEFAULT_ASSIGNEE:
         return 'round_robin';
       default:
@@ -7875,6 +7899,8 @@ export class HouseholdRepository {
         return 'sticky_follow_up';
       case AssignmentReasonType.REBALANCED:
         return 'rebalanced';
+      case AssignmentReasonType.FIXED_ASSIGNEE:
+        return 'fixed_assignee';
       default:
         return null;
     }

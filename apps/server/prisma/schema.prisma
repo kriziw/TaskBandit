@@ -41,6 +41,7 @@ enum AssignmentStrategyType {
   LEAST_COMPLETED_RECENTLY
   HIGHEST_STREAK
   MANUAL_DEFAULT_ASSIGNEE
+  FIXED_ASSIGNEE
 }
 
 enum LeaderboardResetMode {
@@ -58,6 +59,7 @@ enum AssignmentReasonType {
   CLAIMED
   STICKY_FOLLOW_UP
   REBALANCED
+  FIXED_ASSIGNEE
 }
 
 enum RecurrenceType {
@@ -331,6 +333,7 @@ model ChoreTemplate {
   difficulty         Difficulty
   basePoints         Int
   assignmentStrategy AssignmentStrategyType
+  fixedAssigneeId    String?
   recurrenceType     RecurrenceType               @default(NONE)
   recurrenceIntervalDays Int?
   recurrenceWeekdays String[]                     @default([])
