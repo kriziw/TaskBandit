@@ -2,6 +2,14 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.6.0](https://github.com/kriziw/TaskBandit/compare/v1.5.0...v1.6.0) (2026-06-03)
+
+
+### Features
+
+* **chores:** joint chore completion and supervised mode ([#591](https://github.com/kriziw/TaskBandit/issues/591)) ([1f87259](https://github.com/kriziw/TaskBandit/commit/1f872592a44881f32035084aafddbd098d833c00))
+* **settings:** household onboarding wizard ([#593](https://github.com/kriziw/TaskBandit/issues/593)) ([8b54c37](https://github.com/kriziw/TaskBandit/commit/8b54c37adc67bdf4464cfbd5d4de5ec4092b18de))
+
 ## [1.5.0](https://github.com/kriziw/TaskBandit/compare/v1.4.0...v1.5.0) (2026-06-01)
 
 
