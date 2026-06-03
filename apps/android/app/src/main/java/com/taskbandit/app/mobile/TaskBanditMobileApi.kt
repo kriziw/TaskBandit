@@ -455,7 +455,7 @@ class TaskBanditMobileApi {
         title: String? = null,
         note: String? = null,
         createTemplateFromEntry: Boolean = false,
-        pointsOverride: Int? = null
+        difficulty: String = "easy"
     ): MobileChore {
         val payload = JSONObject()
         if (!instanceId.isNullOrBlank()) {
@@ -473,9 +473,7 @@ class TaskBanditMobileApi {
         if (createTemplateFromEntry) {
             payload.put("createTemplateFromEntry", true)
         }
-        if (pointsOverride != null) {
-            payload.put("pointsOverride", pointsOverride)
-        }
+        payload.put("difficulty", difficulty.uppercase())
 
         return parseChoreFromApi(
             requestJson(

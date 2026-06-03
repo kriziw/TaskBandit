@@ -1,14 +1,7 @@
+import { Difficulty } from '../../../generated/prisma/client';
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import {
-  IsBoolean,
-  IsInt,
-  IsOptional,
-  IsString,
-  IsUUID,
-  Max,
-  MaxLength,
-  Min,
-} from 'class-validator';
+import { Transform } from 'class-transformer';
+import { IsBoolean, IsEnum, IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 
 export class QuickLogChoreDto {
   @ApiPropertyOptional()
@@ -38,10 +31,9 @@ export class QuickLogChoreDto {
   @IsBoolean()
   createTemplateFromEntry?: boolean;
 
-  @ApiPropertyOptional()
+  @ApiPropertyOptional({ enum: Difficulty, enumName: 'Difficulty' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(1000)
-  pointsOverride?: number;
+  @IsEnum(Difficulty)
+  difficulty?: Difficulty;
 }

@@ -51,6 +51,7 @@ import type {
   BootstrapStarterTemplateOption,
   ChoreAttachment,
   AuthenticatedUser,
+  Difficulty,
   ChoreInstance,
   ChoreState,
   ChoreTemplate,
@@ -1365,10 +1366,8 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setQuickLogSelectedTemplateId,
     quickLogCreateTemplateFromEntry,
     setQuickLogCreateTemplateFromEntry,
-    quickLogUsePointsOverride,
-    setQuickLogUsePointsOverride,
-    quickLogPointsOverride,
-    setQuickLogPointsOverride,
+    quickLogDifficulty,
+    setQuickLogDifficulty,
     quickLogIcon,
     setQuickLogIcon,
     takeoverRequestInstanceId,
@@ -4415,12 +4414,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return;
     }
 
-    const parsedPointsOverride = Number.parseInt(quickLogPointsOverride, 10);
-    const pointsOverride =
-      quickLogUsePointsOverride && Number.isFinite(parsedPointsOverride)
-        ? Math.max(0, parsedPointsOverride)
-        : undefined;
-
     setBusyAction('quick-log');
     try {
       const decoratedTitle = quickLogSelectedInstanceId
@@ -4438,7 +4431,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
           !quickLogSelectedInstanceId &&
           !quickLogSelectedTemplateId &&
           Boolean(quickLogCreateTemplateFromEntry),
-        pointsOverride,
+        difficulty: quickLogDifficulty as Difficulty,
       });
       closeQuickLog();
       setNotice('Quick log saved.');
@@ -12050,34 +12043,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     onChange={(event) => setQuickLogNote(event.target.value)}
                   />
                 </label>
-                <label className="toggle-row">
-                  <span>Override points for this entry</span>
-                  <input
-                    type="checkbox"
-                    checked={quickLogUsePointsOverride}
-                    onChange={(event) => setQuickLogUsePointsOverride(event.target.checked)}
-                  />
+                <label>
+                  <span>{t('templates.difficulty')}</span>
+                  <select
+                    value={quickLogDifficulty}
+                    onChange={(event) => setQuickLogDifficulty(event.target.value)}
+                  >
+                    <option value="easy">{t('difficulty.easy')}</option>
+                    <option value="medium">{t('difficulty.medium')}</option>
+                    <option value="hard">{t('difficulty.hard')}</option>
+                  </select>
                 </label>
-                {quickLogUsePointsOverride ? (
-                  <label>
-                    <span>
-                      Points override (default{' '}
-                      {payload?.household.settings.quickLogPointsDefault ?? 0})
-                    </span>
-                    <input
-                      type="number"
-                      min={0}
-                      max={1000}
-                      value={quickLogPointsOverride}
-                      onChange={(event) => setQuickLogPointsOverride(event.target.value)}
-                    />
-                  </label>
-                ) : (
-                  <p className="inline-message mobile-quick-log-helper">
-                    Household default points:{' '}
-                    {payload?.household.settings.quickLogPointsDefault ?? 0}
-                  </p>
-                )}
                 <div className="button-row schedule-form-actions">
                   <button
                     className="primary-button"

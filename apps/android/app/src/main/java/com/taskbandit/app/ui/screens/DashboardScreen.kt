@@ -413,7 +413,7 @@ internal fun DashboardScreen(
     onRespondToTakeoverRequest: (String, Boolean) -> Unit,
     onSubmitChore: (String) -> Unit,
     onCreateChore: (String, String, String?, String, String?, Int?, List<String>, String?, Int?, String?, String?) -> Unit,
-    onQuickLog: (String?, String?, String?, String?, Boolean, Int?) -> Unit,
+    onQuickLog: (String?, String?, String?, String?, Boolean, String) -> Unit,
     onRemoveNotificationDevice: (String) -> Unit,
     onThemeModeChange: (MobileThemeMode) -> Unit,
     onLanguageTagChange: (String) -> Unit,
@@ -496,8 +496,8 @@ internal fun DashboardScreen(
     var quickLogSelectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var quickLogIcon by rememberSaveable { mutableStateOf<String?>(null) }
     var quickLogCreateTemplate by rememberSaveable { mutableStateOf(false) }
-    var quickLogUsePointsOverride by rememberSaveable { mutableStateOf(false) }
-    var quickLogPointsOverrideInput by rememberSaveable { mutableStateOf("") }
+    var quickLogDifficulty by rememberSaveable { mutableStateOf("easy") }
+    var quickLogDifficultyExpanded by remember { mutableStateOf(false) }
     val selectedAvatarPreset = remember(mobileAvatarKey) {
         mobileAvatarPresets.firstOrNull { it.key == mobileAvatarKey }
     }
@@ -1112,19 +1112,16 @@ internal fun DashboardScreen(
         quickLogSelectedId = null
         quickLogIcon = null
         quickLogCreateTemplate = false
-        quickLogUsePointsOverride = false
-        quickLogPointsOverrideInput = ""
+        quickLogDifficulty = "easy"
     }
 
     if (showQuickLogDialog && canUseQuickLog) {
-        val parsedOverridePoints = quickLogPointsOverrideInput.trim().toIntOrNull()
         val quickLogCanSubmit =
             activeQuickLogAction == null &&
                 (
                     !quickLogSelectedId.isNullOrBlank() ||
                         quickLogQuery.trim().isNotBlank()
-                    ) &&
-                (!quickLogUsePointsOverride || (parsedOverridePoints != null && parsedOverridePoints >= 0))
+                    )
         val previewInstanceCandidate =
             selectedQuickLogCandidate?.takeIf { it.kind == "instance" }
                 ?: filteredQuickLogCandidates.firstOrNull { it.kind == "instance" }
@@ -1138,15 +1135,13 @@ internal fun DashboardScreen(
             val fallbackTitle = selectedQuickLogCandidate?.title?.trim().orEmpty()
             val titleSource = typedTitle.ifBlank { fallbackTitle }
             val decoratedTitle = applyChoreIconTokenToTitle(titleSource, quickLogIcon)
-            val pointsOverride =
-                if (quickLogUsePointsOverride) quickLogPointsOverrideInput.trim().toIntOrNull() else null
             onQuickLog(
                 selectedId.takeIf { selectedKind == "instance" },
                 selectedId.takeIf { selectedKind == "template" },
                 decoratedTitle.takeIf { selectedKind != "instance" && it.isNotBlank() },
                 quickLogNote.trim().ifBlank { null },
                 quickLogCreateTemplate && selectedKind != "instance",
-                pointsOverride
+                quickLogDifficulty
             )
             resetQuickLogForm()
         }
@@ -1297,39 +1292,38 @@ internal fun DashboardScreen(
                             )
                         }
                     }
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ExposedDropdownMenuBox(
+                        expanded = quickLogDifficultyExpanded,
+                        onExpandedChange = { quickLogDifficultyExpanded = it }
                     ) {
-                        Checkbox(
-                            checked = quickLogUsePointsOverride,
-                            onCheckedChange = { quickLogUsePointsOverride = it }
-                        )
-                        Text(
-                            text = stringResource(R.string.mobile_quick_log_override_points),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurface,
-                            modifier = Modifier.weight(1f)
-                        )
                         OutlinedTextField(
-                            value = quickLogPointsOverrideInput.ifBlank { quickLogDefaultPoints.toString() },
-                            onValueChange = { value ->
-                                if (value.all(Char::isDigit)) {
-                                    quickLogPointsOverrideInput = value
-                                }
+                            value = when (quickLogDifficulty) {
+                                "medium" -> stringResource(R.string.mobile_template_difficulty_medium)
+                                "hard" -> stringResource(R.string.mobile_template_difficulty_hard)
+                                else -> stringResource(R.string.mobile_template_difficulty_easy)
                             },
-                            enabled = quickLogUsePointsOverride,
-                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number, imeAction = ImeAction.Done),
-                            modifier = Modifier.widthIn(min = 86.dp, max = 96.dp),
-                            singleLine = true
+                            onValueChange = {},
+                            readOnly = true,
+                            label = { Text(stringResource(R.string.mobile_template_field_difficulty)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = quickLogDifficultyExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
+                        ExposedDropdownMenu(
+                            expanded = quickLogDifficultyExpanded,
+                            onDismissRequest = { quickLogDifficultyExpanded = false }
+                        ) {
+                            listOf(
+                                "easy" to R.string.mobile_template_difficulty_easy,
+                                "medium" to R.string.mobile_template_difficulty_medium,
+                                "hard" to R.string.mobile_template_difficulty_hard
+                            ).forEach { (key, resId) ->
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(resId)) },
+                                    onClick = { quickLogDifficulty = key; quickLogDifficultyExpanded = false }
+                                )
+                            }
+                        }
                     }
-                    Text(
-                        text = stringResource(R.string.mobile_quick_log_default_points_hint, quickLogDefaultPoints),
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End,

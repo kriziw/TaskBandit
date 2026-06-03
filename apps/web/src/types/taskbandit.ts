@@ -698,7 +698,7 @@ export type QuickLogInput = {
   title?: string;
   note?: string;
   createTemplateFromEntry?: boolean;
-  pointsOverride?: number;
+  difficulty?: Difficulty;
 };
 
 export type UploadedProof = {
