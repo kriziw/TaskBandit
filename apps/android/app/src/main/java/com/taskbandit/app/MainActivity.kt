@@ -1204,11 +1204,11 @@ private fun TaskBanditApp(
                             )
                         }
                     },
-                    onQuickLog = { instanceId, templateId, title, note, createTemplate, pointsOverride ->
+                    onQuickLog = { instanceId, templateId, title, note, createTemplate, difficulty ->
                         withAuth { baseUrl, token ->
                             dashboardViewModel.quickLog(
                                 instanceId, templateId, title, note,
-                                createTemplate, pointsOverride, baseUrl, token
+                                createTemplate, difficulty, baseUrl, token
                             )
                         }
                     },

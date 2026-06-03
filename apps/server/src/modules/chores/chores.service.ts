@@ -23,6 +23,7 @@ import { RespondChoreTakeoverDto } from './dto/respond-chore-takeover.dto';
 import { SnoozeDeferredChoreDto } from './dto/snooze-deferred-chore.dto';
 import { SubmitChoreDto } from './dto/submit-chore.dto';
 import { QuickLogChoreDto } from './dto/quick-log-chore.dto';
+import { Difficulty } from '../../generated/prisma/client';
 import { MasteryService } from './mastery.service';
 import { ProofStorageService } from './proof-storage.service';
 
@@ -161,12 +162,7 @@ export class ChoresService {
       });
     }
 
-    const household = await this.repository.getHousehold(user.householdId);
-    const fallbackPoints = 0;
-    const resolvedPoints = Math.max(
-      0,
-      Math.floor(dto.pointsOverride ?? household.settings.quickLogPointsDefault ?? fallbackPoints),
-    );
+    const resolvedPoints = quickLogPointsForDifficulty(dto.difficulty);
 
     const instance = await this.repository.createQuickLogEntry({
       householdId: user.householdId,
@@ -1048,5 +1044,18 @@ export class ChoresService {
 
   private hasFollowUpAutomation(dto: CreateChoreTemplateDto) {
     return (dto.dependencyRules?.length ?? 0) > 0 || (dto.dependencyTemplateIds?.length ?? 0) > 0;
+  }
+}
+
+/** Maps quick-log difficulty to base points, matching the template base-points scale. */
+function quickLogPointsForDifficulty(difficulty?: Difficulty): number {
+  switch (difficulty) {
+    case Difficulty.MEDIUM:
+      return 20;
+    case Difficulty.HARD:
+      return 40;
+    case Difficulty.EASY:
+    default:
+      return 10;
   }
 }

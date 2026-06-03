@@ -959,7 +959,7 @@ internal class DashboardViewModel(
         title: String?,
         note: String?,
         createTemplateFromEntry: Boolean,
-        pointsOverride: Int?,
+        difficulty: String,
         baseUrl: String,
         token: String
     ) {
@@ -994,7 +994,7 @@ internal class DashboardViewModel(
                             title = normalizedTitle.ifBlank { null },
                             note = note,
                             createTemplateFromEntry = createTemplateFromEntry,
-                            pointsOverride = pointsOverride
+                            difficulty = difficulty
                         )
                     }
                 }

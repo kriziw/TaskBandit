@@ -61,8 +61,7 @@ interface ChoreStore {
   quickLogSelectedInstanceId: string | null;
   quickLogSelectedTemplateId: string | null;
   quickLogCreateTemplateFromEntry: boolean;
-  quickLogUsePointsOverride: boolean;
-  quickLogPointsOverride: string;
+  quickLogDifficulty: string;
   quickLogIcon: string | null;
 
   // Takeover request dialog
@@ -119,8 +118,7 @@ interface ChoreStore {
   setQuickLogSelectedInstanceId: (v: string | null) => void;
   setQuickLogSelectedTemplateId: (v: string | null) => void;
   setQuickLogCreateTemplateFromEntry: (v: boolean) => void;
-  setQuickLogUsePointsOverride: (v: boolean) => void;
-  setQuickLogPointsOverride: (v: string) => void;
+  setQuickLogDifficulty: (v: string) => void;
   setQuickLogIcon: (v: string | null) => void;
 
   setTakeoverRequestInstanceId: (v: string | null) => void;
@@ -173,8 +171,7 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
   quickLogSelectedInstanceId: null,
   quickLogSelectedTemplateId: null,
   quickLogCreateTemplateFromEntry: false,
-  quickLogUsePointsOverride: false,
-  quickLogPointsOverride: '',
+  quickLogDifficulty: 'easy',
   quickLogIcon: null,
 
   takeoverRequestInstanceId: null,
@@ -223,8 +220,7 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
   setQuickLogSelectedInstanceId: (v) => set({ quickLogSelectedInstanceId: v }),
   setQuickLogSelectedTemplateId: (v) => set({ quickLogSelectedTemplateId: v }),
   setQuickLogCreateTemplateFromEntry: (v) => set({ quickLogCreateTemplateFromEntry: v }),
-  setQuickLogUsePointsOverride: (v) => set({ quickLogUsePointsOverride: v }),
-  setQuickLogPointsOverride: (v) => set({ quickLogPointsOverride: v }),
+  setQuickLogDifficulty: (v) => set({ quickLogDifficulty: v }),
   setQuickLogIcon: (v) => set({ quickLogIcon: v }),
 
   setTakeoverRequestInstanceId: (v) => set({ takeoverRequestInstanceId: v }),
@@ -266,8 +262,7 @@ export const useChoreStore = create<ChoreStore>((set, get) => ({
       quickLogSelectedInstanceId: null,
       quickLogSelectedTemplateId: null,
       quickLogCreateTemplateFromEntry: false,
-      quickLogUsePointsOverride: false,
-      quickLogPointsOverride: '',
+      quickLogDifficulty: 'easy',
       quickLogIcon: null,
     }),
 
