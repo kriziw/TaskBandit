@@ -108,6 +108,7 @@ import com.taskbandit.app.mobile.MobileReward
 import com.taskbandit.app.mobile.MobileRedemption
 import com.taskbandit.app.mobile.CreateRewardInput
 import com.taskbandit.app.mobile.UpdateRewardInput
+import com.taskbandit.app.mobile.ChoreConstants
 import com.taskbandit.app.mobile.CreateChoreTemplateInput
 import com.taskbandit.app.mobile.CreateTemplateChecklistItemInput
 import com.taskbandit.app.mobile.CreateTemplateVariantInput
@@ -318,9 +319,7 @@ private val quickLogDrawableIconIds = listOf(
     "dishwasher", "grocery_shopping", "sort_mail"
 )
 
-internal val recurrenceWeekdayOrder = listOf(
-    "SUNDAY", "MONDAY", "TUESDAY", "WEDNESDAY", "THURSDAY", "FRIDAY", "SATURDAY"
-)
+internal val recurrenceWeekdayOrder = ChoreConstants.WEEKDAY_ORDER
 
 private val historicChoreStates = setOf("completed", "approved", "rejected", "cancelled")
 

@@ -71,6 +71,7 @@ import com.taskbandit.app.R
 import com.taskbandit.app.mobile.CreateChoreTemplateInput
 import com.taskbandit.app.mobile.CreateTemplateChecklistItemInput
 import com.taskbandit.app.mobile.CreateTemplateVariantInput
+import com.taskbandit.app.mobile.ChoreConstants
 import com.taskbandit.app.mobile.MobileChoreTemplate
 import com.taskbandit.app.mobile.MobileHouseholdMember
 import com.taskbandit.app.mobile.MobileTemplateDependencyRule
@@ -529,9 +530,12 @@ internal fun TemplateEditorScreen(
                                 modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
                             ExposedDropdownMenu(expanded = difficultyExpanded, onDismissRequest = { difficultyExpanded = false }) {
-                                listOf("easy" to R.string.mobile_template_difficulty_easy,
-                                    "medium" to R.string.mobile_template_difficulty_medium,
-                                    "hard" to R.string.mobile_template_difficulty_hard).forEach { (key, resId) ->
+                                ChoreConstants.DIFFICULTIES.forEach { key ->
+                                    val resId = when (key) {
+                                        "medium" -> R.string.mobile_template_difficulty_medium
+                                        "hard" -> R.string.mobile_template_difficulty_hard
+                                        else -> R.string.mobile_template_difficulty_easy
+                                    }
                                     DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editDifficulty = key; difficultyExpanded = false })
                                 }
                             }
@@ -552,10 +556,13 @@ internal fun TemplateEditorScreen(
                                 modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
                             ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
-                                listOf("round_robin" to R.string.mobile_template_strategy_round_robin,
-                                    "least_completed_recently" to R.string.mobile_template_strategy_least_completed,
-                                    "highest_streak" to R.string.mobile_template_strategy_highest_streak,
-                                    "fixed_assignee" to R.string.mobile_template_strategy_fixed_assignee).forEach { (key, resId) ->
+                                ChoreConstants.ASSIGNMENT_STRATEGIES.forEach { key ->
+                                    val resId = when (key) {
+                                        "least_completed_recently" -> R.string.mobile_template_strategy_least_completed
+                                        "highest_streak" -> R.string.mobile_template_strategy_highest_streak
+                                        "fixed_assignee" -> R.string.mobile_template_strategy_fixed_assignee
+                                        else -> R.string.mobile_template_strategy_round_robin
+                                    }
                                     DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = {
                                         editAssignmentStrategy = key
                                         if (key != "fixed_assignee") editFixedAssigneeId = null
@@ -595,7 +602,7 @@ internal fun TemplateEditorScreen(
                                 modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
                             ExposedDropdownMenu(expanded = defaultLocaleExpanded, onDismissRequest = { defaultLocaleExpanded = false }) {
-                                listOf("en", "de", "hu").forEach { locale ->
+                                ChoreConstants.TEMPLATE_LOCALES.forEach { locale ->
                                     DropdownMenuItem(text = { Text(locale.uppercase()) }, onClick = { editDefaultLocale = locale; defaultLocaleExpanded = false })
                                 }
                             }
@@ -628,11 +635,14 @@ internal fun TemplateEditorScreen(
                                 modifier = Modifier.fillMaxWidth().menuAnchor()
                             )
                             ExposedDropdownMenu(expanded = recurrenceTypeExpanded, onDismissRequest = { recurrenceTypeExpanded = false }) {
-                                listOf("none" to R.string.mobile_template_recurrence_none,
-                                    "daily" to R.string.mobile_template_recurrence_daily,
-                                    "weekly" to R.string.mobile_template_recurrence_weekly,
-                                    "every_x_days" to R.string.mobile_template_recurrence_every_x_days,
-                                    "custom_weekly" to R.string.mobile_template_recurrence_custom_weekly).forEach { (key, resId) ->
+                                ChoreConstants.TEMPLATE_RECURRENCE_TYPES.forEach { key ->
+                                    val resId = when (key) {
+                                        "daily" -> R.string.mobile_template_recurrence_daily
+                                        "weekly" -> R.string.mobile_template_recurrence_weekly
+                                        "every_x_days" -> R.string.mobile_template_recurrence_every_x_days
+                                        "custom_weekly" -> R.string.mobile_template_recurrence_custom_weekly
+                                        else -> R.string.mobile_template_recurrence_none
+                                    }
                                     DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editRecurrenceType = key; recurrenceTypeExpanded = false })
                                 }
                             }
