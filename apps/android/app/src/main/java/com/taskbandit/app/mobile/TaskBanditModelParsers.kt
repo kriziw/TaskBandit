@@ -358,6 +358,7 @@ internal fun parseFullTemplate(item: JSONObject): MobileChoreTemplate {
         difficulty = item.optString("difficulty").ifBlank { "medium" },
         basePoints = item.optInt("basePoints"),
         assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },
+        fixedAssigneeId = item.optString("fixedAssigneeId").ifBlank { null },
         recurrence = parseTemplateRecurrence(recurrence),
         requirePhotoProof = item.optBoolean("requirePhotoProof"),
         stickyFollowUpAssignee = item.optBoolean("stickyFollowUpAssignee"),

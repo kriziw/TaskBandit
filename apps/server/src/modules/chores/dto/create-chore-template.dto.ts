@@ -253,6 +253,11 @@ export class CreateChoreTemplateDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @IsUUID('4')
+  fixedAssigneeId?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
   @IsBoolean()
   masteryDisabled?: boolean;
 

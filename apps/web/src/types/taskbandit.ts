@@ -549,7 +549,11 @@ export type ChoreTemplateChecklistItem = {
   required: boolean;
 };
 
-export type AssignmentStrategy = 'round_robin' | 'least_completed_recently' | 'highest_streak';
+export type AssignmentStrategy =
+  | 'round_robin'
+  | 'least_completed_recently'
+  | 'highest_streak'
+  | 'fixed_assignee';
 
 export type ChoreAssignmentReason =
   | 'round_robin'
@@ -558,7 +562,8 @@ export type ChoreAssignmentReason =
   | 'manual'
   | 'claimed'
   | 'sticky_follow_up'
-  | 'rebalanced';
+  | 'rebalanced'
+  | 'fixed_assignee';
 
 export type FollowUpDelayUnit = 'hours' | 'days';
 export type TemplateTranslationLocale = 'en' | 'de' | 'hu';
@@ -597,6 +602,7 @@ export type ChoreTemplate = {
   difficulty: Difficulty;
   basePoints: number;
   assignmentStrategy: AssignmentStrategy;
+  fixedAssigneeId?: string | null;
   recurrence: {
     type: RecurrenceType;
     intervalDays?: number | null;
@@ -765,6 +771,7 @@ export type CreateChoreTemplateInput = {
   translations?: LocalizedTemplateTranslation[];
   difficulty: Difficulty;
   assignmentStrategy: AssignmentStrategy;
+  fixedAssigneeId?: string | null;
   recurrenceType?: RecurrenceType;
   recurrenceIntervalDays?: number;
   recurrenceWeekdays?: string[];
