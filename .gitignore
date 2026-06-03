@@ -18,3 +18,7 @@ coverage/
 .env
 .env.*
 
+# Private architecture document — lives in the control plane repo only
+MASTER_ARCHITECTURE.md
+Agents.md
+
