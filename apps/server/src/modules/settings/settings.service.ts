@@ -16,6 +16,13 @@ import { TestSmtpSettingsDto } from './dto/test-smtp-settings.dto';
 import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import {
+  GamificationStyle,
+  HomeType,
+  HouseholdType,
+  SubmitOnboardingDto,
+} from './dto/submit-onboarding.dto';
+import { SaveOnboardingDraftDto } from './dto/save-onboarding-draft.dto';
 import { SmtpService, type SmtpSettings } from './smtp.service';
 
 @Injectable()
@@ -521,5 +528,182 @@ export class SettingsService {
         'Hosted identity and delivery settings are managed by the control plane for SaaS tenants.',
       );
     }
+  }
+
+  async saveOnboardingDraft(dto: SaveOnboardingDraftDto, user: AuthenticatedUser) {
+    await this.repository.saveOnboardingDraft(user.householdId, dto.answers);
+    return { saved: true };
+  }
+
+  async submitOnboarding(
+    dto: SubmitOnboardingDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    const templateKeys = this.selectTemplateKeys(dto);
+    const settingsOverrides = this.buildSettingsOverrides(dto);
+
+    await this.repository.applyOnboarding({
+      householdId: user.householdId,
+      actorUserId: user.id,
+      templateKeys,
+      settingsOverrides,
+      language,
+    });
+
+    return {
+      selectedTemplateCount: templateKeys.length,
+      selectedTemplateKeys: templateKeys,
+      appliedSettings: settingsOverrides,
+    };
+  }
+
+  private selectTemplateKeys(dto: SubmitOnboardingDto): string[] {
+    const keys = new Set<string>();
+
+    // Baseline — always included
+    keys.add('waste_take_out_rubbish');
+    keys.add('waste_take_out_recycling');
+    keys.add('cleaning_bathroom');
+    keys.add('cleaning_toilet');
+    keys.add('cleaning_tidy_living_areas');
+    keys.add('cleaning_dust_surfaces');
+    keys.add('cleaning_mop_floors');
+    keys.add('bedroom_make_bed');
+    keys.add('bedroom_change_towels');
+    keys.add('bedroom_strip_sheets');
+    keys.add('bedroom_put_on_sheets'); // follow-up target of bedroom_strip_sheets
+    keys.add('kitchen_clean_fridge');
+
+    const hasDishwasher = dto.appliances.includes('dishwasher');
+    const hasDryer = dto.appliances.includes('tumble_dryer');
+    const hasWashingMachine = dto.appliances.includes('washing_machine');
+    const hasRobotVacuum = dto.appliances.includes('robot_vacuum');
+    const hasChildren = dto.householdType === HouseholdType.FAMILY;
+
+    // Kitchen
+    keys.add('kitchen_evening_cleanup');
+    if (hasDishwasher) {
+      keys.add('kitchen_unload_dishwasher');
+    } else {
+      keys.add('kitchen_hand_wash_dishes');
+    }
+
+    // Laundry
+    if (hasWashingMachine) {
+      keys.add('laundry_run_machine');
+      keys.add('laundry_fold_clothes');
+      keys.add('laundry_put_away');
+      if (hasDryer) {
+        keys.add('laundry_run_dryer');
+      } else {
+        keys.add('laundry_hang_clothes');
+      }
+    }
+
+    // Vacuuming
+    if (!hasRobotVacuum) {
+      keys.add('cleaning_vacuum_house');
+    }
+
+    // Outdoor / garden
+    const hasGarden =
+      dto.homeType === HomeType.HOUSE_GARDEN || dto.homeType === HomeType.HOUSE_GARDEN_LAWN;
+    const hasLawn = dto.homeType === HomeType.HOUSE_GARDEN_LAWN;
+    const isHouseOrLarger = dto.homeType !== HomeType.FLAT;
+
+    if (isHouseOrLarger) {
+      keys.add('outdoor_sweep_entrance');
+    }
+    if (hasGarden) {
+      keys.add('plants_water_plants');
+    }
+    if (hasLawn) {
+      keys.add('outdoor_mow_lawn');
+    }
+
+    // Cooking
+    if (dto.cookingStyle === 'take_turns' || dto.cookingStyle === 'mixed') {
+      keys.add('cooking_prepare_dinner');
+    }
+
+    // Shopping — households with multiple adults/children
+    if (
+      dto.householdType === HouseholdType.FAMILY ||
+      dto.householdType === HouseholdType.FLATMATES ||
+      dto.householdType === HouseholdType.COUPLE
+    ) {
+      keys.add('shopping_grocery_run');
+    }
+
+    // Kids' room — family households
+    if (hasChildren) {
+      keys.add('kids_room_tidy');
+      keys.add('kids_room_strip_sheets');
+      keys.add('kids_room_put_on_sheets');
+    }
+
+    return [...keys];
+  }
+
+  /**
+   * Sync missing catalog templates to an existing household.
+   *
+   * If the household has stored onboardingAnswers from a previous wizard run,
+   * they are used to derive the same appliance/profile-aware key set.  If the
+   * household pre-dates the wizard (no stored answers), the full generic
+   * baseline is seeded instead — the admin can always delete unwanted templates
+   * afterwards.
+   */
+  async syncCatalog(user: AuthenticatedUser, language: SupportedLanguage) {
+    const settings = await this.repository.getHouseholdSettings(user.householdId);
+    const storedAnswers = settings?.onboardingAnswers as Record<string, unknown> | null;
+
+    let templateKeys: string[];
+    if (storedAnswers) {
+      // Re-derive the same key set the wizard would have produced
+      const dto = storedAnswers as unknown as SubmitOnboardingDto;
+      templateKeys = this.selectTemplateKeys(dto);
+    } else {
+      // Pre-wizard household — seed the generic baseline (no appliance filtering)
+      templateKeys = this.selectTemplateKeys({
+        householdType: HouseholdType.FAMILY,
+        homeType: HomeType.FLAT,
+        appliances: [],
+        pets: [],
+        cookingStyle: 'mixed',
+        gamificationStyle: 'default',
+      } as SubmitOnboardingDto);
+    }
+
+    return this.repository.syncCatalogTemplates({
+      householdId: user.householdId,
+      templateKeys,
+      language,
+    });
+  }
+
+  private buildSettingsOverrides(dto: SubmitOnboardingDto): Record<string, unknown> {
+    const overrides: Record<string, unknown> = {
+      onboardingCompleted: true,
+    };
+
+    switch (dto.gamificationStyle) {
+      case GamificationStyle.TRACK_ONLY:
+        overrides.enableAchievements = false;
+        break;
+      case GamificationStyle.FULL:
+        overrides.enableAchievements = true;
+        overrides.requireRewardApproval = true;
+        break;
+      case GamificationStyle.LIGHT:
+        overrides.enableAchievements = true;
+        break;
+      default:
+        // GamificationStyle.DEFAULT — leave existing settings
+        break;
+    }
+
+    return overrides;
   }
 }

@@ -214,8 +214,10 @@ import com.taskbandit.app.mobile.TaskBanditWidgetStore
 import com.taskbandit.app.mobile.MobileReleaseInfo
 import com.taskbandit.app.mobile.MobileSignupRequest
 import com.taskbandit.app.mobile.MobilePublicEnrollmentSiteConfig
+import com.taskbandit.app.mobile.MobileOnboardingAnswers
 import com.taskbandit.app.push.TaskBanditFirebasePushManager
 import com.taskbandit.app.ui.screens.DashboardScreen
+import com.taskbandit.app.ui.screens.OnboardingWizardScreen
 import com.taskbandit.app.ui.theme.TaskBanditTheme
 import com.taskbandit.app.viewmodels.DashboardEvent
 import com.taskbandit.app.viewmodels.DashboardViewModel
@@ -354,6 +356,13 @@ private fun TaskBanditApp(
     var registrationPassword by remember { mutableStateOf("") }
     var onboardingDeepLink by remember { mutableStateOf<MobileOnboardingDeepLink?>(null) }
     var onboardingInvite by remember { mutableStateOf<MobileResolvedInvite?>(null) }
+    var setupWizardStep by remember { mutableIntStateOf(0) }
+    var setupWizardAnswers by remember {
+        mutableStateOf(MobileOnboardingAnswers(
+            householdType = "", homeType = "", appliances = emptyList(),
+            pets = emptyList(), cookingStyle = "", gamificationStyle = ""
+        ))
+    }
     var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
     var authProvidersCheckedBaseUrl by remember { mutableStateOf<String?>(null) }
     var isAuthProvidersLoading by remember { mutableStateOf(false) }
@@ -395,6 +404,12 @@ private fun TaskBanditApp(
         factory = DashboardViewModel.factory(api, sessionStore, dashboardCacheStore, widgetStore, installationId)
     )
     val dashboardState by dashboardViewModel.uiState.collectAsStateWithLifecycle()
+
+    // Pre-fill wizard from server draft when dashboard first loads (must be after dashboardState)
+    val dashboardDraft = dashboardState.dashboard?.onboardingDraft
+    if (dashboardDraft != null && setupWizardAnswers.householdType.isBlank()) {
+        setupWizardAnswers = dashboardDraft
+    }
 
     // ── Local helpers ─────────────────────────────────────────────────────────
 
@@ -1021,6 +1036,40 @@ private fun TaskBanditApp(
                                 loginErrorMessage = resolveLoginScreenErrorMessage(throwable)
                             }
                             loginIsBusy = false
+                        }
+                    }
+                )
+            } else if (
+                dashboardState.dashboard != null &&
+                !dashboardState.dashboard!!.onboardingCompleted &&
+                (dashboardState.dashboard!!.user.role == "admin" || dashboardState.dashboard!!.user.role == "parent")
+            ) {
+                OnboardingWizardScreen(
+                    step = setupWizardStep,
+                    answers = setupWizardAnswers,
+                    onAnswersChange = { setupWizardAnswers = it },
+                    onNext = {
+                        setupWizardStep++
+                        // Save draft so the user can resume if they close the app
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.saveOnboardingDraft(baseUrl, token, setupWizardAnswers)
+                        }
+                    },
+                    onBack = { if (setupWizardStep > 0) setupWizardStep-- },
+                    onFinish = { finalAnswers ->
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.submitOnboarding(baseUrl, token, finalAnswers)
+                        }
+                    },
+                    onSkip = {
+                        val defaults = setupWizardAnswers.copy(
+                            householdType = setupWizardAnswers.householdType.ifBlank { "family" },
+                            homeType = setupWizardAnswers.homeType.ifBlank { "house" },
+                            cookingStyle = setupWizardAnswers.cookingStyle.ifBlank { "mixed" },
+                            gamificationStyle = setupWizardAnswers.gamificationStyle.ifBlank { "default" }
+                        )
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.submitOnboarding(baseUrl, token, defaults)
                         }
                     }
                 )

@@ -260,6 +260,22 @@ export type UnlockedAchievement = {
 
 export type LeaderboardResetMode = 'never' | 'weekly' | 'monthly' | 'quarterly';
 
+export type OnboardingAnswers = {
+  householdType: 'solo' | 'couple' | 'family' | 'flatmates';
+  childAges?: ('under_5' | '5_10' | '11_15' | '16_plus')[];
+  homeType: 'flat' | 'house' | 'house_garden' | 'house_garden_lawn';
+  appliances: ('dishwasher' | 'tumble_dryer' | 'washing_machine' | 'robot_vacuum')[];
+  pets: ('none' | 'dog' | 'cat' | 'other')[];
+  cookingStyle: 'one_person' | 'take_turns' | 'mostly_takeout' | 'mixed';
+  gamificationStyle: 'track_only' | 'light' | 'full' | 'default';
+};
+
+export type OnboardingResult = {
+  selectedTemplateCount: number;
+  selectedTemplateKeys: string[];
+  appliedSettings: Record<string, unknown>;
+};
+
 export type JointPointsMode = 'FULL_TO_EACH' | 'SPLIT_EQUALLY' | 'PRIMARY_PLUS_BONUS';
 export type CoCompleterRole = 'HELPER' | 'SUPERVISOR';
 
@@ -308,6 +324,7 @@ export type HouseholdSettings = {
   jointCompletionPointsMode: JointPointsMode;
   jointCompletionHelperBonus: number;
   jointCompletionOpenJoin: boolean;
+  onboardingAnswers: Record<string, unknown> | null;
 };
 
 export type NotificationPreferences = {

@@ -256,6 +256,7 @@ model HouseholdSettings {
   jointCompletionPointsMode              JointPointsMode @default(SPLIT_EQUALLY)
   jointCompletionHelperBonus             Int       @default(5)
   jointCompletionOpenJoin                Boolean   @default(true)
+  onboardingAnswers                      Json?
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
 

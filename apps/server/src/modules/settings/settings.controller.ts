@@ -5,6 +5,7 @@ import {
   Get,
   Headers,
   Param,
+  Patch,
   Post,
   Put,
   Req,
@@ -27,6 +28,8 @@ import { TestSmtpSettingsDto } from './dto/test-smtp-settings.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
+import { SubmitOnboardingDto } from './dto/submit-onboarding.dto';
+import { SaveOnboardingDraftDto } from './dto/save-onboarding-draft.dto';
 
 @ApiTags('settings')
 @Controller('api/settings')
@@ -79,6 +82,41 @@ export class SettingsController {
   @Roles('admin')
   updateHousehold(@Body() dto: UpdateSettingsDto, @CurrentUser() user: AuthenticatedUser) {
     return this.settingsService.updateSettings(dto, user);
+  }
+
+  @Patch('onboarding/draft')
+  @Roles('admin', 'parent')
+  saveOnboardingDraft(@Body() dto: SaveOnboardingDraftDto, @CurrentUser() user: AuthenticatedUser) {
+    return this.settingsService.saveOnboardingDraft(dto, user);
+  }
+
+  @Post('onboarding')
+  @Roles('admin', 'parent')
+  submitOnboarding(
+    @Body() dto: SubmitOnboardingDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.settingsService.submitOnboarding(
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
+  /**
+   * Sync any catalog templates that are missing from this household.
+   * Safe to call multiple times — idempotent.
+   * Uses stored onboardingAnswers to preserve appliance-aware seeding.
+   * Falls back to generic baseline for households created before the wizard.
+   */
+  @Post('catalog-sync')
+  @Roles('admin')
+  syncCatalog(
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.settingsService.syncCatalog(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Put('notifications')

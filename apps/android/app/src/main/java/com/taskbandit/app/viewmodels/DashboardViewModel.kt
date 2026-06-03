@@ -25,6 +25,7 @@ import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileNotificationDeviceRegistration
 import com.taskbandit.app.mobile.MobileDashboard
 import com.taskbandit.app.mobile.MobileReleaseInfo
+import com.taskbandit.app.mobile.MobileOnboardingAnswers
 import com.taskbandit.app.mobile.TaskBanditDashboardCacheStore
 import com.taskbandit.app.mobile.TaskBanditMobileApi
 import com.taskbandit.app.mobile.TaskBanditSessionStore
@@ -546,6 +547,24 @@ internal class DashboardViewModel(
                     _uiState.update { it.copy(errorMessage = throwable.message) }
                 }
             }
+        }
+    }
+
+    fun saveOnboardingDraft(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.saveOnboardingDraft(baseUrl, token, answers) }
+            }
+            // Draft save is fire-and-forget; silently ignore errors
+        }
+    }
+
+    fun submitOnboarding(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.submitOnboarding(baseUrl, token, answers) }
+            }
+            refreshDashboard(baseUrl, token)
         }
     }
 

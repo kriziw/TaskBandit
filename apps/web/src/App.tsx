@@ -65,6 +65,7 @@ import type {
   TakeoverRequestEntry,
   TemplateTranslationLocale,
   HolidayBlock,
+  OnboardingAnswers,
 } from './types/taskbandit';
 
 const workspacePageStorageKey = 'taskbandit-active-page';
@@ -718,6 +719,7 @@ const featureLabelMap: Record<string, string> = {
   deferred_follow_up_control: 'Deferred follow-up control',
   quick_log: 'Quick log',
   rewards_manage: 'Rewards',
+  mastery: 'Chore Mastery',
 };
 
 function formatFeatureLabel(featureId: string) {
@@ -1229,6 +1231,15 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     onboardingTourCompleted,
     setOnboardingTourCompleted,
   } = useUiStore();
+  const [setupWizardStep, setSetupWizardStep] = useState(0);
+  const [setupWizardAnswers, setSetupWizardAnswers] = useState<Partial<OnboardingAnswers>>(() => {
+    // Pre-fill from server draft if present (survives page reloads / app restarts)
+    const draft = payload?.household?.settings?.onboardingAnswers;
+    if (draft && typeof draft === 'object') {
+      return { appliances: [], pets: [], ...(draft as Partial<OnboardingAnswers>) };
+    }
+    return { appliances: [], pets: [] };
+  });
   const {
     payload,
     runtimeLogs,
@@ -2661,6 +2672,42 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   const showAdminOps = Boolean(
     payload && payload.currentUser.role === 'admin' && !payload.hostedSubscription.hostedMode,
   );
+
+  const showSetupWizard = Boolean(
+    payload &&
+    !payload.household.settings.onboardingCompleted &&
+    (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
+    workspaceVariant === 'client',
+  );
+
+  async function advanceWizardStep(newAnswers: Partial<OnboardingAnswers>) {
+    setSetupWizardAnswers(newAnswers);
+    setSetupWizardStep((s) => s + 1);
+    // Fire-and-forget draft save — if the user closes now, answers are preserved
+    if (token) {
+      void taskBanditApi.saveOnboardingDraft(token, language, newAnswers).catch(() => {});
+    }
+  }
+
+  async function handleSubmitSetupWizard(finalAnswers?: Partial<OnboardingAnswers>) {
+    if (!token) return;
+    const merged = finalAnswers ?? setupWizardAnswers;
+    const answers: OnboardingAnswers = {
+      householdType: (merged.householdType ?? 'family') as OnboardingAnswers['householdType'],
+      homeType: (merged.homeType ?? 'house') as OnboardingAnswers['homeType'],
+      appliances: merged.appliances ?? [],
+      pets: merged.pets ?? [],
+      cookingStyle: (merged.cookingStyle ?? 'mixed') as OnboardingAnswers['cookingStyle'],
+      gamificationStyle: (merged.gamificationStyle ??
+        'default') as OnboardingAnswers['gamificationStyle'],
+    };
+    try {
+      await taskBanditApi.submitOnboarding(token, language, answers);
+      await refreshDashboard(token, { silent: false });
+    } catch {
+      // wizard is skippable — silently dismiss and let the user reach the dashboard
+    }
+  }
 
   const showOnboarding = Boolean(
     payload &&
@@ -6533,6 +6580,183 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }`}
       data-variant={workspaceVariant}
     >
+      {showSetupWizard ? (
+        <div
+          className="setup-wizard-overlay"
+          role="dialog"
+          aria-modal="true"
+          aria-label={t('wizard.title')}
+        >
+          <div className="setup-wizard-panel">
+            <header className="setup-wizard-header">
+              <h2>{t('wizard.title')}</h2>
+              <p>{t('wizard.subtitle')}</p>
+              <div className="setup-wizard-progress">
+                {[0, 1, 2, 3, 4, 5].map((i) => (
+                  <span
+                    key={i}
+                    className={`setup-wizard-dot ${setupWizardStep >= i ? 'active' : ''}`}
+                  />
+                ))}
+              </div>
+              <p className="setup-wizard-step-label">
+                {t('wizard.step', { current: String(setupWizardStep + 1), total: '6' })}
+              </p>
+            </header>
+            <div className="setup-wizard-body">
+              {setupWizardStep === 0 && (
+                <fieldset>
+                  <legend>{t('wizard.household_type.question')}</legend>
+                  {(['solo', 'couple', 'family', 'flatmates'] as const).map((v) => (
+                    <label key={v} className="setup-wizard-option">
+                      <input
+                        type="radio"
+                        name="householdType"
+                        checked={setupWizardAnswers.householdType === v}
+                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, householdType: v }))}
+                      />
+                      {t(`wizard.household_type.${v}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {setupWizardStep === 1 && (
+                <fieldset>
+                  <legend>{t('wizard.home_type.question')}</legend>
+                  {(['flat', 'house', 'house_garden', 'house_garden_lawn'] as const).map((v) => (
+                    <label key={v} className="setup-wizard-option">
+                      <input
+                        type="radio"
+                        name="homeType"
+                        checked={setupWizardAnswers.homeType === v}
+                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, homeType: v }))}
+                      />
+                      {t(`wizard.home_type.${v}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {setupWizardStep === 2 && (
+                <fieldset>
+                  <legend>{t('wizard.appliances.question')}</legend>
+                  <p className="setup-wizard-hint">{t('wizard.appliances.hint')}</p>
+                  {(['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const).map(
+                    (v) => (
+                      <label key={v} className="setup-wizard-option">
+                        <input
+                          type="checkbox"
+                          checked={(setupWizardAnswers.appliances ?? []).includes(v)}
+                          onChange={(e) =>
+                            setSetupWizardAnswers((a) => ({
+                              ...a,
+                              appliances: e.target.checked
+                                ? [...(a.appliances ?? []), v]
+                                : (a.appliances ?? []).filter((x) => x !== v),
+                            }))
+                          }
+                        />
+                        {t(`wizard.appliances.${v}`)}
+                      </label>
+                    ),
+                  )}
+                </fieldset>
+              )}
+              {setupWizardStep === 3 && (
+                <fieldset>
+                  <legend>{t('wizard.pets.question')}</legend>
+                  <p className="setup-wizard-hint">{t('wizard.pets.hint')}</p>
+                  {(['none', 'dog', 'cat', 'other'] as const).map((v) => (
+                    <label key={v} className="setup-wizard-option">
+                      <input
+                        type="checkbox"
+                        checked={(setupWizardAnswers.pets ?? []).includes(v)}
+                        onChange={(e) =>
+                          setSetupWizardAnswers((a) => ({
+                            ...a,
+                            pets: e.target.checked
+                              ? [...(a.pets ?? []), v]
+                              : (a.pets ?? []).filter((x) => x !== v),
+                          }))
+                        }
+                      />
+                      {t(`wizard.pets.${v}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {setupWizardStep === 4 && (
+                <fieldset>
+                  <legend>{t('wizard.cooking.question')}</legend>
+                  {(['one_person', 'take_turns', 'mostly_takeout', 'mixed'] as const).map((v) => (
+                    <label key={v} className="setup-wizard-option">
+                      <input
+                        type="radio"
+                        name="cookingStyle"
+                        checked={setupWizardAnswers.cookingStyle === v}
+                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, cookingStyle: v }))}
+                      />
+                      {t(`wizard.cooking.${v}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+              {setupWizardStep === 5 && (
+                <fieldset>
+                  <legend>{t('wizard.gamification.question')}</legend>
+                  {(['track_only', 'light', 'full', 'default'] as const).map((v) => (
+                    <label key={v} className="setup-wizard-option">
+                      <input
+                        type="radio"
+                        name="gamificationStyle"
+                        checked={setupWizardAnswers.gamificationStyle === v}
+                        onChange={() =>
+                          setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))
+                        }
+                      />
+                      {t(`wizard.gamification.${v}`)}
+                    </label>
+                  ))}
+                </fieldset>
+              )}
+            </div>
+            <footer className="setup-wizard-footer">
+              {setupWizardStep > 0 && (
+                <button
+                  type="button"
+                  className="ghost-button"
+                  onClick={() => setSetupWizardStep((s) => s - 1)}
+                >
+                  {t('wizard.back')}
+                </button>
+              )}
+              {setupWizardStep < 5 ? (
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => void advanceWizardStep(setupWizardAnswers)}
+                >
+                  {t('wizard.next')}
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={() => void handleSubmitSetupWizard()}
+                >
+                  {t('wizard.finish')}
+                </button>
+              )}
+              <button
+                type="button"
+                className="ghost-button"
+                onClick={() => void handleSubmitSetupWizard()}
+              >
+                {t('wizard.skip')}
+              </button>
+            </footer>
+          </div>
+        </div>
+      ) : null}
       {showNewClientMobileShell && payload ? (
         <section className="toolbar mobile-new-toolbar">
           <div className="toolbar-group">

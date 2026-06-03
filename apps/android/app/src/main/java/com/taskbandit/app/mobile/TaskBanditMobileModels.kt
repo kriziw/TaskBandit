@@ -448,7 +448,19 @@ data class MobileDashboard(
     val lastLeaderboardResetAt: String? = null,
     val rewards: List<MobileReward> = emptyList(),
     val redemptions: List<MobileRedemption> = emptyList(),
-    val holidayBlocks: List<MobileHolidayBlock> = emptyList()
+    val holidayBlocks: List<MobileHolidayBlock> = emptyList(),
+    val onboardingCompleted: Boolean = true,
+    val onboardingDraft: MobileOnboardingAnswers? = null
+)
+
+data class MobileOnboardingAnswers(
+    val householdType: String,
+    val homeType: String,
+    val appliances: List<String>,
+    val pets: List<String>,
+    val cookingStyle: String,
+    val gamificationStyle: String,
+    val childAges: List<String> = emptyList()
 )
 
 data class MobileReward(

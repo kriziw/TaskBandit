@@ -359,6 +359,17 @@ class TaskBanditMobileApi {
             }
         }
         val enableAchievements = householdSettings?.optBoolean("enableAchievements", true) ?: true
+        val onboardingCompleted = householdSettings?.optBoolean("onboardingCompleted", true) ?: true
+        val onboardingDraft = householdSettings?.optJSONObject("onboardingAnswers")?.let { d ->
+            MobileOnboardingAnswers(
+                householdType = d.optString("householdType"),
+                homeType = d.optString("homeType"),
+                cookingStyle = d.optString("cookingStyle"),
+                gamificationStyle = d.optString("gamificationStyle"),
+                appliances = parseStringArray(d.optJSONArray("appliances")),
+                pets = parseStringArray(d.optJSONArray("pets"))
+            )
+        }
         val leaderboardResetMode = householdSettings?.optString("leaderboardResetMode", "never") ?: "never"
         val lastLeaderboardResetAt = householdSettings?.takeIf { it.has("lastLeaderboardResetAt") && !it.isNull("lastLeaderboardResetAt") }
             ?.optString("lastLeaderboardResetAt")
@@ -420,7 +431,9 @@ class TaskBanditMobileApi {
             lastLeaderboardResetAt = lastLeaderboardResetAt,
             rewards = rewards,
             redemptions = redemptions,
-            holidayBlocks = holidayBlocks
+            holidayBlocks = holidayBlocks,
+            onboardingCompleted = onboardingCompleted,
+            onboardingDraft = onboardingDraft
         )
     }
 
@@ -474,6 +487,51 @@ class TaskBanditMobileApi {
 
     fun rejectChore(baseUrl: String, token: String, instanceId: String, note: String? = null): MobileChore {
         return reviewChore(baseUrl, token, "/api/chores/instances/$instanceId/reject", note)
+    }
+
+    fun saveOnboardingDraft(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
+        val appliancesArr = JSONArray().also { arr -> answers.appliances.forEach { arr.put(it) } }
+        val petsArr = JSONArray().also { arr -> answers.pets.forEach { arr.put(it) } }
+        val draftBody = JSONObject()
+        val answersObj = JSONObject()
+            .put("householdType", answers.householdType)
+            .put("homeType", answers.homeType)
+            .put("cookingStyle", answers.cookingStyle)
+            .put("gamificationStyle", answers.gamificationStyle)
+            .put("appliances", appliancesArr)
+            .put("pets", petsArr)
+        draftBody.put("answers", answersObj)
+        runCatching {
+            requestJson(
+                baseUrl = baseUrl,
+                path = "/api/settings/onboarding/draft",
+                token = token,
+                method = "PATCH",
+                body = draftBody
+            )
+        }
+        // Silently discard errors — draft save is best-effort
+    }
+
+    fun submitOnboarding(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
+        val appliancesArr = JSONArray().also { arr -> answers.appliances.forEach { arr.put(it) } }
+        val petsArr = JSONArray().also { arr -> answers.pets.forEach { arr.put(it) } }
+        val childAgesArr = JSONArray().also { arr -> answers.childAges.forEach { arr.put(it) } }
+        val body = JSONObject()
+            .put("householdType", answers.householdType)
+            .put("homeType", answers.homeType)
+            .put("cookingStyle", answers.cookingStyle)
+            .put("gamificationStyle", answers.gamificationStyle)
+            .put("appliances", appliancesArr)
+            .put("pets", petsArr)
+            .put("childAges", childAgesArr)
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/settings/onboarding",
+            token = token,
+            method = "POST",
+            body = body
+        )
     }
 
     fun joinCoComplete(baseUrl: String, token: String, instanceId: String) {
