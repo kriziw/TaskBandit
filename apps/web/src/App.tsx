@@ -1176,10 +1176,14 @@ function BetaEndBanner({
   betaStatus: { isBeta: boolean; endDate: string | null; tenantBetaEndsAt: string | null } | null | undefined;
   migrationUrl: string | null;
 }) {
-  if (!betaStatus?.isBeta) return null;
-  const endDate = betaStatus.tenantBetaEndsAt ?? betaStatus.endDate;
-  if (!endDate) return null;
-  const daysLeft = Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400_000);
+  const endDate = betaStatus?.isBeta
+    ? (betaStatus.tenantBetaEndsAt ?? betaStatus.endDate)
+    : null;
+  const daysLeft = useMemo(() => {
+    if (!endDate) return null;
+    return Math.ceil((new Date(endDate).getTime() - Date.now()) / 86400_000);
+  }, [endDate]);
+  if (!betaStatus?.isBeta || !endDate || daysLeft === null) return null;
   const isUrgent = daysLeft <= 7;
   const migrationHref = migrationUrl
     ? `${migrationUrl.replace(/\/+$/, '')}/beta-migration`

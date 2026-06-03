@@ -909,7 +909,6 @@ internal fun SettingsGithubUpdateCard(
 }
 
 @Composable
-@Composable
 internal fun BetaEndBannerCard(betaStatus: MobileBetaStatus, migrationUrl: String?) {
     val endDate = betaStatus.tenantBetaEndsAt ?: betaStatus.endDate ?: return
     val daysLeft = remember(endDate) {
