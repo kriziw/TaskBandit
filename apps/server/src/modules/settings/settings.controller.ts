@@ -116,10 +116,7 @@ export class SettingsController {
     @CurrentUser() user: AuthenticatedUser,
     @Headers('accept-language') acceptLanguage?: string,
   ) {
-    return this.settingsService.syncCatalog(
-      user,
-      this.i18nService.resolveLanguage(acceptLanguage),
-    );
+    return this.settingsService.syncCatalog(user, this.i18nService.resolveLanguage(acceptLanguage));
   }
 
   @Put('notifications')

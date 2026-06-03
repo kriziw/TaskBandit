@@ -719,6 +719,7 @@ const featureLabelMap: Record<string, string> = {
   deferred_follow_up_control: 'Deferred follow-up control',
   quick_log: 'Quick log',
   rewards_manage: 'Rewards',
+  mastery: 'Chore Mastery',
 };
 
 function formatFeatureLabel(featureId: string) {

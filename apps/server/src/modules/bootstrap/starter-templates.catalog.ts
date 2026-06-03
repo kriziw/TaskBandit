@@ -144,9 +144,7 @@ export const starterTemplateCatalog: StarterCatalog = [
       { label: { en: 'Bedding', de: 'Bettwäsche', hu: 'Ágynemű' } },
       { label: { en: 'Delicates', de: 'Feinwäsche', hu: 'Kényes anyagok' } },
     ],
-    followUps: [
-      { key: 'laundry_fold_clothes', delayValue: 1, delayUnit: FollowUpDelayUnit.HOURS },
-    ],
+    followUps: [{ key: 'laundry_fold_clothes', delayValue: 1, delayUnit: FollowUpDelayUnit.HOURS }],
   },
   {
     key: 'laundry_hang_clothes',
@@ -711,9 +709,13 @@ export const starterTemplateCatalog: StarterCatalog = [
   {
     key: 'kids_room_tidy',
     groupTitle: { en: "Kids' Room", de: 'Kinderzimmer', hu: 'Gyerekszoba' },
-    title: { en: "Tidy the kids' room", de: 'Kinderzimmer aufräumen', hu: 'Gyerekszoba rendrakása' },
+    title: {
+      en: "Tidy the kids' room",
+      de: 'Kinderzimmer aufräumen',
+      hu: 'Gyerekszoba rendrakása',
+    },
     description: {
-      en: 'Put toys away, clear the floor, and straighten up surfaces in the kids\' room.',
+      en: "Put toys away, clear the floor, and straighten up surfaces in the kids' room.",
       de: 'Spielzeug wegräumen, Boden freiräumen und Oberflächen im Kinderzimmer ordnen.',
       hu: 'Játékokat elrakni, a padlót felszabadítani és a felületeket rendbe tenni a gyerekszobában.',
     },
@@ -727,12 +729,12 @@ export const starterTemplateCatalog: StarterCatalog = [
     key: 'kids_room_strip_sheets',
     groupTitle: { en: "Kids' Room", de: 'Kinderzimmer', hu: 'Gyerekszoba' },
     title: {
-      en: 'Strip the kids\' bed',
+      en: "Strip the kids' bed",
       de: 'Kinderbett abziehen',
       hu: 'Gyerekágy lehúzása',
     },
     description: {
-      en: 'Remove the used sheets and pillowcases from the kids\' bed.',
+      en: "Remove the used sheets and pillowcases from the kids' bed.",
       de: 'Die benutzten Laken und Kissenbezüge vom Kinderbett abziehen.',
       hu: 'Húzd le a használt lepedőt és párnahuzatokat a gyerekágyról.',
     },
@@ -751,12 +753,12 @@ export const starterTemplateCatalog: StarterCatalog = [
     key: 'kids_room_put_on_sheets',
     groupTitle: { en: "Kids' Room", de: 'Kinderzimmer', hu: 'Gyerekszoba' },
     title: {
-      en: 'Make up the kids\' bed',
+      en: "Make up the kids' bed",
       de: 'Kinderbett beziehen',
       hu: 'Gyerekágy bevetése',
     },
     description: {
-      en: 'Put fresh sheets and pillowcases on the kids\' bed.',
+      en: "Put fresh sheets and pillowcases on the kids' bed.",
       de: 'Frische Laken und Kissenbezüge auf das Kinderbett ziehen.',
       hu: 'Húzz friss lepedőt és párnahuzatokat a gyerekágyra.',
     },
