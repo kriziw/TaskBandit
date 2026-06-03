@@ -1173,12 +1173,13 @@ function BetaEndBanner({
   betaStatus,
   migrationUrl,
 }: {
-  betaStatus: { isBeta: boolean; endDate: string | null; tenantBetaEndsAt: string | null } | null | undefined;
+  betaStatus:
+    | { isBeta: boolean; endDate: string | null; tenantBetaEndsAt: string | null }
+    | null
+    | undefined;
   migrationUrl: string | null;
 }) {
-  const endDate = betaStatus?.isBeta
-    ? (betaStatus.tenantBetaEndsAt ?? betaStatus.endDate)
-    : null;
+  const endDate = betaStatus?.isBeta ? (betaStatus.tenantBetaEndsAt ?? betaStatus.endDate) : null;
   const daysLeft = useMemo(() => {
     if (!endDate) return null;
     // eslint-disable-next-line react-hooks/purity -- Date.now() is a valid single-render read for days-until-date
@@ -1186,9 +1187,7 @@ function BetaEndBanner({
   }, [endDate]);
   if (!betaStatus?.isBeta || !endDate || daysLeft === null) return null;
   const isUrgent = daysLeft <= 7;
-  const migrationHref = migrationUrl
-    ? `${migrationUrl.replace(/\/+$/, '')}/beta-migration`
-    : null;
+  const migrationHref = migrationUrl ? `${migrationUrl.replace(/\/+$/, '')}/beta-migration` : null;
   return (
     <div
       className={`beta-end-banner ${isUrgent ? 'beta-end-banner--urgent' : 'beta-end-banner--warning'}`}
