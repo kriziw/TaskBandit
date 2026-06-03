@@ -534,6 +534,38 @@ class TaskBanditMobileApi {
         )
     }
 
+    fun joinCoComplete(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/co-complete",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
+    fun leaveCoComplete(baseUrl: String, token: String, instanceId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/co-complete",
+            token = token,
+            method = "DELETE",
+            body = null
+        )
+    }
+
+    fun markSupervised(baseUrl: String, token: String, instanceId: String, note: String? = null) {
+        val body = JSONObject()
+        if (note != null) body.put("note", note)
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/chores/instances/$instanceId/supervised",
+            token = token,
+            method = "POST",
+            body = body
+        )
+    }
+
     fun markNotificationRead(baseUrl: String, token: String, notificationId: String) {
         requestJson(
             baseUrl = baseUrl,

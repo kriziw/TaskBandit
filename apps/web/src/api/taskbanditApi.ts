@@ -856,6 +856,31 @@ export const taskBanditApi = {
       body: { note },
     });
   },
+  joinCoComplete(token: string, language: AppLanguage, instanceId: string) {
+    return request<{ id: string; role: string }>(
+      `/api/chores/instances/${instanceId}/co-complete`,
+      {
+        method: 'POST',
+        token,
+        language,
+      },
+    );
+  },
+  leaveCoComplete(token: string, language: AppLanguage, instanceId: string) {
+    return request<{ success: boolean }>(`/api/chores/instances/${instanceId}/co-complete`, {
+      method: 'DELETE',
+      token,
+      language,
+    });
+  },
+  markSupervised(token: string, language: AppLanguage, instanceId: string, note?: string) {
+    return request<{ id: string; role: string }>(`/api/chores/instances/${instanceId}/supervised`, {
+      method: 'POST',
+      token,
+      language,
+      body: { note },
+    });
+  },
   approveTakeoverRequest(token: string, language: AppLanguage, requestId: string, note?: string) {
     return request<ChoreInstance>(`/api/chores/takeover-requests/${requestId}/approve`, {
       method: 'POST',

@@ -113,6 +113,7 @@ enum NotificationType {
   REWARD_BOOKING_REMINDER
   HOLIDAY_BLOCK_STARTED
   HOLIDAY_BLOCK_ENDED
+  CHORE_CO_COMPLETER_JOINED
 }
 
 enum NotificationDevicePlatform {
@@ -171,6 +172,17 @@ enum RewardRedemptionStatus {
 enum RewardWorkflowType {
   STANDARD
   DAILY_EXCLUSIVE
+}
+
+enum CoCompleterRole {
+  HELPER
+  SUPERVISOR
+}
+
+enum JointPointsMode {
+  FULL_TO_EACH
+  SPLIT_EQUALLY
+  PRIMARY_PLUS_BONUS
 }
 
 model Tenant {
@@ -240,6 +252,10 @@ model HouseholdSettings {
   leaderboardResetMode                   LeaderboardResetMode @default(NEVER)
   lastLeaderboardResetAt                 DateTime?
   timezone                               String    @default("UTC")
+  jointCompletionEnabled                 Boolean   @default(true)
+  jointCompletionPointsMode              JointPointsMode @default(SPLIT_EQUALLY)
+  jointCompletionHelperBonus             Int       @default(5)
+  jointCompletionOpenJoin                Boolean   @default(true)
   onboardingAnswers                      Json?
   household                              Household @relation(fields: [householdId], references: [id], onDelete: Cascade)
 }
@@ -268,6 +284,7 @@ model User {
   userTemplateStats UserTemplateStats[]
   redemptionsRequested RewardRedemption[] @relation("RedemptionRequester")
   redemptionsResolved  RewardRedemption[] @relation("RedemptionResolver")
+  coCompletions        ChoreInstanceCoCompleter[]
 
   @@index([householdId])
 }
@@ -408,6 +425,7 @@ model ChoreInstance {
   checklistCompletions ChoreChecklistCompletion[]
   attachments     ChoreAttachment[]
   takeoverRequests ChoreTakeoverRequest[]
+  coCompleters    ChoreInstanceCoCompleter[]
 
   @@index([householdId, cycleId, state], map: "chore_instance_household_cycle_state_idx")
   @@index([householdId, occurrenceRootId, state], map: "chore_instance_household_occurrence_root_state_idx")
@@ -454,6 +472,18 @@ model ChoreChecklistCompletion {
   checklistItem ChoreTemplateChecklistItem @relation(fields: [checklistItemId], references: [id], onDelete: Cascade)
 
   @@unique([choreInstanceId, checklistItemId], map: "chore_checklist_completion_unique")
+}
+
+model ChoreInstanceCoCompleter {
+  id              String          @id @default(uuid()) @db.Uuid
+  choreInstanceId String          @db.Uuid
+  userId          String          @db.Uuid
+  role            CoCompleterRole
+  joinedAtUtc     DateTime        @default(now())
+  choreInstance   ChoreInstance   @relation(fields: [choreInstanceId], references: [id], onDelete: Cascade)
+  user            User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([choreInstanceId, userId])
 }
 
 model ChoreAttachment {

@@ -10,7 +10,7 @@ import {
   MaxLength,
   Min,
 } from 'class-validator';
-import { LeaderboardResetMode } from '../../../generated/prisma/client';
+import { JointPointsMode, LeaderboardResetMode } from '../../../generated/prisma/client';
 
 export class UpdateSettingsDto {
   @ApiPropertyOptional()
@@ -140,4 +140,27 @@ export class UpdateSettingsDto {
   @IsString()
   @MaxLength(64)
   timezone?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  jointCompletionEnabled?: boolean;
+
+  @ApiPropertyOptional({ enum: JointPointsMode, enumName: 'JointPointsMode' })
+  @Transform(({ value }) => (typeof value === 'string' ? value.trim().toUpperCase() : value))
+  @IsOptional()
+  @IsEnum(JointPointsMode)
+  jointCompletionPointsMode?: JointPointsMode;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  @Max(500)
+  jointCompletionHelperBonus?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsBoolean()
+  jointCompletionOpenJoin?: boolean;
 }
