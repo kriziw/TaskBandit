@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.7.0](https://github.com/kriziw/TaskBandit/compare/v1.6.0...v1.7.0) (2026-06-03)
+
+
+### Features
+
+* **hosted:** add beta status banner for beta end notification ([#595](https://github.com/kriziw/TaskBandit/issues/595)) ([7824999](https://github.com/kriziw/TaskBandit/commit/7824999c0a697fc7c805b3253626316303809ecb))
+
 ## [1.6.0](https://github.com/kriziw/TaskBandit/compare/v1.5.0...v1.6.0) (2026-06-03)
 
 
