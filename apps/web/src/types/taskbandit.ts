@@ -296,7 +296,6 @@ export type HouseholdSettings = {
   selfSignupEnabled: boolean;
   onboardingCompleted: boolean;
   membersCanSeeFullHouseholdChoreDetails: boolean;
-  quickLogPointsDefault: number | null;
   enablePushNotifications: boolean;
   enableOverduePenalties: boolean;
   enableAchievements: boolean;

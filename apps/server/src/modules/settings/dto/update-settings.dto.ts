@@ -52,13 +52,6 @@ export class UpdateSettingsDto {
 
   @ApiPropertyOptional()
   @IsOptional()
-  @IsInt()
-  @Min(0)
-  @Max(1000)
-  quickLogPointsDefault?: number | null;
-
-  @ApiPropertyOptional()
-  @IsOptional()
   @IsBoolean()
   localAuthEnabled?: boolean;
 

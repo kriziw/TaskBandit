@@ -159,7 +159,6 @@ export class HouseholdRepository {
               selfSignupEnabled,
               onboardingCompleted: false,
               membersCanSeeFullHouseholdChoreDetails: true,
-              quickLogPointsDefault: null,
               enablePushNotifications: true,
               enableOverduePenalties: true,
               localAuthEnabled: true,
@@ -433,9 +432,6 @@ export class HouseholdRepository {
         membersCanSeeFullHouseholdChoreDetails:
           dto.membersCanSeeFullHouseholdChoreDetails ??
           household.settings?.membersCanSeeFullHouseholdChoreDetails,
-        quickLogPointsDefault: Object.prototype.hasOwnProperty.call(dto, 'quickLogPointsDefault')
-          ? (dto.quickLogPointsDefault ?? null)
-          : (household.settings?.quickLogPointsDefault ?? null),
         enablePushNotifications:
           dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
         enableOverduePenalties:
@@ -5258,7 +5254,6 @@ export class HouseholdRepository {
             selfSignupEnabled: false,
             onboardingCompleted: false,
             membersCanSeeFullHouseholdChoreDetails: true,
-            quickLogPointsDefault: null,
             enablePushNotifications: true,
             enableOverduePenalties: true,
             localAuthEnabled: true,
@@ -6456,7 +6451,6 @@ export class HouseholdRepository {
         onboardingCompleted: household.settings?.onboardingCompleted ?? false,
         membersCanSeeFullHouseholdChoreDetails:
           household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
-        quickLogPointsDefault: household.settings?.quickLogPointsDefault ?? null,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
         enableAchievements: household.settings?.enableAchievements ?? true,

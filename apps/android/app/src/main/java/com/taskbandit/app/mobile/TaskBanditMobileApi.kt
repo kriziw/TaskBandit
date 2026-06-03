@@ -358,13 +358,6 @@ class TaskBanditMobileApi {
         }
         val members = householdSettingsJson?.optJSONArray("members")?.let(::parseMembers).orEmpty()
         val householdSettings = householdSettingsJson?.optJSONObject("settings")
-        val quickLogPointsDefault = householdSettings?.let { settings ->
-            if (settings.has("quickLogPointsDefault") && !settings.isNull("quickLogPointsDefault")) {
-                settings.optInt("quickLogPointsDefault")
-            } else {
-                null
-            }
-        }
         val enableAchievements = householdSettings?.optBoolean("enableAchievements", true) ?: true
         val onboardingCompleted = householdSettings?.optBoolean("onboardingCompleted", true) ?: true
         val onboardingDraft = householdSettings?.optJSONObject("onboardingAnswers")?.let { d ->
@@ -428,7 +421,6 @@ class TaskBanditMobileApi {
             notifications = notifications,
             members = members,
             templates = templates,
-            quickLogPointsDefault = quickLogPointsDefault,
             compatibility = MobileDashboardCompatibility(
                 takeoverRequestsSupported = takeoverRequestsSupported
             ),

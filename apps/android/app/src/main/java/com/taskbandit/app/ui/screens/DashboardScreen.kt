@@ -691,7 +691,6 @@ internal fun DashboardScreen(
             candidate.kind == quickLogSelectedKind && candidate.id == quickLogSelectedId
         }
     }
-    val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
     val choresOverdueLabel = stringResource(R.string.mobile_chores_overdue)
     val overdueHeaderColor = MaterialTheme.colorScheme.error
     val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)

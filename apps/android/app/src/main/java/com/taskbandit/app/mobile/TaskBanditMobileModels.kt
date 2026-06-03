@@ -449,7 +449,6 @@ data class MobileDashboard(
     val notifications: List<MobileNotification>,
     val members: List<MobileHouseholdMember>,
     val templates: List<MobileChoreTemplate>,
-    val quickLogPointsDefault: Int? = null,
     val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility(),
     val achievements: List<MobileAchievement> = emptyList(),
     val enableAchievements: Boolean = true,

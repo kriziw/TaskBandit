@@ -231,7 +231,6 @@ model HouseholdSettings {
   selfSignupEnabled                      Boolean   @default(false)
   onboardingCompleted                   Boolean   @default(false)
   membersCanSeeFullHouseholdChoreDetails Boolean   @default(true)
-  quickLogPointsDefault                 Int?
   enablePushNotifications                Boolean   @default(true)
   enableOverduePenalties                 Boolean   @default(true)
   takeoverPointsDelta                    Int       @default(0)

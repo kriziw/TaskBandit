@@ -77,7 +77,6 @@ class TaskBanditDashboardCacheStore(
             .put("notifications", JSONArray().apply { dashboard.notifications.forEach { put(notificationToJson(it)) } })
             .put("members", JSONArray().apply { dashboard.members.forEach { put(memberToJson(it)) } })
             .put("templates", JSONArray().apply { dashboard.templates.forEach { put(templateToJson(it)) } })
-            .put("quickLogPointsDefault", dashboard.quickLogPointsDefault)
             .put("compatibility", compatibilityToJson(dashboard.compatibility))
     }
 
@@ -245,11 +244,6 @@ class TaskBanditDashboardCacheStore(
             notifications = parseJsonArray(entry.optJSONArray("notifications"), ::parseNotification),
             members = parseJsonArray(entry.optJSONArray("members"), ::parseMember),
             templates = parseFullTemplates(entry.optJSONArray("templates")),
-            quickLogPointsDefault = if (entry.has("quickLogPointsDefault") && !entry.isNull("quickLogPointsDefault")) {
-                entry.optInt("quickLogPointsDefault")
-            } else {
-                null
-            },
             compatibility = entry.optJSONObject("compatibility")?.let(::parseCompatibility)
                 ?: MobileDashboardCompatibility()
         )

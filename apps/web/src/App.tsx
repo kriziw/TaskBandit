@@ -9630,31 +9630,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                     formatNumber(Math.abs(settingsDraft.takeoverPointsDelta)),
                                   )}
                           </p>
-                          <label>
-                            <span>Quick log default points (blank = inherit)</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={1000}
-                              step={1}
-                              value={settingsDraft.quickLogPointsDefault ?? ''}
-                              onChange={(event) =>
-                                setSettingsDraft((current) => {
-                                  if (!current) {
-                                    return current;
-                                  }
-                                  const nextValue = event.target.value.trim();
-                                  return {
-                                    ...current,
-                                    quickLogPointsDefault:
-                                      nextValue === ''
-                                        ? null
-                                        : Math.max(0, Number.parseInt(nextValue, 10) || 0),
-                                  };
-                                })
-                              }
-                            />
-                          </label>
                           <p className="inline-message">
                             This value is used by quick log by default. Users can still override
                             points per entry.
