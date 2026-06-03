@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.8.1](https://github.com/kriziw/TaskBandit/compare/v1.8.0...v1.8.1) (2026-06-03)
+
+
+### Bug Fixes
+
+* **android:** add fixed_assignee strategy to template editor ([#599](https://github.com/kriziw/TaskBandit/issues/599)) ([b8b9bdf](https://github.com/kriziw/TaskBandit/commit/b8b9bdf5f48ea5361c37dd24dd334ae1ec751ef5))
+
 ## [1.8.0](https://github.com/kriziw/TaskBandit/compare/v1.7.0...v1.8.0) (2026-06-03)
 
 
