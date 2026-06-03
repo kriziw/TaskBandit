@@ -1590,6 +1590,7 @@ internal fun resolveEffectiveCreateRecurrenceType(
 internal fun assignmentStrategyLabel(value: String): String = when (value) {
     "least_completed_recently" -> stringResource(R.string.mobile_create_assignment_least_completed)
     "highest_streak" -> stringResource(R.string.mobile_create_assignment_highest_streak)
+    "fixed_assignee" -> stringResource(R.string.mobile_create_assignment_fixed_assignee)
     else -> stringResource(R.string.mobile_create_assignment_round_robin)
 }
 

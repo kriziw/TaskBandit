@@ -3133,6 +3133,7 @@ export class HouseholdRepository {
           effectiveAssignmentStrategy,
           {
             dueAt: dto.dueAt,
+            fixedAssigneeId: template.fixedAssigneeId,
           },
         );
 

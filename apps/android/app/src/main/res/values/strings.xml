@@ -204,6 +204,7 @@
     <string name="mobile_create_assignment_round_robin">Round robin</string>
     <string name="mobile_create_assignment_least_completed">Least completed</string>
     <string name="mobile_create_assignment_highest_streak">Highest streak</string>
+    <string name="mobile_create_assignment_fixed_assignee">Always assign to</string>
     <string name="mobile_create_assignment_manual">Manual</string>
     <string name="mobile_create_assignee">Assignee</string>
     <string name="mobile_create_unassigned">Unassigned</string>

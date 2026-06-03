@@ -471,7 +471,7 @@ internal fun CreateAssignmentPanel(
                 expanded = assignmentStrategyDropdownExpanded,
                 onDismissRequest = { onAssignmentDropdownExpandedChange(false) }
             ) {
-                listOf("round_robin", "least_completed_recently", "highest_streak").forEach { strategy ->
+                listOf("round_robin", "least_completed_recently", "highest_streak", "fixed_assignee").forEach { strategy ->
                     DropdownMenuItem(
                         text = { Text(assignmentStrategyLabel(strategy)) },
                         onClick = { onAssignmentStrategySelected(strategy) }
