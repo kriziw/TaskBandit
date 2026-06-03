@@ -472,6 +472,8 @@
     <string name="mobile_template_strategy_round_robin">Körkörösen</string>
     <string name="mobile_template_strategy_least_completed">Legkevésbé elvégzett</string>
     <string name="mobile_template_strategy_highest_streak">Leghosszabb sorozat</string>
+    <string name="mobile_template_strategy_fixed_assignee">Mindig kiosztva erre:</string>
+    <string name="mobile_template_field_fixed_assignee">Rögzített megbízott</string>
     <string name="mobile_template_delay_hours">Óra</string>
     <string name="mobile_template_delay_days">Nap</string>
     <string name="mobile_template_loading">Sablonok betöltése…</string>

@@ -471,7 +471,9 @@
     <string name="mobile_template_recurrence_start_completed_at">Basierend auf Abschlussdatum</string>
     <string name="mobile_template_strategy_round_robin">Rundum-Zuteilung</string>
     <string name="mobile_template_strategy_least_completed">Zuletzt am wenigsten erledigt</string>
-    <string name="mobile_template_strategy_highest_streak">H�chste Serie</string>
+    <string name="mobile_template_strategy_highest_streak">H&amp;#246;chste Serie</string>
+    <string name="mobile_template_strategy_fixed_assignee">Immer zuweisen an</string>
+    <string name="mobile_template_field_fixed_assignee">Feste Zuweisung</string>
     <string name="mobile_template_delay_hours">Stunden</string>
     <string name="mobile_template_delay_days">Tage</string>
     <string name="mobile_template_loading">Vorlagen werden geladen�</string>

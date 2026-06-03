@@ -2814,6 +2814,7 @@ internal fun DashboardScreen(
                             isLoading = templateManagerLoading,
                             error = templateManagerError,
                             allTemplates = templateManagerTemplates,
+                            members = members,
                             onRefresh = onLoadTemplatesForManager,
                             onCreateTemplate = onCreateTemplate,
                             onUpdateTemplate = onUpdateTemplate,
