@@ -575,6 +575,8 @@
     <string name="mobile_template_strategy_round_robin">Round robin</string>
     <string name="mobile_template_strategy_least_completed">Least completed recently</string>
     <string name="mobile_template_strategy_highest_streak">Highest streak</string>
+    <string name="mobile_template_strategy_fixed_assignee">Always assign to</string>
+    <string name="mobile_template_field_fixed_assignee">Fixed assignee</string>
     <string name="mobile_template_delay_hours">Hours</string>
     <string name="mobile_template_delay_days">Days</string>
     <string name="mobile_template_loading">Loading templates…</string>

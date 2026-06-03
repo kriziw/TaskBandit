@@ -72,6 +72,7 @@ import com.taskbandit.app.mobile.CreateChoreTemplateInput
 import com.taskbandit.app.mobile.CreateTemplateChecklistItemInput
 import com.taskbandit.app.mobile.CreateTemplateVariantInput
 import com.taskbandit.app.mobile.MobileChoreTemplate
+import com.taskbandit.app.mobile.MobileHouseholdMember
 import com.taskbandit.app.mobile.MobileTemplateDependencyRule
 import com.taskbandit.app.mobile.MobileTemplateTranslation
 import com.taskbandit.app.mobile.MobileVariantLabelTranslation
@@ -83,6 +84,7 @@ internal fun TemplateManagerScreen(
     isLoading: Boolean,
     error: String?,
     allTemplates: List<MobileChoreTemplate>,
+    members: List<MobileHouseholdMember>,
     onRefresh: () -> Unit,
     onCreateTemplate: (CreateChoreTemplateInput) -> Unit,
     onUpdateTemplate: (String, CreateChoreTemplateInput) -> Unit,
@@ -222,6 +224,7 @@ internal fun TemplateManagerScreen(
                 TemplateEditorScreen(
                     template = editingTemplate,
                     allTemplates = allTemplates,
+                    members = members,
                     onSave = { input ->
                         val id = editingTemplate?.id
                         if (id != null) onUpdateTemplate(id, input) else onCreateTemplate(input)
@@ -348,6 +351,7 @@ internal fun TemplateCard(
 internal fun TemplateEditorScreen(
     template: MobileChoreTemplate?,
     allTemplates: List<MobileChoreTemplate>,
+    members: List<MobileHouseholdMember>,
     onSave: (CreateChoreTemplateInput) -> Unit,
     onDelete: () -> Unit,
     onBack: () -> Unit
@@ -361,6 +365,7 @@ internal fun TemplateEditorScreen(
     var editDescription by rememberSaveable { mutableStateOf(template?.description ?: "") }
     var editDifficulty by rememberSaveable { mutableStateOf(template?.difficulty ?: "medium") }
     var editAssignmentStrategy by rememberSaveable { mutableStateOf(template?.assignmentStrategy ?: "round_robin") }
+    var editFixedAssigneeId by rememberSaveable { mutableStateOf(template?.fixedAssigneeId) }
     var editDefaultLocale by rememberSaveable { mutableStateOf(template?.defaultLocale ?: "en") }
     var editRecurrenceType by rememberSaveable { mutableStateOf(template?.recurrence?.type ?: "none") }
     var editRecurrenceIntervalDays by rememberSaveable { mutableStateOf(template?.recurrence?.intervalDays?.toString() ?: "") }
@@ -394,6 +399,7 @@ internal fun TemplateEditorScreen(
     // ── Dropdown expansion state ──
     var difficultyExpanded by remember { mutableStateOf(false) }
     var strategyExpanded by remember { mutableStateOf(false) }
+    var fixedAssigneeExpanded by remember { mutableStateOf(false) }
     var defaultLocaleExpanded by remember { mutableStateOf(false) }
     var recurrenceTypeExpanded by remember { mutableStateOf(false) }
     var recurrenceStartExpanded by remember { mutableStateOf(false) }
@@ -431,6 +437,7 @@ internal fun TemplateEditorScreen(
         description = editDescription,
         difficulty = editDifficulty,
         assignmentStrategy = editAssignmentStrategy,
+        fixedAssigneeId = if (editAssignmentStrategy == "fixed_assignee") editFixedAssigneeId else null,
         recurrenceType = editRecurrenceType,
         recurrenceIntervalDays = editRecurrenceIntervalDays.toIntOrNull(),
         recurrenceWeekdays = editRecurrenceWeekdays,
@@ -535,6 +542,7 @@ internal fun TemplateEditorScreen(
                                 value = when (editAssignmentStrategy) {
                                     "least_completed_recently" -> stringResource(R.string.mobile_template_strategy_least_completed)
                                     "highest_streak" -> stringResource(R.string.mobile_template_strategy_highest_streak)
+                                    "fixed_assignee" -> stringResource(R.string.mobile_template_strategy_fixed_assignee)
                                     else -> stringResource(R.string.mobile_template_strategy_round_robin)
                                 },
                                 onValueChange = {},
@@ -546,8 +554,33 @@ internal fun TemplateEditorScreen(
                             ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
                                 listOf("round_robin" to R.string.mobile_template_strategy_round_robin,
                                     "least_completed_recently" to R.string.mobile_template_strategy_least_completed,
-                                    "highest_streak" to R.string.mobile_template_strategy_highest_streak).forEach { (key, resId) ->
-                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = { editAssignmentStrategy = key; strategyExpanded = false })
+                                    "highest_streak" to R.string.mobile_template_strategy_highest_streak,
+                                    "fixed_assignee" to R.string.mobile_template_strategy_fixed_assignee).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = {
+                                        editAssignmentStrategy = key
+                                        if (key != "fixed_assignee") editFixedAssigneeId = null
+                                        strategyExpanded = false
+                                    })
+                                }
+                            }
+                        }
+                        // Fixed assignee member picker (shown only when fixed_assignee strategy is selected)
+                        if (editAssignmentStrategy == "fixed_assignee") {
+                            ExposedDropdownMenuBox(expanded = fixedAssigneeExpanded, onExpandedChange = { fixedAssigneeExpanded = it }) {
+                                val selectedMemberName = members.firstOrNull { it.id == editFixedAssigneeId }?.displayName ?: "—"
+                                OutlinedTextField(
+                                    value = selectedMemberName,
+                                    onValueChange = {},
+                                    readOnly = true,
+                                    label = { Text(stringResource(R.string.mobile_template_field_fixed_assignee)) },
+                                    trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = fixedAssigneeExpanded) },
+                                    modifier = Modifier.fillMaxWidth().menuAnchor()
+                                )
+                                ExposedDropdownMenu(expanded = fixedAssigneeExpanded, onDismissRequest = { fixedAssigneeExpanded = false }) {
+                                    DropdownMenuItem(text = { Text("—") }, onClick = { editFixedAssigneeId = null; fixedAssigneeExpanded = false })
+                                    members.forEach { member ->
+                                        DropdownMenuItem(text = { Text(member.displayName) }, onClick = { editFixedAssigneeId = member.id; fixedAssigneeExpanded = false })
+                                    }
                                 }
                             }
                         }
