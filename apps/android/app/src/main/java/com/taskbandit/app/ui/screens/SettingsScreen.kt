@@ -73,6 +73,7 @@ import com.taskbandit.app.BuildConfig
 import com.taskbandit.app.R
 import com.taskbandit.app.compareReleaseVersions
 import com.taskbandit.app.formatReleaseLabel
+import com.taskbandit.app.mobile.MobileBetaStatus
 import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
 import com.taskbandit.app.mobile.MobileNotificationDevice
 import com.taskbandit.app.mobile.MobileReleaseInfo
@@ -901,6 +902,52 @@ internal fun SettingsGithubUpdateCard(
                     TextButton(onClick = onDismissGithubUpdate) {
                         Text(stringResource(R.string.mobile_update_dismiss))
                     }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+@Composable
+internal fun BetaEndBannerCard(betaStatus: MobileBetaStatus, migrationUrl: String?) {
+    val endDate = betaStatus.tenantBetaEndsAt ?: betaStatus.endDate ?: return
+    val daysLeft = remember(endDate) {
+        val ms = java.text.SimpleDateFormat("yyyy-MM-dd", java.util.Locale.US)
+            .runCatching { parse(endDate)?.time ?: Long.MAX_VALUE }.getOrElse { Long.MAX_VALUE }
+        ((ms - System.currentTimeMillis()) / 86_400_000L).toInt().coerceAtLeast(0)
+    }
+    val isUrgent = daysLeft <= 7
+    val containerColor = if (isUrgent)
+        MaterialTheme.colorScheme.errorContainer
+    else
+        MaterialTheme.colorScheme.tertiaryContainer
+    val contentColor = if (isUrgent)
+        MaterialTheme.colorScheme.onErrorContainer
+    else
+        MaterialTheme.colorScheme.onTertiaryContainer
+    val context = androidx.compose.ui.platform.LocalContext.current
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        colors = CardDefaults.cardColors(containerColor = containerColor),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Column(modifier = Modifier.padding(16.dp)) {
+            Text(
+                text = if (isUrgent) "⚠️ Beta ends in $daysLeft day${if (daysLeft != 1) "s" else ""}" else "TaskBandit Beta is ending in $daysLeft day${if (daysLeft != 1) "s" else ""}",
+                style = MaterialTheme.typography.titleSmall,
+                color = contentColor
+            )
+            if (migrationUrl != null) {
+                Spacer(Modifier.height(8.dp))
+                androidx.compose.material3.TextButton(
+                    onClick = {
+                        val uri = android.net.Uri.parse("${migrationUrl.trimEnd('/')}/beta-migration")
+                        val intent = android.content.Intent(android.content.Intent.ACTION_VIEW, uri)
+                        context.startActivity(intent)
+                    }
+                ) {
+                    Text(text = "Choose my plan →", color = contentColor)
                 }
             }
         }

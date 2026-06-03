@@ -2753,6 +2753,17 @@ internal fun DashboardScreen(
                         SettingsDeviceContent(currentDevice = currentDevice, installationId = installationId, notificationsPermissionGranted = notificationsPermissionGranted, isBusy = isBusy, activeDeviceAction = activeDeviceAction, onRefresh = onRefresh, onRequestNotificationPermission = onRequestNotificationPermission, onRemoveNotificationDevice = onRemoveNotificationDevice)
                     }
                 }
+                if (hostedSubscription.hostedMode && hostedSubscription.betaStatus?.isBeta == true && isCreatorRole) {
+                    val betaStatus = hostedSubscription.betaStatus
+                    if (betaStatus != null) {
+                        item {
+                            BetaEndBannerCard(
+                                betaStatus = betaStatus,
+                                migrationUrl = hostedSubscription.canonicalWebBaseUrl
+                            )
+                        }
+                    }
+                }
                 if (hostedSubscription.hostedMode && isCreatorRole) {
                     item {
                         SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.AssignmentTurnedIn, title = stringResource(R.string.mobile_settings_plan_features)) {

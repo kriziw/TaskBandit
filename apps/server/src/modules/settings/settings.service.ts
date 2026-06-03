@@ -124,6 +124,7 @@ export class SettingsService {
         this.appConfigService.publicWebBaseUrl,
         tenantContext.slug,
       ),
+      betaStatus: runtimeConfig?.betaStatus ?? null,
     };
   }
 

@@ -125,7 +125,14 @@ data class MobileHostedSubscriptionOverview(
     val usage: MobileHostedUsage = MobileHostedUsage(),
     val featureAccess: MobileFeatureAccess = MobileFeatureAccess(),
     val canonicalApiBaseUrl: String? = null,
-    val canonicalWebBaseUrl: String? = null
+    val canonicalWebBaseUrl: String? = null,
+    val betaStatus: MobileBetaStatus? = null
+)
+
+data class MobileBetaStatus(
+    val isBeta: Boolean = false,
+    val endDate: String? = null,
+    val tenantBetaEndsAt: String? = null
 )
 
 data class MobileHostedUsage(
