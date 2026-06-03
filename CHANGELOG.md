@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.8.0](https://github.com/kriziw/TaskBandit/compare/v1.7.0...v1.8.0) (2026-06-03)
+
+
+### Features
+
+* **chores:** add fixed-assignee assignment strategy ([#597](https://github.com/kriziw/TaskBandit/issues/597)) ([0f67c8e](https://github.com/kriziw/TaskBandit/commit/0f67c8ec2dbb994c5086952b8d158ffa8a50051c))
+
 ## [1.7.0](https://github.com/kriziw/TaskBandit/compare/v1.6.0...v1.7.0) (2026-06-03)
 
 
