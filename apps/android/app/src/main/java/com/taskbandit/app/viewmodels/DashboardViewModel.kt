@@ -1491,6 +1491,56 @@ internal class DashboardViewModel(
             }
         }
     }
+
+    fun saveHouseholdProfile(
+        answers: com.taskbandit.app.mobile.MobileOnboardingAnswers,
+        baseUrl: String,
+        token: String,
+    ) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) {
+                    api.updateHouseholdProfile(baseUrl, token, answers)
+                }
+            }.onSuccess { suggestions ->
+                _uiState.update { s ->
+                    s.copy(dashboard = s.dashboard?.copy(profileSuggestions = suggestions))
+                }
+            }.onFailure { handleUnauthorized(it) }
+        }
+    }
+
+    fun acceptProfileSuggestion(suggestionId: String, baseUrl: String, token: String) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.acceptProfileSuggestion(baseUrl, token, suggestionId) }
+            }.onSuccess {
+                _uiState.update { s ->
+                    s.copy(
+                        dashboard = s.dashboard?.copy(
+                            profileSuggestions = s.dashboard.profileSuggestions.filterNot { it.id == suggestionId }
+                        )
+                    )
+                }
+            }.onFailure { handleUnauthorized(it) }
+        }
+    }
+
+    fun dismissProfileSuggestion(suggestionId: String, baseUrl: String, token: String) {
+        viewModelScope.launch {
+            runCatching {
+                withContext(Dispatchers.IO) { api.dismissProfileSuggestion(baseUrl, token, suggestionId) }
+            }.onSuccess {
+                _uiState.update { s ->
+                    s.copy(
+                        dashboard = s.dashboard?.copy(
+                            profileSuggestions = s.dashboard.profileSuggestions.filterNot { it.id == suggestionId }
+                        )
+                    )
+                }
+            }.onFailure { handleUnauthorized(it) }
+        }
+    }
 }
 
 // ── APK download helper (needs Context, stays in this module) ────────────────

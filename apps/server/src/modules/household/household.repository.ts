@@ -47,6 +47,18 @@ import { OperatorTemplateDto } from '../chores/dto/import-operator-templates.dto
 import { getStarterRewardDefinitionsByKey } from '../bootstrap/starter-rewards.catalog';
 import { CreateChoreInstanceDto } from '../chores/dto/create-chore-instance.dto';
 import { SubmitAttachmentDto } from '../chores/dto/submit-chore.dto';
+
+export interface StoredProfileSuggestion {
+  id: string;
+  type: 'add' | 'archive';
+  templateKeys: string[];
+  affectedCount: number;
+}
+
+export interface ProfileSuggestionsStore {
+  pending: StoredProfileSuggestion[];
+  dismissed: string[];
+}
 import { CreateChoreTemplateDto } from '../chores/dto/create-chore-template.dto';
 import { CreateHouseholdMemberDto } from '../settings/dto/create-household-member.dto';
 import { RegisterNotificationDeviceDto } from '../settings/dto/register-notification-device.dto';
@@ -6549,6 +6561,7 @@ export class HouseholdRepository {
         smtpFromEmail: household.settings?.smtpFromEmail ?? '',
         smtpFromName: household.settings?.smtpFromName ?? '',
         onboardingAnswers: household.settings?.onboardingAnswers ?? null,
+        profileSuggestions: household.settings?.profileSuggestions ?? null,
       },
       members: household.members
         .map((member) => this.mapMember(member, options?.redactMemberEmails ?? false))
@@ -8165,6 +8178,46 @@ export class HouseholdRepository {
 
   async getHouseholdSettings(householdId: string) {
     return this.prisma.householdSettings.findUnique({ where: { householdId } });
+  }
+
+  async saveHouseholdProfile(
+    householdId: string,
+    answers: Record<string, unknown>,
+    suggestions: ProfileSuggestionsStore,
+  ) {
+    await this.prisma.householdSettings.update({
+      where: { householdId },
+      data: {
+        onboardingAnswers: answers as Prisma.InputJsonValue,
+        profileSuggestions: suggestions as unknown as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  async updateProfileSuggestions(householdId: string, suggestions: ProfileSuggestionsStore) {
+    await this.prisma.householdSettings.update({
+      where: { householdId },
+      data: { profileSuggestions: suggestions as unknown as Prisma.InputJsonValue },
+    });
+  }
+
+  async countActiveTemplatesForKeys(householdId: string, keys: string[]): Promise<number> {
+    if (keys.length === 0) return 0;
+    return this.prisma.choreTemplate.count({
+      where: {
+        householdId,
+        catalogKey: { in: keys },
+        isArchived: false,
+      },
+    });
+  }
+
+  async archiveTemplatesForKeys(householdId: string, keys: string[]): Promise<void> {
+    if (keys.length === 0) return;
+    await this.prisma.choreTemplate.updateMany({
+      where: { householdId, catalogKey: { in: keys }, isArchived: false },
+      data: { isArchived: true },
+    });
   }
 
   /**

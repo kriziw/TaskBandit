@@ -460,7 +460,8 @@ data class MobileDashboard(
     val redemptions: List<MobileRedemption> = emptyList(),
     val holidayBlocks: List<MobileHolidayBlock> = emptyList(),
     val onboardingCompleted: Boolean = true,
-    val onboardingDraft: MobileOnboardingAnswers? = null
+    val onboardingDraft: MobileOnboardingAnswers? = null,
+    val profileSuggestions: List<MobileProfileSuggestion> = emptyList()
 )
 
 data class MobileOnboardingAnswers(
@@ -472,6 +473,13 @@ data class MobileOnboardingAnswers(
     val choreSplit: String = "shared_evenly",
     val gamificationStyle: String,
     val childAges: List<String> = emptyList()
+)
+
+data class MobileProfileSuggestion(
+    val id: String,
+    val type: String, // "add" or "archive"
+    val templateKeys: List<String>,
+    val affectedCount: Int
 )
 
 data class MobileReward(

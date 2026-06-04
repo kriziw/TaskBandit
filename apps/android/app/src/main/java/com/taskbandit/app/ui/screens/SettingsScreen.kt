@@ -79,6 +79,8 @@ import com.taskbandit.app.mobile.ChoreConstants
 import com.taskbandit.app.mobile.MobileBetaStatus
 import com.taskbandit.app.mobile.MobileHostedSubscriptionOverview
 import com.taskbandit.app.mobile.MobileNotificationDevice
+import com.taskbandit.app.mobile.MobileOnboardingAnswers
+import com.taskbandit.app.mobile.MobileProfileSuggestion
 import com.taskbandit.app.mobile.MobileReleaseInfo
 import com.taskbandit.app.mobile.MobileThemeMode
 import com.taskbandit.app.viewmodels.GitHubReleaseInfo
@@ -1022,6 +1024,158 @@ internal fun formatLeaderboardRoleLabel(role: String): String =
         .replace('_', ' ')
         .trim()
         .replaceFirstChar { if (it.isLowerCase()) it.titlecase(Locale.getDefault()) else it.toString() }
+
+@Composable
+internal fun SettingsHouseholdProfileContent(
+    currentAnswers: MobileOnboardingAnswers?,
+    suggestions: List<MobileProfileSuggestion>,
+    isSaving: Boolean,
+    onSave: (MobileOnboardingAnswers) -> Unit,
+    onAcceptSuggestion: (String) -> Unit,
+    onDismissSuggestion: (String) -> Unit,
+) {
+    val householdTypeOptions = listOf("solo", "couple", "family", "flatmates")
+    val homeTypeOptions = listOf("flat", "house", "house_garden", "house_garden_lawn")
+    val cookingOptions = listOf("one_person", "take_turns", "mostly_takeout", "mixed")
+    val choreSplitOptions = listOf("adults_do_most", "shared_evenly", "kids_help_simple_tasks")
+    val applianceOptions = listOf("dishwasher", "tumble_dryer", "washing_machine", "robot_vacuum")
+
+    var householdType by rememberSaveable { mutableStateOf(currentAnswers?.householdType ?: "family") }
+    var homeType by rememberSaveable { mutableStateOf(currentAnswers?.homeType ?: "flat") }
+    var cookingStyle by rememberSaveable { mutableStateOf(currentAnswers?.cookingStyle ?: "mixed") }
+    var choreSplit by rememberSaveable { mutableStateOf(currentAnswers?.choreSplit ?: "shared_evenly") }
+    var gamificationStyle by rememberSaveable { mutableStateOf(currentAnswers?.gamificationStyle ?: "default") }
+    var appliances by rememberSaveable { mutableStateOf(currentAnswers?.appliances ?: emptyList()) }
+    var pets by rememberSaveable { mutableStateOf(currentAnswers?.pets ?: emptyList()) }
+    var childAges by rememberSaveable { mutableStateOf(currentAnswers?.childAges ?: emptyList()) }
+
+    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        // Suggestion banners
+        suggestions.forEach { s ->
+            Card(
+                shape = RoundedCornerShape(10.dp),
+                colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.secondaryContainer),
+            ) {
+                Column(modifier = Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = if (s.type == "add")
+                            stringResource(R.string.mobile_profile_suggestion_add, s.affectedCount)
+                        else
+                            stringResource(R.string.mobile_profile_suggestion_archive, s.affectedCount),
+                        style = MaterialTheme.typography.bodySmall
+                    )
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Button(onClick = { onAcceptSuggestion(s.id) }) {
+                            Text(stringResource(R.string.mobile_profile_suggestion_accept))
+                        }
+                        OutlinedButton(onClick = { onDismissSuggestion(s.id) }) {
+                            Text(stringResource(R.string.mobile_profile_suggestion_dismiss))
+                        }
+                    }
+                }
+            }
+        }
+
+        ProfileDropdown(
+            label = stringResource(R.string.mobile_profile_household_type),
+            options = householdTypeOptions,
+            selected = householdType,
+            labelFor = { it.replace('_', ' ').replaceFirstChar { c -> c.titlecase() } },
+            onSelect = { householdType = it }
+        )
+
+        ProfileDropdown(
+            label = stringResource(R.string.mobile_profile_home_type),
+            options = homeTypeOptions,
+            selected = homeType,
+            labelFor = { it.replace('_', ' ').replaceFirstChar { c -> c.titlecase() } },
+            onSelect = { homeType = it }
+        )
+
+        Text(stringResource(R.string.mobile_profile_appliances), style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        applianceOptions.forEach { a ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween
+            ) {
+                Text(a.replace('_', ' ').replaceFirstChar { it.titlecase() }, style = MaterialTheme.typography.bodyMedium)
+                androidx.compose.material3.Switch(
+                    checked = appliances.contains(a),
+                    onCheckedChange = { checked ->
+                        appliances = if (checked) appliances + a else appliances - a
+                    }
+                )
+            }
+        }
+
+        ProfileDropdown(
+            label = stringResource(R.string.mobile_profile_cooking_style),
+            options = cookingOptions,
+            selected = cookingStyle,
+            labelFor = { it.replace('_', ' ').replaceFirstChar { c -> c.titlecase() } },
+            onSelect = { cookingStyle = it }
+        )
+
+        ProfileDropdown(
+            label = stringResource(R.string.mobile_profile_chore_split),
+            options = choreSplitOptions,
+            selected = choreSplit,
+            labelFor = { it.replace('_', ' ').replaceFirstChar { c -> c.titlecase() } },
+            onSelect = { choreSplit = it }
+        )
+
+        Button(
+            onClick = {
+                onSave(MobileOnboardingAnswers(
+                    householdType = householdType,
+                    homeType = homeType,
+                    cookingStyle = cookingStyle,
+                    choreSplit = choreSplit,
+                    gamificationStyle = gamificationStyle,
+                    appliances = appliances,
+                    pets = pets,
+                    childAges = childAges
+                ))
+            },
+            enabled = !isSaving,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(stringResource(if (isSaving) R.string.mobile_profile_saving else R.string.mobile_profile_save))
+        }
+    }
+}
+
+@Composable
+private fun ProfileDropdown(
+    label: String,
+    options: List<String>,
+    selected: String,
+    labelFor: (String) -> String,
+    onSelect: (String) -> Unit,
+) {
+    var expanded by remember { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(label, style = MaterialTheme.typography.labelMedium, fontWeight = FontWeight.Bold)
+        ExposedDropdownMenuBox(expanded = expanded, onExpandedChange = { expanded = it }) {
+            OutlinedTextField(
+                value = labelFor(selected),
+                onValueChange = {},
+                readOnly = true,
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded) },
+                modifier = Modifier.menuAnchor(MenuAnchorType.PrimaryNotEditable).fillMaxWidth(),
+            )
+            ExposedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+                options.forEach { option ->
+                    DropdownMenuItem(
+                        text = { Text(labelFor(option)) },
+                        onClick = { onSelect(option); expanded = false }
+                    )
+                }
+            }
+        }
+    }
+}
 
 @Composable
 internal fun SettingsSessionContent(

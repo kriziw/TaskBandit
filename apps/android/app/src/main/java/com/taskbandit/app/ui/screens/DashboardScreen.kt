@@ -395,6 +395,9 @@ internal fun DashboardScreen(
     onRefresh: () -> Unit,
     onDownloadSettingsLogs: () -> Unit,
     onRedoOnboarding: () -> Unit,
+    onSaveHouseholdProfile: (com.taskbandit.app.mobile.MobileOnboardingAnswers) -> Unit,
+    onAcceptProfileSuggestion: (String) -> Unit,
+    onDismissProfileSuggestion: (String) -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
@@ -2781,6 +2784,24 @@ internal fun DashboardScreen(
                             onDownloadAndInstall = onDownloadAndInstall,
                             modifier = Modifier.fillMaxWidth(),
                         )
+                    }
+                }
+                if (isCreatorRole) {
+                    item {
+                        SettingsSectionCard(
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = Icons.Rounded.Tune,
+                            title = stringResource(R.string.mobile_settings_household_profile)
+                        ) {
+                            SettingsHouseholdProfileContent(
+                                currentAnswers = dashboard?.onboardingDraft,
+                                suggestions = dashboard?.profileSuggestions ?: emptyList(),
+                                isSaving = isBusy,
+                                onSave = onSaveHouseholdProfile,
+                                onAcceptSuggestion = onAcceptProfileSuggestion,
+                                onDismissSuggestion = onDismissProfileSuggestion
+                            )
+                        }
                     }
                 }
                 item {
