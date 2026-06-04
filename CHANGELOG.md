@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.10.0](https://github.com/kriziw/TaskBandit/compare/v1.9.0...v1.10.0) (2026-06-04)
+
+
+### Features
+
+* **onboarding:** add audience-aware templates and survey redo ([#605](https://github.com/kriziw/TaskBandit/issues/605)) ([3a4ef50](https://github.com/kriziw/TaskBandit/commit/3a4ef505fee3a9eb15660fd001b4489e72acd600))
+
 ## [1.9.0](https://github.com/kriziw/TaskBandit/compare/v1.8.1...v1.9.0) (2026-06-03)
 
 
