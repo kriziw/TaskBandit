@@ -1312,11 +1312,13 @@ class TaskBanditMobileApi {
             .put("description", input.description)
             .put("difficulty", input.difficulty)
             .put("assignmentStrategy", input.assignmentStrategy)
+            .put("audience", input.audience)
             .put("recurrenceType", input.recurrenceType)
             .put("requirePhotoProof", input.requirePhotoProof)
             .put("stickyFollowUpAssignee", input.stickyFollowUpAssignee)
             .put("recurrenceStartStrategy", input.recurrenceStartStrategy)
             .put("defaultLocale", input.defaultLocale)
+        input.fixedAssigneeId?.let { payload.put("fixedAssigneeId", it) }
         input.recurrenceIntervalDays?.let { payload.put("recurrenceIntervalDays", it) }
         if (input.recurrenceWeekdays.isNotEmpty()) {
             payload.put("recurrenceWeekdays", JSONArray(input.recurrenceWeekdays))
