@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.11.0](https://github.com/kriziw/TaskBandit/compare/v1.10.0...v1.11.0) (2026-06-04)
+
+
+### Features
+
+* **settings:** household profile section with delta suggestions ([#628](https://github.com/kriziw/TaskBandit/issues/628)) ([0e42207](https://github.com/kriziw/TaskBandit/commit/0e422074b5c2afa08832fa646d14cd74248923a0))
+
+
+### Bug Fixes
+
+* repair android template editor and web CI ([#627](https://github.com/kriziw/TaskBandit/issues/627)) ([8c71459](https://github.com/kriziw/TaskBandit/commit/8c714596d527bcabed852f7432870020ead5c7ae))
+
 ## [1.10.0](https://github.com/kriziw/TaskBandit/compare/v1.9.0...v1.10.0) (2026-06-04)
 
 
