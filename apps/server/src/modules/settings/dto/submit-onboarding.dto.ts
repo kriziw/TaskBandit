@@ -22,10 +22,21 @@ export enum GamificationStyle {
   DEFAULT = 'default',
 }
 
+export enum ChoreSplit {
+  ADULTS_DO_MOST = 'adults_do_most',
+  SHARED_EVENLY = 'shared_evenly',
+  KIDS_HELP_SIMPLE_TASKS = 'kids_help_simple_tasks',
+}
+
 const VALID_APPLIANCES = ['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const;
 const VALID_PETS = ['none', 'dog', 'cat', 'other'] as const;
 const VALID_COOKING = ['one_person', 'take_turns', 'mostly_takeout', 'mixed'] as const;
 const VALID_CHILD_AGES = ['under_5', '5_10', '11_15', '16_plus'] as const;
+const VALID_CHORE_SPLIT = [
+  ChoreSplit.ADULTS_DO_MOST,
+  ChoreSplit.SHARED_EVENLY,
+  ChoreSplit.KIDS_HELP_SIMPLE_TASKS,
+] as const;
 
 export class SubmitOnboardingDto {
   @ApiProperty({ enum: HouseholdType })
@@ -38,6 +49,10 @@ export class SubmitOnboardingDto {
   @IsIn(VALID_CHILD_AGES, { each: true })
   @ArrayMaxSize(4)
   childAges?: string[];
+
+  @ApiProperty({ enum: ChoreSplit })
+  @IsEnum(ChoreSplit)
+  choreSplit!: ChoreSplit;
 
   @ApiProperty({ enum: HomeType })
   @IsEnum(HomeType)

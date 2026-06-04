@@ -4,6 +4,7 @@ import {
   AssignmentStrategyType,
   Difficulty,
   FollowUpDelayUnit,
+  TemplateAudience,
   RecurrenceStartStrategy,
   RecurrenceType,
 } from '../../generated/prisma/client';
@@ -37,6 +38,7 @@ export type StarterTemplateDefinition = {
   groupTitle: LocalizedText;
   title: LocalizedText;
   description: LocalizedText;
+  audience?: TemplateAudience;
   difficulty: Difficulty;
   assignmentStrategy: AssignmentStrategyType;
   recurrenceType: RecurrenceType;
@@ -868,6 +870,7 @@ export type StarterTemplateOption = {
   groupTitle: string;
   title: string;
   description: string;
+  audience: TemplateAudience;
   recommended: boolean;
   followUps: Array<{ key: StarterTemplateKey; title: string }>;
 };
@@ -891,6 +894,7 @@ export function getStarterTemplateOptionCatalog(
     groupTitle: resolveLocalizedText(template.groupTitle, language),
     title: resolveLocalizedText(template.title, language),
     description: resolveLocalizedText(template.description, language),
+    audience: template.audience ?? TemplateAudience.ALL,
     recommended: template.recommended !== false,
     followUps:
       template.followUps?.map((followUp) => ({

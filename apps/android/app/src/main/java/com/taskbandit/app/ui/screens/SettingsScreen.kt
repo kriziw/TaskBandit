@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.rememberScrollState
@@ -33,6 +34,7 @@ import androidx.compose.material.icons.rounded.Language
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.NotificationsActive
 import androidx.compose.material.icons.rounded.Smartphone
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material.icons.rounded.Tune
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -1026,6 +1028,8 @@ internal fun SettingsSessionContent(
     isBusy: Boolean,
     onRefresh: () -> Unit,
     onDownloadSettingsLogs: () -> Unit,
+    onRedoOnboarding: () -> Unit,
+    canRedoOnboarding: Boolean,
 ) {
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Button(
@@ -1033,6 +1037,20 @@ internal fun SettingsSessionContent(
             enabled = !isBusy,
             modifier = Modifier.fillMaxWidth()
         ) { Text(stringResource(R.string.mobile_refresh)) }
+        if (canRedoOnboarding) {
+            Button(
+                onClick = onRedoOnboarding,
+                enabled = !isBusy,
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                Icon(
+                    imageVector = Icons.Rounded.SwapHoriz,
+                    contentDescription = null
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(stringResource(R.string.mobile_settings_redo_onboarding))
+            }
+        }
         OutlinedButton(
             onClick = onDownloadSettingsLogs,
             modifier = Modifier.fillMaxWidth()

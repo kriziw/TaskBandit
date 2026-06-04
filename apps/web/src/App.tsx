@@ -1275,14 +1275,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setOnboardingTourCompleted,
   } = useUiStore();
   const [setupWizardStep, setSetupWizardStep] = useState(0);
-  const [setupWizardAnswers, setSetupWizardAnswers] = useState<Partial<OnboardingAnswers>>(() => {
-    // Pre-fill from server draft if present (survives page reloads / app restarts)
-    const draft = payload?.household?.settings?.onboardingAnswers;
-    if (draft && typeof draft === 'object') {
-      return { appliances: [], pets: [], ...(draft as Partial<OnboardingAnswers>) };
-    }
-    return { appliances: [], pets: [] };
+  const [setupWizardAnswers, setSetupWizardAnswers] = useState<Partial<OnboardingAnswers>>({
+    appliances: [],
+    pets: [],
+    childAges: [],
+    choreSplit: 'shared_evenly',
   });
+  const [setupWizardReopenRequested, setSetupWizardReopenRequested] = useState(false);
   const {
     payload,
     runtimeLogs,
@@ -1293,6 +1292,57 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setIsLoading,
     clearDashboard,
   } = useDashboardStore();
+
+  function buildSetupWizardAnswers(
+    source?: Record<string, unknown> | null,
+  ): Partial<OnboardingAnswers> {
+    if (!source || typeof source !== 'object') {
+      return { appliances: [], pets: [], childAges: [], choreSplit: 'shared_evenly' };
+    }
+
+    return {
+      appliances: [],
+      pets: [],
+      childAges: [],
+      choreSplit: 'shared_evenly',
+      ...(source as Partial<OnboardingAnswers>),
+    };
+  }
+
+  const setupWizardVisible = Boolean(
+    payload &&
+    (setupWizardReopenRequested || !payload.household.settings.onboardingCompleted) &&
+    (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
+    workspaceVariant === 'client',
+  );
+
+  useEffect(() => {
+    if (!payload || !setupWizardVisible) {
+      return;
+    }
+
+    const draft = payload.household.settings.onboardingAnswers;
+    setSetupWizardAnswers((current) => {
+      if (setupWizardReopenRequested || setupWizardStep === 0) {
+        return buildSetupWizardAnswers(draft);
+      }
+
+      if (
+        current.householdType ||
+        current.homeType ||
+        current.cookingStyle ||
+        current.gamificationStyle ||
+        (current.appliances?.length ?? 0) > 0 ||
+        (current.pets?.length ?? 0) > 0 ||
+        (current.childAges?.length ?? 0) > 0 ||
+        current.choreSplit
+      ) {
+        return current;
+      }
+
+      return buildSetupWizardAnswers(draft);
+    });
+  }, [payload, setupWizardVisible, setupWizardReopenRequested]);
   const {
     settingsDraft,
     setSettingsDraft,
@@ -2714,12 +2764,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     payload && payload.currentUser.role === 'admin' && !payload.hostedSubscription.hostedMode,
   );
 
-  const showSetupWizard = Boolean(
-    payload &&
-    !payload.household.settings.onboardingCompleted &&
-    (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
-    workspaceVariant === 'client',
-  );
+  const showSetupWizard = setupWizardVisible;
 
   async function advanceWizardStep(newAnswers: Partial<OnboardingAnswers>) {
     setSetupWizardAnswers(newAnswers);
@@ -2735,15 +2780,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     const merged = finalAnswers ?? setupWizardAnswers;
     const answers: OnboardingAnswers = {
       householdType: (merged.householdType ?? 'family') as OnboardingAnswers['householdType'],
+      childAges: merged.childAges ?? [],
       homeType: (merged.homeType ?? 'house') as OnboardingAnswers['homeType'],
       appliances: merged.appliances ?? [],
       pets: merged.pets ?? [],
       cookingStyle: (merged.cookingStyle ?? 'mixed') as OnboardingAnswers['cookingStyle'],
+      choreSplit: (merged.choreSplit ?? 'shared_evenly') as OnboardingAnswers['choreSplit'],
       gamificationStyle: (merged.gamificationStyle ??
         'default') as OnboardingAnswers['gamificationStyle'],
     };
     try {
       await taskBanditApi.submitOnboarding(token, language, answers);
+      setSetupWizardReopenRequested(false);
       await refreshDashboard(token, { silent: false });
     } catch {
       // wizard is skippable — silently dismiss and let the user reach the dashboard
@@ -3095,6 +3143,223 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   const onboardingIndex = onboardingSteps.findIndex((step) => step.key === onboardingStep);
   const currentOnboardingStep = onboardingSteps[Math.max(onboardingIndex, 0)];
+
+  const setupWizardSteps = useMemo(() => {
+    const familyOnlyStep = setupWizardAnswers.householdType === 'family';
+    const steps: Array<{
+      key: string;
+      title: string;
+      description: string;
+      render: () => ReactNode;
+    }> = [
+      {
+        key: 'householdType',
+        title: t('wizard.household_type.question'),
+        description: t('wizard.household_type.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.household_type.question')}</legend>
+            {(['solo', 'couple', 'family', 'flatmates'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="radio"
+                  name="householdType"
+                  checked={setupWizardAnswers.householdType === v}
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, householdType: v }))}
+                />
+                {t(`wizard.household_type.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      },
+    ];
+
+    if (familyOnlyStep) {
+      steps.push({
+        key: 'childAges',
+        title: t('wizard.child_ages.question'),
+        description: t('wizard.child_ages.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.child_ages.question')}</legend>
+            <p className="setup-wizard-hint">{t('wizard.child_ages.hint')}</p>
+            {(['under_5', '5_10', '11_15', '16_plus'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="checkbox"
+                  checked={(setupWizardAnswers.childAges ?? []).includes(v)}
+                  onChange={(e) =>
+                    setSetupWizardAnswers((a) => ({
+                      ...a,
+                      childAges: e.target.checked
+                        ? [...(a.childAges ?? []), v]
+                        : (a.childAges ?? []).filter((x) => x !== v),
+                    }))
+                  }
+                />
+                {t(`wizard.child_ages.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      });
+    }
+
+    steps.push(
+      {
+        key: 'homeType',
+        title: t('wizard.home_type.question'),
+        description: t('wizard.home_type.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.home_type.question')}</legend>
+            {(['flat', 'house', 'house_garden', 'house_garden_lawn'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="radio"
+                  name="homeType"
+                  checked={setupWizardAnswers.homeType === v}
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, homeType: v }))}
+                />
+                {t(`wizard.home_type.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      },
+      {
+        key: 'appliances',
+        title: t('wizard.appliances.question'),
+        description: t('wizard.appliances.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.appliances.question')}</legend>
+            <p className="setup-wizard-hint">{t('wizard.appliances.hint')}</p>
+            {(['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const).map(
+              (v) => (
+                <label key={v} className="setup-wizard-option">
+                  <input
+                    type="checkbox"
+                    checked={(setupWizardAnswers.appliances ?? []).includes(v)}
+                    onChange={(e) =>
+                      setSetupWizardAnswers((a) => ({
+                        ...a,
+                        appliances: e.target.checked
+                          ? [...(a.appliances ?? []), v]
+                          : (a.appliances ?? []).filter((x) => x !== v),
+                      }))
+                    }
+                  />
+                  {t(`wizard.appliances.${v}`)}
+                </label>
+              ),
+            )}
+          </fieldset>
+        ),
+      },
+      {
+        key: 'pets',
+        title: t('wizard.pets.question'),
+        description: t('wizard.pets.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.pets.question')}</legend>
+            <p className="setup-wizard-hint">{t('wizard.pets.hint')}</p>
+            {(['none', 'dog', 'cat', 'other'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="checkbox"
+                  checked={(setupWizardAnswers.pets ?? []).includes(v)}
+                  onChange={(e) =>
+                    setSetupWizardAnswers((a) => ({
+                      ...a,
+                      pets: e.target.checked
+                        ? [...(a.pets ?? []), v]
+                        : (a.pets ?? []).filter((x) => x !== v),
+                    }))
+                  }
+                />
+                {t(`wizard.pets.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      },
+      {
+        key: 'choreSplit',
+        title: t('wizard.chore_split.question'),
+        description: t('wizard.chore_split.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.chore_split.question')}</legend>
+            {(['adults_do_most', 'shared_evenly', 'kids_help_simple_tasks'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="radio"
+                  name="choreSplit"
+                  checked={setupWizardAnswers.choreSplit === v}
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, choreSplit: v }))}
+                />
+                {t(`wizard.chore_split.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      },
+      {
+        key: 'cooking',
+        title: t('wizard.cooking.question'),
+        description: t('wizard.cooking.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.cooking.question')}</legend>
+            {(['one_person', 'take_turns', 'mostly_takeout', 'mixed'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="radio"
+                  name="cookingStyle"
+                  checked={setupWizardAnswers.cookingStyle === v}
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, cookingStyle: v }))}
+                />
+                {t(`wizard.cooking.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      },
+      {
+        key: 'gamification',
+        title: t('wizard.gamification.question'),
+        description: t('wizard.gamification.description'),
+        render: () => (
+          <fieldset>
+            <legend>{t('wizard.gamification.question')}</legend>
+            {(['track_only', 'light', 'full', 'default'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="radio"
+                  name="gamificationStyle"
+                  checked={setupWizardAnswers.gamificationStyle === v}
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))}
+                />
+                {t(`wizard.gamification.${v}`)}
+              </label>
+            ))}
+          </fieldset>
+        ),
+      },
+    );
+
+    return steps;
+  }, [setupWizardAnswers, t]);
+
+  const setupWizardStepIndex = Math.max(0, Math.min(setupWizardStep, setupWizardSteps.length - 1));
+  const currentSetupWizardStep = setupWizardSteps[setupWizardStepIndex];
+
+  useEffect(() => {
+    setSetupWizardStep((current) => Math.min(current, setupWizardSteps.length - 1));
+  }, [setupWizardSteps.length]);
 
   useEffect(() => {
     const targetRef = currentOnboardingStep?.targetRef;
@@ -4639,6 +4904,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setOnboardingDismissed(false);
     setOnboardingManuallyOpened(true);
     setOnboardingStep('welcome');
+  }
+
+  function handleOpenSetupWizard() {
+    const draft = payload?.household?.settings?.onboardingAnswers;
+    setSetupWizardAnswers(buildSetupWizardAnswers(draft as Record<string, unknown> | null));
+    setSetupWizardStep(0);
+    setSetupWizardReopenRequested(true);
+    setPageError(null);
+  }
+
+  function handleCloseSetupWizard() {
+    setSetupWizardReopenRequested(false);
+    setSetupWizardStep(0);
+    setPageError(null);
   }
 
   function handleDismissOnboarding() {
@@ -6609,7 +6888,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       }`}
       data-variant={workspaceVariant}
     >
-      {showSetupWizard ? (
+      {showSetupWizard && currentSetupWizardStep ? (
         <div
           className="setup-wizard-overlay"
           role="dialog"
@@ -6621,135 +6900,35 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               <h2>{t('wizard.title')}</h2>
               <p>{t('wizard.subtitle')}</p>
               <div className="setup-wizard-progress">
-                {[0, 1, 2, 3, 4, 5].map((i) => (
+                {setupWizardSteps.map((step, index) => (
                   <span
-                    key={i}
-                    className={`setup-wizard-dot ${setupWizardStep >= i ? 'active' : ''}`}
+                    key={step.key}
+                    className={
+                      'setup-wizard-dot ' + (setupWizardStepIndex >= index ? 'active' : '')
+                    }
                   />
                 ))}
               </div>
               <p className="setup-wizard-step-label">
-                {t('wizard.step', { current: String(setupWizardStep + 1), total: '6' })}
+                {t('wizard.step', {
+                  current: String(setupWizardStepIndex + 1),
+                  total: String(setupWizardSteps.length),
+                })}
               </p>
+              {setupWizardReopenRequested ? (
+                <button
+                  className="ghost-button setup-wizard-close-button"
+                  type="button"
+                  aria-label={t('common.close')}
+                  onClick={handleCloseSetupWizard}
+                >
+                  ?
+                </button>
+              ) : null}
             </header>
-            <div className="setup-wizard-body">
-              {setupWizardStep === 0 && (
-                <fieldset>
-                  <legend>{t('wizard.household_type.question')}</legend>
-                  {(['solo', 'couple', 'family', 'flatmates'] as const).map((v) => (
-                    <label key={v} className="setup-wizard-option">
-                      <input
-                        type="radio"
-                        name="householdType"
-                        checked={setupWizardAnswers.householdType === v}
-                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, householdType: v }))}
-                      />
-                      {t(`wizard.household_type.${v}`)}
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-              {setupWizardStep === 1 && (
-                <fieldset>
-                  <legend>{t('wizard.home_type.question')}</legend>
-                  {(['flat', 'house', 'house_garden', 'house_garden_lawn'] as const).map((v) => (
-                    <label key={v} className="setup-wizard-option">
-                      <input
-                        type="radio"
-                        name="homeType"
-                        checked={setupWizardAnswers.homeType === v}
-                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, homeType: v }))}
-                      />
-                      {t(`wizard.home_type.${v}`)}
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-              {setupWizardStep === 2 && (
-                <fieldset>
-                  <legend>{t('wizard.appliances.question')}</legend>
-                  <p className="setup-wizard-hint">{t('wizard.appliances.hint')}</p>
-                  {(['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const).map(
-                    (v) => (
-                      <label key={v} className="setup-wizard-option">
-                        <input
-                          type="checkbox"
-                          checked={(setupWizardAnswers.appliances ?? []).includes(v)}
-                          onChange={(e) =>
-                            setSetupWizardAnswers((a) => ({
-                              ...a,
-                              appliances: e.target.checked
-                                ? [...(a.appliances ?? []), v]
-                                : (a.appliances ?? []).filter((x) => x !== v),
-                            }))
-                          }
-                        />
-                        {t(`wizard.appliances.${v}`)}
-                      </label>
-                    ),
-                  )}
-                </fieldset>
-              )}
-              {setupWizardStep === 3 && (
-                <fieldset>
-                  <legend>{t('wizard.pets.question')}</legend>
-                  <p className="setup-wizard-hint">{t('wizard.pets.hint')}</p>
-                  {(['none', 'dog', 'cat', 'other'] as const).map((v) => (
-                    <label key={v} className="setup-wizard-option">
-                      <input
-                        type="checkbox"
-                        checked={(setupWizardAnswers.pets ?? []).includes(v)}
-                        onChange={(e) =>
-                          setSetupWizardAnswers((a) => ({
-                            ...a,
-                            pets: e.target.checked
-                              ? [...(a.pets ?? []), v]
-                              : (a.pets ?? []).filter((x) => x !== v),
-                          }))
-                        }
-                      />
-                      {t(`wizard.pets.${v}`)}
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-              {setupWizardStep === 4 && (
-                <fieldset>
-                  <legend>{t('wizard.cooking.question')}</legend>
-                  {(['one_person', 'take_turns', 'mostly_takeout', 'mixed'] as const).map((v) => (
-                    <label key={v} className="setup-wizard-option">
-                      <input
-                        type="radio"
-                        name="cookingStyle"
-                        checked={setupWizardAnswers.cookingStyle === v}
-                        onChange={() => setSetupWizardAnswers((a) => ({ ...a, cookingStyle: v }))}
-                      />
-                      {t(`wizard.cooking.${v}`)}
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-              {setupWizardStep === 5 && (
-                <fieldset>
-                  <legend>{t('wizard.gamification.question')}</legend>
-                  {(['track_only', 'light', 'full', 'default'] as const).map((v) => (
-                    <label key={v} className="setup-wizard-option">
-                      <input
-                        type="radio"
-                        name="gamificationStyle"
-                        checked={setupWizardAnswers.gamificationStyle === v}
-                        onChange={() =>
-                          setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))
-                        }
-                      />
-                      {t(`wizard.gamification.${v}`)}
-                    </label>
-                  ))}
-                </fieldset>
-              )}
-            </div>
+            <div className="setup-wizard-body">{currentSetupWizardStep.render()}</div>
             <footer className="setup-wizard-footer">
-              {setupWizardStep > 0 && (
+              {setupWizardStepIndex > 0 && (
                 <button
                   type="button"
                   className="ghost-button"
@@ -6758,7 +6937,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   {t('wizard.back')}
                 </button>
               )}
-              {setupWizardStep < 5 ? (
+              {setupWizardStepIndex < setupWizardSteps.length - 1 ? (
                 <button
                   type="button"
                   className="primary-button"
@@ -9630,31 +9809,6 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                     formatNumber(Math.abs(settingsDraft.takeoverPointsDelta)),
                                   )}
                           </p>
-                          <label>
-                            <span>Quick log default points (blank = inherit)</span>
-                            <input
-                              type="number"
-                              min={0}
-                              max={1000}
-                              step={1}
-                              value={settingsDraft.quickLogPointsDefault ?? ''}
-                              onChange={(event) =>
-                                setSettingsDraft((current) => {
-                                  if (!current) {
-                                    return current;
-                                  }
-                                  const nextValue = event.target.value.trim();
-                                  return {
-                                    ...current,
-                                    quickLogPointsDefault:
-                                      nextValue === ''
-                                        ? null
-                                        : Math.max(0, Number.parseInt(nextValue, 10) || 0),
-                                  };
-                                })
-                              }
-                            />
-                          </label>
                           <p className="inline-message">
                             This value is used by quick log by default. Users can still override
                             points per entry.
@@ -10408,6 +10562,22 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                 {option.label}
                               </option>
                             ))}
+                          </select>
+                        </label>
+                        <label>
+                          <span>{t('templates.audience')}</span>
+                          <select
+                            value={templateForm.audience ?? 'all'}
+                            onChange={(event) =>
+                              setTemplateForm((current) => ({
+                                ...current,
+                                audience: event.target.value as TemplateFormState['audience'],
+                              }))
+                            }
+                          >
+                            <option value="all">{t('templates.audience_all')}</option>
+                            <option value="adults">{t('templates.audience_adults')}</option>
+                            <option value="children">{t('templates.audience_children')}</option>
                           </select>
                         </label>
                         {templateForm.assignmentStrategy === 'fixed_assignee' && (
@@ -11770,6 +11940,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   <li>{t('assignment.highest_streak')}</li>
                   <li>{t('templates.follow_up_assignment_sticky')}</li>
                 </ul>
+                {payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent' ? (
+                  <div className="button-row">
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={handleOpenSetupWizard}
+                    >
+                      {t('wizard.redo_setup')}
+                    </button>
+                  </div>
+                ) : null}
               </article>
 
               {showClientMobileShell ? (

@@ -394,6 +394,7 @@ internal fun DashboardScreen(
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit,
     onRefresh: () -> Unit,
     onDownloadSettingsLogs: () -> Unit,
+    onRedoOnboarding: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
@@ -691,7 +692,6 @@ internal fun DashboardScreen(
             candidate.kind == quickLogSelectedKind && candidate.id == quickLogSelectedId
         }
     }
-    val quickLogDefaultPoints = dashboard?.quickLogPointsDefault ?: 0
     val choresOverdueLabel = stringResource(R.string.mobile_chores_overdue)
     val overdueHeaderColor = MaterialTheme.colorScheme.error
     val choresDueTodayLabel = stringResource(R.string.mobile_chores_due_today)
@@ -2785,7 +2785,13 @@ internal fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
-                        SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
+                        SettingsSessionContent(
+                            isBusy = isBusy,
+                            onRefresh = onRefresh,
+                            onDownloadSettingsLogs = onDownloadSettingsLogs,
+                            onRedoOnboarding = onRedoOnboarding,
+                            canRedoOnboarding = isCreatorRole
+                        )
                     }
                 }
                 item {
@@ -3907,6 +3913,4 @@ private fun SecondaryActionRow(
         )
     }
 }
-
-
 

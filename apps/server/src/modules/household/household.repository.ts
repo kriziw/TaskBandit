@@ -26,6 +26,7 @@ import {
   RecurrenceStartStrategy,
   RecurrenceType,
   Prisma,
+  TemplateAudience as DbTemplateAudience,
 } from '../../generated/prisma/client';
 import { hash } from 'bcryptjs';
 import { randomUUID } from 'crypto';
@@ -112,6 +113,28 @@ function trimSurroundingHyphens(value: string) {
   return value.slice(start, end);
 }
 
+function toDbTemplateAudience(value?: string | null) {
+  switch ((value ?? 'all').toLowerCase()) {
+    case 'adults':
+      return DbTemplateAudience.ADULTS;
+    case 'children':
+      return DbTemplateAudience.CHILDREN;
+    default:
+      return DbTemplateAudience.ALL;
+  }
+}
+
+function toPublicTemplateAudience(value?: DbTemplateAudience | null) {
+  switch (value) {
+    case DbTemplateAudience.ADULTS:
+      return 'adults';
+    case DbTemplateAudience.CHILDREN:
+      return 'children';
+    default:
+      return 'all';
+  }
+}
+
 @Injectable()
 export class HouseholdRepository {
   constructor(
@@ -159,7 +182,6 @@ export class HouseholdRepository {
               selfSignupEnabled,
               onboardingCompleted: false,
               membersCanSeeFullHouseholdChoreDetails: true,
-              quickLogPointsDefault: null,
               enablePushNotifications: true,
               enableOverduePenalties: true,
               localAuthEnabled: true,
@@ -433,9 +455,6 @@ export class HouseholdRepository {
         membersCanSeeFullHouseholdChoreDetails:
           dto.membersCanSeeFullHouseholdChoreDetails ??
           household.settings?.membersCanSeeFullHouseholdChoreDetails,
-        quickLogPointsDefault: Object.prototype.hasOwnProperty.call(dto, 'quickLogPointsDefault')
-          ? (dto.quickLogPointsDefault ?? null)
-          : (household.settings?.quickLogPointsDefault ?? null),
         enablePushNotifications:
           dto.enablePushNotifications ?? household.settings?.enablePushNotifications,
         enableOverduePenalties:
@@ -2676,6 +2695,7 @@ export class HouseholdRepository {
     const dependencyTemplateIds = dependencyRules.map((rule) => rule.followUpTemplateId);
     const normalizedGroupTitle = dto.groupTitle.trim();
     const normalizedDefaultLocale = this.normalizeSupportedLanguage(dto.defaultLocale);
+    const normalizedAudience = toDbTemplateAudience(dto.audience);
     const groupTitleTranslations = this.normalizeTemplateGroupTranslations(
       dto.translations,
       normalizedDefaultLocale,
@@ -2720,6 +2740,7 @@ export class HouseholdRepository {
         data: {
           householdId,
           defaultLocale: normalizedDefaultLocale,
+          audience: normalizedAudience,
           groupTitle: normalizedGroupTitle,
           groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
           title: dto.title.trim(),
@@ -2831,6 +2852,7 @@ export class HouseholdRepository {
     const normalizedDefaultLocale = this.normalizeSupportedLanguage(
       dto.defaultLocale ?? existingTemplate.defaultLocale,
     );
+    const normalizedAudience = toDbTemplateAudience(dto.audience ?? existingTemplate.audience);
     const normalizedGroupTitle = dto.groupTitle.trim();
     const groupTitleTranslations = this.normalizeTemplateGroupTranslations(
       dto.translations,
@@ -2939,6 +2961,7 @@ export class HouseholdRepository {
         },
         data: {
           defaultLocale: normalizedDefaultLocale,
+          audience: normalizedAudience,
           groupTitle: normalizedGroupTitle,
           groupTitleTranslations: this.toPrismaJsonOrNull(groupTitleTranslations),
           title: dto.title.trim(),
@@ -5258,7 +5281,6 @@ export class HouseholdRepository {
             selfSignupEnabled: false,
             onboardingCompleted: false,
             membersCanSeeFullHouseholdChoreDetails: true,
-            quickLogPointsDefault: null,
             enablePushNotifications: true,
             enableOverduePenalties: true,
             localAuthEnabled: true,
@@ -5615,6 +5637,26 @@ export class HouseholdRepository {
     );
   }
 
+  private filterMembersByTemplateAudience(
+    members: Array<{
+      id: string;
+      displayName: string;
+      role: HouseholdRole;
+      points: number;
+      currentStreak: number;
+    }>,
+    audience: DbTemplateAudience,
+  ) {
+    switch (audience) {
+      case DbTemplateAudience.ADULTS:
+        return members.filter((member) => member.role !== HouseholdRole.CHILD);
+      case DbTemplateAudience.CHILDREN:
+        return members.filter((member) => member.role === HouseholdRole.CHILD);
+      default:
+        return members;
+    }
+  }
+
   private async resolveAssigneeForTemplate(
     executor: PrismaExecutor,
     householdId: string,
@@ -5634,6 +5676,16 @@ export class HouseholdRepository {
       );
     }
 
+    const template = await executor.choreTemplate.findFirst({
+      where: {
+        id: templateId,
+        householdId,
+      },
+      select: {
+        audience: true,
+      },
+    });
+
     const members = await executor.user.findMany({
       where: {
         householdId,
@@ -5641,7 +5693,12 @@ export class HouseholdRepository {
       orderBy: [{ createdAtUtc: 'asc' }, { displayName: 'asc' }],
     });
 
-    if (members.length === 0) {
+    const eligibleMembers = this.filterMembersByTemplateAudience(
+      members,
+      template?.audience ?? DbTemplateAudience.ALL,
+    );
+
+    if (eligibleMembers.length === 0) {
       return null;
     }
 
@@ -5676,20 +5733,24 @@ export class HouseholdRepository {
 
         if (!lastAssigned?.assigneeId) {
           return (
-            [...members].sort((left, right) => this.compareMemberLoad(left, right, loadByUserId))[0]
-              ?.id ?? null
+            [...eligibleMembers].sort((left, right) =>
+              this.compareMemberLoad(left, right, loadByUserId),
+            )[0]?.id ?? null
           );
         }
 
-        const currentIndex = members.findIndex((member) => member.id === lastAssigned.assigneeId);
+        const currentIndex = eligibleMembers.findIndex(
+          (member) => member.id === lastAssigned.assigneeId,
+        );
         if (currentIndex < 0) {
           return (
-            [...members].sort((left, right) => this.compareMemberLoad(left, right, loadByUserId))[0]
-              ?.id ?? null
+            [...eligibleMembers].sort((left, right) =>
+              this.compareMemberLoad(left, right, loadByUserId),
+            )[0]?.id ?? null
           );
         }
 
-        return members[(currentIndex + 1) % members.length]?.id ?? null;
+        return eligibleMembers[(currentIndex + 1) % eligibleMembers.length]?.id ?? null;
       }
       case AssignmentStrategyType.LEAST_COMPLETED_RECENTLY: {
         const completions = await executor.choreInstance.findMany({
@@ -5724,7 +5785,7 @@ export class HouseholdRepository {
           }
         }
 
-        return [...members].sort((left, right) => {
+        return [...eligibleMembers].sort((left, right) => {
           const leftTime = lastCompletionByUser.get(left.id)?.getTime() ?? 0;
           const rightTime = lastCompletionByUser.get(right.id)?.getTime() ?? 0;
           if (leftTime !== rightTime) {
@@ -5735,7 +5796,7 @@ export class HouseholdRepository {
         })[0]?.id;
       }
       case AssignmentStrategyType.HIGHEST_STREAK:
-        return [...members].sort(
+        return [...eligibleMembers].sort(
           (left, right) =>
             right.currentStreak - left.currentStreak ||
             right.points - left.points ||
@@ -6456,7 +6517,6 @@ export class HouseholdRepository {
         onboardingCompleted: household.settings?.onboardingCompleted ?? false,
         membersCanSeeFullHouseholdChoreDetails:
           household.settings?.membersCanSeeFullHouseholdChoreDetails ?? true,
-        quickLogPointsDefault: household.settings?.quickLogPointsDefault ?? null,
         enablePushNotifications: household.settings?.enablePushNotifications ?? true,
         enableOverduePenalties: household.settings?.enableOverduePenalties ?? true,
         enableAchievements: household.settings?.enableAchievements ?? true,
@@ -6550,6 +6610,7 @@ export class HouseholdRepository {
       translations: this.serializeTemplateTranslations(template),
       difficulty: template.difficulty.toLowerCase(),
       basePoints: template.basePoints,
+      audience: toPublicTemplateAudience(template.audience),
       assignmentStrategy: this.mapAssignmentStrategy(template.assignmentStrategy),
       fixedAssigneeId: template.fixedAssigneeId ?? null,
       recurrence: {
@@ -7941,38 +8002,50 @@ export class HouseholdRepository {
     actorUserId: string;
     templateKeys: string[];
     settingsOverrides: Record<string, unknown>;
+    onboardingAnswers: Record<string, unknown>;
     language: SupportedLanguage;
   }) {
-    const definitions = getStarterTemplateDefinitionsByKey(input.templateKeys);
+    const selectedTemplateKeys = [...new Set(input.templateKeys)];
+    const definitions = getStarterTemplateDefinitionsByKey(selectedTemplateKeys);
 
     await this.prisma.$transaction(async (tx) => {
-      const existingKeys = await tx.choreTemplate
-        .findMany({
-          where: { householdId: input.householdId, catalogKey: { not: null } },
-          select: { catalogKey: true },
-        })
-        .then((rows) => new Set(rows.map((r) => r.catalogKey)));
+      const seededTemplates = await tx.choreTemplate.findMany({
+        where: { householdId: input.householdId, catalogKey: { not: null } },
+        select: { id: true, catalogKey: true },
+      });
+      const seededTemplateIds = seededTemplates.map((template) => template.id);
+      const seededTemplateCatalogKeyById = new Map(
+        seededTemplates
+          .map((template) => [template.id, template.catalogKey] as const)
+          .filter((entry): entry is [string, string] => Boolean(entry[1])),
+      );
+      const retainedDependencyRows = await tx.choreTemplateDependency.findMany({
+        where: {
+          templateId: { notIn: seededTemplateIds },
+          followUpTemplateId: { in: seededTemplateIds },
+        },
+        select: { id: true, followUpTemplateId: true },
+      });
 
-      const toCreate = definitions.filter((d) => !existingKeys.has(d.key));
+      if (seededTemplateIds.length > 0) {
+        await tx.choreTemplateDependency.deleteMany({
+          where: { templateId: { in: seededTemplateIds } },
+        });
+        await tx.choreTemplate.deleteMany({
+          where: { householdId: input.householdId, id: { in: seededTemplateIds } },
+        });
+      }
 
       // Pass 1 — create templates and build a key→id lookup
       const templateIdByKey = new Map<string, string>();
 
-      // Seed the lookup with templates that already existed before this wizard run
-      const existingTemplates = await tx.choreTemplate.findMany({
-        where: { householdId: input.householdId, catalogKey: { not: null } },
-        select: { id: true, catalogKey: true },
-      });
-      for (const t of existingTemplates) {
-        if (t.catalogKey) templateIdByKey.set(t.catalogKey, t.id);
-      }
-
-      for (const template of toCreate) {
+      for (const template of definitions) {
         const created = await tx.choreTemplate.create({
           data: {
             householdId: input.householdId,
             defaultLocale: input.language,
             catalogKey: template.key,
+            audience: template.audience ?? DbTemplateAudience.ALL,
             groupTitle: template.groupTitle[input.language] ?? template.groupTitle.en,
             groupTitleTranslations: this.toPrismaJsonOrNull(
               this.mapStarterLocalizedText(template.groupTitle, input.language),
@@ -8017,7 +8090,7 @@ export class HouseholdRepository {
       // Pass 2 — wire follow-up chains using the key→id map.
       // Follow-up targets that were not seeded for this household profile are
       // silently skipped (e.g. laundry_hang_clothes for a dryer household).
-      for (const template of toCreate) {
+      for (const template of definitions) {
         if (!template.followUps?.length) continue;
         const templateId = templateIdByKey.get(template.key);
         if (!templateId) continue;
@@ -8040,9 +8113,35 @@ export class HouseholdRepository {
         }
       }
 
+      for (const dependency of retainedDependencyRows) {
+        const followUpCatalogKey = seededTemplateCatalogKeyById.get(dependency.followUpTemplateId);
+        if (!followUpCatalogKey) {
+          await tx.choreTemplateDependency.delete({
+            where: { id: dependency.id },
+          });
+          continue;
+        }
+
+        const updatedFollowUpTemplateId = templateIdByKey.get(followUpCatalogKey);
+        if (!updatedFollowUpTemplateId) {
+          await tx.choreTemplateDependency.delete({
+            where: { id: dependency.id },
+          });
+          continue;
+        }
+
+        await tx.choreTemplateDependency.update({
+          where: { id: dependency.id },
+          data: { followUpTemplateId: updatedFollowUpTemplateId },
+        });
+      }
+
       await tx.householdSettings.update({
         where: { householdId: input.householdId },
-        data: { ...input.settingsOverrides, onboardingAnswers: Prisma.DbNull },
+        data: {
+          ...input.settingsOverrides,
+          onboardingAnswers: input.onboardingAnswers as Prisma.InputJsonValue,
+        },
       });
 
       const household = await tx.household.findUniqueOrThrow({
@@ -8058,7 +8157,7 @@ export class HouseholdRepository {
           action: 'onboarding.completed',
           entityType: 'household',
           entityId: input.householdId,
-          summary: `Onboarding wizard completed. ${toCreate.length} template(s) added.`,
+          summary: `Onboarding wizard completed. ${definitions.length} starter template(s) recreated.`,
         },
       });
     });

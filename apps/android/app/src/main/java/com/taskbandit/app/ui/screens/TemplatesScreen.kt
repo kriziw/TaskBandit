@@ -302,6 +302,21 @@ internal fun TemplateCard(
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(template.title, style = MaterialTheme.typography.titleMedium)
                 Text(template.groupTitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Surface(
+                    shape = RoundedCornerShape(999.dp),
+                    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.65f)
+                ) {
+                    Text(
+                        text = when (template.audience) {
+                            "adults" -> stringResource(R.string.mobile_template_audience_adults)
+                            "children" -> stringResource(R.string.mobile_template_audience_children)
+                            else -> stringResource(R.string.mobile_template_audience_all)
+                        },
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSecondaryContainer,
+                        modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp)
+                    )
+                }
                 if (template.checklist.isNotEmpty()) {
                     Text(
                         text = stringResource(R.string.mobile_template_steps, template.checklist.size),
@@ -366,6 +381,7 @@ internal fun TemplateEditorScreen(
     var editDescription by rememberSaveable { mutableStateOf(template?.description ?: "") }
     var editDifficulty by rememberSaveable { mutableStateOf(template?.difficulty ?: "medium") }
     var editAssignmentStrategy by rememberSaveable { mutableStateOf(template?.assignmentStrategy ?: "round_robin") }
+    var editAudience by rememberSaveable { mutableStateOf(template?.audience ?: "all") }
     var editFixedAssigneeId by rememberSaveable { mutableStateOf(template?.fixedAssigneeId) }
     var editDefaultLocale by rememberSaveable { mutableStateOf(template?.defaultLocale ?: "en") }
     var editRecurrenceType by rememberSaveable { mutableStateOf(template?.recurrence?.type ?: "none") }
@@ -400,6 +416,7 @@ internal fun TemplateEditorScreen(
     // ── Dropdown expansion state ──
     var difficultyExpanded by remember { mutableStateOf(false) }
     var strategyExpanded by remember { mutableStateOf(false) }
+    var audienceExpanded by remember { mutableStateOf(false) }
     var fixedAssigneeExpanded by remember { mutableStateOf(false) }
     var defaultLocaleExpanded by remember { mutableStateOf(false) }
     var recurrenceTypeExpanded by remember { mutableStateOf(false) }
@@ -438,6 +455,7 @@ internal fun TemplateEditorScreen(
         description = editDescription,
         difficulty = editDifficulty,
         assignmentStrategy = editAssignmentStrategy,
+        audience = editAudience,
         fixedAssigneeId = if (editAssignmentStrategy == "fixed_assignee") editFixedAssigneeId else null,
         recurrenceType = editRecurrenceType,
         recurrenceIntervalDays = editRecurrenceIntervalDays.toIntOrNull(),
@@ -478,9 +496,9 @@ internal fun TemplateEditorScreen(
             modifier = Modifier.fillMaxSize().padding(innerPadding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        ) lazyColumn@{
             // ── Locale tab row ──
-            item {
+            this@lazyColumn.item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("en", "de", "hu").forEach { locale ->
                         val isSelected = editingLocale == locale
@@ -494,7 +512,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 1: Core fields ──
-            item {
+            this@lazyColumn.item {
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
@@ -551,22 +569,50 @@ internal fun TemplateEditorScreen(
                                 },
                                 onValueChange = {},
                                 readOnly = true,
-                                label = { Text(stringResource(R.string.mobile_template_field_assignment)) },
-                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = strategyExpanded) },
-                                modifier = Modifier.fillMaxWidth().menuAnchor()
-                            )
-                            ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
-                                ChoreConstants.ASSIGNMENT_STRATEGIES.forEach { key ->
-                                    val resId = when (key) {
-                                        "least_completed_recently" -> R.string.mobile_template_strategy_least_completed
-                                        "highest_streak" -> R.string.mobile_template_strategy_highest_streak
-                                        "fixed_assignee" -> R.string.mobile_template_strategy_fixed_assignee
-                                        else -> R.string.mobile_template_strategy_round_robin
-                                    }
-                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = {
+                            label = { Text(stringResource(R.string.mobile_template_field_assignment)) },
+                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = strategyExpanded) },
+                            modifier = Modifier.fillMaxWidth().menuAnchor()
+                        )
+                        ExposedDropdownMenu(expanded = strategyExpanded, onDismissRequest = { strategyExpanded = false }) {
+                            ChoreConstants.ASSIGNMENT_STRATEGIES.forEach { key ->
+                                val resId = when (key) {
+                                    "least_completed_recently" -> R.string.mobile_template_strategy_least_completed
+                                    "highest_streak" -> R.string.mobile_template_strategy_highest_streak
+                                    "fixed_assignee" -> R.string.mobile_template_strategy_fixed_assignee
+                                    else -> R.string.mobile_template_strategy_round_robin
+                                }
+                                DropdownMenuItem(
+                                    text = { Text(stringResource(resId)) },
+                                    onClick = {
                                         editAssignmentStrategy = key
                                         if (key != "fixed_assignee") editFixedAssigneeId = null
                                         strategyExpanded = false
+                                    }
+                                )
+                            }
+                        }
+                        ExposedDropdownMenuBox(expanded = audienceExpanded, onExpandedChange = { audienceExpanded = it }) {
+                            OutlinedTextField(
+                                value = when (editAudience) {
+                                    "adults" -> stringResource(R.string.mobile_template_audience_adults)
+                                    "children" -> stringResource(R.string.mobile_template_audience_children)
+                                    else -> stringResource(R.string.mobile_template_audience_all)
+                                },
+                                onValueChange = {},
+                                readOnly = true,
+                                label = { Text(stringResource(R.string.mobile_template_field_audience)) },
+                                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = audienceExpanded) },
+                                modifier = Modifier.fillMaxWidth().menuAnchor()
+                            )
+                            ExposedDropdownMenu(expanded = audienceExpanded, onDismissRequest = { audienceExpanded = false }) {
+                                listOf(
+                                    "all" to R.string.mobile_template_audience_all,
+                                    "adults" to R.string.mobile_template_audience_adults,
+                                    "children" to R.string.mobile_template_audience_children
+                                ).forEach { (key, resId) ->
+                                    DropdownMenuItem(text = { Text(stringResource(resId)) }, onClick = {
+                                        editAudience = key
+                                        audienceExpanded = false
                                     })
                                 }
                             }
@@ -612,7 +658,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 2: Recurrence (collapsible) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_recurrence),
                     expanded = recurrenceExpanded,
@@ -703,7 +749,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 3: Checklist (collapsible) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_checklist),
                     expanded = checklistExpanded,
@@ -744,7 +790,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 4: Variants (collapsible, collapsed by default) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_variants),
                     expanded = variantsExpanded,
@@ -787,7 +833,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 5: Follow-up dependencies (collapsible, collapsed by default) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_followups),
                     expanded = followupsExpanded,
@@ -871,7 +917,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Save button ──
-            item {
+            this@lazyColumn.item {
                 Button(
                     onClick = {
                         if (editTitle.isNotBlank() && editGroupTitle.isNotBlank()) {
@@ -887,6 +933,8 @@ internal fun TemplateEditorScreen(
             }
         }
     }
+}
+
 }
 
 @Composable
@@ -915,4 +963,3 @@ internal fun TemplateEditorSection(
         }
     }
 }
-

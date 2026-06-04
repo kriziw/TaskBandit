@@ -17,6 +17,7 @@ import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { UpdateNotificationPreferencesDto } from './dto/update-notification-preferences.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import {
+  ChoreSplit,
   GamificationStyle,
   HomeType,
   HouseholdType,
@@ -549,6 +550,7 @@ export class SettingsService {
       actorUserId: user.id,
       templateKeys,
       settingsOverrides,
+      onboardingAnswers: dto as unknown as Record<string, unknown>,
       language,
     });
 
@@ -580,7 +582,14 @@ export class SettingsService {
     const hasDryer = dto.appliances.includes('tumble_dryer');
     const hasWashingMachine = dto.appliances.includes('washing_machine');
     const hasRobotVacuum = dto.appliances.includes('robot_vacuum');
+    const childAges = dto.childAges ?? [];
     const hasChildren = dto.householdType === HouseholdType.FAMILY;
+    const hasOlderChildren = childAges.some((age) => age === '11_15' || age === '16_plus');
+    const shouldSeedKidFocusedTemplates =
+      hasChildren &&
+      (dto.choreSplit === ChoreSplit.KIDS_HELP_SIMPLE_TASKS ||
+        dto.choreSplit === ChoreSplit.SHARED_EVENLY ||
+        hasOlderChildren);
 
     // Kitchen
     keys.add('kitchen_evening_cleanup');
@@ -638,7 +647,7 @@ export class SettingsService {
     }
 
     // Kids' room — family households
-    if (hasChildren) {
+    if (shouldSeedKidFocusedTemplates) {
       keys.add('kids_room_tidy');
       keys.add('kids_room_strip_sheets');
       keys.add('kids_room_put_on_sheets');
@@ -673,6 +682,7 @@ export class SettingsService {
         appliances: [],
         pets: [],
         cookingStyle: 'mixed',
+        choreSplit: ChoreSplit.SHARED_EVENLY,
         gamificationStyle: 'default',
       } as SubmitOnboardingDto);
     }

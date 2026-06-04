@@ -25,6 +25,7 @@ import {
   ValidateNested,
 } from 'class-validator';
 import { supportedLanguages, SupportedLanguage } from '../../../common/i18n/supported-languages';
+import { TemplateAudience } from '../../../generated/prisma/client';
 
 export class CreateChecklistItemDto {
   @ApiProperty()
@@ -255,6 +256,19 @@ export class CreateChoreTemplateDto {
   @IsOptional()
   @IsUUID('4')
   fixedAssigneeId?: string;
+
+  @ApiPropertyOptional({ enum: TemplateAudience, enumName: 'TemplateAudience' })
+  @Transform(({ value }) =>
+    typeof value === 'string'
+      ? value
+          .trim()
+          .toUpperCase()
+          .replace(/[\s-]+/g, '_')
+      : value,
+  )
+  @IsOptional()
+  @IsEnum(TemplateAudience)
+  audience?: TemplateAudience;
 
   @ApiPropertyOptional()
   @IsOptional()

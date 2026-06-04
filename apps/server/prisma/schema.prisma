@@ -187,6 +187,12 @@ enum JointPointsMode {
   PRIMARY_PLUS_BONUS
 }
 
+enum TemplateAudience {
+  ALL
+  ADULTS
+  CHILDREN
+}
+
 model Tenant {
   id           String               @id @default(uuid()) @db.Uuid
   slug         String               @unique
@@ -231,7 +237,6 @@ model HouseholdSettings {
   selfSignupEnabled                      Boolean   @default(false)
   onboardingCompleted                   Boolean   @default(false)
   membersCanSeeFullHouseholdChoreDetails Boolean   @default(true)
-  quickLogPointsDefault                 Int?
   enablePushNotifications                Boolean   @default(true)
   enableOverduePenalties                 Boolean   @default(true)
   takeoverPointsDelta                    Int       @default(0)
@@ -324,6 +329,7 @@ model ChoreTemplate {
   id                 String                       @id @default(uuid()) @db.Uuid
   householdId        String                       @db.Uuid
   defaultLocale      String                       @default("en") @db.VarChar(5)
+  audience           TemplateAudience              @default(ALL)
   groupTitle         String                       @db.VarChar(120)
   groupTitleTranslations Json?
   title              String

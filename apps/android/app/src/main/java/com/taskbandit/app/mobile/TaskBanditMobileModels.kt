@@ -337,6 +337,7 @@ data class MobileChoreTemplate(
     val groupTitle: String,
     val title: String,
     val description: String,
+    val audience: String = "all",
     val difficulty: String = "medium",
     val basePoints: Int = 0,
     val assignmentStrategy: String,
@@ -367,6 +368,7 @@ data class CreateChoreTemplateInput(
     val groupTitle: String,
     val title: String,
     val description: String,
+    val audience: String = "all",
     val difficulty: String,
     val assignmentStrategy: String,
     val fixedAssigneeId: String? = null,
@@ -449,7 +451,6 @@ data class MobileDashboard(
     val notifications: List<MobileNotification>,
     val members: List<MobileHouseholdMember>,
     val templates: List<MobileChoreTemplate>,
-    val quickLogPointsDefault: Int? = null,
     val compatibility: MobileDashboardCompatibility = MobileDashboardCompatibility(),
     val achievements: List<MobileAchievement> = emptyList(),
     val enableAchievements: Boolean = true,
@@ -468,6 +469,7 @@ data class MobileOnboardingAnswers(
     val appliances: List<String>,
     val pets: List<String>,
     val cookingStyle: String,
+    val choreSplit: String = "shared_evenly",
     val gamificationStyle: String,
     val childAges: List<String> = emptyList()
 )

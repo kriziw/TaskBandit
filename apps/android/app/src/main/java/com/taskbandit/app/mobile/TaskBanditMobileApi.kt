@@ -358,13 +358,6 @@ class TaskBanditMobileApi {
         }
         val members = householdSettingsJson?.optJSONArray("members")?.let(::parseMembers).orEmpty()
         val householdSettings = householdSettingsJson?.optJSONObject("settings")
-        val quickLogPointsDefault = householdSettings?.let { settings ->
-            if (settings.has("quickLogPointsDefault") && !settings.isNull("quickLogPointsDefault")) {
-                settings.optInt("quickLogPointsDefault")
-            } else {
-                null
-            }
-        }
         val enableAchievements = householdSettings?.optBoolean("enableAchievements", true) ?: true
         val onboardingCompleted = householdSettings?.optBoolean("onboardingCompleted", true) ?: true
         val onboardingDraft = householdSettings?.optJSONObject("onboardingAnswers")?.let { d ->
@@ -372,6 +365,7 @@ class TaskBanditMobileApi {
                 householdType = d.optString("householdType"),
                 homeType = d.optString("homeType"),
                 cookingStyle = d.optString("cookingStyle"),
+                choreSplit = d.optString("choreSplit").ifBlank { "shared_evenly" },
                 gamificationStyle = d.optString("gamificationStyle"),
                 appliances = parseStringArray(d.optJSONArray("appliances")),
                 pets = parseStringArray(d.optJSONArray("pets"))
@@ -428,7 +422,6 @@ class TaskBanditMobileApi {
             notifications = notifications,
             members = members,
             templates = templates,
-            quickLogPointsDefault = quickLogPointsDefault,
             compatibility = MobileDashboardCompatibility(
                 takeoverRequestsSupported = takeoverRequestsSupported
             ),
@@ -497,14 +490,17 @@ class TaskBanditMobileApi {
     fun saveOnboardingDraft(baseUrl: String, token: String, answers: MobileOnboardingAnswers) {
         val appliancesArr = JSONArray().also { arr -> answers.appliances.forEach { arr.put(it) } }
         val petsArr = JSONArray().also { arr -> answers.pets.forEach { arr.put(it) } }
+        val childAgesArr = JSONArray().also { arr -> answers.childAges.forEach { arr.put(it) } }
         val draftBody = JSONObject()
         val answersObj = JSONObject()
             .put("householdType", answers.householdType)
             .put("homeType", answers.homeType)
             .put("cookingStyle", answers.cookingStyle)
+            .put("choreSplit", answers.choreSplit)
             .put("gamificationStyle", answers.gamificationStyle)
             .put("appliances", appliancesArr)
             .put("pets", petsArr)
+            .put("childAges", childAgesArr)
         draftBody.put("answers", answersObj)
         runCatching {
             requestJson(
@@ -526,6 +522,7 @@ class TaskBanditMobileApi {
             .put("householdType", answers.householdType)
             .put("homeType", answers.homeType)
             .put("cookingStyle", answers.cookingStyle)
+            .put("choreSplit", answers.choreSplit)
             .put("gamificationStyle", answers.gamificationStyle)
             .put("appliances", appliancesArr)
             .put("pets", petsArr)
