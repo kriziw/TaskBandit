@@ -60,6 +60,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -100,6 +101,7 @@ internal fun TemplateManagerScreen(
     var selectedGroup by rememberSaveable { mutableStateOf<String?>(null) }
     var editingTemplate by remember { mutableStateOf<MobileChoreTemplate?>(null) }
     var showEditor by rememberSaveable { mutableStateOf(false) }
+    var editorSessionId by rememberSaveable { mutableStateOf(0) }
     var deleteConfirmTemplate by remember { mutableStateOf<MobileChoreTemplate?>(null) }
     var showResetConfirm by rememberSaveable { mutableStateOf(false) }
 
@@ -135,7 +137,11 @@ internal fun TemplateManagerScreen(
                     shape = RoundedCornerShape(14.dp)
                 )
                 if (canManageTemplates) {
-                    OutlinedButton(onClick = { editingTemplate = null; showEditor = true }) {
+                    OutlinedButton(onClick = {
+                        editingTemplate = null
+                        editorSessionId += 1
+                        showEditor = true
+                    }) {
                         Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     }
                 }
@@ -197,7 +203,11 @@ internal fun TemplateManagerScreen(
                         items(filteredTemplates, key = { it.id }) { template ->
                             TemplateCard(
                                 template = template,
-                                onClick = { editingTemplate = template; showEditor = true }
+                                onClick = {
+                                    editingTemplate = template
+                                    editorSessionId += 1
+                                    showEditor = true
+                                }
                             )
                         }
                     }
@@ -222,18 +232,20 @@ internal fun TemplateManagerScreen(
             exit = slideOutVertically(targetOffsetY = { it })
         ) {
             Box(modifier = Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
-                TemplateEditorScreen(
-                    template = editingTemplate,
-                    allTemplates = allTemplates,
-                    members = members,
-                    onSave = { input ->
-                        val id = editingTemplate?.id
-                        if (id != null) onUpdateTemplate(id, input) else onCreateTemplate(input)
-                        showEditor = false
-                    },
-                    onDelete = { deleteConfirmTemplate = editingTemplate; showEditor = false },
-                    onBack = { showEditor = false }
-                )
+                key(editorSessionId) {
+                    TemplateEditorScreen(
+                        template = editingTemplate,
+                        allTemplates = allTemplates,
+                        members = members,
+                        onSave = { input ->
+                            val id = editingTemplate?.id
+                            if (id != null) onUpdateTemplate(id, input) else onCreateTemplate(input)
+                            showEditor = false
+                        },
+                        onDelete = { deleteConfirmTemplate = editingTemplate; showEditor = false },
+                        onBack = { showEditor = false }
+                    )
+                }
             }
         }
     }
