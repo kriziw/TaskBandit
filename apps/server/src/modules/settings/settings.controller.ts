@@ -30,6 +30,7 @@ import { UpdateHouseholdMemberDto } from './dto/update-household-member.dto';
 import { UpdateSettingsDto } from './dto/update-settings.dto';
 import { SubmitOnboardingDto } from './dto/submit-onboarding.dto';
 import { SaveOnboardingDraftDto } from './dto/save-onboarding-draft.dto';
+import { UpdateHouseholdProfileDto } from './dto/update-household-profile.dto';
 
 @ApiTags('settings')
 @Controller('api/settings')
@@ -117,6 +118,43 @@ export class SettingsController {
     @Headers('accept-language') acceptLanguage?: string,
   ) {
     return this.settingsService.syncCatalog(user, this.i18nService.resolveLanguage(acceptLanguage));
+  }
+
+  @Patch('profile')
+  @Roles('admin', 'parent')
+  updateHouseholdProfile(
+    @Body() dto: UpdateHouseholdProfileDto,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.settingsService.updateHouseholdProfile(
+      dto,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
+  @Post('profile/suggestions/:suggestionId/accept')
+  @Roles('admin', 'parent')
+  acceptProfileSuggestion(
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.settingsService.acceptProfileSuggestion(
+      suggestionId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
+  @Delete('profile/suggestions/:suggestionId')
+  @Roles('admin', 'parent')
+  dismissProfileSuggestion(
+    @Param('suggestionId') suggestionId: string,
+    @CurrentUser() user: AuthenticatedUser,
+  ) {
+    return this.settingsService.dismissProfileSuggestion(suggestionId, user);
   }
 
   @Put('notifications')

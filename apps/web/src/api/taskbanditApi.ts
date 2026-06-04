@@ -46,6 +46,7 @@ import type {
   CreateHolidayBlockPayload,
   OnboardingAnswers,
   OnboardingResult,
+  ProfileSuggestion,
 } from '../types/taskbandit';
 import type { AppLanguage } from '../i18n/I18nProvider';
 import { resolveApiBaseUrl } from '../runtimeConfig';
@@ -451,6 +452,26 @@ export const taskBanditApi = {
       language,
       body: answers,
     });
+  },
+  updateHouseholdProfile(token: string, language: AppLanguage, profile: OnboardingAnswers) {
+    return request<{ suggestions: ProfileSuggestion[] }>('/api/settings/profile', {
+      method: 'PATCH',
+      token,
+      language,
+      body: profile,
+    });
+  },
+  acceptProfileSuggestion(token: string, language: AppLanguage, suggestionId: string) {
+    return request<{ accepted: boolean; type: string; count: number }>(
+      `/api/settings/profile/suggestions/${encodeURIComponent(suggestionId)}/accept`,
+      { method: 'POST', token, language },
+    );
+  },
+  dismissProfileSuggestion(token: string, language: AppLanguage, suggestionId: string) {
+    return request<{ dismissed: boolean }>(
+      `/api/settings/profile/suggestions/${encodeURIComponent(suggestionId)}`,
+      { method: 'DELETE', token, language },
+    );
   },
   updateHousehold(token: string, language: AppLanguage, settings: Partial<HouseholdSettings>) {
     return request<Household>('/api/settings/household', {

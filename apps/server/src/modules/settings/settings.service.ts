@@ -25,6 +25,11 @@ import {
 } from './dto/submit-onboarding.dto';
 import { SaveOnboardingDraftDto } from './dto/save-onboarding-draft.dto';
 import { SmtpService, type SmtpSettings } from './smtp.service';
+import { UpdateHouseholdProfileDto } from './dto/update-household-profile.dto';
+import {
+  ProfileSuggestionsStore,
+  StoredProfileSuggestion,
+} from '../household/household.repository';
 
 @Injectable()
 export class SettingsService {
@@ -692,6 +697,118 @@ export class SettingsService {
       templateKeys,
       language,
     });
+  }
+
+  async updateHouseholdProfile(
+    dto: UpdateHouseholdProfileDto,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    const settings = await this.repository.getHouseholdSettings(user.householdId);
+    const oldAnswers = settings?.onboardingAnswers as Record<string, unknown> | null;
+    const existingStore = settings?.profileSuggestions as unknown as ProfileSuggestionsStore | null;
+    const alreadyDismissed = existingStore?.dismissed ?? [];
+
+    const newAnswers = dto as unknown as Record<string, unknown>;
+
+    // Compute which catalog keys are added / removed by the profile change
+    const oldDto = oldAnswers
+      ? (oldAnswers as unknown as SubmitOnboardingDto)
+      : this.blankProfile();
+    const oldKeys = new Set(this.selectTemplateKeys(oldDto));
+    const newKeys = new Set(this.selectTemplateKeys(dto));
+
+    const addedKeys = [...newKeys].filter((k) => !oldKeys.has(k));
+    const removedKeys = [...oldKeys].filter((k) => !newKeys.has(k));
+
+    const rawSuggestions: StoredProfileSuggestion[] = [];
+
+    if (addedKeys.length > 0) {
+      const id = `add:${addedKeys.sort().join(',')}`;
+      if (!alreadyDismissed.includes(id)) {
+        rawSuggestions.push({
+          id,
+          type: 'add',
+          templateKeys: addedKeys,
+          affectedCount: addedKeys.length,
+        });
+      }
+    }
+
+    if (removedKeys.length > 0) {
+      const id = `archive:${removedKeys.sort().join(',')}`;
+      if (!alreadyDismissed.includes(id)) {
+        const affectedCount = await this.repository.countActiveTemplatesForKeys(
+          user.householdId,
+          removedKeys,
+        );
+        if (affectedCount > 0) {
+          rawSuggestions.push({ id, type: 'archive', templateKeys: removedKeys, affectedCount });
+        }
+      }
+    }
+
+    const store: ProfileSuggestionsStore = { pending: rawSuggestions, dismissed: [] };
+    await this.repository.saveHouseholdProfile(user.householdId, newAnswers, store);
+
+    return { suggestions: rawSuggestions };
+  }
+
+  async acceptProfileSuggestion(
+    suggestionId: string,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    const settings = await this.repository.getHouseholdSettings(user.householdId);
+    const store = settings?.profileSuggestions as unknown as ProfileSuggestionsStore | null;
+    const suggestion = store?.pending.find((s) => s.id === suggestionId);
+
+    if (!suggestion) {
+      return { accepted: false };
+    }
+
+    if (suggestion.type === 'add') {
+      await this.repository.syncCatalogTemplates({
+        householdId: user.householdId,
+        templateKeys: suggestion.templateKeys,
+        language,
+      });
+    } else {
+      await this.repository.archiveTemplatesForKeys(user.householdId, suggestion.templateKeys);
+    }
+
+    const updated: ProfileSuggestionsStore = {
+      pending: (store?.pending ?? []).filter((s) => s.id !== suggestionId),
+      dismissed: store?.dismissed ?? [],
+    };
+    await this.repository.updateProfileSuggestions(user.householdId, updated);
+
+    return { accepted: true, type: suggestion.type, count: suggestion.affectedCount };
+  }
+
+  async dismissProfileSuggestion(suggestionId: string, user: AuthenticatedUser) {
+    const settings = await this.repository.getHouseholdSettings(user.householdId);
+    const store = settings?.profileSuggestions as unknown as ProfileSuggestionsStore | null;
+
+    const updated: ProfileSuggestionsStore = {
+      pending: (store?.pending ?? []).filter((s) => s.id !== suggestionId),
+      dismissed: [...(store?.dismissed ?? []), suggestionId],
+    };
+    await this.repository.updateProfileSuggestions(user.householdId, updated);
+
+    return { dismissed: true };
+  }
+
+  private blankProfile(): SubmitOnboardingDto {
+    return {
+      householdType: HouseholdType.FAMILY,
+      homeType: HomeType.FLAT,
+      appliances: [],
+      pets: [],
+      cookingStyle: 'mixed',
+      choreSplit: ChoreSplit.SHARED_EVENLY,
+      gamificationStyle: GamificationStyle.DEFAULT,
+    };
   }
 
   private buildSettingsOverrides(dto: SubmitOnboardingDto): Record<string, unknown> {

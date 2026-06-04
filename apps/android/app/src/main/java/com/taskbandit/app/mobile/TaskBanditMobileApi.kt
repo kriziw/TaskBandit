@@ -371,6 +371,21 @@ class TaskBanditMobileApi {
                 pets = parseStringArray(d.optJSONArray("pets"))
             )
         }
+        val profileSuggestions = buildList {
+            val store = householdSettings?.optJSONObject("profileSuggestions")
+            val pending = store?.optJSONArray("pending")
+            if (pending != null) {
+                for (i in 0 until pending.length()) {
+                    val s = pending.optJSONObject(i) ?: continue
+                    add(MobileProfileSuggestion(
+                        id = s.optString("id"),
+                        type = s.optString("type"),
+                        templateKeys = parseStringArray(s.optJSONArray("templateKeys")),
+                        affectedCount = s.optInt("affectedCount")
+                    ))
+                }
+            }
+        }
         val leaderboardResetMode = householdSettings?.optString("leaderboardResetMode", "never") ?: "never"
         val lastLeaderboardResetAt = householdSettings?.takeIf { it.has("lastLeaderboardResetAt") && !it.isNull("lastLeaderboardResetAt") }
             ?.optString("lastLeaderboardResetAt")
@@ -433,7 +448,8 @@ class TaskBanditMobileApi {
             redemptions = redemptions,
             holidayBlocks = holidayBlocks,
             onboardingCompleted = onboardingCompleted,
-            onboardingDraft = onboardingDraft
+            onboardingDraft = onboardingDraft,
+            profileSuggestions = profileSuggestions
         )
     }
 
@@ -533,6 +549,62 @@ class TaskBanditMobileApi {
             token = token,
             method = "POST",
             body = body
+        )
+    }
+
+    fun updateHouseholdProfile(baseUrl: String, token: String, answers: MobileOnboardingAnswers): List<MobileProfileSuggestion> {
+        val appliancesArr = JSONArray().also { arr -> answers.appliances.forEach { arr.put(it) } }
+        val petsArr = JSONArray().also { arr -> answers.pets.forEach { arr.put(it) } }
+        val childAgesArr = JSONArray().also { arr -> answers.childAges.forEach { arr.put(it) } }
+        val body = JSONObject()
+            .put("householdType", answers.householdType)
+            .put("homeType", answers.homeType)
+            .put("cookingStyle", answers.cookingStyle)
+            .put("choreSplit", answers.choreSplit)
+            .put("gamificationStyle", answers.gamificationStyle)
+            .put("appliances", appliancesArr)
+            .put("pets", petsArr)
+            .put("childAges", childAgesArr)
+        val result = requestJson(
+            baseUrl = baseUrl,
+            path = "/api/settings/profile",
+            token = token,
+            method = "PATCH",
+            body = body
+        )
+        return buildList {
+            val arr = result.optJSONArray("suggestions")
+            if (arr != null) {
+                for (i in 0 until arr.length()) {
+                    val s = arr.optJSONObject(i) ?: continue
+                    add(MobileProfileSuggestion(
+                        id = s.optString("id"),
+                        type = s.optString("type"),
+                        templateKeys = parseStringArray(s.optJSONArray("templateKeys")),
+                        affectedCount = s.optInt("affectedCount")
+                    ))
+                }
+            }
+        }
+    }
+
+    fun acceptProfileSuggestion(baseUrl: String, token: String, suggestionId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/settings/profile/suggestions/${java.net.URLEncoder.encode(suggestionId, "UTF-8")}/accept",
+            token = token,
+            method = "POST",
+            body = JSONObject()
+        )
+    }
+
+    fun dismissProfileSuggestion(baseUrl: String, token: String, suggestionId: String) {
+        requestJson(
+            baseUrl = baseUrl,
+            path = "/api/settings/profile/suggestions/${java.net.URLEncoder.encode(suggestionId, "UTF-8")}",
+            token = token,
+            method = "DELETE",
+            body = null
         )
     }
 

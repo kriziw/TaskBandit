@@ -74,6 +74,7 @@ import type {
   TemplateTranslationLocale,
   HolidayBlock,
   OnboardingAnswers,
+  ProfileSuggestion,
 } from './types/taskbandit';
 
 const workspacePageStorageKey = 'taskbandit-active-page';
@@ -1282,6 +1283,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     choreSplit: 'shared_evenly',
   });
   const [setupWizardReopenRequested, setSetupWizardReopenRequested] = useState(false);
+  const [profileForm, setProfileForm] = useState<Partial<OnboardingAnswers>>({
+    appliances: [],
+    pets: [],
+    childAges: [],
+  });
+  const [profileSaving, setProfileSaving] = useState(false);
+  const [profileSuggestions, setProfileSuggestions] = useState<ProfileSuggestion[]>([]);
   const {
     payload,
     runtimeLogs,
@@ -1343,6 +1351,18 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
       return buildSetupWizardAnswers(draft);
     });
   }, [payload, setupWizardVisible, setupWizardReopenRequested]);
+
+  useEffect(() => {
+    if (!payload) return;
+    const answers = payload.household.settings.onboardingAnswers;
+    setProfileForm(buildSetupWizardAnswers(answers as Record<string, unknown> | null));
+    const store = payload.household.settings.profileSuggestions;
+    setProfileSuggestions(store?.pending ?? []);
+  }, [
+    payload?.household.settings.onboardingAnswers,
+    payload?.household.settings.profileSuggestions,
+  ]);
+
   const {
     settingsDraft,
     setSettingsDraft,
@@ -4904,6 +4924,61 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setOnboardingDismissed(false);
     setOnboardingManuallyOpened(true);
     setOnboardingStep('welcome');
+  }
+
+  async function handleSaveHouseholdProfile() {
+    if (!payload || !token || profileSaving) return;
+    const answers = profileForm as OnboardingAnswers;
+    if (
+      !answers.householdType ||
+      !answers.homeType ||
+      !answers.cookingStyle ||
+      !answers.choreSplit ||
+      !answers.gamificationStyle
+    ) {
+      return;
+    }
+    setProfileSaving(true);
+    try {
+      const result = await taskBanditApi.updateHouseholdProfile(token, language, answers);
+      setProfileSuggestions(result.suggestions);
+      updatePayload((p) => ({
+        ...p,
+        household: {
+          ...p.household,
+          settings: {
+            ...p.household.settings,
+            onboardingAnswers: answers as unknown as Record<string, unknown>,
+            profileSuggestions: { pending: result.suggestions, dismissed: [] },
+          },
+        },
+      }));
+      setNotice(t('profile.saved'));
+    } catch {
+      setNotice(t('common.error_generic'));
+    } finally {
+      setProfileSaving(false);
+    }
+  }
+
+  async function handleAcceptProfileSuggestion(suggestionId: string) {
+    if (!token) return;
+    try {
+      await taskBanditApi.acceptProfileSuggestion(token, language, suggestionId);
+      setProfileSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
+    } catch {
+      setNotice(t('common.error_generic'));
+    }
+  }
+
+  async function handleDismissProfileSuggestion(suggestionId: string) {
+    if (!token) return;
+    try {
+      await taskBanditApi.dismissProfileSuggestion(token, language, suggestionId);
+      setProfileSuggestions((prev) => prev.filter((s) => s.id !== suggestionId));
+    } catch {
+      setNotice(t('common.error_generic'));
+    }
   }
 
   function handleOpenSetupWizard() {
@@ -11928,6 +12003,158 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   </div>
                 </dialog>
               )}
+
+              {payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent' ? (
+                <article className="panel page-panel page-settings">
+                  <div className="section-heading">
+                    <h2>{t('profile.household_profile')}</h2>
+                  </div>
+
+                  {/* Suggestion banners */}
+                  {profileSuggestions.map((s) => (
+                    <div key={s.id} className="profile-suggestion-banner">
+                      <span>
+                        {s.type === 'add'
+                          ? t('profile.suggestion_add', { count: String(s.affectedCount) })
+                          : t('profile.suggestion_archive', { count: String(s.affectedCount) })}
+                      </span>
+                      <div className="profile-suggestion-actions">
+                        <button
+                          type="button"
+                          className="primary-button profile-suggestion-accept"
+                          onClick={() => void handleAcceptProfileSuggestion(s.id)}
+                        >
+                          {t('common.accept')}
+                        </button>
+                        <button
+                          type="button"
+                          className="ghost-button"
+                          onClick={() => void handleDismissProfileSuggestion(s.id)}
+                        >
+                          {t('common.dismiss')}
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">{t('wizard.household_type.question')}</label>
+                    <select
+                      className="settings-select"
+                      value={profileForm.householdType ?? ''}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          householdType: e.target.value as OnboardingAnswers['householdType'],
+                        }))
+                      }
+                    >
+                      <option value="solo">{t('wizard.household_type.solo')}</option>
+                      <option value="couple">{t('wizard.household_type.couple')}</option>
+                      <option value="family">{t('wizard.household_type.family')}</option>
+                      <option value="flatmates">{t('wizard.household_type.flatmates')}</option>
+                    </select>
+                  </div>
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">{t('wizard.home_type.question')}</label>
+                    <select
+                      className="settings-select"
+                      value={profileForm.homeType ?? ''}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          homeType: e.target.value as OnboardingAnswers['homeType'],
+                        }))
+                      }
+                    >
+                      <option value="flat">{t('wizard.home_type.flat')}</option>
+                      <option value="house">{t('wizard.home_type.house')}</option>
+                      <option value="house_garden">{t('wizard.home_type.house_garden')}</option>
+                      <option value="house_garden_lawn">
+                        {t('wizard.home_type.house_garden_lawn')}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">{t('wizard.appliances.question')}</label>
+                    <div className="settings-checkbox-group">
+                      {(
+                        ['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const
+                      ).map((a) => (
+                        <label key={a} className="settings-checkbox-label">
+                          <input
+                            type="checkbox"
+                            checked={(profileForm.appliances ?? []).includes(a)}
+                            onChange={(e) =>
+                              setProfileForm((f) => ({
+                                ...f,
+                                appliances: e.target.checked
+                                  ? [...(f.appliances ?? []), a]
+                                  : (f.appliances ?? []).filter((x) => x !== a),
+                              }))
+                            }
+                          />
+                          {t(`wizard.appliances.${a}`)}
+                        </label>
+                      ))}
+                    </div>
+                  </div>
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">{t('wizard.cooking.question')}</label>
+                    <select
+                      className="settings-select"
+                      value={profileForm.cookingStyle ?? ''}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          cookingStyle: e.target.value as OnboardingAnswers['cookingStyle'],
+                        }))
+                      }
+                    >
+                      <option value="one_person">{t('wizard.cooking.one_person')}</option>
+                      <option value="take_turns">{t('wizard.cooking.take_turns')}</option>
+                      <option value="mostly_takeout">{t('wizard.cooking.mostly_takeout')}</option>
+                      <option value="mixed">{t('wizard.cooking.mixed')}</option>
+                    </select>
+                  </div>
+
+                  <div className="settings-field-group">
+                    <label className="settings-label">{t('wizard.chore_split.question')}</label>
+                    <select
+                      className="settings-select"
+                      value={profileForm.choreSplit ?? ''}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          choreSplit: e.target.value as OnboardingAnswers['choreSplit'],
+                        }))
+                      }
+                    >
+                      <option value="adults_do_most">
+                        {t('wizard.chore_split.adults_do_most')}
+                      </option>
+                      <option value="shared_evenly">{t('wizard.chore_split.shared_evenly')}</option>
+                      <option value="kids_help_simple_tasks">
+                        {t('wizard.chore_split.kids_help_simple_tasks')}
+                      </option>
+                    </select>
+                  </div>
+
+                  <div className="button-row">
+                    <button
+                      type="button"
+                      className="primary-button"
+                      disabled={profileSaving}
+                      onClick={() => void handleSaveHouseholdProfile()}
+                    >
+                      {profileSaving ? t('settings.saving') : t('settings.save')}
+                    </button>
+                  </div>
+                </article>
+              ) : null}
 
               <article className="panel page-panel page-settings">
                 <div className="section-heading">

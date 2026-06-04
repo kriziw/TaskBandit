@@ -1175,6 +1175,21 @@ private fun TaskBanditApp(
                     },
                     onDownloadSettingsLogs = ::downloadSettingsLogs,
                     onRedoOnboarding = ::openSetupWizardForRedo,
+                    onSaveHouseholdProfile = { answers ->
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.saveHouseholdProfile(answers, baseUrl, token)
+                        }
+                    },
+                    onAcceptProfileSuggestion = { suggestionId ->
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.acceptProfileSuggestion(suggestionId, baseUrl, token)
+                        }
+                    },
+                    onDismissProfileSuggestion = { suggestionId ->
+                        withAuth { baseUrl, token ->
+                            dashboardViewModel.dismissProfileSuggestion(suggestionId, baseUrl, token)
+                        }
+                    },
                     onLogout = ::logout,
                     onApprove = { instanceId ->
                         withAuth { baseUrl, token ->

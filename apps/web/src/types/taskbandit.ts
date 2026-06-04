@@ -334,6 +334,19 @@ export type HouseholdSettings = {
   jointCompletionHelperBonus: number;
   jointCompletionOpenJoin: boolean;
   onboardingAnswers: Record<string, unknown> | null;
+  profileSuggestions: ProfileSuggestionsStore | null;
+};
+
+export type ProfileSuggestion = {
+  id: string;
+  type: 'add' | 'archive';
+  templateKeys: string[];
+  affectedCount: number;
+};
+
+export type ProfileSuggestionsStore = {
+  pending: ProfileSuggestion[];
+  dismissed: string[];
 };
 
 export type NotificationPreferences = {
