@@ -1,11 +1,6 @@
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { ArrayMaxSize, IsArray, IsEnum, IsIn, IsOptional } from 'class-validator';
-import {
-  ChoreSplit,
-  GamificationStyle,
-  HomeType,
-  HouseholdType,
-} from './submit-onboarding.dto';
+import { ChoreSplit, GamificationStyle, HomeType, HouseholdType } from './submit-onboarding.dto';
 
 const VALID_APPLIANCES = ['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const;
 const VALID_PETS = ['none', 'dog', 'cat', 'other'] as const;

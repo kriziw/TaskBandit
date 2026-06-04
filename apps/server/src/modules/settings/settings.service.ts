@@ -726,7 +726,12 @@ export class SettingsService {
     if (addedKeys.length > 0) {
       const id = `add:${addedKeys.sort().join(',')}`;
       if (!alreadyDismissed.includes(id)) {
-        rawSuggestions.push({ id, type: 'add', templateKeys: addedKeys, affectedCount: addedKeys.length });
+        rawSuggestions.push({
+          id,
+          type: 'add',
+          templateKeys: addedKeys,
+          affectedCount: addedKeys.length,
+        });
       }
     }
 
