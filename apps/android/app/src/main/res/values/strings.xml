@@ -271,6 +271,7 @@
     <string name="mobile_settings_server_url">Server URL</string>
     <string name="mobile_settings_commit">Commit</string>
     <string name="mobile_settings_actions">Session</string>
+    <string name="mobile_settings_redo_onboarding">Redo setup survey</string>
     <string name="mobile_settings_download_logs">Download logs</string>
     <string name="mobile_settings_logs_saved">Settings logs saved.</string>
     <string name="mobile_settings_unknown">Unknown</string>
@@ -542,6 +543,7 @@
     <string name="mobile_template_field_description">Description</string>
     <string name="mobile_template_field_difficulty">Difficulty</string>
     <string name="mobile_template_field_assignment">Assignment strategy</string>
+    <string name="mobile_template_field_audience">Audience</string>
     <string name="mobile_template_field_default_locale">Default locale</string>
     <string name="mobile_template_section_recurrence">Recurrence</string>
     <string name="mobile_template_field_recurrence_type">Recurrence type</string>
@@ -566,6 +568,9 @@
     <string name="mobile_template_difficulty_easy">Easy</string>
     <string name="mobile_template_difficulty_medium">Medium</string>
     <string name="mobile_template_difficulty_hard">Hard</string>
+    <string name="mobile_template_audience_all">All</string>
+    <string name="mobile_template_audience_adults">Adults</string>
+    <string name="mobile_template_audience_children">Children</string>
     <string name="mobile_template_recurrence_none">No recurrence</string>
     <string name="mobile_template_recurrence_daily">Daily</string>
     <string name="mobile_template_recurrence_weekly">Weekly</string>
@@ -636,13 +641,19 @@
     <string name="wizard_step">Question %1$d of %2$d</string>
     <string name="wizard_next">Next</string>
     <string name="wizard_back">Back</string>
-    <string name="wizard_finish">Start using TaskBandit!</string>
+    <string name="wizard_finish">Finish setup</string>
     <string name="wizard_skip">Skip for now</string>
     <string name="wizard_household_type_question">Who lives in your home?</string>
     <string name="wizard_household_type_solo">Just me</string>
     <string name="wizard_household_type_couple">Me and my partner</string>
     <string name="wizard_household_type_family">Family with kids</string>
     <string name="wizard_household_type_flatmates">Housemates or shared house</string>
+    <string name="wizard_child_ages_question">What are the child age bands?</string>
+    <string name="wizard_child_ages_hint">Select every age band that applies.</string>
+    <string name="wizard_child_ages_under_5">Under 5</string>
+    <string name="wizard_child_ages_5_10">5 to 10</string>
+    <string name="wizard_child_ages_11_15">11 to 15</string>
+    <string name="wizard_child_ages_16_plus">16 and up</string>
     <string name="wizard_home_type_question">What kind of place do you live in?</string>
     <string name="wizard_home_type_flat">Flat or apartment</string>
     <string name="wizard_home_type_house">House (no outside space)</string>
@@ -660,6 +671,10 @@
     <string name="wizard_pets_dog">Dog</string>
     <string name="wizard_pets_cat">Cat</string>
     <string name="wizard_pets_other">Other animals</string>
+    <string name="wizard_chore_split_question">How should chores usually be split?</string>
+    <string name="wizard_chore_split_adults_do_most">Adults do most chores</string>
+    <string name="wizard_chore_split_shared_evenly">Shared evenly</string>
+    <string name="wizard_chore_split_kids_help_simple_tasks">Kids help with simple tasks</string>
     <string name="wizard_cooking_question">How does cooking usually work in your home?</string>
     <string name="wizard_cooking_one_person">One person does most of the cooking</string>
     <string name="wizard_cooking_take_turns">We take turns cooking</string>
@@ -671,4 +686,3 @@
     <string name="wizard_gamification_full">Go all in — points, prizes, badges and rewards</string>
     <string name="wizard_gamification_default">Let TaskBandit pick the defaults</string>
 </resources>
-

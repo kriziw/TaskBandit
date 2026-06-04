@@ -578,6 +578,99 @@ h4,
   scroll-margin-top: 110px;
 }
 
+.setup-wizard-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 80;
+  display: grid;
+  place-items: center;
+  padding: 16px;
+  background: rgba(24, 34, 47, 0.55);
+  backdrop-filter: blur(4px);
+}
+
+.setup-wizard-panel {
+  width: min(760px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px);
+  overflow: auto;
+  padding: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.38);
+  background:
+    linear-gradient(145deg, rgba(255, 252, 246, 0.98), rgba(247, 238, 222, 0.98)),
+    var(--mist);
+  box-shadow: 0 30px 80px rgba(10, 17, 28, 0.34);
+}
+
+.setup-wizard-header {
+  position: relative;
+  display: grid;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.setup-wizard-header h2,
+.setup-wizard-body h3 {
+  margin: 0;
+}
+
+.setup-wizard-step-label {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.92rem;
+}
+
+.setup-wizard-progress {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.setup-wizard-dot {
+  width: 18px;
+  height: 6px;
+  border-radius: 999px;
+  background: rgba(36, 48, 67, 0.16);
+}
+
+.setup-wizard-dot.active {
+  background: rgba(115, 217, 179, 0.82);
+}
+
+.setup-wizard-body {
+  display: grid;
+  gap: 12px;
+}
+
+.setup-wizard-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.setup-wizard-hint {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.95rem;
+}
+
+.setup-wizard-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.setup-wizard-close-button {
+  position: absolute;
+  top: 0;
+  right: 0;
+  padding: 4px 8px;
+  line-height: 1;
+}
+
 .eyebrow {
   display: inline-flex;
   margin: 0 0 12px;

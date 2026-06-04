@@ -357,10 +357,17 @@ private fun TaskBanditApp(
     var onboardingDeepLink by remember { mutableStateOf<MobileOnboardingDeepLink?>(null) }
     var onboardingInvite by remember { mutableStateOf<MobileResolvedInvite?>(null) }
     var setupWizardStep by remember { mutableIntStateOf(0) }
+    var setupWizardRedoRequested by rememberSaveable { mutableStateOf(false) }
     var setupWizardAnswers by remember {
         mutableStateOf(MobileOnboardingAnswers(
-            householdType = "", homeType = "", appliances = emptyList(),
-            pets = emptyList(), cookingStyle = "", gamificationStyle = ""
+            householdType = "",
+            homeType = "",
+            appliances = emptyList(),
+            pets = emptyList(),
+            cookingStyle = "",
+            choreSplit = "shared_evenly",
+            gamificationStyle = "",
+            childAges = emptyList()
         ))
     }
     var authProviders by remember { mutableStateOf<MobileAuthProviders?>(null) }
@@ -411,6 +418,19 @@ private fun TaskBanditApp(
         setupWizardAnswers = dashboardDraft
     }
 
+    fun normalizedSetupWizardAnswers(base: MobileOnboardingAnswers?): MobileOnboardingAnswers {
+        return MobileOnboardingAnswers(
+            householdType = base?.householdType?.ifBlank { "family" } ?: "family",
+            homeType = base?.homeType?.ifBlank { "house" } ?: "house",
+            appliances = base?.appliances.orEmpty(),
+            pets = base?.pets.orEmpty(),
+            cookingStyle = base?.cookingStyle?.ifBlank { "mixed" } ?: "mixed",
+            choreSplit = base?.choreSplit?.ifBlank { "shared_evenly" } ?: "shared_evenly",
+            gamificationStyle = base?.gamificationStyle?.ifBlank { "default" } ?: "default",
+            childAges = base?.childAges.orEmpty()
+        )
+    }
+
     // ── Local helpers ─────────────────────────────────────────────────────────
 
     fun normalizedServerUrl() = serverUrl.trim().ifBlank { defaultApiBaseUrl }
@@ -441,6 +461,18 @@ private fun TaskBanditApp(
         registrationDisplayName = ""
         registrationEmail = ""
         registrationPassword = ""
+        setupWizardAnswers = MobileOnboardingAnswers(
+            householdType = "",
+            homeType = "",
+            appliances = emptyList(),
+            pets = emptyList(),
+            cookingStyle = "",
+            choreSplit = "shared_evenly",
+            gamificationStyle = "",
+            childAges = emptyList()
+        )
+        setupWizardRedoRequested = false
+        setupWizardStep = 0
         clearAuthProviderState()
         dashboardViewModel.setErrorMessage(null)
         dashboardViewModel.clearNoticeMessage()
@@ -480,6 +512,12 @@ private fun TaskBanditApp(
             }
             isAuthProvidersLoading = false
         }
+    }
+
+    fun openSetupWizardForRedo() {
+        setupWizardStep = 0
+        setupWizardAnswers = normalizedSetupWizardAnswers(dashboardDraft ?: setupWizardAnswers)
+        setupWizardRedoRequested = true
     }
 
     // ── Activity result launchers ─────────────────────────────────────────────
@@ -1040,9 +1078,12 @@ private fun TaskBanditApp(
                     }
                 )
             } else if (
-                dashboardState.dashboard != null &&
-                !dashboardState.dashboard!!.onboardingCompleted &&
-                (dashboardState.dashboard!!.user.role == "admin" || dashboardState.dashboard!!.user.role == "parent")
+                setupWizardRedoRequested ||
+                (
+                    dashboardState.dashboard != null &&
+                    !dashboardState.dashboard!!.onboardingCompleted &&
+                    (dashboardState.dashboard!!.user.role == "admin" || dashboardState.dashboard!!.user.role == "parent")
+                )
             ) {
                 OnboardingWizardScreen(
                     step = setupWizardStep,
@@ -1060,17 +1101,20 @@ private fun TaskBanditApp(
                         withAuth { baseUrl, token ->
                             dashboardViewModel.submitOnboarding(baseUrl, token, finalAnswers)
                         }
+                        setupWizardRedoRequested = false
                     },
                     onSkip = {
                         val defaults = setupWizardAnswers.copy(
                             householdType = setupWizardAnswers.householdType.ifBlank { "family" },
                             homeType = setupWizardAnswers.homeType.ifBlank { "house" },
+                            choreSplit = setupWizardAnswers.choreSplit.ifBlank { "shared_evenly" },
                             cookingStyle = setupWizardAnswers.cookingStyle.ifBlank { "mixed" },
                             gamificationStyle = setupWizardAnswers.gamificationStyle.ifBlank { "default" }
                         )
                         withAuth { baseUrl, token ->
                             dashboardViewModel.submitOnboarding(baseUrl, token, defaults)
                         }
+                        setupWizardRedoRequested = false
                     }
                 )
             } else {
@@ -1130,6 +1174,7 @@ private fun TaskBanditApp(
                         }
                     },
                     onDownloadSettingsLogs = ::downloadSettingsLogs,
+                    onRedoOnboarding = ::openSetupWizardForRedo,
                     onLogout = ::logout,
                     onApprove = { instanceId ->
                         withAuth { baseUrl, token ->
@@ -1389,4 +1434,3 @@ private fun createReleaseKey(release: MobileReleaseInfo): String =
 
 internal fun formatReleaseLabel(release: MobileReleaseInfo): String =
     "v${release.releaseVersion} (build ${release.buildNumber})"
-

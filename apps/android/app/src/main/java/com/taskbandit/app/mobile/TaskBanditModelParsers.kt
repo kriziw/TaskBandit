@@ -355,6 +355,7 @@ internal fun parseFullTemplate(item: JSONObject): MobileChoreTemplate {
         groupTitle = item.optString("groupTitle").ifBlank { "General" },
         title = item.optString("title"),
         description = item.optString("description"),
+        audience = item.optString("audience").ifBlank { "all" },
         difficulty = item.optString("difficulty").ifBlank { "medium" },
         basePoints = item.optInt("basePoints"),
         assignmentStrategy = item.optString("assignmentStrategy").ifBlank { "round_robin" },
@@ -456,4 +457,3 @@ internal fun parseHolidayBlock(json: JSONObject): MobileHolidayBlock = MobileHol
     status = json.optString("status"),
     appliedAt = json.optString("appliedAt").ifBlank { null }
 )
-

@@ -210,6 +210,7 @@
     <string name="mobile_settings_server_url">Szerver URL</string>
     <string name="mobile_settings_commit">Commit</string>
     <string name="mobile_settings_actions">Munkamenet</string>
+    <string name="mobile_settings_redo_onboarding">Beallitasok ujrainditasa</string>
     <string name="mobile_settings_unknown">Ismeretlen</string>
     <string name="mobile_settings_plan_features">Csomag es funkciok</string>
     <string name="mobile_plan_package_name">Csomag neve</string>
@@ -542,13 +543,19 @@
     <string name="wizard_step">%1$d. kérdés a %2$d-ból</string>
     <string name="wizard_next">Tovább</string>
     <string name="wizard_back">Vissza</string>
-    <string name="wizard_finish">Induljon a TaskBandit!</string>
+    <string name="wizard_finish">Befejezés</string>
     <string name="wizard_skip">Kihagyom most</string>
     <string name="wizard_household_type_question">Kik laknak nálatok?</string>
     <string name="wizard_household_type_solo">Csak én</string>
     <string name="wizard_household_type_couple">Én és a párom</string>
     <string name="wizard_household_type_family">Család gyerekekkel</string>
     <string name="wizard_household_type_flatmates">Társbérlet vagy közös lakás</string>
+    <string name="wizard_child_ages_question">Milyen korcsoportok vannak a gyerekekn?l?</string>
+    <string name="wizard_child_ages_hint">Jel?ld be az ?sszes megfelel?t.</string>
+    <string name="wizard_child_ages_under_5">5 ?v alatt</string>
+    <string name="wizard_child_ages_5_10">5-10 ?v</string>
+    <string name="wizard_child_ages_11_15">11-15 ?v</string>
+    <string name="wizard_child_ages_16_plus">16 ?v felett</string>
     <string name="wizard_home_type_question">Milyen otthonban laktok?</string>
     <string name="wizard_home_type_flat">Lakás vagy apartman</string>
     <string name="wizard_home_type_house">Ház (kert nélkül)</string>
@@ -566,6 +573,10 @@
     <string name="wizard_pets_dog">Kutya</string>
     <string name="wizard_pets_cat">Macska</string>
     <string name="wizard_pets_other">Más állat</string>
+    <string name="wizard_chore_split_question">Hogyan szoktak megoszlani a feladatok?</string>
+    <string name="wizard_chore_split_adults_do_most">A legt?bb feladatot a feln?ttek v?gzik</string>
+    <string name="wizard_chore_split_shared_evenly">Egyenl?en megosztva</string>
+    <string name="wizard_chore_split_kids_help_simple_tasks">A gyerekek egyszer? feladatokban seg?tenek</string>
     <string name="wizard_cooking_question">Hogyan megy nálatok a főzés?</string>
     <string name="wizard_cooking_one_person">Általában egy személy főz</string>
     <string name="wizard_cooking_take_turns">Felváltva főzünk</string>
@@ -577,6 +588,4 @@
     <string name="wizard_gamification_full">Teljes csomag — pontok, jutalmak, jelvények és díjak</string>
     <string name="wizard_gamification_default">A TaskBandit válassza ki az alapbeállításokat</string>
 </resources>
-
-
 

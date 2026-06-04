@@ -394,6 +394,7 @@ internal fun DashboardScreen(
     onDownloadAndInstall: (GitHubReleaseInfo) -> Unit,
     onRefresh: () -> Unit,
     onDownloadSettingsLogs: () -> Unit,
+    onRedoOnboarding: () -> Unit,
     onLogout: () -> Unit,
     onApprove: (String) -> Unit,
     onReject: (String) -> Unit,
@@ -2784,7 +2785,13 @@ internal fun DashboardScreen(
                 }
                 item {
                     SettingsSectionCard(modifier = Modifier.fillMaxWidth(), icon = Icons.Rounded.Menu, title = stringResource(R.string.mobile_settings_actions)) {
-                        SettingsSessionContent(isBusy = isBusy, onRefresh = onRefresh, onDownloadSettingsLogs = onDownloadSettingsLogs)
+                        SettingsSessionContent(
+                            isBusy = isBusy,
+                            onRefresh = onRefresh,
+                            onDownloadSettingsLogs = onDownloadSettingsLogs,
+                            onRedoOnboarding = onRedoOnboarding,
+                            canRedoOnboarding = isCreatorRole
+                        )
                     }
                 }
                 item {
@@ -3906,6 +3913,4 @@ private fun SecondaryActionRow(
         )
     }
 }
-
-
 

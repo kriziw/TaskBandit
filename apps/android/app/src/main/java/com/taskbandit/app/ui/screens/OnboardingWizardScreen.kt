@@ -25,11 +25,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import com.taskbandit.app.R
 import com.taskbandit.app.mobile.MobileOnboardingAnswers
 
-private const val TOTAL_STEPS = 6
+private const val TOTAL_STEPS = 8
 
 @Composable
 fun OnboardingWizardScreen(
@@ -71,11 +72,13 @@ fun OnboardingWizardScreen(
 
             when (step) {
                 0 -> HouseholdTypeStep(answers, onAnswersChange)
-                1 -> HomeTypeStep(answers, onAnswersChange)
-                2 -> AppliancesStep(answers, onAnswersChange)
-                3 -> PetsStep(answers, onAnswersChange)
-                4 -> CookingStep(answers, onAnswersChange)
-                5 -> GamificationStep(answers, onAnswersChange)
+                1 -> ChildAgesStep(answers, onAnswersChange)
+                2 -> HomeTypeStep(answers, onAnswersChange)
+                3 -> AppliancesStep(answers, onAnswersChange)
+                4 -> PetsStep(answers, onAnswersChange)
+                5 -> ChoreSplitStep(answers, onAnswersChange)
+                6 -> CookingStep(answers, onAnswersChange)
+                7 -> GamificationStep(answers, onAnswersChange)
             }
 
             Spacer(Modifier.weight(1f))
@@ -96,7 +99,12 @@ fun OnboardingWizardScreen(
                 }
                 if (isLastStep) {
                     Button(onClick = { onFinish(filledAnswers(answers)) }) {
-                        Text(stringResource(R.string.wizard_finish))
+                        Text(
+                            text = stringResource(R.string.wizard_finish),
+                            maxLines = 1,
+                            softWrap = false,
+                            overflow = TextOverflow.Ellipsis
+                        )
                     }
                 } else {
                     Button(onClick = onNext) {
@@ -111,6 +119,7 @@ fun OnboardingWizardScreen(
 private fun filledAnswers(a: MobileOnboardingAnswers) = a.copy(
     householdType = a.householdType.ifBlank { "family" },
     homeType = a.homeType.ifBlank { "house" },
+    choreSplit = a.choreSplit.ifBlank { "shared_evenly" },
     cookingStyle = a.cookingStyle.ifBlank { "mixed" },
     gamificationStyle = a.gamificationStyle.ifBlank { "default" }
 )
@@ -175,6 +184,45 @@ private fun HomeTypeStep(
                 RadioButton(selected = answers.homeType == value, onClick = null)
                 Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
             }
+        }
+    }
+}
+
+@Composable
+private fun ChildAgesStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_child_ages_question), style = MaterialTheme.typography.titleMedium)
+    Text(
+        stringResource(R.string.wizard_child_ages_hint),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant
+    )
+    val options = listOf(
+        "under_5" to R.string.wizard_child_ages_under_5,
+        "5_10" to R.string.wizard_child_ages_5_10,
+        "11_15" to R.string.wizard_child_ages_11_15,
+        "16_plus" to R.string.wizard_child_ages_16_plus
+    )
+    options.forEach { (value, labelRes) ->
+        val checked = value in answers.childAges
+        Row(
+            Modifier
+                .fillMaxWidth()
+                .selectable(
+                    selected = checked,
+                    onClick = {
+                        val next = if (checked) answers.childAges - value else answers.childAges + value
+                        onChange(answers.copy(childAges = next))
+                    },
+                    role = Role.Checkbox
+                )
+                .padding(vertical = 4.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Checkbox(checked = checked, onCheckedChange = null)
+            Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
         }
     }
 }
@@ -253,6 +301,37 @@ private fun PetsStep(
         ) {
             Checkbox(checked = checked, onCheckedChange = null)
             Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
+        }
+    }
+}
+
+@Composable
+private fun ChoreSplitStep(
+    answers: MobileOnboardingAnswers,
+    onChange: (MobileOnboardingAnswers) -> Unit
+) {
+    Text(stringResource(R.string.wizard_chore_split_question), style = MaterialTheme.typography.titleMedium)
+    val options = listOf(
+        "adults_do_most" to R.string.wizard_chore_split_adults_do_most,
+        "shared_evenly" to R.string.wizard_chore_split_shared_evenly,
+        "kids_help_simple_tasks" to R.string.wizard_chore_split_kids_help_simple_tasks
+    )
+    Column(Modifier.selectableGroup()) {
+        options.forEach { (value, labelRes) ->
+            Row(
+                Modifier
+                    .fillMaxWidth()
+                    .selectable(
+                        selected = answers.choreSplit == value,
+                        onClick = { onChange(answers.copy(choreSplit = value)) },
+                        role = Role.RadioButton
+                    )
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                RadioButton(selected = answers.choreSplit == value, onClick = null)
+                Text(stringResource(labelRes), modifier = Modifier.padding(start = 8.dp))
+            }
         }
     }
 }

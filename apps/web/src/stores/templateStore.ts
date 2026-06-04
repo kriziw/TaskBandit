@@ -8,6 +8,7 @@ export function createEmptyTemplateForm(
 ): TemplateFormState {
   return {
     defaultLocale,
+    audience: 'all',
     groupTitle: '',
     title: '',
     description: '',

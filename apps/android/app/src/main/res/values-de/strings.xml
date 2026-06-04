@@ -219,6 +219,7 @@
     <string name="mobile_settings_server_url">Server-URL</string>
     <string name="mobile_settings_commit">Commit</string>
     <string name="mobile_settings_actions">Sitzung</string>
+    <string name="mobile_settings_redo_onboarding">Einrichtungsumfrage erneut starten</string>
     <string name="mobile_settings_unknown">Unbekannt</string>
     <string name="mobile_settings_plan_features">Tarif und Funktionen</string>
     <string name="mobile_plan_package_name">Paketname</string>
@@ -542,13 +543,19 @@
     <string name="wizard_step">Frage %1$d von %2$d</string>
     <string name="wizard_next">Weiter</string>
     <string name="wizard_back">Zurueck</string>
-    <string name="wizard_finish">TaskBandit starten!</string>
+    <string name="wizard_finish">Fertig</string>
     <string name="wizard_skip">Erstmal ueberspringen</string>
     <string name="wizard_household_type_question">Wer wohnt bei euch?</string>
     <string name="wizard_household_type_solo">Nur ich</string>
     <string name="wizard_household_type_couple">Ich und mein Partner / meine Partnerin</string>
     <string name="wizard_household_type_family">Familie mit Kindern</string>
     <string name="wizard_household_type_flatmates">WG oder geteilte Wohnung</string>
+    <string name="wizard_child_ages_question">Welche Altersgruppen haben die Kinder?</string>
+    <string name="wizard_child_ages_hint">Waehle alle passenden Altersgruppen aus.</string>
+    <string name="wizard_child_ages_under_5">Unter 5</string>
+    <string name="wizard_child_ages_5_10">5 bis 10</string>
+    <string name="wizard_child_ages_11_15">11 bis 15</string>
+    <string name="wizard_child_ages_16_plus">16 und aelter</string>
     <string name="wizard_home_type_question">Was fuer eine Wohnsituation habt ihr?</string>
     <string name="wizard_home_type_flat">Wohnung oder Apartment</string>
     <string name="wizard_home_type_house">Haus (ohne Aussenbereich)</string>
@@ -566,6 +573,10 @@
     <string name="wizard_pets_dog">Hund</string>
     <string name="wizard_pets_cat">Katze</string>
     <string name="wizard_pets_other">Andere Tiere</string>
+    <string name="wizard_chore_split_question">Wie sollen Aufgaben normalerweise aufgeteilt werden?</string>
+    <string name="wizard_chore_split_adults_do_most">Erwachsene erledigen die meisten Aufgaben</string>
+    <string name="wizard_chore_split_shared_evenly">Gleich verteilt</string>
+    <string name="wizard_chore_split_kids_help_simple_tasks">Kinder helfen bei einfachen Aufgaben</string>
     <string name="wizard_cooking_question">Wie laeuft das Kochen bei euch ab?</string>
     <string name="wizard_cooking_one_person">Meistens kocht eine Person</string>
     <string name="wizard_cooking_take_turns">Wir wechseln uns beim Kochen ab</string>
@@ -577,9 +588,6 @@
     <string name="wizard_gamification_full">Voll dabei — Punkte, Praemien, Abzeichen und Belohnungen</string>
     <string name="wizard_gamification_default">TaskBandit die Standardeinstellungen waehlen lassen</string>
 </resources>
-
-
-
 
 
 

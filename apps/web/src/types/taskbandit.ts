@@ -265,6 +265,10 @@ export type UnlockedAchievement = {
 
 export type LeaderboardResetMode = 'never' | 'weekly' | 'monthly' | 'quarterly';
 
+export type TemplateAudience = 'all' | 'adults' | 'children';
+
+export type ChoreSplit = 'adults_do_most' | 'shared_evenly' | 'kids_help_simple_tasks';
+
 export type OnboardingAnswers = {
   householdType: 'solo' | 'couple' | 'family' | 'flatmates';
   childAges?: ('under_5' | '5_10' | '11_15' | '16_plus')[];
@@ -272,6 +276,7 @@ export type OnboardingAnswers = {
   appliances: ('dishwasher' | 'tumble_dryer' | 'washing_machine' | 'robot_vacuum')[];
   pets: ('none' | 'dog' | 'cat' | 'other')[];
   cookingStyle: 'one_person' | 'take_turns' | 'mostly_takeout' | 'mixed';
+  choreSplit: ChoreSplit;
   gamificationStyle: 'track_only' | 'light' | 'full' | 'default';
 };
 
@@ -597,6 +602,7 @@ export type ChoreTemplate = {
   title: string;
   description: string;
   defaultLocale: TemplateTranslationLocale;
+  audience: TemplateAudience;
   translations: LocalizedTemplateTranslation[];
   difficulty: Difficulty;
   basePoints: number;
@@ -767,6 +773,7 @@ export type CreateChoreTemplateInput = {
   groupTitle: string;
   title: string;
   description: string;
+  audience?: TemplateAudience;
   translations?: LocalizedTemplateTranslation[];
   difficulty: Difficulty;
   assignmentStrategy: AssignmentStrategy;
@@ -832,6 +839,7 @@ export type BootstrapStarterTemplateOption = {
   groupTitle: string;
   title: string;
   description: string;
+  audience: TemplateAudience;
   recommended: boolean;
   followUps: Array<{
     key: string;
