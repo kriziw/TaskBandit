@@ -496,9 +496,9 @@ internal fun TemplateEditorScreen(
             modifier = Modifier.fillMaxSize().padding(innerPadding),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
+        ) lazyColumn@{
             // ── Locale tab row ──
-            item {
+            this@lazyColumn.item {
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     listOf("en", "de", "hu").forEach { locale ->
                         val isSelected = editingLocale == locale
@@ -512,7 +512,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 1: Core fields ──
-            item {
+            this@lazyColumn.item {
                 Card(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(16.dp)) {
                     Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         OutlinedTextField(
@@ -658,7 +658,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 2: Recurrence (collapsible) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_recurrence),
                     expanded = recurrenceExpanded,
@@ -749,7 +749,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 3: Checklist (collapsible) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_checklist),
                     expanded = checklistExpanded,
@@ -790,7 +790,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 4: Variants (collapsible, collapsed by default) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_variants),
                     expanded = variantsExpanded,
@@ -833,7 +833,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Section 5: Follow-up dependencies (collapsible, collapsed by default) ──
-            item {
+            this@lazyColumn.item {
                 TemplateEditorSection(
                     title = stringResource(R.string.mobile_template_section_followups),
                     expanded = followupsExpanded,
@@ -917,7 +917,7 @@ internal fun TemplateEditorScreen(
             }
 
             // ── Save button ──
-            item {
+            this@lazyColumn.item {
                 Button(
                     onClick = {
                         if (editTitle.isNotBlank() && editGroupTitle.isNotBlank()) {
@@ -933,6 +933,8 @@ internal fun TemplateEditorScreen(
             }
         }
     }
+}
+
 }
 
 @Composable

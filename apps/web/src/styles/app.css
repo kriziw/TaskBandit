@@ -597,8 +597,7 @@ h4,
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.38);
   background:
-    linear-gradient(145deg, rgba(255, 252, 246, 0.98), rgba(247, 238, 222, 0.98)),
-    var(--mist);
+    linear-gradient(145deg, rgba(255, 252, 246, 0.98), rgba(247, 238, 222, 0.98)), var(--mist);
   box-shadow: 0 30px 80px rgba(10, 17, 28, 0.34);
 }
 

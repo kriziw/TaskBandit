@@ -1293,7 +1293,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     clearDashboard,
   } = useDashboardStore();
 
-  function buildSetupWizardAnswers(source?: Record<string, unknown> | null): Partial<OnboardingAnswers> {
+  function buildSetupWizardAnswers(
+    source?: Record<string, unknown> | null,
+  ): Partial<OnboardingAnswers> {
     if (!source || typeof source !== 'object') {
       return { appliances: [], pets: [], childAges: [], choreSplit: 'shared_evenly' };
     }
@@ -1309,10 +1311,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
 
   const setupWizardVisible = Boolean(
     payload &&
-      ((setupWizardReopenRequested ||
-        !payload.household.settings.onboardingCompleted) &&
-        (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
-        workspaceVariant === 'client'),
+    (setupWizardReopenRequested || !payload.household.settings.onboardingCompleted) &&
+    (payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') &&
+    workspaceVariant === 'client',
   );
 
   useEffect(() => {
@@ -3292,19 +3293,17 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
         render: () => (
           <fieldset>
             <legend>{t('wizard.chore_split.question')}</legend>
-            {(['adults_do_most', 'shared_evenly', 'kids_help_simple_tasks'] as const).map(
-              (v) => (
-                <label key={v} className="setup-wizard-option">
-                  <input
-                    type="radio"
-                    name="choreSplit"
-                    checked={setupWizardAnswers.choreSplit === v}
-                    onChange={() => setSetupWizardAnswers((a) => ({ ...a, choreSplit: v }))}
-                  />
-                  {t(`wizard.chore_split.${v}`)}
-                </label>
-              ),
-            )}
+            {(['adults_do_most', 'shared_evenly', 'kids_help_simple_tasks'] as const).map((v) => (
+              <label key={v} className="setup-wizard-option">
+                <input
+                  type="radio"
+                  name="choreSplit"
+                  checked={setupWizardAnswers.choreSplit === v}
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, choreSplit: v }))}
+                />
+                {t(`wizard.chore_split.${v}`)}
+              </label>
+            ))}
           </fieldset>
         ),
       },
@@ -3342,9 +3341,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                   type="radio"
                   name="gamificationStyle"
                   checked={setupWizardAnswers.gamificationStyle === v}
-                  onChange={() =>
-                    setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))
-                  }
+                  onChange={() => setSetupWizardAnswers((a) => ({ ...a, gamificationStyle: v }))}
                 />
                 {t(`wizard.gamification.${v}`)}
               </label>
@@ -3357,10 +3354,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     return steps;
   }, [setupWizardAnswers, t]);
 
-  const setupWizardStepIndex = Math.max(
-    0,
-    Math.min(setupWizardStep, setupWizardSteps.length - 1),
-  );
+  const setupWizardStepIndex = Math.max(0, Math.min(setupWizardStep, setupWizardSteps.length - 1));
   const currentSetupWizardStep = setupWizardSteps[setupWizardStepIndex];
 
   useEffect(() => {
@@ -6909,7 +6903,9 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 {setupWizardSteps.map((step, index) => (
                   <span
                     key={step.key}
-                    className={'setup-wizard-dot ' + (setupWizardStepIndex >= index ? 'active' : '')}
+                    className={
+                      'setup-wizard-dot ' + (setupWizardStepIndex >= index ? 'active' : '')
+                    }
                   />
                 ))}
               </div>
@@ -6930,9 +6926,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </button>
               ) : null}
             </header>
-            <div className="setup-wizard-body">
-              {currentSetupWizardStep.render()}
-            </div>
+            <div className="setup-wizard-body">{currentSetupWizardStep.render()}</div>
             <footer className="setup-wizard-footer">
               {setupWizardStepIndex > 0 && (
                 <button
@@ -11948,7 +11942,11 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </ul>
                 {payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent' ? (
                   <div className="button-row">
-                    <button className="primary-button" type="button" onClick={handleOpenSetupWizard}>
+                    <button
+                      className="primary-button"
+                      type="button"
+                      onClick={handleOpenSetupWizard}
+                    >
                       {t('wizard.redo_setup')}
                     </button>
                   </div>

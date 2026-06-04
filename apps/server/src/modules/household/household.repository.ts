@@ -5735,8 +5735,7 @@ export class HouseholdRepository {
           return (
             [...eligibleMembers].sort((left, right) =>
               this.compareMemberLoad(left, right, loadByUserId),
-            )[0]
-              ?.id ?? null
+            )[0]?.id ?? null
           );
         }
 
@@ -5747,8 +5746,7 @@ export class HouseholdRepository {
           return (
             [...eligibleMembers].sort((left, right) =>
               this.compareMemberLoad(left, right, loadByUserId),
-            )[0]
-              ?.id ?? null
+            )[0]?.id ?? null
           );
         }
 
@@ -8011,11 +8009,10 @@ export class HouseholdRepository {
     const definitions = getStarterTemplateDefinitionsByKey(selectedTemplateKeys);
 
     await this.prisma.$transaction(async (tx) => {
-      const seededTemplates = await tx.choreTemplate
-        .findMany({
-          where: { householdId: input.householdId, catalogKey: { not: null } },
-          select: { id: true, catalogKey: true },
-        });
+      const seededTemplates = await tx.choreTemplate.findMany({
+        where: { householdId: input.householdId, catalogKey: { not: null } },
+        select: { id: true, catalogKey: true },
+      });
       const seededTemplateIds = seededTemplates.map((template) => template.id);
       const seededTemplateCatalogKeyById = new Map(
         seededTemplates
