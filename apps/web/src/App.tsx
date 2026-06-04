@@ -1358,7 +1358,10 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
     setProfileForm(buildSetupWizardAnswers(answers as Record<string, unknown> | null));
     const store = payload.household.settings.profileSuggestions;
     setProfileSuggestions(store?.pending ?? []);
-  }, [payload?.household.settings.onboardingAnswers, payload?.household.settings.profileSuggestions]);
+  }, [
+    payload?.household.settings.onboardingAnswers,
+    payload?.household.settings.profileSuggestions,
+  ]);
 
   const {
     settingsDraft,
@@ -4926,7 +4929,13 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
   async function handleSaveHouseholdProfile() {
     if (!payload || !token || profileSaving) return;
     const answers = profileForm as OnboardingAnswers;
-    if (!answers.householdType || !answers.homeType || !answers.cookingStyle || !answers.choreSplit || !answers.gamificationStyle) {
+    if (
+      !answers.householdType ||
+      !answers.homeType ||
+      !answers.cookingStyle ||
+      !answers.choreSplit ||
+      !answers.gamificationStyle
+    ) {
       return;
     }
     setProfileSaving(true);
@@ -11995,7 +12004,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </dialog>
               )}
 
-              {(payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent') ? (
+              {payload.currentUser.role === 'admin' || payload.currentUser.role === 'parent' ? (
                 <article className="panel page-panel page-settings">
                   <div className="section-heading">
                     <h2>{t('profile.household_profile')}</h2>
@@ -12033,7 +12042,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <select
                       className="settings-select"
                       value={profileForm.householdType ?? ''}
-                      onChange={(e) => setProfileForm((f) => ({ ...f, householdType: e.target.value as OnboardingAnswers['householdType'] }))}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          householdType: e.target.value as OnboardingAnswers['householdType'],
+                        }))
+                      }
                     >
                       <option value="solo">{t('wizard.household_type.solo')}</option>
                       <option value="couple">{t('wizard.household_type.couple')}</option>
@@ -12047,19 +12061,28 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <select
                       className="settings-select"
                       value={profileForm.homeType ?? ''}
-                      onChange={(e) => setProfileForm((f) => ({ ...f, homeType: e.target.value as OnboardingAnswers['homeType'] }))}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          homeType: e.target.value as OnboardingAnswers['homeType'],
+                        }))
+                      }
                     >
                       <option value="flat">{t('wizard.home_type.flat')}</option>
                       <option value="house">{t('wizard.home_type.house')}</option>
                       <option value="house_garden">{t('wizard.home_type.house_garden')}</option>
-                      <option value="house_garden_lawn">{t('wizard.home_type.house_garden_lawn')}</option>
+                      <option value="house_garden_lawn">
+                        {t('wizard.home_type.house_garden_lawn')}
+                      </option>
                     </select>
                   </div>
 
                   <div className="settings-field-group">
                     <label className="settings-label">{t('wizard.appliances.question')}</label>
                     <div className="settings-checkbox-group">
-                      {(['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const).map((a) => (
+                      {(
+                        ['dishwasher', 'tumble_dryer', 'washing_machine', 'robot_vacuum'] as const
+                      ).map((a) => (
                         <label key={a} className="settings-checkbox-label">
                           <input
                             type="checkbox"
@@ -12084,7 +12107,12 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <select
                       className="settings-select"
                       value={profileForm.cookingStyle ?? ''}
-                      onChange={(e) => setProfileForm((f) => ({ ...f, cookingStyle: e.target.value as OnboardingAnswers['cookingStyle'] }))}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          cookingStyle: e.target.value as OnboardingAnswers['cookingStyle'],
+                        }))
+                      }
                     >
                       <option value="one_person">{t('wizard.cooking.one_person')}</option>
                       <option value="take_turns">{t('wizard.cooking.take_turns')}</option>
@@ -12098,11 +12126,20 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                     <select
                       className="settings-select"
                       value={profileForm.choreSplit ?? ''}
-                      onChange={(e) => setProfileForm((f) => ({ ...f, choreSplit: e.target.value as OnboardingAnswers['choreSplit'] }))}
+                      onChange={(e) =>
+                        setProfileForm((f) => ({
+                          ...f,
+                          choreSplit: e.target.value as OnboardingAnswers['choreSplit'],
+                        }))
+                      }
                     >
-                      <option value="adults_do_most">{t('wizard.chore_split.adults_do_most')}</option>
+                      <option value="adults_do_most">
+                        {t('wizard.chore_split.adults_do_most')}
+                      </option>
                       <option value="shared_evenly">{t('wizard.chore_split.shared_evenly')}</option>
-                      <option value="kids_help_simple_tasks">{t('wizard.chore_split.kids_help_simple_tasks')}</option>
+                      <option value="kids_help_simple_tasks">
+                        {t('wizard.chore_split.kids_help_simple_tasks')}
+                      </option>
                     </select>
                   </div>
 
