@@ -281,11 +281,7 @@ export class PushDeliveryService {
     return tokenData.access_token;
   }
 
-  private httpPost(
-    url: string,
-    body: string,
-    headers: Record<string, string>,
-  ): Promise<string> {
+  private httpPost(url: string, body: string, headers: Record<string, string>): Promise<string> {
     return new Promise((resolve, reject) => {
       const parsed = new URL(url);
       const bodyBuffer = Buffer.from(body, 'utf8');
