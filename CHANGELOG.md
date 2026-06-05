@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.11.1](https://github.com/kriziw/TaskBandit/compare/v1.11.0...v1.11.1) (2026-06-04)
+
+
+### Bug Fixes
+
+* **db:** add profileSuggestions column to HouseholdSettings ([#630](https://github.com/kriziw/TaskBandit/issues/630)) ([5caa002](https://github.com/kriziw/TaskBandit/commit/5caa00249ca2c9ba602ea0e381d41a3687bcd526))
+
 ## [1.11.0](https://github.com/kriziw/TaskBandit/compare/v1.10.0...v1.11.0) (2026-06-04)
 
 
