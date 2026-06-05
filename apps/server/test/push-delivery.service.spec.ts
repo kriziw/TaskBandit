@@ -1,17 +1,17 @@
-import { NotificationDeviceProvider } from "../src/generated/prisma/client";
-import { beforeEach, describe, expect, it, vi } from "vitest";
-import { PushDeliveryService } from "../src/common/push/push-delivery.service";
+import { NotificationDeviceProvider } from '../src/generated/prisma/client';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { PushDeliveryService } from '../src/common/push/push-delivery.service';
 
 const validServiceAccountBase64 = Buffer.from(
   JSON.stringify({
-    project_id: "project-a",
-    client_email: "bot@project-a.iam.gserviceaccount.com",
-    private_key: "-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n"
+    project_id: 'project-a',
+    client_email: 'bot@project-a.iam.gserviceaccount.com',
+    private_key: '-----BEGIN PRIVATE KEY-----\\nabc\\n-----END PRIVATE KEY-----\\n',
   }),
-  "utf8"
-).toString("base64");
+  'utf8',
+).toString('base64');
 
-describe("PushDeliveryService", () => {
+describe('PushDeliveryService', () => {
   let appConfigService: {
     fcmEnabled: boolean;
     fcmServiceAccount: {
@@ -34,84 +34,81 @@ describe("PushDeliveryService", () => {
     appConfigService = {
       fcmEnabled: false,
       fcmServiceAccount: null,
-      webPushConfig: null
+      webPushConfig: null,
     };
     appLogService = {
       log: vi.fn(),
-      warn: vi.fn()
+      warn: vi.fn(),
     };
     hostedRuntimeConfigService = {
       getTenantRuntimeConfig: vi.fn().mockResolvedValue({
         hostedPushConfig: {
           fcm: {
             enabled: true,
-            serviceAccountBase64: validServiceAccountBase64
-          }
-        }
-      })
+            serviceAccountBase64: validServiceAccountBase64,
+          },
+        },
+      }),
     };
 
     service = new PushDeliveryService(
       appConfigService as never,
       appLogService as never,
-      hostedRuntimeConfigService as never
+      hostedRuntimeConfigService as never,
     );
   });
 
-  it("reads hosted FCM credentials from runtime config for tenant deliveries", async () => {
-    (service as unknown as { loadFirebaseAdminModule: ReturnType<typeof vi.fn> }).loadFirebaseAdminModule =
-      vi.fn().mockResolvedValue(null);
-    (service as unknown as { loadFirebaseMessagingModule: ReturnType<typeof vi.fn> }).loadFirebaseMessagingModule =
-      vi.fn().mockResolvedValue(null);
+  it('reads hosted FCM credentials from runtime config for tenant deliveries', async () => {
+    (service as unknown as { getFcmAccessToken: ReturnType<typeof vi.fn> }).getFcmAccessToken = vi
+      .fn()
+      .mockResolvedValue('test-access-token');
+    (service as unknown as { httpPost: ReturnType<typeof vi.fn> }).httpPost = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify({ name: 'projects/project-a/messages/msg-1' }));
 
     const result = await service.deliver({
-      tenantId: "tenant-a",
+      tenantId: 'tenant-a',
       provider: NotificationDeviceProvider.FCM,
-      pushToken: "device-token",
-      title: "hello",
-      message: "world",
-      notificationId: "notification-1",
-      deviceId: "device-1"
+      pushToken: 'device-token',
+      title: 'hello',
+      message: 'world',
+      notificationId: 'notification-1',
+      deviceId: 'device-1',
     });
 
-    expect(hostedRuntimeConfigService.getTenantRuntimeConfig).toHaveBeenCalledWith("tenant-a");
-    expect(result).toMatchObject({
-      status: "failed",
-      errorMessage: "Firebase Admin SDK is not available in the server runtime."
-    });
+    expect(hostedRuntimeConfigService.getTenantRuntimeConfig).toHaveBeenCalledWith('tenant-a');
+    expect(result).toMatchObject({ status: 'sent' });
   });
 
-  it("falls back to env FCM credentials when hosted config is absent", async () => {
+  it('falls back to env FCM credentials when hosted config is absent', async () => {
     appConfigService.fcmEnabled = true;
     appConfigService.fcmServiceAccount = {
-      projectId: "env-project",
-      clientEmail: "env@project.iam.gserviceaccount.com",
-      privateKey: "env-key"
+      projectId: 'env-project',
+      clientEmail: 'env@project.iam.gserviceaccount.com',
+      privateKey: 'env-key',
     };
     hostedRuntimeConfigService.getTenantRuntimeConfig.mockResolvedValue({
       hostedPushConfig: {
-        fcm: {
-          enabled: false,
-          serviceAccountBase64: null
-        }
-      }
+        fcm: { enabled: false, serviceAccountBase64: null },
+      },
     });
-    (service as unknown as { loadFirebaseAdminModule: ReturnType<typeof vi.fn> }).loadFirebaseAdminModule =
-      vi.fn().mockResolvedValue(null);
-    (service as unknown as { loadFirebaseMessagingModule: ReturnType<typeof vi.fn> }).loadFirebaseMessagingModule =
-      vi.fn().mockResolvedValue(null);
+    (service as unknown as { getFcmAccessToken: ReturnType<typeof vi.fn> }).getFcmAccessToken = vi
+      .fn()
+      .mockResolvedValue('test-access-token');
+    (service as unknown as { httpPost: ReturnType<typeof vi.fn> }).httpPost = vi
+      .fn()
+      .mockResolvedValue(JSON.stringify({ name: 'projects/env-project/messages/msg-2' }));
 
     const result = await service.deliver({
-      tenantId: "tenant-a",
+      tenantId: 'tenant-a',
       provider: NotificationDeviceProvider.FCM,
-      pushToken: "device-token",
-      title: "hello",
-      message: "world",
-      notificationId: "notification-1",
-      deviceId: "device-1"
+      pushToken: 'device-token',
+      title: 'hello',
+      message: 'world',
+      notificationId: 'notification-1',
+      deviceId: 'device-1',
     });
 
-    expect(result.status).toBe("failed");
-    expect(result.status === "failed" && result.errorMessage).toBe("Firebase Admin SDK is not available in the server runtime.");
+    expect(result).toMatchObject({ status: 'sent' });
   });
 });
