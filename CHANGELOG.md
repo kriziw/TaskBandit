@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.11.2](https://github.com/kriziw/TaskBandit/compare/v1.11.1...v1.11.2) (2026-06-05)
+
+
+### Bug Fixes
+
+* **db:** add TemplateAudience enum and ChoreTemplate.audience column ([#632](https://github.com/kriziw/TaskBandit/issues/632)) ([3123975](https://github.com/kriziw/TaskBandit/commit/31239759512608265a2eb0ed8a575f3fd2008605))
+
 ## [1.11.1](https://github.com/kriziw/TaskBandit/compare/v1.11.0...v1.11.1) (2026-06-04)
 
 
