@@ -948,8 +948,6 @@ internal fun TemplateEditorScreen(
     }
 }
 
-}
-
 @Composable
 internal fun TemplateEditorSection(
     title: String,
