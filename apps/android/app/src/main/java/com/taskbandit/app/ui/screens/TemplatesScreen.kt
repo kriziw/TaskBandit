@@ -603,6 +603,7 @@ internal fun TemplateEditorScreen(
                                 )
                             }
                         }
+                        }
                         ExposedDropdownMenuBox(expanded = audienceExpanded, onExpandedChange = { audienceExpanded = it }) {
                             OutlinedTextField(
                                 value = when (editAudience) {
