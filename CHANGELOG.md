@@ -2,6 +2,20 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.11.3](https://github.com/kriziw/TaskBandit/compare/v1.11.2...v1.11.3) (2026-06-05)
+
+
+### Bug Fixes
+
+* **android:** close ExposedDropdownMenuBox for assignment strategy in template editor ([#634](https://github.com/kriziw/TaskBandit/issues/634)) ([8744c12](https://github.com/kriziw/TaskBandit/commit/8744c12b5d894f5186ae2bbb82dff9b01795c6ef))
+* **deps:** pin @hono/node-server &gt;=1.19.13 to address CVE-2026-39406 ([#637](https://github.com/kriziw/TaskBandit/issues/637)) ([7d1e73c](https://github.com/kriziw/TaskBandit/commit/7d1e73caf62708e4f08f20b6a61a7da1c5183ab9))
+* **docker:** use npm ci in web build stage to reliably install optional native deps ([#638](https://github.com/kriziw/TaskBandit/issues/638)) ([595b80f](https://github.com/kriziw/TaskBandit/commit/595b80f0a2fe5c0fd9b93d1e5a66408339bda87e))
+
+
+### Performance Improvements
+
+* reduce Docker image sizes ([#635](https://github.com/kriziw/TaskBandit/issues/635)) ([bcf446d](https://github.com/kriziw/TaskBandit/commit/bcf446db1a4b4ba0589afe0af841b0ddc3e42b29))
+
 ## [1.11.2](https://github.com/kriziw/TaskBandit/compare/v1.11.1...v1.11.2) (2026-06-05)
 
 
