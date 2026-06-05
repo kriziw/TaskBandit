@@ -25,7 +25,6 @@
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
-    "firebase-admin": "^13.10.0",
     "jsonwebtoken": "^9.0.2",
     "multer": "^2.1.1",
     "nodemailer": "^8.0.10",
@@ -33,7 +32,6 @@
     "prisma": "^7.8.0",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
-    "swagger-ui-express": "^5.0.1",
     "web-push": "^3.6.7"
   },
   "devDependencies": {
@@ -44,20 +42,14 @@
     "@types/node": "^25.9.1",
     "@types/nodemailer": "^8.0.0",
     "@types/pg": "^8.11.14",
+    "@types/swagger-ui-express": "^4.1.8",
     "@types/web-push": "^3.6.4",
     "eslint": "^10.4.1",
     "eslint-config-prettier": "^10.1.8",
     "prettier": "^3.8.3",
+    "swagger-ui-express": "^5.0.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
     "vitest": "^4.1.8"
-  },
-  "overrides": {
-    "@google-cloud/firestore": "8.5.0",
-    "@tootallnate/once": "3.0.1",
-    "google-gax": "5.0.6",
-    "retry-request": "8.0.2",
-    "teeny-request": "10.1.2",
-    "uuid": "^11.1.1"
   }
 }

@@ -1,7 +1,6 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import type { NestExpressApplication } from '@nestjs/platform-express';
-import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
 import type { NextFunction, Request, Response } from 'express';
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
@@ -75,13 +74,16 @@ async function bootstrap() {
     });
   }
 
-  const swaggerConfig = new DocumentBuilder()
-    .setTitle('TaskBandit API')
-    .setDescription('TaskBandit household chores API')
-    .setVersion(config.releaseVersion)
-    .build();
-  const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
-  SwaggerModule.setup(config.withBasePath('docs'), app, swaggerDocument);
+  if (process.env.NODE_ENV !== 'production') {
+    const { DocumentBuilder, SwaggerModule } = await import('@nestjs/swagger');
+    const swaggerConfig = new DocumentBuilder()
+      .setTitle('TaskBandit API')
+      .setDescription('TaskBandit household chores API')
+      .setVersion(config.releaseVersion)
+      .build();
+    const swaggerDocument = SwaggerModule.createDocument(app, swaggerConfig);
+    SwaggerModule.setup(config.withBasePath('docs'), app, swaggerDocument);
+  }
 
   const webRoot = join(process.cwd(), 'public');
   const webIndex = join(webRoot, 'index.html');

@@ -1,4 +1,4 @@
-﻿import React, { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
+import React, { type FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 import type { CSSProperties, ReactNode, RefObject } from 'react';
 import { taskBanditApi, TaskBanditApiError } from './api/taskbanditApi';
 import { DashboardCard } from './components/DashboardCard';
@@ -94,11 +94,11 @@ type ClientMobileDueBucket = 'today' | 'this_week' | 'later';
 type WorkspaceRoute = 'home' | 'plan' | 'household' | 'settings' | 'ops';
 
 const mobileNavIconByPage: Record<string, string> = {
-  chores: '/mobile-icons/chores.png',
-  leaderboard: '/mobile-icons/leaderboard.png',
-  rewards: '/mobile-icons/rewards.png',
-  settings: '/mobile-icons/settings.png',
-  more: '/mobile-icons/more.png',
+  chores: '/mobile-icons/chores.webp',
+  leaderboard: '/mobile-icons/leaderboard.webp',
+  rewards: '/mobile-icons/rewards.webp',
+  settings: '/mobile-icons/settings.webp',
+  more: '/mobile-icons/more.webp',
 };
 type WorkspaceSectionLink = {
   key: string;
@@ -809,7 +809,7 @@ const quickLogIcons = {
 
 const mobileAvatarPresetAssets = Array.from({ length: 20 }, (_, index) => {
   const suffix = `${index + 1}`.padStart(2, '0');
-  return `/brand/avatars/mascot_avatar_${suffix}.png`;
+  return `/brand/avatars/mascot_avatar_${suffix}.webp`;
 });
 const defaultMobileAvatarAsset = mobileAvatarPresetAssets[0];
 
@@ -829,29 +829,29 @@ const quickLogIconOptions = [
 ] as const;
 
 const choreIconPresets = [
-  { id: 'take_out_trash', label: 'Trash', assetPath: '/chore-icons/take_out_trash.png' },
-  { id: 'recycle_sorting', label: 'Recycling', assetPath: '/chore-icons/recycle_sorting.png' },
-  { id: 'feed_pets', label: 'Pets', assetPath: '/chore-icons/feed_pets.png' },
-  { id: 'wash_dishes_sink', label: 'Dishes', assetPath: '/chore-icons/wash_dishes_sink.png' },
-  { id: 'make_bed', label: 'Make bed', assetPath: '/chore-icons/make_bed.png' },
+  { id: 'take_out_trash', label: 'Trash', assetPath: '/chore-icons/take_out_trash.webp' },
+  { id: 'recycle_sorting', label: 'Recycling', assetPath: '/chore-icons/recycle_sorting.webp' },
+  { id: 'feed_pets', label: 'Pets', assetPath: '/chore-icons/feed_pets.webp' },
+  { id: 'wash_dishes_sink', label: 'Dishes', assetPath: '/chore-icons/wash_dishes_sink.webp' },
+  { id: 'make_bed', label: 'Make bed', assetPath: '/chore-icons/make_bed.webp' },
   {
     id: 'change_bed_sheets',
     label: 'Change sheets',
-    assetPath: '/chore-icons/change_bed_sheets.png',
+    assetPath: '/chore-icons/change_bed_sheets.webp',
   },
-  { id: 'do_laundry', label: 'Laundry', assetPath: '/chore-icons/do_laundry.png' },
-  { id: 'vacuum_floor', label: 'Vacuum', assetPath: '/chore-icons/vacuum_floor.png' },
-  { id: 'water_plants', label: 'Water plants', assetPath: '/chore-icons/water_plants.png' },
-  { id: 'clean_toilet', label: 'Bathroom', assetPath: '/chore-icons/clean_toilet.png' },
+  { id: 'do_laundry', label: 'Laundry', assetPath: '/chore-icons/do_laundry.webp' },
+  { id: 'vacuum_floor', label: 'Vacuum', assetPath: '/chore-icons/vacuum_floor.webp' },
+  { id: 'water_plants', label: 'Water plants', assetPath: '/chore-icons/water_plants.webp' },
+  { id: 'clean_toilet', label: 'Bathroom', assetPath: '/chore-icons/clean_toilet.webp' },
   {
     id: 'clean_mirror_sink',
     label: 'Sink/Mirror',
-    assetPath: '/chore-icons/clean_mirror_sink.png',
+    assetPath: '/chore-icons/clean_mirror_sink.webp',
   },
-  { id: 'wipe_counter', label: 'Counter', assetPath: '/chore-icons/wipe_counter.png' },
-  { id: 'dishwasher', label: 'Dishwasher', assetPath: '/chore-icons/dishwasher.png' },
-  { id: 'grocery_shopping', label: 'Groceries', assetPath: '/chore-icons/grocery_shopping.png' },
-  { id: 'sort_mail', label: 'Mail', assetPath: '/chore-icons/sort_mail.png' },
+  { id: 'wipe_counter', label: 'Counter', assetPath: '/chore-icons/wipe_counter.webp' },
+  { id: 'dishwasher', label: 'Dishwasher', assetPath: '/chore-icons/dishwasher.webp' },
+  { id: 'grocery_shopping', label: 'Groceries', assetPath: '/chore-icons/grocery_shopping.webp' },
+  { id: 'sort_mail', label: 'Mail', assetPath: '/chore-icons/sort_mail.webp' },
 ] as const;
 type ChoreIconId = (typeof choreIconPresets)[number]['id'];
 const choreIconById = new Map<ChoreIconId, (typeof choreIconPresets)[number]>(
@@ -1214,9 +1214,9 @@ function BetaEndBanner({
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
-  const brandIconAssetPath = '/brand/logo-dark.png';
-  const mascotLoginAssetPath = '/brand/mascot-login.png';
-  const mascotCelebrationAssetPath = '/brand/mascot-success.png';
+  const brandIconAssetPath = '/brand/logo-dark.webp';
+  const mascotLoginAssetPath = '/brand/mascot-login.webp';
+  const mascotCelebrationAssetPath = '/brand/mascot-success.webp';
   const {
     token,
     bootstrapStatus,
@@ -7840,7 +7840,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
                 {showClientMobileShell ? (
                   <div className="mock-mobile-leaderboard-cheer">
-                    <img src="/brand/mascot-celebration.png" alt="" aria-hidden="true" />
+                    <img src="/brand/mascot-celebration.webp" alt="" aria-hidden="true" />
                     <p>{t('mobile.leaderboard_cheer')}</p>
                   </div>
                 ) : null}
@@ -12492,7 +12492,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               >
                 <img
                   className="mobile-more-nav-icon"
-                  src="/mobile-icons/settings.png"
+                  src="/mobile-icons/settings.webp"
                   alt=""
                   aria-hidden="true"
                 />
@@ -12509,7 +12509,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 >
                   <img
                     className="mobile-more-nav-icon"
-                    src="/mobile-icons/more.png"
+                    src="/mobile-icons/more.webp"
                     alt=""
                     aria-hidden="true"
                   />
@@ -12527,7 +12527,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 >
                   <img
                     className="mobile-more-nav-icon"
-                    src="/mobile-icons/rewards.png"
+                    src="/mobile-icons/rewards.webp"
                     alt=""
                     aria-hidden="true"
                   />
