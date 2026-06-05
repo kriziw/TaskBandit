@@ -16,11 +16,16 @@ ENV VITE_TASKBANDIT_BUILD_NUMBER=${TASKBANDIT_BUILD_NUMBER}
 ENV VITE_TASKBANDIT_COMMIT_SHA=${TASKBANDIT_COMMIT_SHA}
 ENV VITE_TASKBANDIT_WEB_IMAGE_TAG=${TASKBANDIT_IMAGE_TAG}
 
+RUN apt-get update \
+    && apt-get install -y --no-install-recommends webp \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY apps/web/package.json apps/web/package-lock.json ./
 RUN npm install --legacy-peer-deps
 
 COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html apps/web/admin.html apps/web/client.html ./
 COPY apps/web/public ./public
+RUN find public/chore-icons public/brand/avatars -name '*.png' -exec sh -c 'cwebp -q 85 "$1" -o "${1%.png}.webp" && rm "$1"' _ {} \;
 COPY apps/web/src ./src
 RUN npm run build
 

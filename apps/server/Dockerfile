@@ -3,12 +3,10 @@ ARG TASKBANDIT_BUILD_NUMBER=local
 ARG TASKBANDIT_COMMIT_SHA=local
 ARG TASKBANDIT_IMAGE_TAG=
 
-FROM node:22-bookworm-slim AS server-build
+FROM node:22-alpine AS server-build
 WORKDIR /workspace/apps/server
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache openssl ca-certificates
 
 COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci
@@ -20,7 +18,7 @@ RUN npx prisma generate
 COPY apps/server/src ./src
 RUN npm run build
 
-FROM node:22-bookworm-slim AS runtime
+FROM node:22-alpine AS runtime
 WORKDIR /workspace/apps/server
 
 ARG TASKBANDIT_RELEASE_VERSION
@@ -28,16 +26,14 @@ ARG TASKBANDIT_BUILD_NUMBER
 ARG TASKBANDIT_COMMIT_SHA
 ARG TASKBANDIT_IMAGE_TAG
 
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends openssl wget ca-certificates \
-    && rm -rf /var/lib/apt/lists/*
+RUN apk add --no-cache openssl wget ca-certificates
 
 COPY apps/server/package.json apps/server/package-lock.json ./
 RUN npm ci --omit=dev
 
 COPY apps/server/prisma.config.ts ./
 COPY apps/server/prisma ./prisma
-RUN npx prisma generate
+COPY --from=server-build /workspace/apps/server/src/generated ./src/generated
 
 COPY --from=server-build /workspace/apps/server/dist ./dist
 RUN mkdir -p /var/lib/taskbandit/storage

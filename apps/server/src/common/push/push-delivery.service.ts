@@ -1,13 +1,13 @@
 import { Injectable } from '@nestjs/common';
+import { sign as jwtSign } from 'jsonwebtoken';
+import * as https from 'node:https';
+import { createHash } from 'node:crypto';
 import { NotificationDeviceProvider } from '../../generated/prisma/client';
 import { AppConfigService } from '../config/app-config.service';
 import { AppLogService } from '../logging/app-log.service';
 import { HostedRuntimeConfigService } from '../tenancy/hosted-runtime-config.service';
 import { PushDeliveryResult } from './push-delivery-result.type';
-import { createHash } from 'node:crypto';
 
-type FirebaseAdminModule = typeof import('firebase-admin');
-type FirebaseMessagingModule = typeof import('firebase-admin/messaging');
 type WebPushModule = typeof import('web-push');
 type FirebaseServiceAccount = {
   projectId: string;
@@ -19,16 +19,16 @@ type ResolvedFcmCredentials = {
   source: 'env' | 'hosted_runtime_config';
   sourceKey: string;
 };
+type CachedAccessToken = {
+  token: string;
+  expiresAt: number;
+};
 
 @Injectable()
 export class PushDeliveryService {
-  private firebaseAdminModulePromise: Promise<FirebaseAdminModule | null> | null = null;
-  private firebaseMessagingModulePromise: Promise<FirebaseMessagingModule | null> | null = null;
   private webPushModulePromise: Promise<WebPushModule | null> | null = null;
-  private firebaseAppNameByCredentialKey = new Map<string, string>();
-  private firebaseAppCounter = 0;
+  private fcmTokenCache = new Map<string, CachedAccessToken>();
   private webPushInitialized = false;
-  private initializationAttempted = false;
 
   constructor(
     private readonly appConfigService: AppConfigService,
@@ -104,42 +104,48 @@ export class PushDeliveryService {
     }
 
     try {
-      const adminModule = await this.loadFirebaseAdminModule();
-      const messagingModule = await this.loadFirebaseMessagingModule();
-
-      if (!adminModule || !messagingModule) {
-        return {
-          status: 'failed',
-          errorMessage: 'Firebase Admin SDK is not available in the server runtime.',
-        };
-      }
-
-      const firebaseApp = this.getOrCreateFirebaseApp(adminModule, credentials);
-
-      const messageId = await messagingModule.getMessaging(firebaseApp).send({
-        token: input.pushToken,
-        notification: {
-          title: input.title,
-          body: input.message,
-        },
-        data: {
-          entityType: input.entityType ?? '',
-          entityId: input.entityId ?? '',
-          notificationId: input.notificationId,
-          deviceId: input.deviceId,
+      const accessToken = await this.getFcmAccessToken(credentials);
+      const { projectId } = credentials.serviceAccount;
+      const body = JSON.stringify({
+        message: {
+          token: input.pushToken,
+          notification: {
+            title: input.title,
+            body: input.message,
+          },
+          data: {
+            entityType: input.entityType ?? '',
+            entityId: input.entityId ?? '',
+            notificationId: input.notificationId,
+            deviceId: input.deviceId,
+          },
         },
       });
 
+      const responseText = await this.httpPost(
+        `https://fcm.googleapis.com/v1/projects/${projectId}/messages:send`,
+        body,
+        { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+      );
+
+      const responseData = JSON.parse(responseText) as {
+        name?: string;
+        error?: { message?: string };
+      };
+      if (responseData.error) {
+        return {
+          status: 'failed',
+          errorMessage: responseData.error.message ?? 'FCM delivery failed.',
+        };
+      }
+
       return {
         status: 'sent',
-        providerMessageId: messageId,
+        providerMessageId: responseData.name ?? null,
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'FCM delivery failed.';
-      return {
-        status: 'failed',
-        errorMessage: message,
-      };
+      return { status: 'failed', errorMessage: message };
     }
   }
 
@@ -211,47 +217,8 @@ export class PushDeliveryService {
       };
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Web push delivery failed.';
-      return {
-        status: 'failed',
-        errorMessage: message,
-      };
+      return { status: 'failed', errorMessage: message };
     }
-  }
-
-  private async loadFirebaseAdminModule() {
-    if (!this.firebaseAdminModulePromise) {
-      this.firebaseAdminModulePromise = import('firebase-admin')
-        .then((module) => module)
-        .catch((error) => {
-          if (!this.initializationAttempted) {
-            this.appLogService.warn(
-              `Firebase Admin SDK could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
-              'PushDelivery',
-            );
-          }
-
-          return null;
-        });
-    }
-
-    this.initializationAttempted = true;
-    return this.firebaseAdminModulePromise;
-  }
-
-  private async loadFirebaseMessagingModule() {
-    if (!this.firebaseMessagingModulePromise) {
-      this.firebaseMessagingModulePromise = import('firebase-admin/messaging')
-        .then((module) => module)
-        .catch((error) => {
-          this.appLogService.warn(
-            `Firebase Messaging SDK could not be loaded: ${error instanceof Error ? error.message : String(error)}`,
-            'PushDelivery',
-          );
-          return null;
-        });
-    }
-
-    return this.firebaseMessagingModulePromise;
   }
 
   private async loadWebPushModule() {
@@ -268,6 +235,83 @@ export class PushDeliveryService {
     }
 
     return this.webPushModulePromise;
+  }
+
+  private async getFcmAccessToken(credentials: ResolvedFcmCredentials): Promise<string> {
+    const cached = this.fcmTokenCache.get(credentials.sourceKey);
+    if (cached && cached.expiresAt > Date.now() + 60_000) {
+      return cached.token;
+    }
+
+    const now = Math.floor(Date.now() / 1000);
+    const jwt = jwtSign(
+      {
+        iss: credentials.serviceAccount.clientEmail,
+        scope: 'https://www.googleapis.com/auth/firebase.messaging',
+        aud: 'https://oauth2.googleapis.com/token',
+        iat: now,
+        exp: now + 3600,
+      },
+      credentials.serviceAccount.privateKey,
+      { algorithm: 'RS256' },
+    );
+
+    const tokenBody = `grant_type=urn%3Aietf%3Aparams%3Aoauth%3Agrant-type%3Ajwt-bearer&assertion=${jwt}`;
+    const tokenResponse = await this.httpPost('https://oauth2.googleapis.com/token', tokenBody, {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    });
+
+    const tokenData = JSON.parse(tokenResponse) as {
+      access_token?: string;
+      expires_in?: number;
+      error?: string;
+    };
+    if (!tokenData.access_token) {
+      throw new Error(
+        `OAuth2 token exchange failed: ${tokenData.error ?? 'no access_token in response'}`,
+      );
+    }
+
+    const expiresAt = Date.now() + (tokenData.expires_in ?? 3600) * 1000;
+    this.fcmTokenCache.set(credentials.sourceKey, { token: tokenData.access_token, expiresAt });
+    this.appLogService.log(
+      `Firebase Cloud Messaging delivery initialized with ${credentials.source}.`,
+      'PushDelivery',
+    );
+    return tokenData.access_token;
+  }
+
+  private httpPost(url: string, body: string, headers: Record<string, string>): Promise<string> {
+    return new Promise((resolve, reject) => {
+      const parsed = new URL(url);
+      const bodyBuffer = Buffer.from(body, 'utf8');
+      const req = https.request(
+        {
+          hostname: parsed.hostname,
+          path: parsed.pathname + parsed.search,
+          method: 'POST',
+          headers: {
+            ...headers,
+            'Content-Length': bodyBuffer.length,
+          },
+        },
+        (res) => {
+          const chunks: Buffer[] = [];
+          res.on('data', (chunk: Buffer) => chunks.push(chunk));
+          res.on('end', () => {
+            const text = Buffer.concat(chunks).toString('utf8');
+            if (res.statusCode && res.statusCode >= 400) {
+              reject(new Error(`HTTP ${res.statusCode}: ${text}`));
+            } else {
+              resolve(text);
+            }
+          });
+        },
+      );
+      req.on('error', reject);
+      req.write(bodyBuffer);
+      req.end();
+    });
   }
 
   private async resolveFcmCredentials(
@@ -329,32 +373,6 @@ export class PushDeliveryService {
     }
   }
 
-  private getOrCreateFirebaseApp(
-    adminModule: FirebaseAdminModule,
-    credentials: ResolvedFcmCredentials,
-  ) {
-    const existingAppName = this.firebaseAppNameByCredentialKey.get(credentials.sourceKey);
-    if (existingAppName) {
-      return adminModule.app(existingAppName);
-    }
-
-    const nextIndex = this.firebaseAppCounter + 1;
-    this.firebaseAppCounter = nextIndex;
-    const appName = `taskbandit-fcm-${nextIndex}`;
-    const app = adminModule.initializeApp(
-      {
-        credential: adminModule.credential.cert(credentials.serviceAccount),
-      },
-      appName,
-    );
-    this.firebaseAppNameByCredentialKey.set(credentials.sourceKey, appName);
-    this.appLogService.log(
-      `Firebase Cloud Messaging delivery initialized with ${credentials.source}.`,
-      'PushDelivery',
-    );
-    return app;
-  }
-
   private parseFirebaseServiceAccount(rawJson: string): FirebaseServiceAccount | null {
     try {
       const parsed = JSON.parse(rawJson) as {
@@ -382,7 +400,7 @@ export class PushDeliveryService {
     account: FirebaseServiceAccount,
   ) {
     const fingerprint = createHash('sha256')
-      .update(`${account.projectId}\u0000${account.clientEmail}\u0000${account.privateKey}`)
+      .update(`${account.projectId} ${account.clientEmail} ${account.privateKey}`)
       .digest('hex')
       .slice(0, 24);
     return `${source}:${fingerprint}`;
