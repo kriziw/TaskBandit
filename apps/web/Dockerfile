@@ -25,7 +25,7 @@ RUN npm install --legacy-peer-deps
 
 COPY apps/web/tsconfig.json apps/web/vite.config.ts apps/web/index.html apps/web/admin.html apps/web/client.html ./
 COPY apps/web/public ./public
-RUN find public -name '*.png' -exec sh -c 'cwebp -q 85 "$1" -o "${1%.png}.webp" && rm "$1"' _ {} \;
+RUN find public/chore-icons public/brand/avatars -name '*.png' -exec sh -c 'cwebp -q 85 "$1" -o "${1%.png}.webp" && rm "$1"' _ {} \;
 COPY apps/web/src ./src
 RUN npm run build
 

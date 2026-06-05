@@ -94,11 +94,11 @@ type ClientMobileDueBucket = 'today' | 'this_week' | 'later';
 type WorkspaceRoute = 'home' | 'plan' | 'household' | 'settings' | 'ops';
 
 const mobileNavIconByPage: Record<string, string> = {
-  chores: '/mobile-icons/chores.webp',
-  leaderboard: '/mobile-icons/leaderboard.webp',
-  rewards: '/mobile-icons/rewards.webp',
-  settings: '/mobile-icons/settings.webp',
-  more: '/mobile-icons/more.webp',
+  chores: '/mobile-icons/chores.png',
+  leaderboard: '/mobile-icons/leaderboard.png',
+  rewards: '/mobile-icons/rewards.png',
+  settings: '/mobile-icons/settings.png',
+  more: '/mobile-icons/more.png',
 };
 type WorkspaceSectionLink = {
   key: string;
@@ -1214,9 +1214,9 @@ function BetaEndBanner({
 
 export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }) {
   const { language, setLanguage, t } = useI18n();
-  const brandIconAssetPath = '/brand/logo-dark.webp';
-  const mascotLoginAssetPath = '/brand/mascot-login.webp';
-  const mascotCelebrationAssetPath = '/brand/mascot-success.webp';
+  const brandIconAssetPath = '/brand/logo-dark.png';
+  const mascotLoginAssetPath = '/brand/mascot-login.png';
+  const mascotCelebrationAssetPath = '/brand/mascot-success.png';
   const {
     token,
     bootstrapStatus,
@@ -7840,7 +7840,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 </div>
                 {showClientMobileShell ? (
                   <div className="mock-mobile-leaderboard-cheer">
-                    <img src="/brand/mascot-celebration.webp" alt="" aria-hidden="true" />
+                    <img src="/brand/mascot-celebration.png" alt="" aria-hidden="true" />
                     <p>{t('mobile.leaderboard_cheer')}</p>
                   </div>
                 ) : null}
@@ -12492,7 +12492,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
               >
                 <img
                   className="mobile-more-nav-icon"
-                  src="/mobile-icons/settings.webp"
+                  src="/mobile-icons/settings.png"
                   alt=""
                   aria-hidden="true"
                 />
@@ -12509,7 +12509,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 >
                   <img
                     className="mobile-more-nav-icon"
-                    src="/mobile-icons/more.webp"
+                    src="/mobile-icons/more.png"
                     alt=""
                     aria-hidden="true"
                   />
@@ -12527,7 +12527,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                 >
                   <img
                     className="mobile-more-nav-icon"
-                    src="/mobile-icons/rewards.webp"
+                    src="/mobile-icons/rewards.png"
                     alt=""
                     aria-hidden="true"
                   />
