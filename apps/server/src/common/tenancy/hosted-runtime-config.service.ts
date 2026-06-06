@@ -349,6 +349,6 @@ const allowedControlPlaneReasonCodes = new Set([
   'token_missing',
 ]);
 
-const runtimeConfigContractVersion = '1.0.0';
+const runtimeConfigContractVersion = '1.1.0';
 const runtimeConfigContractVersionHeader = 'x-taskbandit-runtime-contract-version';
 const hostedRuntimeConfigStaleCacheWindowMs = 5 * 60_000;
