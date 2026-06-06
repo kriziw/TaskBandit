@@ -8150,7 +8150,7 @@ export class HouseholdRepository {
     await this.prisma.$transaction(async (tx) => {
       const seededTemplates = await tx.choreTemplate.findMany({
         where: { householdId: input.householdId, catalogKey: { not: null } },
-        select: { id: true, catalogKey: true },
+        select: { id: true, catalogKey: true, userCustomized: true },
       });
       const seededTemplateIds = seededTemplates.map((template) => template.id);
       const seededTemplateCatalogKeyById = new Map(
@@ -8166,19 +8166,39 @@ export class HouseholdRepository {
         select: { id: true, followUpTemplateId: true },
       });
 
-      if (seededTemplateIds.length > 0) {
+      // Preserve templates that the household has customised AND that are
+      // still part of the new wizard selection.  Removing a template category
+      // from the wizard (e.g. switching from dishwasher to hand-washing) is an
+      // explicit choice, so those templates are still deleted in that case.
+      const selectedKeySet = new Set(selectedTemplateKeys);
+      const preservedTemplates = seededTemplates.filter(
+        (t): t is typeof t & { catalogKey: string } =>
+          t.userCustomized && t.catalogKey !== null && selectedKeySet.has(t.catalogKey),
+      );
+      const preservedIdSet = new Set(preservedTemplates.map((t) => t.id));
+      const idsToDelete = seededTemplateIds.filter((id) => !preservedIdSet.has(id));
+
+      if (idsToDelete.length > 0) {
         await tx.choreTemplateDependency.deleteMany({
-          where: { templateId: { in: seededTemplateIds } },
+          where: { templateId: { in: idsToDelete } },
         });
         await tx.choreTemplate.deleteMany({
-          where: { householdId: input.householdId, id: { in: seededTemplateIds } },
+          where: { householdId: input.householdId, id: { in: idsToDelete } },
         });
       }
 
-      // Pass 1 — create templates and build a key→id lookup
-      const templateIdByKey = new Map<string, string>();
+      // Pass 1 — build a key→id lookup, pre-seeding with preserved templates
+      // so that follow-up dependency wiring in pass 2 resolves their IDs
+      // without needing to recreate them.
+      const templateIdByKey = new Map<string, string>(
+        preservedTemplates.map((t) => [t.catalogKey, t.id]),
+      );
 
       for (const template of definitions) {
+        if (templateIdByKey.has(template.key)) {
+          // Already preserved — skip recreation.
+          continue;
+        }
         const created = await tx.choreTemplate.create({
           data: {
             householdId: input.householdId,
