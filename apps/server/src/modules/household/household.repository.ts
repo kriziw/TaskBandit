@@ -2501,6 +2501,7 @@ export class HouseholdRepository {
       }
 
       let upserted = 0;
+      let skipped = 0;
       // First pass: create/update all template records and collect their IDs
       // so we can wire follow-up dependencies in the second pass.
       const templateIdByKey = new Map<string, string>();
@@ -2509,6 +2510,15 @@ export class HouseholdRepository {
         const existing = await tx.choreTemplate.findFirst({
           where: { householdId, catalogKey: template.key },
         });
+
+        // If the household member has customised this template, preserve their
+        // changes and skip the operator update. We still track the existing ID
+        // so that follow-up dependency wiring in the second pass still works.
+        if (existing?.userCustomized) {
+          templateIdByKey.set(template.key, existing.id);
+          skipped++;
+          continue;
+        }
 
         const localizedTitle = template.title.en;
         const localizedDescription = template.description?.en ?? '';
@@ -2640,7 +2650,7 @@ export class HouseholdRepository {
         }
       }
 
-      return { upserted };
+      return { upserted, skipped };
     });
   }
 
@@ -2979,6 +2989,9 @@ export class HouseholdRepository {
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
+          // When a household member edits a template that was seeded by the
+          // operator, flag it so future operator pushes do not overwrite it.
+          ...(existingTemplate.isOperatorManaged ? { userCustomized: true } : {}),
           descriptionTranslations: this.toPrismaJsonOrNull(descriptionTranslations),
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
