@@ -350,6 +350,7 @@ model ChoreTemplate {
   catalogKey         String?
   isOperatorManaged  Boolean                      @default(false)
   userCustomized     Boolean                      @default(false)
+  hasOperatorUpdate  Boolean                      @default(false)
   masteryDisabled              Boolean            @default(false)
   masteryLevel1Threshold       Int                @default(5)
   masteryLevel2Threshold       Int                @default(10)

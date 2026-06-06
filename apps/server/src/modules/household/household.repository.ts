@@ -2510,6 +2510,7 @@ export class HouseholdRepository {
       for (const template of templates) {
         const existing = await tx.choreTemplate.findFirst({
           where: { householdId, catalogKey: template.key },
+          include: { checklistItems: true, variants: true },
         });
 
         // If the household member has customised this template, preserve their
@@ -2519,6 +2520,15 @@ export class HouseholdRepository {
         // in the second pass continues to work correctly.
         if (existing?.userCustomized && !overrideCustomized) {
           templateIdByKey.set(template.key, existing.id);
+          // Flag the template only when the catalog payload is genuinely
+          // different from what's on the record so the UI can show an
+          // "update available" indicator without false positives.
+          if (this.hasTemplateContentChanged(template, existing)) {
+            await tx.choreTemplate.update({
+              where: { id: existing.id },
+              data: { hasOperatorUpdate: true },
+            });
+          }
           skipped++;
           continue;
         }
@@ -2570,9 +2580,11 @@ export class HouseholdRepository {
               recurrenceStartStrategy: template.recurrenceStartStrategy,
               stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
               isOperatorManaged: true,
-              // Force-push resets the customization flag so the tenant
-              // continues to receive normal future updates automatically.
+              // Reset both flags: the update has been applied so there is no
+              // longer a pending operator update, and the customisation is
+              // overwritten (normal push) or intentionally cleared (force-push).
               userCustomized: false,
+              hasOperatorUpdate: false,
               checklistItems: {
                 create: (template.checklist ?? []).map((item, idx) => ({
                   title: item.title,
@@ -2705,10 +2717,63 @@ export class HouseholdRepository {
     }
     const updated = await this.prisma.choreTemplate.update({
       where: { id: templateId },
-      data: { userCustomized: false },
+      data: { userCustomized: false, hasOperatorUpdate: false },
       include: { checklistItems: true, dependencies: true, variants: true },
     });
     return this.mapTemplate(updated, language);
+  }
+
+  /**
+   * Returns true when the incoming operator catalog payload differs from the
+   * household's current template record in a way that would be visible to the
+   * user. Used to avoid marking a template as "has update" when the operator
+   * pushes without actually changing anything.
+   */
+  private hasTemplateContentChanged(
+    incoming: OperatorTemplateDto,
+    existing: Prisma.ChoreTemplateGetPayload<{
+      include: { checklistItems: true; variants: true };
+    }>,
+  ): boolean {
+    if (incoming.title.en !== existing.title) return true;
+    if ((incoming.description?.en ?? '') !== existing.description) return true;
+    if (incoming.difficulty !== existing.difficulty) return true;
+    if (incoming.assignmentStrategy !== existing.assignmentStrategy) return true;
+    if (incoming.recurrenceType !== existing.recurrenceType) return true;
+    if ((incoming.requirePhotoProof ?? false) !== existing.requirePhotoProof) return true;
+    if ((incoming.stickyFollowUpAssignee ?? false) !== existing.stickyFollowUpAssignee) return true;
+    if (incoming.recurrenceStartStrategy !== existing.recurrenceStartStrategy) return true;
+
+    const expectedIntervalDays =
+      incoming.recurrenceType === RecurrenceType.EVERY_X_DAYS
+        ? (incoming.recurrenceIntervalDays ?? 1)
+        : null;
+    if (expectedIntervalDays !== existing.recurrenceIntervalDays) return true;
+
+    const expectedWeekdays =
+      incoming.recurrenceType === RecurrenceType.CUSTOM_WEEKLY
+        ? [...(incoming.recurrenceWeekdays ?? [])].sort()
+        : [];
+    if (
+      JSON.stringify(expectedWeekdays) !== JSON.stringify([...existing.recurrenceWeekdays].sort())
+    )
+      return true;
+
+    // Checklist: compare by title + required, order-insensitive
+    const incomingItems = (incoming.checklist ?? [])
+      .map((i) => `${i.title}:${String(i.required)}`)
+      .sort();
+    const existingItems = existing.checklistItems
+      .map((i) => `${i.title}:${String(i.required)}`)
+      .sort();
+    if (JSON.stringify(incomingItems) !== JSON.stringify(existingItems)) return true;
+
+    // Variants: compare by label, order-insensitive
+    const incomingVariants = (incoming.variants ?? []).map((v) => v.label).sort();
+    const existingVariants = existing.variants.map((v) => v.label).sort();
+    if (JSON.stringify(incomingVariants) !== JSON.stringify(existingVariants)) return true;
+
+    return false;
   }
 
   private buildOperatorTranslations(
@@ -3033,8 +3098,11 @@ export class HouseholdRepository {
           description: dto.description.trim(),
           // When a household member edits a catalog-sourced template (starter
           // or operator-pushed), flag it so future operator pushes do not
-          // overwrite their customisations.
-          ...(existingTemplate.catalogKey !== null ? { userCustomized: true } : {}),
+          // overwrite their customisations.  Clear hasOperatorUpdate because
+          // the user has consciously chosen their version over the pending one.
+          ...(existingTemplate.catalogKey !== null
+            ? { userCustomized: true, hasOperatorUpdate: false }
+            : {}),
           descriptionTranslations: this.toPrismaJsonOrNull(descriptionTranslations),
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
@@ -6694,6 +6762,7 @@ export class HouseholdRepository {
         | 'completed_at',
       isOperatorManaged: template.isOperatorManaged,
       userCustomized: template.userCustomized,
+      hasOperatorUpdate: template.hasOperatorUpdate,
       catalogKey: template.catalogKey ?? null,
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
