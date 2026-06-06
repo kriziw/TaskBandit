@@ -90,6 +90,26 @@ export class ChoresController {
     );
   }
 
+  /**
+   * Clears the userCustomized flag on a catalog-sourced template so it will
+   * receive the next operator push automatically. The template's content is
+   * unchanged until the operator publishes an update.
+   */
+  @Post('templates/:id/restore-operator-default')
+  @Roles('admin', 'parent')
+  @RequiresFeature('templates_manage')
+  restoreTemplateToOperatorDefault(
+    @Param('id') templateId: string,
+    @CurrentUser() user: AuthenticatedUser,
+    @Headers('accept-language') acceptLanguage?: string,
+  ) {
+    return this.choresService.restoreTemplateToOperatorDefault(
+      templateId,
+      user,
+      this.i18nService.resolveLanguage(acceptLanguage),
+    );
+  }
+
   @Post('templates/reset-to-defaults')
   @Roles('admin')
   @RequiresFeature('templates_manage')

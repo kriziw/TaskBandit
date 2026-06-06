@@ -135,6 +135,20 @@ export class ChoresService {
     return result;
   }
 
+  async restoreTemplateToOperatorDefault(
+    templateId: string,
+    user: AuthenticatedUser,
+    language: SupportedLanguage,
+  ) {
+    const template = await this.repository.restoreTemplateToOperatorDefault(
+      templateId,
+      user.householdId,
+      language,
+    );
+    this.publishSyncEvent(user, 'template.updated', 'template', templateId);
+    return template;
+  }
+
   async createInstance(
     dto: CreateChoreInstanceDto,
     user: AuthenticatedUser,

@@ -2487,9 +2487,10 @@ export class HouseholdRepository {
     householdId: string,
     templates: OperatorTemplateDto[],
     language: SupportedLanguage = fallbackLanguage,
+    overrideCustomized = false,
   ) {
     if (templates.length === 0) {
-      return { upserted: 0 };
+      return { upserted: 0, skipped: 0 };
     }
     return this.prisma.$transaction(async (tx) => {
       const household = await tx.household.findFirst({
@@ -2512,9 +2513,11 @@ export class HouseholdRepository {
         });
 
         // If the household member has customised this template, preserve their
-        // changes and skip the operator update. We still track the existing ID
-        // so that follow-up dependency wiring in the second pass still works.
-        if (existing?.userCustomized) {
+        // changes and skip the operator update — unless the caller explicitly
+        // requests an override (e.g. a force-push from the operator console).
+        // We still track the existing ID so that follow-up dependency wiring
+        // in the second pass continues to work correctly.
+        if (existing?.userCustomized && !overrideCustomized) {
           templateIdByKey.set(template.key, existing.id);
           skipped++;
           continue;
@@ -2567,6 +2570,9 @@ export class HouseholdRepository {
               recurrenceStartStrategy: template.recurrenceStartStrategy,
               stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
               isOperatorManaged: true,
+              // Force-push resets the customization flag so the tenant
+              // continues to receive normal future updates automatically.
+              userCustomized: false,
               checklistItems: {
                 create: (template.checklist ?? []).map((item, idx) => ({
                   title: item.title,
@@ -2658,6 +2664,7 @@ export class HouseholdRepository {
     tenantId: string,
     templates: OperatorTemplateDto[],
     language: SupportedLanguage = fallbackLanguage,
+    overrideCustomized = false,
   ) {
     const household = await this.prisma.household.findFirst({
       where: { tenantId },
@@ -2666,7 +2673,42 @@ export class HouseholdRepository {
     if (!household) {
       throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
     }
-    return this.importOperatorTemplatesForHousehold(household.id, templates, language);
+    return this.importOperatorTemplatesForHousehold(
+      household.id,
+      templates,
+      language,
+      overrideCustomized,
+    );
+  }
+
+  /**
+   * Clears the userCustomized flag on a catalog-sourced template, making it
+   * eligible for the next operator push. Throws NotFoundException when the
+   * template does not exist or does not belong to the household.
+   */
+  async restoreTemplateToOperatorDefault(
+    templateId: string,
+    householdId: string,
+    language: SupportedLanguage = fallbackLanguage,
+  ) {
+    const existing = await this.prisma.choreTemplate.findFirst({
+      where: { id: templateId, householdId },
+      select: { id: true, catalogKey: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({ message: 'That chore template could not be found.' });
+    }
+    if (!existing.catalogKey) {
+      throw new NotFoundException({
+        message: 'Only catalog-sourced templates can be restored to their operator default.',
+      });
+    }
+    const updated = await this.prisma.choreTemplate.update({
+      where: { id: templateId },
+      data: { userCustomized: false },
+      include: { checklistItems: true, dependencies: true, variants: true },
+    });
+    return this.mapTemplate(updated, language);
   }
 
   private buildOperatorTranslations(
@@ -2989,9 +3031,10 @@ export class HouseholdRepository {
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
-          // When a household member edits a template that was seeded by the
-          // operator, flag it so future operator pushes do not overwrite it.
-          ...(existingTemplate.isOperatorManaged ? { userCustomized: true } : {}),
+          // When a household member edits a catalog-sourced template (starter
+          // or operator-pushed), flag it so future operator pushes do not
+          // overwrite their customisations.
+          ...(existingTemplate.catalogKey !== null ? { userCustomized: true } : {}),
           descriptionTranslations: this.toPrismaJsonOrNull(descriptionTranslations),
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
@@ -6650,6 +6693,7 @@ export class HouseholdRepository {
         | 'due_at'
         | 'completed_at',
       isOperatorManaged: template.isOperatorManaged,
+      userCustomized: template.userCustomized,
       catalogKey: template.catalogKey ?? null,
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)

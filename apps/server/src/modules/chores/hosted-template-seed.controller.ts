@@ -91,16 +91,20 @@ export class HostedTemplateSeedController {
       tenantId,
       dto.templates,
       language,
+      dto.overrideCustomized ?? false,
     );
     this.appLogService.log(
       `[hosted-template-seed] ${JSON.stringify({
         reason: 'operator_templates_import',
+        overrideCustomized: dto.overrideCustomized ?? false,
+        skipped: result.skipped,
         upserted: result.upserted,
         tenantId,
       })}`,
       'HostedTemplateSeedController',
     );
     return {
+      skipped: result.skipped,
       upserted: result.upserted,
       tenantId,
     };
