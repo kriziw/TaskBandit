@@ -17,6 +17,7 @@ import { HouseholdModule } from './modules/household/household.module';
 import { SettingsModule } from './modules/settings/settings.module';
 import { RewardsModule } from './modules/rewards/rewards.module';
 import { HolidayBlocksModule } from './modules/holiday-blocks/holiday-blocks.module';
+import { AnalyticsModule } from './modules/analytics/analytics.module';
 
 @Module({
   imports: [
@@ -38,6 +39,7 @@ import { HolidayBlocksModule } from './modules/holiday-blocks/holiday-blocks.mod
     AchievementsModule,
     RewardsModule,
     HolidayBlocksModule,
+    AnalyticsModule,
   ],
   controllers: [AppController],
 })
