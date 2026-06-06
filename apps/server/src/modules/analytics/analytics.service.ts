@@ -283,7 +283,7 @@ export class AnalyticsService {
           ? lastChore > lastReward
             ? lastChore
             : lastReward
-          : lastChore ?? lastReward;
+          : (lastChore ?? lastReward);
 
       return {
         runtimeTenantId: tid,
@@ -373,28 +373,78 @@ export class AnalyticsService {
       }),
       this.prisma.user.groupBy({ by: ['role'], where: { householdId: hid }, _count: { id: true } }),
       this.prisma.choreTemplate.count({ where: { householdId: hid } }),
-      this.prisma.choreInstance.count({ where: { householdId: hid, completedAtUtc: { gte: thirtyDaysAgo } } }),
-      this.prisma.choreInstance.count({ where: { householdId: hid, completedAtUtc: { not: null } } }),
-      this.prisma.choreInstance.aggregate({ where: { householdId: hid, completedAtUtc: { not: null } }, _max: { completedAtUtc: true } }),
-      this.prisma.rewardRedemption.count({ where: { householdId: hid, requestedAtUtc: { gte: thirtyDaysAgo } } }),
+      this.prisma.choreInstance.count({
+        where: { householdId: hid, completedAtUtc: { gte: thirtyDaysAgo } },
+      }),
+      this.prisma.choreInstance.count({
+        where: { householdId: hid, completedAtUtc: { not: null } },
+      }),
+      this.prisma.choreInstance.aggregate({
+        where: { householdId: hid, completedAtUtc: { not: null } },
+        _max: { completedAtUtc: true },
+      }),
+      this.prisma.rewardRedemption.count({
+        where: { householdId: hid, requestedAtUtc: { gte: thirtyDaysAgo } },
+      }),
       this.prisma.rewardRedemption.count({ where: { householdId: hid } }),
-      this.prisma.rewardRedemption.aggregate({ where: { householdId: hid }, _max: { requestedAtUtc: true } }),
-      this.prisma.pointsLedgerEntry.aggregate({ where: { householdId: hid, amount: { gt: 0 } }, _sum: { amount: true } }),
-      this.prisma.pointsLedgerEntry.aggregate({ where: { householdId: hid, amount: { lt: 0 } }, _sum: { amount: true } }),
-      this.prisma.pointsLedgerEntry.aggregate({ where: { householdId: hid, amount: { gt: 0 }, createdAtUtc: { gte: thirtyDaysAgo } }, _sum: { amount: true } }),
-      this.prisma.pointsLedgerEntry.aggregate({ where: { householdId: hid, amount: { lt: 0 }, createdAtUtc: { gte: thirtyDaysAgo } }, _sum: { amount: true } }),
+      this.prisma.rewardRedemption.aggregate({
+        where: { householdId: hid },
+        _max: { requestedAtUtc: true },
+      }),
+      this.prisma.pointsLedgerEntry.aggregate({
+        where: { householdId: hid, amount: { gt: 0 } },
+        _sum: { amount: true },
+      }),
+      this.prisma.pointsLedgerEntry.aggregate({
+        where: { householdId: hid, amount: { lt: 0 } },
+        _sum: { amount: true },
+      }),
+      this.prisma.pointsLedgerEntry.aggregate({
+        where: { householdId: hid, amount: { gt: 0 }, createdAtUtc: { gte: thirtyDaysAgo } },
+        _sum: { amount: true },
+      }),
+      this.prisma.pointsLedgerEntry.aggregate({
+        where: { householdId: hid, amount: { lt: 0 }, createdAtUtc: { gte: thirtyDaysAgo } },
+        _sum: { amount: true },
+      }),
       this.prisma.notificationDevice.count({ where: { tenantId: tid } }),
-      this.prisma.notificationDevice.groupBy({ by: ['platform'], where: { tenantId: tid }, _count: { id: true } }),
-      this.prisma.choreInstance.count({ where: { householdId: hid, submittedAtUtc: { not: null }, completedAtUtc: null, cancelledAtUtc: null } }),
-      this.prisma.choreInstance.count({ where: { householdId: hid, submittedAtUtc: { not: null }, completedAtUtc: null, cancelledAtUtc: null } }),
+      this.prisma.notificationDevice.groupBy({
+        by: ['platform'],
+        where: { tenantId: tid },
+        _count: { id: true },
+      }),
+      this.prisma.choreInstance.count({
+        where: {
+          householdId: hid,
+          submittedAtUtc: { not: null },
+          completedAtUtc: null,
+          cancelledAtUtc: null,
+        },
+      }),
+      this.prisma.choreInstance.count({
+        where: {
+          householdId: hid,
+          submittedAtUtc: { not: null },
+          completedAtUtc: null,
+          cancelledAtUtc: null,
+        },
+      }),
       this.prisma.choreAttachment.count({ where: { tenantId: tid } }),
       this.prisma.choreTakeoverRequest.count({ where: { householdId: hid } }),
       this.prisma.userTemplateStats.count({ where: { householdId: hid, masteryLevel: { gt: 0 } } }),
-      this.prisma.choreInstance.count({ where: { householdId: hid, templateId: null, completedAtUtc: { not: null } } }),
+      this.prisma.choreInstance.count({
+        where: { householdId: hid, templateId: null, completedAtUtc: { not: null } },
+      }),
       this.prisma.choreTemplate.count({ where: { householdId: hid, dependencies: { some: {} } } }),
       this.prisma.choreInstance.count({ where: { householdId: hid, completedByExternal: true } }),
-      this.prisma.choreInstance.count({ where: { householdId: hid, deferredReason: { not: null } } }),
-      this.prisma.choreTemplate.groupBy({ by: ['assignmentStrategy'], where: { householdId: hid }, _count: { id: true } }),
+      this.prisma.choreInstance.count({
+        where: { householdId: hid, deferredReason: { not: null } },
+      }),
+      this.prisma.choreTemplate.groupBy({
+        by: ['assignmentStrategy'],
+        where: { householdId: hid },
+        _count: { id: true },
+      }),
     ]);
 
     const roles: Record<string, number> = {};
@@ -409,7 +459,7 @@ export class AnalyticsService {
         ? new Date(lastChoreAt) > new Date(lastRewardAt)
           ? lastChoreAt
           : lastRewardAt
-        : lastChoreAt ?? lastRewardAt;
+        : (lastChoreAt ?? lastRewardAt);
 
     const platformBreakdown: Record<string, number> = {};
     for (const row of devicePlatforms) {
