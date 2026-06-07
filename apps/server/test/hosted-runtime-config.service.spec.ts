@@ -81,7 +81,7 @@ describe("HostedRuntimeConfigService", () => {
         tenantConfig: {
           compatibilityMode: "soft",
           configVersion: "2026-05-09T09:00:00.000Z",
-          contractVersion: "1.0.0",
+          contractVersion: "1.1.0",
           entitlementState: "active",
           featureAccess: {},
           graceEndsAt: null,
@@ -119,14 +119,14 @@ describe("HostedRuntimeConfigService", () => {
     vi.stubGlobal("fetch", fetchMock);
 
     const config = await service.getTenantRuntimeConfig("tenant-a");
-    expect(config?.contractVersion).toBe("1.0.0");
+    expect(config?.contractVersion).toBe("1.1.0");
     expect(config?.compatibilityMode).toBe("soft");
 
     expect(fetchMock).toHaveBeenCalledTimes(1);
     expect(fetchMock.mock.calls[0][1]).toMatchObject({
       headers: {
         "x-internal-service-token": "internal-token",
-        "x-taskbandit-runtime-contract-version": "1.0.0"
+        "x-taskbandit-runtime-contract-version": "1.1.0"
       }
     });
   });
@@ -202,7 +202,7 @@ describe("HostedRuntimeConfigService", () => {
           tenantConfig: {
             compatibilityMode: "soft",
             configVersion: "2026-05-12T10:00:00.000Z",
-            contractVersion: "1.0.0",
+            contractVersion: "1.1.0",
             entitlementState: "active",
             featureAccess: {},
             graceEndsAt: null,
@@ -273,7 +273,7 @@ describe("HostedRuntimeConfigService", () => {
           tenantConfig: {
             compatibilityMode: "soft",
             configVersion: "2026-05-12T10:00:00.000Z",
-            contractVersion: "1.0.0",
+            contractVersion: "1.1.0",
             entitlementState: "active",
             featureAccess: {},
             graceEndsAt: null,
