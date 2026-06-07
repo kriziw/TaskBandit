@@ -565,6 +565,13 @@ internal fun CreateVariantPanel(
                     }
                 }
             }
+            if (createVariantId == null) {
+                Text(
+                    text = stringResource(R.string.mobile_create_variant_required),
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
         }
     }
 }
@@ -603,8 +610,10 @@ internal fun CreateSubmitPanel(
                 effectiveRecurrenceType != "none" && createRecurrenceEndMode == "after_occurrences"
             val needsRecurrenceEndDate =
                 effectiveRecurrenceType != "none" && createRecurrenceEndMode == "on_date"
+            val subtypeRequired = template.variants.isNotEmpty()
             val canCreate =
                 activeCreateAction == null &&
+                    (!subtypeRequired || createVariantId != null) &&
                     (!needsRecurrenceInterval || (createRecurrenceIntervalError == null && (createRecurrenceInterval ?: 0) > 0)) &&
                     (effectiveRecurrenceType != "custom_weekly" || createRecurrenceWeekdaysError == null) &&
                     (!needsRecurrenceOccurrences || (createRecurrenceOccurrencesError == null && (createRecurrenceOccurrences ?: 0) > 0)) &&

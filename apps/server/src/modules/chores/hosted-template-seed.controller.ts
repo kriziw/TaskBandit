@@ -78,6 +78,29 @@ export class HostedTemplateSeedController {
     };
   }
 
+  @Post('tenants/:tenantId/templates/restore-catalog-variants')
+  async restoreMissingCatalogVariants(
+    @Param('tenantId') tenantId: string,
+    @Headers('x-internal-service-token') token?: string,
+  ) {
+    this.assertInternalServiceToken(token);
+    const result = await this.householdRepository.restoreMissingCatalogVariantsForTenant(tenantId);
+    this.appLogService.warn(
+      `[hosted-template-seed] ${JSON.stringify({
+        reason: 'restore_catalog_variants',
+        restored: result.restored,
+        alreadyHasVariants: result.alreadyHasVariants,
+        tenantId,
+      })}`,
+      'HostedTemplateSeedController',
+    );
+    return {
+      restored: result.restored,
+      alreadyHasVariants: result.alreadyHasVariants,
+      tenantId,
+    };
+  }
+
   @Post('tenants/:tenantId/templates/import')
   async importOperatorTemplates(
     @Param('tenantId') tenantId: string,

@@ -42,6 +42,7 @@ import {
   getStarterTemplateDefinitionsByKey,
   getStarterTemplateTranslations,
   StarterTemplateDefinition,
+  starterTemplateCatalog,
 } from '../bootstrap/starter-templates.catalog';
 import { OperatorTemplateDto } from '../chores/dto/import-operator-templates.dto';
 import { getStarterRewardDefinitionsByKey } from '../bootstrap/starter-rewards.catalog';
@@ -383,6 +384,13 @@ export class HouseholdRepository {
     const households = await this.prisma.household.findMany({ select: { id: true } });
     for (const { id: householdId } of households) {
       await this.importStarterRewards(this.prisma, householdId, fallbackLanguage);
+    }
+  }
+
+  async restoreMissingCatalogVariantsForAllHouseholds() {
+    const households = await this.prisma.household.findMany({ select: { id: true } });
+    for (const { id: householdId } of households) {
+      await this.restoreMissingCatalogVariantsForHousehold(householdId);
     }
   }
 
@@ -2474,6 +2482,74 @@ export class HouseholdRepository {
       throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
     }
     return this.resetDefaultTemplatesForHousehold(household.id, language);
+  }
+
+  /**
+   * Surgical variant restoration: for every household template whose catalogKey
+   * matches a catalog definition that carries variants, if the template currently
+   * has zero variants in the DB the catalog variants are inserted.  All other
+   * fields (title, recurrence, strategy, etc.) and the userCustomized flag are
+   * left completely untouched.  Safe to call repeatedly — templates that already
+   * have at least one variant are skipped.
+   */
+  async restoreMissingCatalogVariantsForHousehold(
+    householdId: string,
+  ): Promise<{ restored: number; alreadyHasVariants: number }> {
+    const catalogTemplatesWithVariants = starterTemplateCatalog.filter(
+      (def) => (def.variants?.length ?? 0) > 0,
+    );
+    if (catalogTemplatesWithVariants.length === 0) {
+      return { restored: 0, alreadyHasVariants: 0 };
+    }
+
+    const catalogKeys = catalogTemplatesWithVariants.map((def) => def.key);
+    const householdTemplates = await this.prisma.choreTemplate.findMany({
+      where: { householdId, catalogKey: { in: catalogKeys } },
+      include: { variants: { select: { id: true } } },
+    });
+
+    let restored = 0;
+    let alreadyHasVariants = 0;
+
+    for (const householdTemplate of householdTemplates) {
+      if (householdTemplate.variants.length > 0) {
+        alreadyHasVariants++;
+        continue;
+      }
+
+      const catalogDef = catalogTemplatesWithVariants.find(
+        (def) => def.key === householdTemplate.catalogKey,
+      );
+      if (!catalogDef?.variants?.length) continue;
+
+      const locale = this.normalizeSupportedLanguage(householdTemplate.defaultLocale);
+      await this.prisma.choreTemplateVariant.createMany({
+        data: catalogDef.variants.map((variant, index) => ({
+          templateId: householdTemplate.id,
+          label: variant.label[locale] || variant.label[fallbackLanguage],
+          labelTranslations: this.toPrismaJsonOrNull(
+            this.mapStarterLocalizedText(variant.label, locale),
+          ),
+          sortOrder: index + 1,
+        })),
+      });
+      restored++;
+    }
+
+    return { restored, alreadyHasVariants };
+  }
+
+  async restoreMissingCatalogVariantsForTenant(
+    tenantId: string,
+  ): Promise<{ restored: number; alreadyHasVariants: number }> {
+    const household = await this.prisma.household.findFirst({
+      where: { tenantId },
+      select: { id: true },
+    });
+    if (!household) {
+      throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
+    }
+    return this.restoreMissingCatalogVariantsForHousehold(household.id);
   }
 
   /**
