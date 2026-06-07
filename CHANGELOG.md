@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.12.1](https://github.com/kriziw/TaskBandit/compare/v1.12.0...v1.12.1) (2026-06-07)
+
+
+### Bug Fixes
+
+* **android:** always show subtype panel and gate create on selection ([#642](https://github.com/kriziw/TaskBandit/issues/642)) ([f12a048](https://github.com/kriziw/TaskBandit/commit/f12a0480eb9c33c910ae0423c76c6e1a15687a59))
+
+
+### Reverts
+
+* **android:** restore collapsedByDefault = true on compact variant panel ([#644](https://github.com/kriziw/TaskBandit/issues/644)) ([5938610](https://github.com/kriziw/TaskBandit/commit/5938610aed2eb7f6e84a520bf2122927d8e3d665))
+
 ## [1.12.0](https://github.com/kriziw/TaskBandit/compare/v1.11.3...v1.12.0) (2026-06-07)
 
 
