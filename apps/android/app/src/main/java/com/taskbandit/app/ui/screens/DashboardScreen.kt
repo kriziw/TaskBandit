@@ -2697,8 +2697,7 @@ internal fun DashboardScreen(
                                         createVariantId = it
                                         variantDropdownExpanded = false
                                     },
-                                    compact = true,
-                                    collapsedByDefault = true
+                                    compact = true
                                 )
                                 CreateSubmitPanel(
                                     selectedTemplate = selectedTemplate,
