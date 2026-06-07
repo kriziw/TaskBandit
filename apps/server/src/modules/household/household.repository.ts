@@ -387,6 +387,13 @@ export class HouseholdRepository {
     }
   }
 
+  async restoreMissingCatalogVariantsForAllHouseholds() {
+    const households = await this.prisma.household.findMany({ select: { id: true } });
+    for (const { id: householdId } of households) {
+      await this.restoreMissingCatalogVariantsForHousehold(householdId);
+    }
+  }
+
   private mapStarterLocalizedText(
     value: StarterTemplateDefinition['title'],
     defaultLocale: SupportedLanguage,
