@@ -2487,9 +2487,10 @@ export class HouseholdRepository {
     householdId: string,
     templates: OperatorTemplateDto[],
     language: SupportedLanguage = fallbackLanguage,
+    overrideCustomized = false,
   ) {
     if (templates.length === 0) {
-      return { upserted: 0 };
+      return { upserted: 0, skipped: 0 };
     }
     return this.prisma.$transaction(async (tx) => {
       const household = await tx.household.findFirst({
@@ -2501,6 +2502,7 @@ export class HouseholdRepository {
       }
 
       let upserted = 0;
+      let skipped = 0;
       // First pass: create/update all template records and collect their IDs
       // so we can wire follow-up dependencies in the second pass.
       const templateIdByKey = new Map<string, string>();
@@ -2508,7 +2510,28 @@ export class HouseholdRepository {
       for (const template of templates) {
         const existing = await tx.choreTemplate.findFirst({
           where: { householdId, catalogKey: template.key },
+          include: { checklistItems: true, variants: true },
         });
+
+        // If the household member has customised this template, preserve their
+        // changes and skip the operator update — unless the caller explicitly
+        // requests an override (e.g. a force-push from the operator console).
+        // We still track the existing ID so that follow-up dependency wiring
+        // in the second pass continues to work correctly.
+        if (existing?.userCustomized && !overrideCustomized) {
+          templateIdByKey.set(template.key, existing.id);
+          // Flag the template only when the catalog payload is genuinely
+          // different from what's on the record so the UI can show an
+          // "update available" indicator without false positives.
+          if (this.hasTemplateContentChanged(template, existing)) {
+            await tx.choreTemplate.update({
+              where: { id: existing.id },
+              data: { hasOperatorUpdate: true },
+            });
+          }
+          skipped++;
+          continue;
+        }
 
         const localizedTitle = template.title.en;
         const localizedDescription = template.description?.en ?? '';
@@ -2557,6 +2580,11 @@ export class HouseholdRepository {
               recurrenceStartStrategy: template.recurrenceStartStrategy,
               stickyFollowUpAssignee: template.stickyFollowUpAssignee ?? false,
               isOperatorManaged: true,
+              // Reset both flags: the update has been applied so there is no
+              // longer a pending operator update, and the customisation is
+              // overwritten (normal push) or intentionally cleared (force-push).
+              userCustomized: false,
+              hasOperatorUpdate: false,
               checklistItems: {
                 create: (template.checklist ?? []).map((item, idx) => ({
                   title: item.title,
@@ -2640,7 +2668,7 @@ export class HouseholdRepository {
         }
       }
 
-      return { upserted };
+      return { upserted, skipped };
     });
   }
 
@@ -2648,6 +2676,7 @@ export class HouseholdRepository {
     tenantId: string,
     templates: OperatorTemplateDto[],
     language: SupportedLanguage = fallbackLanguage,
+    overrideCustomized = false,
   ) {
     const household = await this.prisma.household.findFirst({
       where: { tenantId },
@@ -2656,7 +2685,95 @@ export class HouseholdRepository {
     if (!household) {
       throw new NotFoundException({ message: 'Hosted tenant household was not found.' });
     }
-    return this.importOperatorTemplatesForHousehold(household.id, templates, language);
+    return this.importOperatorTemplatesForHousehold(
+      household.id,
+      templates,
+      language,
+      overrideCustomized,
+    );
+  }
+
+  /**
+   * Clears the userCustomized flag on a catalog-sourced template, making it
+   * eligible for the next operator push. Throws NotFoundException when the
+   * template does not exist or does not belong to the household.
+   */
+  async restoreTemplateToOperatorDefault(
+    templateId: string,
+    householdId: string,
+    language: SupportedLanguage = fallbackLanguage,
+  ) {
+    const existing = await this.prisma.choreTemplate.findFirst({
+      where: { id: templateId, householdId },
+      select: { id: true, catalogKey: true },
+    });
+    if (!existing) {
+      throw new NotFoundException({ message: 'That chore template could not be found.' });
+    }
+    if (!existing.catalogKey) {
+      throw new NotFoundException({
+        message: 'Only catalog-sourced templates can be restored to their operator default.',
+      });
+    }
+    const updated = await this.prisma.choreTemplate.update({
+      where: { id: templateId },
+      data: { userCustomized: false, hasOperatorUpdate: false },
+      include: { checklistItems: true, dependencies: true, variants: true },
+    });
+    return this.mapTemplate(updated, language);
+  }
+
+  /**
+   * Returns true when the incoming operator catalog payload differs from the
+   * household's current template record in a way that would be visible to the
+   * user. Used to avoid marking a template as "has update" when the operator
+   * pushes without actually changing anything.
+   */
+  private hasTemplateContentChanged(
+    incoming: OperatorTemplateDto,
+    existing: Prisma.ChoreTemplateGetPayload<{
+      include: { checklistItems: true; variants: true };
+    }>,
+  ): boolean {
+    if (incoming.title.en !== existing.title) return true;
+    if ((incoming.description?.en ?? '') !== existing.description) return true;
+    if (incoming.difficulty !== existing.difficulty) return true;
+    if (incoming.assignmentStrategy !== existing.assignmentStrategy) return true;
+    if (incoming.recurrenceType !== existing.recurrenceType) return true;
+    if ((incoming.requirePhotoProof ?? false) !== existing.requirePhotoProof) return true;
+    if ((incoming.stickyFollowUpAssignee ?? false) !== existing.stickyFollowUpAssignee) return true;
+    if (incoming.recurrenceStartStrategy !== existing.recurrenceStartStrategy) return true;
+
+    const expectedIntervalDays =
+      incoming.recurrenceType === RecurrenceType.EVERY_X_DAYS
+        ? (incoming.recurrenceIntervalDays ?? 1)
+        : null;
+    if (expectedIntervalDays !== existing.recurrenceIntervalDays) return true;
+
+    const expectedWeekdays =
+      incoming.recurrenceType === RecurrenceType.CUSTOM_WEEKLY
+        ? [...(incoming.recurrenceWeekdays ?? [])].sort()
+        : [];
+    if (
+      JSON.stringify(expectedWeekdays) !== JSON.stringify([...existing.recurrenceWeekdays].sort())
+    )
+      return true;
+
+    // Checklist: compare by title + required, order-insensitive
+    const incomingItems = (incoming.checklist ?? [])
+      .map((i) => `${i.title}:${String(i.required)}`)
+      .sort();
+    const existingItems = existing.checklistItems
+      .map((i) => `${i.title}:${String(i.required)}`)
+      .sort();
+    if (JSON.stringify(incomingItems) !== JSON.stringify(existingItems)) return true;
+
+    // Variants: compare by label, order-insensitive
+    const incomingVariants = (incoming.variants ?? []).map((v) => v.label).sort();
+    const existingVariants = existing.variants.map((v) => v.label).sort();
+    if (JSON.stringify(incomingVariants) !== JSON.stringify(existingVariants)) return true;
+
+    return false;
   }
 
   private buildOperatorTranslations(
@@ -2979,6 +3096,13 @@ export class HouseholdRepository {
           title: dto.title.trim(),
           titleTranslations: this.toPrismaJsonOrNull(titleTranslations),
           description: dto.description.trim(),
+          // When a household member edits a catalog-sourced template (starter
+          // or operator-pushed), flag it so future operator pushes do not
+          // overwrite their customisations.  Clear hasOperatorUpdate because
+          // the user has consciously chosen their version over the pending one.
+          ...(existingTemplate.catalogKey !== null
+            ? { userCustomized: true, hasOperatorUpdate: false }
+            : {}),
           descriptionTranslations: this.toPrismaJsonOrNull(descriptionTranslations),
           difficulty: dto.difficulty,
           basePoints: this.getBasePoints(dto.difficulty),
@@ -6637,6 +6761,8 @@ export class HouseholdRepository {
         | 'due_at'
         | 'completed_at',
       isOperatorManaged: template.isOperatorManaged,
+      userCustomized: template.userCustomized,
+      hasOperatorUpdate: template.hasOperatorUpdate,
       catalogKey: template.catalogKey ?? null,
       checklist: template.checklistItems
         .sort((left, right) => left.sortOrder - right.sortOrder)
@@ -8024,7 +8150,7 @@ export class HouseholdRepository {
     await this.prisma.$transaction(async (tx) => {
       const seededTemplates = await tx.choreTemplate.findMany({
         where: { householdId: input.householdId, catalogKey: { not: null } },
-        select: { id: true, catalogKey: true },
+        select: { id: true, catalogKey: true, userCustomized: true },
       });
       const seededTemplateIds = seededTemplates.map((template) => template.id);
       const seededTemplateCatalogKeyById = new Map(
@@ -8040,19 +8166,39 @@ export class HouseholdRepository {
         select: { id: true, followUpTemplateId: true },
       });
 
-      if (seededTemplateIds.length > 0) {
+      // Preserve templates that the household has customised AND that are
+      // still part of the new wizard selection.  Removing a template category
+      // from the wizard (e.g. switching from dishwasher to hand-washing) is an
+      // explicit choice, so those templates are still deleted in that case.
+      const selectedKeySet = new Set(selectedTemplateKeys);
+      const preservedTemplates = seededTemplates.filter(
+        (t): t is typeof t & { catalogKey: string } =>
+          t.userCustomized && t.catalogKey !== null && selectedKeySet.has(t.catalogKey),
+      );
+      const preservedIdSet = new Set(preservedTemplates.map((t) => t.id));
+      const idsToDelete = seededTemplateIds.filter((id) => !preservedIdSet.has(id));
+
+      if (idsToDelete.length > 0) {
         await tx.choreTemplateDependency.deleteMany({
-          where: { templateId: { in: seededTemplateIds } },
+          where: { templateId: { in: idsToDelete } },
         });
         await tx.choreTemplate.deleteMany({
-          where: { householdId: input.householdId, id: { in: seededTemplateIds } },
+          where: { householdId: input.householdId, id: { in: idsToDelete } },
         });
       }
 
-      // Pass 1 — create templates and build a key→id lookup
-      const templateIdByKey = new Map<string, string>();
+      // Pass 1 — build a key→id lookup, pre-seeding with preserved templates
+      // so that follow-up dependency wiring in pass 2 resolves their IDs
+      // without needing to recreate them.
+      const templateIdByKey = new Map<string, string>(
+        preservedTemplates.map((t) => [t.catalogKey, t.id]),
+      );
 
       for (const template of definitions) {
+        if (templateIdByKey.has(template.key)) {
+          // Already preserved — skip recreation.
+          continue;
+        }
         const created = await tx.choreTemplate.create({
           data: {
             householdId: input.householdId,

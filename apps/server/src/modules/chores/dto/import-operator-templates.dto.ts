@@ -158,4 +158,13 @@ export class ImportOperatorTemplatesDto {
   @Type(() => OperatorTemplateDto)
   @ArrayMaxSize(50)
   templates!: OperatorTemplateDto[];
+
+  /**
+   * When true, the import overwrites templates that the household has
+   * previously customised, and resets their userCustomized flag to false.
+   * Use this for critical operator updates that must be applied universally.
+   */
+  @IsOptional()
+  @IsBoolean()
+  overrideCustomized?: boolean;
 }
