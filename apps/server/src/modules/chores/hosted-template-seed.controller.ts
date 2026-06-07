@@ -84,8 +84,7 @@ export class HostedTemplateSeedController {
     @Headers('x-internal-service-token') token?: string,
   ) {
     this.assertInternalServiceToken(token);
-    const result =
-      await this.householdRepository.restoreMissingCatalogVariantsForTenant(tenantId);
+    const result = await this.householdRepository.restoreMissingCatalogVariantsForTenant(tenantId);
     this.appLogService.warn(
       `[hosted-template-seed] ${JSON.stringify({
         reason: 'restore_catalog_variants',
