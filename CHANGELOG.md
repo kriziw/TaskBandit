@@ -2,6 +2,18 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.12.0](https://github.com/kriziw/TaskBandit/compare/v1.11.3...v1.12.0) (2026-06-07)
+
+
+### Features
+
+* **analytics:** add internal analytics bridge module ([#639](https://github.com/kriziw/TaskBandit/issues/639)) ([984b98c](https://github.com/kriziw/TaskBandit/commit/984b98c43f9c8224b88d0fd6cfec97f8cfb7bfc2))
+
+
+### Bug Fixes
+
+* protect user-customised templates from operator push overwrites ([#640](https://github.com/kriziw/TaskBandit/issues/640)) ([3d1b06f](https://github.com/kriziw/TaskBandit/commit/3d1b06f215ed7bb61c1dfc2470f9bf0af7c64595))
+
 ## [1.11.3](https://github.com/kriziw/TaskBandit/compare/v1.11.2...v1.11.3) (2026-06-05)
 
 
