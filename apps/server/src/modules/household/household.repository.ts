@@ -6735,10 +6735,7 @@ export class HouseholdRepository {
         takeoverPointsDelta: household.settings?.takeoverPointsDelta ?? 0,
         leaderboardResetMode:
           (household.settings?.leaderboardResetMode?.toLowerCase() as
-            | 'never'
-            | 'weekly'
-            | 'monthly'
-            | 'quarterly') ?? 'never',
+            'never' | 'weekly' | 'monthly' | 'quarterly') ?? 'never',
         lastLeaderboardResetAt: household.settings?.lastLeaderboardResetAt ?? null,
         localAuthEnabled: household.settings?.localAuthEnabled ?? true,
         localAuthForcedByConfig: false,
@@ -6834,8 +6831,7 @@ export class HouseholdRepository {
       requirePhotoProof: template.requirePhotoProof,
       stickyFollowUpAssignee: template.stickyFollowUpAssignee,
       recurrenceStartStrategy: template.recurrenceStartStrategy.toLowerCase() as
-        | 'due_at'
-        | 'completed_at',
+        'due_at' | 'completed_at',
       isOperatorManaged: template.isOperatorManaged,
       userCustomized: template.userCustomized,
       hasOperatorUpdate: template.hasOperatorUpdate,
@@ -7275,9 +7271,7 @@ export class HouseholdRepository {
 
   private resolveTemplateGroupTitle(
     template:
-      | { groupTitle: string; groupTitleTranslations?: Prisma.JsonValue | null }
-      | null
-      | undefined,
+      { groupTitle: string; groupTitleTranslations?: Prisma.JsonValue | null } | null | undefined,
     language: SupportedLanguage,
   ) {
     if (!template) {
