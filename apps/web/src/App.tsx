@@ -1175,9 +1175,7 @@ function BetaEndBanner({
   migrationUrl,
 }: {
   betaStatus:
-    | { isBeta: boolean; endDate: string | null; tenantBetaEndsAt: string | null }
-    | null
-    | undefined;
+    { isBeta: boolean; endDate: string | null; tenantBetaEndsAt: string | null } | null | undefined;
   migrationUrl: string | null;
 }) {
   const endDate = betaStatus?.isBeta ? (betaStatus.tenantBetaEndsAt ?? betaStatus.endDate) : null;
@@ -9898,10 +9896,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                                     ? {
                                         ...current,
                                         leaderboardResetMode: event.target.value as
-                                          | 'never'
-                                          | 'weekly'
-                                          | 'monthly'
-                                          | 'quarterly',
+                                          'never' | 'weekly' | 'monthly' | 'quarterly',
                                       }
                                     : current,
                                 )
@@ -10705,8 +10700,7 @@ export function App({ workspaceVariant }: { workspaceVariant: WorkspaceVariant }
                               setTemplateForm((current) => ({
                                 ...current,
                                 recurrenceStartStrategy: event.target.value as
-                                  | 'due_at'
-                                  | 'completed_at',
+                                  'due_at' | 'completed_at',
                               }))
                             }
                           >

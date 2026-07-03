@@ -816,9 +816,7 @@ export class ChoresService {
         awardedPoints,
         helpers.length,
         settings.jointCompletionPointsMode as
-          | 'FULL_TO_EACH'
-          | 'SPLIT_EQUALLY'
-          | 'PRIMARY_PLUS_BONUS',
+          'FULL_TO_EACH' | 'SPLIT_EQUALLY' | 'PRIMARY_PLUS_BONUS',
         settings.jointCompletionHelperBonus,
       );
       await Promise.all(

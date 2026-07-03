@@ -358,12 +358,7 @@ export type NotificationPreferences = {
 };
 
 export type RewardCategory =
-  | 'SCREEN_TIME'
-  | 'ALLOWANCE'
-  | 'TREAT'
-  | 'ACTIVITY'
-  | 'PRIVILEGE'
-  | 'CUSTOM';
+  'SCREEN_TIME' | 'ALLOWANCE' | 'TREAT' | 'ACTIVITY' | 'PRIVILEGE' | 'CUSTOM';
 export type RewardRedemptionStatus = 'PENDING' | 'APPROVED' | 'REJECTED' | 'CANCELLED';
 export type RewardEligibility = 'CHILD_ONLY' | 'ALL' | 'ADULT_ONLY';
 export type RewardWorkflowType = 'STANDARD' | 'DAILY_EXCLUSIVE';
@@ -567,10 +562,7 @@ export type ChoreTemplateChecklistItem = {
 };
 
 export type AssignmentStrategy =
-  | 'round_robin'
-  | 'least_completed_recently'
-  | 'highest_streak'
-  | 'fixed_assignee';
+  'round_robin' | 'least_completed_recently' | 'highest_streak' | 'fixed_assignee';
 
 export type ChoreAssignmentReason =
   | 'round_robin'
