@@ -20,24 +20,36 @@
     "@nestjs/core": "^11.1.24",
     "@nestjs/platform-express": "^11.1.28",
     "@nestjs/swagger": "^11.4.4",
-    "@prisma/adapter-pg": "^7.8.0",
-    "@prisma/client": "^7.8.0",
+    "@prisma/adapter-pg": "^7.10.1",
+    "@prisma/client": "^7.10.1",
     "bcryptjs": "^3.0.3",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.15.1",
     "jsonwebtoken": "^9.0.2",
-    "multer": "^2.2.0",
-    "nodemailer": "^9.0.1",
+    "multer": "^2.5.0",
+    "nodemailer": "^10.5.0",
     "pg": "^8.16.0",
-    "prisma": "^7.8.0",
+    "prisma": "^7.10.1",
     "reflect-metadata": "^0.2.2",
     "rxjs": "^7.8.1",
     "web-push": "^3.6.7"
   },
   "overrides": {
-    "@hono/node-server": ">=1.19.13",
-    "js-yaml": "^4.2.0",
-    "multer": "^2.2.0"
+    "body-parser": "^2.4.0",
+    "browserslist": "^4.28.7",
+    "fast-uri": "^3.1.9",
+    "js-yaml": "^4.3.2",
+    "minimatch@^3.0.0": {
+      "brace-expansion": "^1.1.21"
+    },
+    "minimatch@10": "^11.0.1",
+    "multer": "^2.5.0",
+    "postcss": "^8.5.23",
+    "proxy-addr": "^2.0.8",
+    "qs": "^6.16.1",
+    "source-map-js": "^1.2.2",
+    "vite": "^8.1.6",
+    "baseline-browser-mapping": "^2.11.0"
   },
   "devDependencies": {
     "@nestjs/cli": "^11.0.23",
@@ -45,7 +57,7 @@
     "@types/jsonwebtoken": "^9.0.7",
     "@types/multer": "^2.1.0",
     "@types/node": "^26.1.1",
-    "@types/nodemailer": "^8.0.1",
+    "@types/nodemailer": "^7.0.11",
     "@types/pg": "^8.11.14",
     "@types/swagger-ui-express": "^4.1.8",
     "@types/web-push": "^3.6.4",
@@ -55,6 +67,6 @@
     "swagger-ui-express": "^5.0.1",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.8"
+    "vitest": "^4.1.12"
   }
 }
