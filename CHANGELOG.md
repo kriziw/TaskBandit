@@ -2,6 +2,13 @@
 
 All notable changes to TaskBandit will be documented in this file.
 
+## [1.12.3](https://github.com/kriziw/TaskBandit/compare/v1.12.2...v1.12.3) (2026-11-12)
+
+
+### Bug Fixes
+
+* **deps:** clear open Dependabot alerts ([#671](https://github.com/kriziw/TaskBandit/issues/671)) ([8490ee4](https://github.com/kriziw/TaskBandit/commit/8490ee46a47680e7e86dd48215bcf36682c46a43))
+
 ## [1.12.2](https://github.com/kriziw/TaskBandit/compare/v1.12.1...v1.12.2) (2026-07-04)
 
 
